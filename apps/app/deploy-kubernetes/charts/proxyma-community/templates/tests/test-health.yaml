@@ -1,0 +1,46 @@
+# helm test: the server is ready, and it is the single-user edition behind its access code - an API
+# call without the code is answered 401 access_required (AccessGate), not served. Host: localhost,
+# because the application answers loopback names and its allow-list only.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "proxyma.fullname" . }}-test
+  labels:
+    {{- include "proxyma-common.labels" (dict "ctx" . "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: probe
+      image: {{ include "proxyma-common.image" (dict "image" .Values.image "default" .Chart.AppVersion) }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          base="http://{{ include "proxyma.fullname" . }}:{{ .Values.service.port }}"
+          ready=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: localhost' "$base/api/v1/health/ready")
+          echo "ready: $ready"; test "$ready" = 200
+          api=$(curl -s --max-time 10 -H 'Host: localhost' "$base/api/v1/indexing/summary")
+          echo "API call without the access code: $api"
+          case "$api" in *access_required*) ;; *) exit 1 ;; esac
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi

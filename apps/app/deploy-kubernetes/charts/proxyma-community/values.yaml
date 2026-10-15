@@ -1,0 +1,192 @@
+# Proxyma Community server - one user, no accounts. The ACCESS CODE is the way in: the server makes
+# one on its first start and prints it in its log, and whoever holds it has everything this instance
+# holds. `helm install proxyma .` runs it reachable through `kubectl port-forward` only.
+#
+# There is no replica count. Everything - an H2 database, the keyword index, the ChromaDB vector store
+# the server starts beside itself - is one process's files on one volume, so the StatefulSet runs one pod.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/proxyma-ai/proxyma-homeserver
+  # Empty: the chart's appVersion.
+  tag: ""
+  # Wins over tag. Pin one in production.
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# ---- Who gets in ---------------------------------------------------------------------------------
+access:
+  # Your own access code, 16 characters or more. Empty: made on the first start, kept on the volume,
+  # printed in the log at every start. Or access-code in secrets.existingSecret.
+  code: ""
+  # The host names a browser may use, comma-separated. Empty: the ingress hosts when the ingress is
+  # on, and loopback names (port-forward) always. "*" switches the check off - it is what stops a
+  # hostile page in a browser from reaching this instance by DNS rebinding.
+  allowedHosts: ""
+  # Browse and register any directory the pod can read. Off: there is no screen to pick one on.
+  exposeLocalFileApi: false
+  # The MCP endpoint: the agent's tools, including the ones that WRITE to Jira, Confluence and
+  # Bitbucket, for any client holding the instance's token.
+  exposeMcp: false
+
+# ---- The application -----------------------------------------------------------------------------
+config:
+  # Where in-app feedback and opted-in diagnostics are sent. "" sends nothing, and is rendered as an
+  # empty value on purpose.
+  telemetryUrl: "https://telemetry.proxyma.ai"
+  # Look for new versions on GitHub (it never installs one). false makes no such request.
+  updateCheck: true
+  # Extra JVM options (JAVA_TOOL_OPTIONS). The image already sets -XX:MaxRAMPercentage=40 and
+  # -XX:+ExitOnOutOfMemoryError.
+  javaOpts: ""
+  # Anything else the application reads, as plain env entries: [{name: X, value: y}].
+  extraEnv: []
+  # [{secretRef: {name: z}}] or [{configMapRef: {name: z}}].
+  extraEnvFrom: []
+
+secrets:
+  # A Secret of your own instead of the chart's. Any of these keys, all optional:
+  #   access-code      the access code
+  #   credential-key   base64 of 32 bytes (openssl rand -base64 32)
+  #   sandbox-token    required when office.enabled
+  # GitOps tools (Argo CD, Flux) render with `helm template`, where nothing generated can be kept from
+  # one render to the next: give them this Secret.
+  existingSecret: ""
+  # The key every stored provider key and connection secret is encrypted with. Empty: made on the
+  # first start and kept on the data volume. Once set, never change it.
+  credentialKey: ""
+
+# ---- Storage ----------------------------------------------------------------------------------------
+# Block storage only (ReadWriteOnce, or ReadWriteOncePod where the driver has it): H2, the keyword
+# index and ChromaDB need real file locks. Not NFS, EFS, SMB or Azure Files.
+persistence:
+  size: 20Gi
+  storageClass: ""
+  accessModes: [ReadWriteOnce]
+  # A claim you manage yourself, instead of the StatefulSet's own.
+  existingClaim: ""
+  annotations: {}
+  # Keep the volume when the release is uninstalled.
+  retainOnDelete: true
+tmp:
+  sizeLimit: 1Gi
+
+# ---- Office Files sandbox ---------------------------------------------------------------------------
+# The assistant writes Python to make Word, Excel and PowerPoint files; it runs in this separate pod.
+# The image is not published: build apps/app/deploy-homeserver/sandbox/ and push it where the cluster
+# pulls from.
+office:
+  enabled: false
+  image:
+    repository: ""
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  # Empty: generated (and kept on upgrade). Or sandbox-token in secrets.existingSecret.
+  token: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# ---- Networking ---------------------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 4246
+  annotations: {}
+
+# Anything reachable beyond the cluster should have a login of its own in front as well (an
+# oauth2-proxy, or the controller's authentication annotations): the access code is not an account.
+ingress:
+  enabled: false
+  className: ""
+  # Streaming-friendly annotations: auto (when className is nginx), nginx, or none.
+  preset: auto
+  annotations: {}
+  hosts:
+    - proxyma.example.com
+  tls: []
+
+networkPolicy:
+  # On by default, and worth keeping on: the embedded H2 databases also listen on ports of their own.
+  enabled: true
+  # Where the ingress controller runs; its pods may reach port 4246.
+  ingressNamespaceSelector:
+    kubernetes.io/metadata.name: ingress-nginx
+  extraIngress: []
+  egress:
+    # Everything outside the cluster except denyCidrs: AI providers and connectors are on any host
+    # and port. false: only DNS, this release's pods and egress.extra.
+    allowInternet: true
+    denyCidrs: [169.254.169.254/32]
+    extra: []
+
+# ---- The pod ------------------------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  # No CPU limit: it throttles the JVM's start. ChromaDB shares the memory limit.
+  limits:
+    memory: 4Gi
+
+# The 10-second preStop pause, Spring's 5-second shutdown, then ChromaDB's.
+terminationGracePeriodSeconds: 45
+
+probes:
+  # ChromaDB and a first start's databases come up before the port opens.
+  startup:
+    path: /api/v1/health/live
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 60
+  liveness:
+    path: /api/v1/health/live
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+  readiness:
+    path: /api/v1/health/ready
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# The image runs as uid 10001 in group 0. On OpenShift set runAsUser, runAsGroup and fsGroup to null.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 0
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Off: with one replica, a budget that keeps one pod up blocks every node drain.
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+extraVolumes: []
+extraVolumeMounts: []

@@ -1,0 +1,24 @@
+#!/bin/sh
+# /usr/bin/proxyma - the .deb entry point.
+#
+# Starts Boot, which starts the newest launcher it has: the one in this package, or the launcher
+# part of a newer release the application has since downloaded (see Boot).
+#
+# Two rules, each for a reason:
+#
+#   cd into the install root before exec'ing. The launcher and the window resolve window/ relative
+#   to user.dir, and a JVM's user.dir is the directory it was started from. Nothing writable lives
+#   here; the parts, the Python runtime and all user data go to the data directory instead, which is
+#   what makes a root-owned install root workable at all.
+#
+#   exec, not a plain call, so this process IS the JVM. The desktop environment's "force quit", a
+#   systemd-run scope and the shell's own job control then act on the real process rather than on a
+#   wrapper that would survive it.
+set -e
+
+APPROOT=/opt/proxyma
+cd "$APPROOT"
+
+exec "$APPROOT/jre/bin/java" \
+    -Djava.awt.headless=false \
+    -jar "$APPROOT/proxyma-launcher.jar" "$@"

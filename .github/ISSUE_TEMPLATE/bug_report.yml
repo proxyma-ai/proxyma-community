@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Proxyma Community does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A security issue does not belong here - e-mail contact@proxyma.ai instead (see SECURITY.md).
+        Please remove anything private (documents, tokens, server addresses) from logs and screenshots before you paste them.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Settings > About > Version.
+      placeholder: 0.35.0
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition
+      options:
+        - Desktop (Windows)
+        - Desktop (Linux)
+        - Home Server (Docker)
+        - Home Server (Kubernetes)
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant lines of the application log (Settings > Logs), with anything private removed.
+      render: text

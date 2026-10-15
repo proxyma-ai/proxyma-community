@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ai.proxyma</groupId>
+    <artifactId>proxyma-it</artifactId>
+    <version>1.0.0</version>
+    <name>proxyma-it</name>
+    <description>Functional test suite - drives the shipped jars and the real UI end to end</description>
+
+    <!--
+      DEPENDS ON NONE OF THE FOUR APPS, and that is the design rather than an omission.
+
+      Every test here reaches its subject the way a user does: over HTTP, or through a browser,
+      against a jar that has already been built and packaged. Nothing is on the classpath, so
+      nothing can be reached past its front door - a test cannot call a service bean, cannot open
+      a repository, and cannot assert on an internal it should not know about. What it can see is
+      exactly what a customer can see.
+
+      That buys four things a classpath dependency would have cost:
+
+        - It tests the ARTIFACT. The SPA is baked into the jar by frontend-maven-plugin, so a jar
+          built with -Dskip.frontend.build=true serves no UI at all - a failure invisible to any
+          test holding the classes directly, and one this project has shipped before.
+        - It does not care about the `server` profile. proxyma-server and proxyma-core-auth only
+          exist under -Pserver (in ee/, Proxyma Enterprise); a module that compiled against them
+          could not build without it - nor in the public Community repository, which has no ee/.
+        - Both editions run from one suite. Desktop and server are two jars, not two classpaths.
+        - It cannot drift into a unit test. There is no seam to reach for.
+
+      The cost is that the jars must exist first. Env.java says so plainly and the suite skips
+      rather than failing when they do not - see its comment on why a skip is right there and
+      wrong in CI.
+    -->
+
+    <properties>
+        <java.version>21</java.version>
+        <!-- Patch floor above what the Spring Boot 3.5.16 BOM manages (Netty 4.1.135, Tomcat
+             10.1.55, Jackson 2.21.4), each of which still had published advisories. Drop an
+             override once a Boot release manages that version or newer. -->
+        <netty.version>4.1.139.Final</netty.version>
+        <tomcat.version>10.1.61</tomcat.version>
+        <jackson-bom.version>2.21.7</jackson-bom.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Pinned to the version apps/app/backend already manages, so the browser this suite
+             drives is the same one the product bundles and there is only ever one driver
+             download on a machine. Bumping one without the other means two. -->
+        <playwright.version>1.58.0</playwright.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Playwright for Java, NOT @playwright/test. Chosen because the driver is already a
+             managed dependency of apps/app/backend (proxyma-core-webcontent renders pages with
+             it), so the browser tests add a Maven coordinate rather than a second toolchain: no
+             package.json, no node_modules in CI, no separate runner to keep in step with this
+             one. `mvn verify` runs the API journeys and the browser journeys together. -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${playwright.version}</version>
+        </dependency>
+
+        <!-- Containers for the two stores the product cannot fake: pgvector in server mode and
+             ChromaDB in desktop mode.
+
+             Testcontainers rather than a hand-rolled `docker run`, for ONE reason that outweighs
+             the dependency: Ryuk reaps containers when the JVM dies, however it dies. Every job
+             in this project runs on a GitLab Runner ON THE PRODUCTION HOST. A suite killed by a
+             timeout or a cancelled pipeline must not be able to leave a database container behind
+             on the machine serving customers, and a shell script's trap handler does not run when
+             the shell is killed. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+        <!--
+          A LOGGING BINDING, AND IT IS NOT OPTIONAL.
+
+          Testcontainers logs through SLF4J, and with no binding on the classpath SLF4J prints one
+          "no providers" warning and DISCARDS EVERYTHING ELSE. What it discards is the part that
+          matters: when it cannot reach Docker it logs each discovery strategy it tried and why
+          each one failed, and then throws "Could not find a valid Docker environment. Please see
+          logs and check configuration" - pointing at logs that were never written.
+
+          That is exactly how this suite's first run on the production host failed: twelve errors,
+          all of them that message, and nothing anywhere saying which socket it looked at. Added
+          after the fact, which is the wrong order; a harness that cannot explain its own
+          infrastructure failures costs a pipeline run per guess.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+              FAILSAFE, NOT SUREFIRE, and the split is what keeps the gate fast.
+
+              Surefire runs *Test.java at `mvn test` - the 74 unit tests that lead every pipeline
+              and finish in about thirty seconds. Failsafe runs *IT.java at `mvn verify`, and
+              every one of those boots a jar, a container or a browser. Naming decides which, so
+              a test placed here cannot accidentally join the gate and a test placed in a core
+              module cannot accidentally need Docker.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <!-- One JVM for the whole suite. Booting a jar is the expensive part, so the
+                         harness caches a running app per configuration and shares it across test
+                         classes (see ProxymaApp.shared); a forked JVM per class would throw that
+                         cache away and boot the app again for every file. -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- There are deliberately no *Test.java files in this module. If one ever
+                         appears it belongs beside the code it covers, not here. -->
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

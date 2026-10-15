@@ -1,0 +1,14 @@
+From: Partner News <news@partner.example>
+To: fake.user@localhost
+Subject: October partner newsletter
+Date: Tue, 06 Oct 2026 08:00:00 +0700
+Message-ID: <newsletter-02@partner.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<html><head><style>p { color: #333; }</style></head><body>
+<h2>October</h2>
+<p>Welcome to the <b>GOLDCREST</b> program, open to every partner this month.</p>
+<ul><li>New price list</li><li>Training dates</li></ul>
+<img src="https://partner.example/pixel.gif" width="1" height="1">
+</body></html>

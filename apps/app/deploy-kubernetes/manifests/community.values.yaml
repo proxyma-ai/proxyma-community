@@ -1,0 +1,5 @@
+# The values manifests/community.yaml is rendered with (tools/build/render-manifests.sh). Nothing
+# here may be generated at render time. The access code is made on the first start and printed in
+# the log; to choose your own, put it in the Secret the manifest names (key access-code) - an empty
+# one is created by the manifest itself.
+fullnameOverride: proxyma-community

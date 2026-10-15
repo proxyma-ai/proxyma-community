@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-configtransfer</artifactId>
+    <name>proxyma-core-configtransfer</name>
+    <description>Export and import a deployment's whole configuration as one JSON file</description>
+
+    <dependencies>
+        <!-- The ONLY module that can see everything this feature exports. A configuration spans the
+             settings store, the provider-instance table, the skill and workflow directories and the
+             system prompt file - and proxyma-core-chat depends on proxyma-core-settings, never the
+             reverse, so no existing module sees both halves. Hence a module of its own rather than
+             a package inside one of them. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-chat</artifactId>
+        </dependency>
+        <!-- Used directly - the settings store, providers, connections and pricing; the guardrail
+             policy library - so declared rather than reached through chat (settings-core-16). -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-guardrail</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

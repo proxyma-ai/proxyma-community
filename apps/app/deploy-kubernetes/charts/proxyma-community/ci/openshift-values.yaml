@@ -1,0 +1,10 @@
+# The OpenShift shape: the platform assigns the uid; any uid in group 0 works.
+podSecurityContext:
+  runAsUser: null
+  runAsGroup: null
+  fsGroup: null
+secrets:
+  existingSecret: proxyma-community
+networkPolicy:
+  ingressNamespaceSelector:
+    network.openshift.io/policy-group: ingress

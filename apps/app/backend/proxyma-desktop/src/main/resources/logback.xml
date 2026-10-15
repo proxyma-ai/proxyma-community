@@ -1,0 +1,35 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder><pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern></encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${proxyma.log.dir:-logs}/proxyma.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${proxyma.log.dir:-logs}/proxyma.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Spring AI's Anthropic stream parser warns "Unhandled event type: CONTENT_BLOCK_STOP" for
+         every content block of every streamed answer - a normal event it simply does not map. It
+         said nothing wrong and made a feedback log look like a failing one (2026-09-24). -->
+    <logger name="org.springframework.ai.anthropic.api.StreamHelper" level="ERROR"/>
+
+    <!-- INFO, not DEBUG, since 2026-10-14 (editions-assembly-12). DEBUG lines carry users' search
+         queries and reached proxyma.log and the log tail a feedback report attaches. For a debug
+         run: -Dlogging.level.ai.proxyma=DEBUG (or LOGGING_LEVEL_AI_PROXYMA), which Spring applies
+         over this file. This is the ONLY logging configuration of the app and the launcher alike:
+         Spring Boot takes logback.xml as it finds it and never reads a logback-spring.xml beside it. -->
+    <logger name="ai.proxyma" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+    <root level="INFO">
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

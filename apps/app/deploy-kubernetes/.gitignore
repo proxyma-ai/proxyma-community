@@ -1,0 +1,4 @@
+# The library chart, packaged into each chart by `helm dependency build`. Chart.lock is committed.
+charts/*/charts/
+# Where a release packages a chart, removed when it is done.
+.release-package/

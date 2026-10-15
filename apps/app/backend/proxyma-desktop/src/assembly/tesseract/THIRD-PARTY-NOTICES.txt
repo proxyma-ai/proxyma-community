@@ -1,0 +1,57 @@
+Third-party software in this folder
+===================================
+
+This folder holds Tesseract OCR 5.4.0 as built for Windows by UB Mannheim
+(https://github.com/UB-Mannheim/tesseract), which Proxyma runs as a separate program for its
+offline OCR engine. Proxyma does not link to any of it. Each file is licensed to you under its
+own license, listed below; nothing in Proxyma's own license limits the rights those licenses
+give you.
+
+Full license texts: LICENSE.txt (Apache License 2.0, Tesseract) and the licenses\ folder
+(GPL-2.0, LGPL-2.1, GPL-3.0 and the GCC Runtime Library Exception 3.1). The permissive
+licenses below are available at the project addresses given.
+
+File                   Project                      License
+---------------------  ---------------------------  --------------------------------------------
+tesseract.exe          Tesseract OCR                Apache-2.0
+libtesseract-5.dll     Tesseract OCR                Apache-2.0
+tessdata\*             Tesseract trained data       Apache-2.0
+libleptonica-6.dll     Leptonica                    BSD-2-Clause (Leptonica license)
+libjbig-0.dll          JBIG-KIT                     GPL-2.0-or-later
+libiconv-2.dll         GNU libiconv                 LGPL-2.1-or-later
+libgcc_s_seh-1.dll     GCC runtime                  GPL-3.0-or-later WITH GCC-exception-3.1
+libstdc++-6.dll        GCC C++ runtime              GPL-3.0-or-later WITH GCC-exception-3.1
+libwinpthread-1.dll    mingw-w64 winpthreads        MIT
+libarchive-13.dll      libarchive                   BSD-2-Clause
+libb2-1.dll            BLAKE2                       CC0-1.0
+libbz2-1.dll           bzip2                        bzip2 license (BSD-style)
+libcrypto-3-x64.dll    OpenSSL                      Apache-2.0
+libdeflate.dll         libdeflate                   MIT
+libexpat-1.dll         Expat                        MIT
+libgif-7.dll           GIFLIB                       MIT
+libjpeg-8.dll          libjpeg-turbo                IJG, BSD-3-Clause and Zlib
+libLerc.dll            LERC                         Apache-2.0
+liblz4.dll             LZ4                          BSD-2-Clause
+liblzma-5.dll          XZ Utils                     0BSD
+libopenjp2-7.dll       OpenJPEG                     BSD-2-Clause
+libpng16-16.dll        libpng                       PNG Reference Library License v2
+libsharpyuv-0.dll      libwebp                      BSD-3-Clause
+libtiff-6.dll          LibTIFF                      libtiff license (BSD-style)
+libwebp-7.dll          libwebp                      BSD-3-Clause
+libwebpmux-3.dll       libwebp                      BSD-3-Clause
+libzstd.dll            Zstandard                    BSD-3-Clause
+zlib1.dll              zlib                         Zlib
+
+
+Written offer of source code
+----------------------------
+
+JBIG-KIT is licensed under the GNU General Public License, version 2 or later, and GNU libiconv
+under the GNU Lesser General Public License, version 2.1 or later.
+
+For at least three years from the date you received this copy of Proxyma, Le Sy Hau, the
+publisher of Proxyma, will give any third party who asks a complete machine-readable copy of the
+corresponding source code of JBIG-KIT and GNU libiconv as included here, and of the Tesseract
+program and libraries in this folder that are built with them, for a charge no more than the
+cost of performing the distribution. Write to contact@proxyma.ai, naming the Proxyma version you
+received.

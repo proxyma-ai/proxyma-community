@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-provider</artifactId>
+    <name>proxyma-core-provider</name>
+    <description>AI model provider adapters (OpenAI, OpenAI-compatible, OpenRouter, LiteLLM, Anthropic, Azure OpenAI, Google GenAI, Ollama), the model gateway and the chat/embedding model factory</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-network</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-ollama</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-azure-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-google-genai</artifactId>
+        </dependency>
+        <!-- Separate artifact from spring-ai-google-genai above, which carries the chat model only.
+             The plain module, not spring-ai-starter-model-google-genai-embedding: every model here
+             is built by hand from a configured provider instance, so the starter's
+             auto-configuration would only add a second, property-driven EmbeddingModel bean. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-google-genai-embedding</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -1,0 +1,13 @@
+{
+  "name": "proxyma-window",
+  "productName": "Proxyma",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The native window Proxyma Desktop shows its interface in.",
+  "main": "main.js",
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "electron": "44.7.2",
+    "resedit": "3.1.0"
+  }
+}

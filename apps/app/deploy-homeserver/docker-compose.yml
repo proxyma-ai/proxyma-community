@@ -1,0 +1,94 @@
+# Proxyma Home Server - the single-user edition, on a machine with no screen.
+#
+# ONE CONTAINER, ONE USER, ONE ACCESS CODE. This is the same application as the Windows installer
+# and the Linux .deb. It keeps its data in a directory beside this file: an H2 database, a Lucene
+# index, a ChromaDB vector store the application starts itself, and your conversations. There is
+# no PostgreSQL to run and nothing else to install.
+#
+# If you want accounts, roles or single sign-on, this is the wrong package - that is the server
+# edition, and it is a different image. See https://proxyma.ai/docs/manual/#install-enterprise.
+#
+# The one decision this file exposes is who can reach it. See .env.example section 1; the short
+# version is that there are no accounts, so the answer is "whoever can route to this port AND has
+# the access code" - which the container prints in its log at every start.
+
+name: proxyma-homeserver
+
+services:
+
+  proxyma:
+    # Normally pulled, occasionally built, and install.sh decides which: with app.jar beside this
+    # file it builds the image here and `image:` is only the tag that build is given; with no jar
+    # it pulls the published image named below. Set PROXYMA_IMAGE in .env to pin a version.
+    build: .
+    image: ${PROXYMA_IMAGE:-ghcr.io/proxyma-ai/proxyma-homeserver:latest}
+    restart: unless-stopped
+    # Must own ./data - see install.sh.
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    ports:
+      # LOOPBACK BY DEFAULT, like the server edition, since 2026-10-14. Reaching this from another
+      # machine is why this package exists, and it is one line in .env (BIND_ADDR=0.0.0.0) - plus
+      # PROXYMA_ALLOWED_HOSTS below naming the host you type, or the application answers 403.
+      - "${BIND_ADDR:-127.0.0.1}:${HTTP_PORT:-4246}:4246"
+    environment:
+      HOME: /data
+      # Empty means loopback only. Naming a host here is what opens this instance up, and the
+      # access code is the only sign-in behind it - read .env.example section 1 before setting it.
+      PROXYMA_NETWORK_ALLOWED_HOSTS: ${PROXYMA_ALLOWED_HOSTS:-}
+      # Empty: the container makes one on its first start and prints it in its log at every start.
+      # Set it in .env to choose your own (16 characters or more).
+      PROXYMA_ACCESS_CODE: ${PROXYMA_ACCESS_CODE:-}
+      # The key stored credentials are encrypted with. Empty: made on the first start and kept in
+      # ./data. Set (openssl rand -base64 32) to keep it in .env instead - see INSTALL.md section 7.
+      PROXYMA_CREDENTIAL_KEY: ${PROXYMA_CREDENTIAL_KEY:-}
+      # Both only apply once the instance is exposed, and both stay off unless set. The first
+      # browses any directory this container can read; the second hands the agent's write tools to
+      # any AI client holding the instance's token. Neither is what a browser needs.
+      PROXYMA_NETWORK_EXPOSE_LOCAL_FILE_API: ${PROXYMA_EXPOSE_LOCAL_FILE_API:-false}
+      PROXYMA_NETWORK_EXPOSE_MCP: ${PROXYMA_EXPOSE_MCP:-false}
+      # The one outbound URL, switchable off in .env.
+      #
+      # `-` and not `:-`. The `:-` form treats an EMPTY value as unset and substitutes the
+      # default, which would hand the URL straight back to someone who deliberately blanked it to
+      # stop the request. `-` substitutes only when the variable is genuinely absent.
+      PROXYMA_TELEMETRY_SERVER_URL: ${PROXYMA_TELEMETRY_SERVER_URL-https://telemetry.proxyma.ai}
+      # Office Files: see the sandbox service. Without the `office` profile runPython says the
+      # sandbox is not running - it never falls back to running code in this container.
+      PROXYMA_SANDBOX_URL: http://sandbox:8080
+      PROXYMA_SANDBOX_TOKEN: ${PROXYMA_SANDBOX_TOKEN:-}
+      PROXYMA_SANDBOX_LOCAL_ENABLED: "false"
+    volumes:
+      # Everything: the database, the search index, the vector store, conversations, logs. Back up
+      # this one directory and you have backed up the installation.
+      - ./data:/data
+    networks: [default, sandbox]
+
+  # Office Files - runPython's code runs HERE, never in the app container beside everyone's data
+  # (the maintainer's decision, 2026-09-26). The `office` profile, on by default in .env.example;
+  # remove it on a host with no internet at install time, since the image is built here with pip.
+  # What confines it: a network with no route out that only the app shares, no volumes, a
+  # read-only system, no capabilities, and memory/CPU/process limits. The app hands it each run's
+  # files and takes the results back, so it never sees /data.
+  sandbox:
+    profiles: [office]
+    build: ./sandbox
+    image: proxyma-sandbox:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m
+      - /work:size=512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 1g
+    cpus: 1.0
+    environment:
+      SANDBOX_TOKEN: ${PROXYMA_SANDBOX_TOKEN:-}
+    networks: [sandbox]
+
+networks:
+  # internal: no route to the internet or the host's LAN - the sandbox can reach the app and
+  # nothing else, and only because the app joins it.
+  sandbox:
+    internal: true

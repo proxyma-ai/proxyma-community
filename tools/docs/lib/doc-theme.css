@@ -1,0 +1,285 @@
+/* Proxyma documentation theme - the page around generated documents (the arc42 architecture
+   document, the UI design guideline). Layout and type only: every color is a token from
+   libs/ui-kit/tokens/proxyma-tokens.css, which the builder inlines ahead of this file, so a
+   document has the product's own Light, Proxyma and Dark appearances and cannot drift from them.
+
+   A fixed left table of contents, a measured reading column, and type sized for reading: these
+   documents are bullets, tables and diagrams, not essays.
+
+   ON THE DESIGN GUIDELINE since 2026-10-15 (maintainer: "the docs are not fully following the
+   design guideline e.g. rounded corners buttons, tables"). Each block below names the kit part it
+   draws and takes that part's values - this file is plain CSS with no Tailwind behind it, so the
+   values are written out rather than applied, and a change to one of those parts is a change here
+   too. Two things had drifted: the radii read --radius-card/-input/-control, tokens the kit removed
+   on 2026-10-14, so every corner in both documents had gone square; and table headers, the
+   contents' document-type line and callout labels were 11px upper case with letter-spacing, which
+   the guideline allows a status badge and nothing else.
+
+   The radius scale: 6px (`rounded-md`) for controls - a button, a badge, inline code, a code block
+   (the kit `Frame`) - and 8px (`rounded-lg`) for surfaces - a card, a table's card, a callout, a
+   figure. */
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:24px}
+/* THE READING FACE IS INTER (maintainer, 2026-10-15: "a more readability friendly font"): tall
+   lowercase, open shapes, Il1 and O0 told apart - what long technical reading needs. 16px with
+   1.7 leading. The app's face, Space Grotesk, stays the app's: the UI guideline's specimens keep it. */
+:root{--font-doc:'Inter', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif}
+body{
+  margin:0; font-family:var(--font-doc); font-size:16px; line-height:1.7;
+  color:rgb(var(--ink-secondary)); background:rgb(var(--canvas));
+  -webkit-font-smoothing:antialiased;
+  transition:background-color var(--motion-base) var(--ease-out), color var(--motion-base) var(--ease-out);
+}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *,*::before,*::after{transition:none!important; animation:none!important} }
+
+/* ---------------------------------------------------------------- layout */
+/* As wide as a 1920 screen (it was 1480, which left a fifth of a 1080p screen empty on each side;
+   maintainer, 2026-10-15: "make the content wider"). Paragraphs, lists and callouts stop at a 92ch
+   measure - the guideline's own - so a line stays readable; tables, code, figures and grids take
+   the whole column, which is what the width is for. */
+.layout{display:flex; align-items:flex-start; max-width:1920px; margin:0 auto; padding:0 32px}
+/* The contents panel is as wide as the reader drags it (doc-theme.js): --toc-width, set before
+   first paint from what this reader chose last, held between 200 and 480 here too, so a stored
+   value nothing else checked cannot break the page. Eased when it changes by key or by a reset,
+   followed exactly while dragged. */
+.toc{
+  position:sticky; top:0; align-self:flex-start;
+  flex:0 0 clamp(200px, var(--toc-width, 272px), 480px); width:clamp(200px, var(--toc-width, 272px), 480px);
+  height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  transition:flex-basis var(--motion-base) var(--ease-out), width var(--motion-base) var(--ease-out);
+}
+/* The logo, the name and the document's kind stay put; only the contents below them scroll
+   (maintainer, 2026-10-15). */
+.toc-head{flex:none; padding:24px 0 14px; border-bottom:1px solid rgb(var(--line) / .45); margin-bottom:8px}
+.toc-body{flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 0 40px}
+html[data-toc-resizing], html[data-toc-resizing] *{cursor:col-resize!important; user-select:none}
+html[data-toc-resizing] .toc{transition:none}
+/* The handle IS the gutter between panel and content: 12px to grab, 16px either side - the 44px
+   the gutter always was. A hairline at rest, so it can be found; the brand's line, thicker, under
+   a mouse, on focus and while dragged. Without JavaScript it is a plain divider (no tabindex). */
+.toc-resize{
+  position:sticky; top:0; align-self:flex-start; flex:0 0 12px; height:100vh; margin:0 16px;
+  touch-action:none; border-radius:6px;
+}
+.toc-resize::before{
+  content:""; position:absolute; top:24px; bottom:24px; left:50%; width:1px; margin-left:-.5px;
+  background:rgb(var(--line) / .45);
+  transition:background-color var(--motion-fast) var(--ease-in-out), transform var(--motion-fast) var(--ease-in-out);
+}
+/* Its focus is the brand line itself - a ring round a box the height of the window says less. */
+.toc-resize[tabindex]{cursor:col-resize; outline:none}
+.toc-resize[tabindex]:hover::before,.toc-resize[tabindex]:focus-visible::before,html[data-toc-resizing] .toc-resize::before{
+  background:rgb(var(--brand-solid)); transform:scaleX(3);
+}
+.content{flex:1 1 auto; min-width:0; padding:40px 0 120px}
+/* THE READING COLUMN IS CENTERED in the space beside the contents (maintainer, 2026-10-15: "empty
+   space is not balanced"): text and code blocks stop at 800px - about 85 characters of Inter at
+   16px - and tables, figures and grids may run to 1280px, all centered, so the margins match. */
+.content > *{max-width:800px}
+/* A long path or identifier in running text breaks rather than pushing the page sideways on a phone
+   (tables keep theirs whole: they scroll inside their card). */
+.content p, .content li{overflow-wrap:anywhere}
+/* By the content's id, so a block's own margin rule (a table's card, a callout, a check line) cannot
+   pull it back to the left edge. */
+#top > *{margin-left:auto; margin-right:auto}
+.content > .wide, .content > figure, .content > .table-wrap, .content > .grid{max-width:min(100%, 1280px)}
+
+/* ---------------------------------------------------------------- brand */
+/* The kit Logo's HORIZONTAL LOCKUP: the 28px mark with the wordmark beside it, never under it -
+   gap 8px (a quarter of the mark, as Logo's lockupGap), Orbitron 700 at 16px, tracking 0.05em,
+   brand-legible ink. */
+/* `.toc a.brandmark`, not `.brandmark`: the contents' own `.toc a` rule (display:block, padding,
+   a hover fill) outranked a bare class, and that is what STACKED the wordmark under the mark in
+   both documents until 2026-10-15. */
+.toc a.brandmark{display:inline-flex; align-items:center; gap:8px; padding:0; margin:0 0 14px 10px; text-decoration:none; border-radius:6px; background:none}
+.toc a.brandmark:hover{background:none}
+.brandmark svg{width:28px; height:28px; flex:0 0 auto; display:block}
+.brandmark span{font-family:var(--font-brand); font-weight:700; font-size:16px; line-height:1; letter-spacing:.05em; color:rgb(var(--brand-legible))}
+/* TEXT.eyebrow: 13/500 caption ink, sentence case. */
+.toc .doctype{font-size:13px; font-weight:500; line-height:18px; color:rgb(var(--ink-caption)); margin:0; padding:0 10px}
+
+/* ---------------------------------------------------------------- toc */
+/* The kit's left navigation (the Settings rail, SettingsNav): rounded-md rows, the current one on
+   the surface plane in primary ink at 500, the others lifting to primary ink under a mouse over a
+   half-strength surface. A sub-entry is a step smaller, in caption ink. */
+.toc nav ol{list-style:none; margin:0; padding:0}
+.toc nav > ol > li{margin-bottom:1px}
+.toc-row{display:flex; align-items:center; gap:2px}
+.toc-row > a{flex:1 1 auto; min-width:0}
+.toc a{
+  display:block; padding:5px 10px; border-radius:6px;
+  color:rgb(var(--ink-secondary)); text-decoration:none; font-size:14px; line-height:20px;
+  transition:background-color var(--motion-fast) var(--ease-in-out), color var(--motion-fast) var(--ease-in-out);
+}
+.toc a:hover{background:rgb(var(--surface) / .5); color:rgb(var(--ink-primary))}
+.toc a.active{background:rgb(var(--surface)); color:rgb(var(--ink-primary)); font-weight:500}
+/* The kit's iconButton('sm'): 24px, no fill under the pointer - caption ink at rest, primary ink
+   under a mouse. */
+.toc-caret{
+  flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; padding:0; cursor:pointer; background:none; border:0;
+  border-radius:6px; color:rgb(var(--ink-caption));
+  transition:color var(--motion-fast) var(--ease-in-out);
+}
+.toc-caret svg{width:14px; height:14px; transition:transform var(--motion-base) var(--ease-out)}
+.toc-caret:hover{color:rgb(var(--ink-primary))}
+.toc-caret[aria-expanded="true"] svg{transform:rotate(90deg)}
+/* A link in the foot is a link in a sentence, not a contents row. */
+.toc .toc-foot a{display:inline; padding:0; font-size:inherit; line-height:inherit; color:rgb(var(--brand-legible)); background:none}
+.toc nav ol ol{margin:1px 0 5px 12px}
+.toc nav ol ol a{font-size:13px; line-height:18px; color:rgb(var(--ink-caption)); padding:4px 10px}
+.toc nav ol ol a:hover,.toc nav ol ol a.active{color:rgb(var(--ink-primary))}
+.toc-foot{margin-top:26px; padding:16px 10px 0; border-top:1px solid rgb(var(--line) / .45); font-size:13px; line-height:1.625; color:rgb(var(--ink-caption))}
+
+/* ---------------------------------------------------------------- type */
+/* `.prose-doc`'s scale (proxyma-primitives.css): h1 29/700, h2 21/700, h3 16/600, h4 15/600, all in
+   primary ink and sentence case; the lede is TEXT.lead, 17px in secondary ink. */
+h1,h2,h3,h4{color:rgb(var(--ink-primary)); line-height:1.3}
+h1{font-size:29px; line-height:38px; font-weight:700; margin:0 0 8px}
+h2{font-size:21px; line-height:30px; font-weight:700; margin:64px 0 14px; padding-top:24px; border-top:1px solid rgb(var(--line) / .45)}
+h2 .num{color:rgb(var(--brand-legible)); font-family:var(--font-readout); margin-right:10px}
+.content > h2:first-of-type{border-top:0; padding-top:0; margin-top:36px}
+h3{font-size:16px; line-height:24px; font-weight:600; margin:34px 0 10px}
+h4{font-size:15px; line-height:22px; font-weight:600; margin:24px 0 8px}
+p{margin:0 0 14px}
+.lede{font-size:17px; line-height:1.625; color:rgb(var(--ink-secondary)); margin-bottom:28px}
+/* A link in running text (`.prose-doc a`, PROSE_CHAT.link): the paragraph's own weight in the
+   legible brand ink, underlined at 3px under a mouse only. */
+a{color:rgb(var(--brand-legible)); text-decoration:none; text-underline-offset:3px; border-radius:2px}
+@media (hover:hover) and (pointer:fine){ .content a:hover, .toc-foot a:hover{text-decoration:underline} }
+strong{color:rgb(var(--ink-primary)); font-weight:600}
+ul,ol{margin:0 0 14px; padding-left:22px}
+li{margin-bottom:6px}
+li::marker{color:rgb(var(--ink-caption))}
+li > ul,li > ol{margin-top:6px}
+hr{border:0; border-top:1px solid rgb(var(--line) / .45); margin:40px 0}
+.muted{color:rgb(var(--ink-caption))}
+
+/* ---------------------------------------------------------------- code */
+/* Inline code as `.prose-doc code`: the code face at 0.9em and never under 12px (Consolas's x-height
+   is the UI face's own), on the surface plane, a hairline, 6px. */
+code{
+  font-family:var(--font-mono); font-size:max(12px,.9em); background:rgb(var(--surface)); color:rgb(var(--ink-primary));
+  padding:1px 6px; border:1px solid rgb(var(--line) / .6); border-radius:6px;
+}
+/* A long identifier in running text breaks rather than widening the page on a phone. */
+p code, li code, figcaption code{overflow-wrap:anywhere}
+/* A block as the kit CodeBlock (its `Frame`): a hole in the page - canvas, a line at half, 6px -
+   13px code at leading-relaxed in primary ink, padded 12 by 8. */
+pre{
+  font-family:var(--font-mono); font-size:13px; line-height:1.625; color:rgb(var(--ink-primary));
+  background:rgb(var(--canvas)); border:1px solid rgb(var(--line) / .5); border-radius:6px;
+  padding:8px 12px; margin:0 0 18px; overflow-x:auto;
+}
+pre code{background:none; border:0; padding:0; font-size:inherit; color:inherit}
+
+/* ---------------------------------------------------------------- tables */
+/* The kit TableCard: a subtle card (the surface plane at 40%, a line at 40%, 8px), clipped. Its
+   header row as DataTable's TH - 13/500 caption ink, sentence case, no fill - over a rule at 40%;
+   rows ruled at 20%, the last with none; cells 16 by 12 at 14px in secondary ink. */
+.table-wrap{
+  overflow-x:auto; margin:0 0 20px; border:1px solid rgb(var(--line) / .4); border-radius:8px;
+  background:rgb(var(--surface) / .4);
+}
+table{border-collapse:collapse; width:100%; font-size:14px; line-height:22px}
+th,td{text-align:left; padding:12px 16px; vertical-align:top}
+th{color:rgb(var(--ink-caption)); font-weight:500; font-size:13px; line-height:18px; white-space:nowrap; border-bottom:1px solid rgb(var(--line) / .4)}
+td{border-bottom:1px solid rgb(var(--line) / .2)}
+tbody tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+
+/* ---------------------------------------------------------------- figures */
+/* A figure is a card too (subtle, 8px). */
+figure{margin:8px 0 28px; padding:20px; border:1px solid rgb(var(--line) / .4); border-radius:8px; background:rgb(var(--surface) / .4); overflow-x:auto}
+figure .uml{margin:0 auto}
+figcaption{margin-top:14px; font-size:13px; line-height:1.625; color:rgb(var(--ink-caption)); text-align:center}
+figcaption strong{color:rgb(var(--ink-secondary))}
+.legend{display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin-top:10px; font-size:13px; color:rgb(var(--ink-caption))}
+.legend i{display:inline-block; width:12px; height:12px; border-radius:2px; margin-right:6px; vertical-align:-1px; border:1px solid rgb(var(--ink-caption) / .55)}
+.legend i.key{background:rgb(var(--brand-solid)); border-color:rgb(var(--brand-accent))}
+.legend i.plain{background:rgb(var(--surface))}
+.legend i.ext{background:rgb(var(--canvas)); border-color:rgb(var(--line))}
+.legend i.note{background:rgb(var(--warning) / .1); border-color:rgb(var(--warning) / .55)}
+
+/* ---------------------------------------------------------------- callouts and cards */
+/* The kit Callout (and `.prose-doc .note/.warn`): 8px, 16 by 12, a 7% tint of its tone with the
+   border at about a third; the label a sentence-case title at 14/600 in primary ink, the body 14px
+   in secondary ink. */
+.note,.warn,.danger{border:1px solid; border-radius:8px; padding:12px 16px; margin:0 0 18px; font-size:14px}
+.note{border-color:rgb(var(--brand-solid) / .3); background:rgb(var(--brand-solid) / .07)}
+.warn{border-color:rgb(var(--warning) / .35); background:rgb(var(--warning) / .07)}
+.danger{border-color:rgb(var(--danger) / .3); background:rgb(var(--danger) / .05)}
+.note > :last-child,.warn > :last-child,.danger > :last-child{margin-bottom:0}
+.note p,.warn p,.danger p{margin-bottom:8px}
+.note .label,.warn .label,.danger .label{display:block; font-size:14px; line-height:20px; font-weight:600; color:rgb(var(--ink-primary)); margin-bottom:2px}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin:0 0 20px}
+/* The kit Card (subtle): the surface plane at 40%, a line at 40%, 8px, 20 by 16. */
+.card{border:1px solid rgb(var(--line) / .4); border-radius:8px; padding:16px 20px; background:rgb(var(--surface) / .4)}
+.card h4{margin:0 0 6px}
+.card p,.card ul{font-size:14px; margin-bottom:0}
+/* The kit Badge's outline variant - a fact beside a name: 12px at 500, sentence case, 6px, no
+   fill; a tone colors its words and its border. `.brand` is the solid brand badge. A badge that
+   also carries `warn` is not the warning callout: it resets what `.warn` gives a box. */
+.badge,.badge.warn{
+  display:inline-flex; align-items:center; font-size:12px; line-height:16px; font-weight:500;
+  padding:2px 8px; margin:0; border-radius:6px; border:1px solid rgb(var(--line)); background:none;
+  color:rgb(var(--ink-secondary)); vertical-align:middle; white-space:nowrap;
+}
+.badge.brand{background:rgb(var(--brand-solid)); color:rgb(var(--brand-on-solid)); border-color:transparent}
+.badge.ok{color:rgb(var(--success)); border-color:rgb(var(--success) / .4)}
+.badge.warn{color:rgb(var(--warning)); border-color:rgb(var(--warning) / .4)}
+.badge.bad{color:rgb(var(--danger)); border-color:rgb(var(--danger) / .4)}
+
+/* ---------------------------------------------------------------- appearance control */
+/* The kit SegmentedControl, boxed, at size md: a canvas well with a line, 6px, 2px inset; each
+   option 32px high at 14/500, caption ink that turns primary under a mouse; the chosen one on the
+   pale brand chip in its legible ink. */
+.appearance{
+  position:fixed; top:14px; right:18px; z-index:20; display:inline-flex; gap:2px; padding:2px;
+  background:rgb(var(--canvas)); border:1px solid rgb(var(--line)); border-radius:6px;
+}
+.appearance button{
+  font:inherit; font-size:14px; line-height:20px; font-weight:500; height:32px; cursor:pointer; border:0; background:none;
+  color:rgb(var(--ink-caption)); padding:0 12px; border-radius:5px;
+  transition:background-color var(--motion-fast) var(--ease-in-out), color var(--motion-fast) var(--ease-in-out);
+}
+.appearance button:hover{color:rgb(var(--ink-primary))}
+.appearance button[aria-pressed="true"]{background:rgb(var(--brand-pale)); color:rgb(var(--brand-legible))}
+/* The kit's focus-ring: 2px of brand-solid, 2px off the box. */
+.appearance button:focus-visible,.toc a:focus-visible,.toc-caret:focus-visible,a:focus-visible{
+  outline:2px solid rgb(var(--brand-solid)); outline-offset:2px;
+}
+
+/* ---------------------------------------------------------------- responsive */
+@media (max-width:960px){
+  .layout{display:block; padding:0 16px}
+  .toc{position:static; display:block; width:auto; height:auto; overflow:visible; padding:64px 0 16px; border-bottom:1px solid rgb(var(--line) / .45)}
+  .toc-head{border-bottom:0; padding-top:0}
+  .toc-body{overflow:visible}
+  .toc-resize{display:none}
+  .toc nav{max-height:44vh; overflow-y:auto}
+  .content{padding:24px 0 80px}
+  .appearance{top:10px; right:10px}
+  h1{font-size:25px; line-height:34px}
+  h2{font-size:19px; line-height:28px; margin-top:44px}
+  figure{padding:12px}
+}
+/* 44px targets on glass, as every kit control. */
+@media (pointer:coarse){
+  .appearance button{height:40px}
+  .toc a{padding-top:8px; padding-bottom:8px}
+  .toc-caret{width:44px; height:44px}
+  .toc-resize{flex-basis:24px; margin:0 10px}
+}
+
+/* ---------------------------------------------------------------- print */
+@media print{
+  .toc,.toc-resize,.appearance{display:none}
+  .layout{display:block; padding:0}
+  .content{padding:0}
+  .content > *{max-width:none}
+  #top > *{margin-left:0; margin-right:0}
+  h2{break-before:page}
+  pre,table,figure,.note,.warn,.danger,.card{break-inside:avoid}
+}

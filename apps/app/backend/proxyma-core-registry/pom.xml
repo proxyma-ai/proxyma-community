@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-registry</artifactId>
+    <name>proxyma-core-registry</name>
+    <description>Connector lifecycle: CRUD for RegisteredConnector, sync orchestration, TrackedDocument status tracking</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-indexstore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-ingest</artifactId>
+        </dependency>
+        <!-- Knowledge-graph construction: GraphExtractionOrchestrator extracts indexed documents
+             from the keyword index on its own schedule, independently of the sync pipeline, and a
+             document's graph contribution is removed when it is deleted. One-way, as
+             proxyma-core-graph's own pom requires - it is called into and never calls back. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-graph</artifactId>
+        </dependency>
+        <!-- FeatureGateService: tier limit enforcement (max local folders, allowed connector
+             types, recursive scan) at resource-registration time. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-license</artifactId>
+        </dependency>
+        <!-- SOURCE_REGISTERED / SOURCE_REMOVED / INDEXING telemetry, recorded by ConnectorService
+             and SyncService. Same one-way shape as the license dependency above:
+             proxyma-core-telemetryclient depends on settings, license and shared-contracts, and
+             on nothing in registry. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-telemetryclient</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <!-- Without spring-aspects, and so without aspectjweaver (EPL-2.0 only, which the AGPL
+                 cannot carry): nothing in Proxyma is an @Aspect - see proxyma-parent's pom. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-aspects</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Nimbus JOSE+JWT: file upload endpoints read JWTClaimsSet to resolve the caller's userId -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+        </dependency>
+
+        <!-- H2 embedded database (desktop mode) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+</project>

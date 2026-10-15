@@ -1,0 +1,51 @@
+# Build output
+target/
+*.class
+*.jar
+*.war
+node_modules/
+dist/
+node/
+*.tsbuildinfo
+coverage/
+__pycache__/
+*.pyc
+/apps/app/backend/proxyma-releases/
+
+# Secrets never belong in the tree. The public keys a build embeds are the exceptions.
+.env
+.env.local
+*.env.local
+!*.env.example
+!.env.example
+!/apps/app/frontend/.env.server
+!/apps/app/frontend/.env.desktop
+*.pem
+*.key
+!**/src/main/resources/keys/*-public.pem
+!apps/app/backend/proxyma-core-common/src/main/resources/update-keys/*/*.pem
+!apps/app/backend/proxyma-core-common/src/test/resources/signing/*.pem
+client_secret*.json
+docker-compose.override.yml
+
+# The Home Server image's build context gets these copied in by the image build
+/apps/app/deploy-homeserver/LICENSE
+/apps/app/deploy-homeserver/NOTICE
+
+# Local runs and editors
+*.log
+/logs/
+*.tmp
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+.playwright/
+
+# A jar run from source (README, "Build from source")
+/.proxyma-dev/

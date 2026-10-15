@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>ai.proxyma</groupId>
+    <artifactId>proxyma-monorepo</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>proxyma-monorepo</name>
+    <description>Aggregator for every Java module in the repository</description>
+
+    <!--
+      AGGREGATOR ONLY - deliberately not a parent.
+
+      Each module keeps spring-boot-starter-parent as its parent and keeps its own version
+      (app 0.36.0, license 1.0.0, telemetry 1.0.0, shared-contracts 1.3.0). Making this a parent
+      would force one version onto four things that release independently, which is not what the
+      merge was for: one repository, still four release cycles.
+
+      What it IS for: putting shared-contracts in the same reactor as its three consumers, so
+      `mvn -pl :proxyma-license -am package` builds the DTOs FROM SOURCE instead of resolving
+      them from GitHub Packages. That retires the 401 that came back four different ways: no
+      token, expired token, missing read:packages, and a version that was never published, all
+      of which Maven surfaced identically.
+
+      The friction it removes was never protecting what it appeared to. A desktop client in the
+      field carries whatever contracts version it shipped with, so client and services have
+      always been able to differ; compile-time coupling in CI never changed that. What does
+      protect against skew is the rule, now in .claude/rules/backend-maven.md: adding an optional
+      field is safe, renaming or removing one breaks whichever side deploys second.
+
+      NOTE: a version pin must match the module for the reactor to substitute it. Merging the
+      repos exposed that proxyma-license still pinned contracts 1.1.0 while the source had moved
+      to 1.2.0 - invisible while each repo resolved its own copy from Packages.
+
+      proxyma-desktop is a module of apps/app/backend/pom.xml - the COMMUNITY reactor. Proxyma
+      Enterprise (proxyma-server and the modules only it carries) is ee/, which joins under the
+      `server` profile below and nowhere else.
+    -->
+    <modules>
+        <module>libs/shared-contracts</module>
+        <module>apps/app/backend</module>
+    </modules>
+
+    <profiles>
+        <!-- PROXYMA ENTERPRISE. `-Pserver` adds ee/ (closed source, never exported - see
+             docs/architecture.html#oss-boundary). Explicit rather than activated by the directory's presence, so a
+             desktop build in the private repository does not compile Enterprise too. A checkout
+             without ee/ - the public Community repository - never passes it. -->
+        <profile>
+            <id>server</id>
+            <modules>
+                <module>ee</module>
+            </modules>
+        </profile>
+        <!-- The operator services: the license server and the telemetry server. Private, and absent
+             from the public Community repository, so each joins the reactor only when its directory
+             is there - which in this repository is always, so `mvn -pl :proxyma-license -am` works as
+             it always has. -->
+        <profile>
+            <id>license-server</id>
+            <activation>
+                <file><exists>${basedir}/apps/license/backend/pom.xml</exists></file>
+            </activation>
+            <modules>
+                <module>apps/license/backend</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>telemetry-server</id>
+            <activation>
+                <file><exists>${basedir}/apps/telemetry/backend/pom.xml</exists></file>
+            </activation>
+            <modules>
+                <module>apps/telemetry/backend</module>
+            </modules>
+        </profile>
+    </profiles>
+
+</project>

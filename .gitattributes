@@ -1,0 +1,72 @@
+# Repository-wide default. Text is normalized to LF in the repository.
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------------------------
+# Anything executed by a shell MUST check out with LF, on every platform.
+#
+# A shell script written from a Windows checkout gets CRLF, and the kernel then reads the shebang
+# as "/usr/bin/env bash\r" - a program that does not exist. The error is
+#
+#     env: 'bash\r': No such file or directory
+#
+# which names neither the file nor line endings. CI never sees it, because a GitHub runner checks
+# out on Linux and gets LF either way - so this only bites when someone deploys or runs a script
+# from a Windows working copy, which is exactly when they are least expecting a tooling problem.
+# It has cost this project three separate afternoons, in three different repositories, which is
+# why the rule is now stated once for all of them.
+# ---------------------------------------------------------------------------------------------
+*.sh        text eol=lf
+install.sh  text eol=lf
+
+# Read by Linux tooling, never by a Windows one.
+*.desktop   text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.conf      text eol=lf
+
+# ---------------------------------------------------------------------------------------------
+# The mirror image of the rule above: read by a Windows shell, never by a Linux one.
+#
+# `* text=auto eol=lf` would check these out with LF. cmd.exe tolerates that for a one-line
+# script and stops tolerating it around `goto`, labels and multi-line blocks, where it consumes
+# the label including the missing CR and jumps nowhere. That failure names neither the file nor
+# line endings either, and it only appears once a wrapper grows past a single command - which is
+# to say, later, when nobody is looking for it.
+# ---------------------------------------------------------------------------------------------
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# ---------------------------------------------------------------------------------------------
+# Committed binaries - never touched by any line-ending or diff heuristic.
+# ---------------------------------------------------------------------------------------------
+*.png       binary
+*.jpg       binary
+*.ico       binary
+*.svg       text eol=lf
+*.woff2     binary
+*.ttf       binary
+*.jar       binary
+*.zip       binary
+*.tar.gz    binary
+*.pdf       binary
+
+# ---------------------------------------------------------------------------------------------
+# NOT set here, deliberately: an explicit `*.java text eol=lf`.
+#
+# The Java sources came across the merge with CRLF endings, and adding that rule would renormalize
+# every one of them - a whole-tree whitespace commit that buries real changes and rewrites blame
+# for files nobody touched. The `* text=auto eol=lf` above already normalizes anything written
+# from here on.
+#
+# It is worth knowing why this matters. Promoting the ex-tenant cleanup surfaced a diff of 3,094
+# lines on SmartChatMemory.java of which exactly ONE was real - a comment - the rest being trailing
+# whitespace an editor stripped on save. Both sides were CRLF, so it was not an EOL flip, but the
+# effect is identical: a one-line change made unreviewable. If that recurs often enough to be
+# worth a whole-tree renormalization, do it as its own commit that touches nothing else, and say
+# so in the message.
+# ---------------------------------------------------------------------------------------------
+
+# Signed fixtures: a signature covers exact bytes, so git must never touch their line endings.
+apps/app/backend/proxyma-core-update/src/test/resources/signing/** -text

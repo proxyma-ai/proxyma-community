@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-guardrail</artifactId>
+    <name>proxyma-core-guardrail</name>
+    <description>Policy checks over the text entering and leaving a turn: deterministic rules always, an optional LLM classifier behind them</description>
+
+    <!-- Deliberately thin, and deliberately one-way. This module is handed a string and answers
+         with a decision about it. It knows nothing about conversations, turns, users or tools, and
+         nothing calls back out of here into chat - which is what lets the same two checks be
+         reused later for anything else with a text boundary without dragging chat in with them.
+
+         It holds NO entities and NO repository, so nothing here has to be added to either
+         edition's datasource lists. Its configuration lives in the ordinary settings store under
+         the "guardrail" prefix, like every other feature's. -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <!-- The guardrail.* settings group. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <!-- LlmGateway, for the optional classifier layer. The rules layer needs none of this and
+             keeps working when no provider is configured at all. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-provider</artifactId>
+        </dependency>
+        <!-- The policy corpus is indexed through the SAME conversion, chunking and embedding path
+             every other document takes - DocumentConversionService for PDF and Office, then
+             EmbeddingService, which writes the vector store and the BM25 index together. The
+             policy index is "separate" by COLLECTION, not by machinery: duplicating the pipeline
+             is how the two would drift, and a policy corpus that chunks differently from
+             everything else is one that retrieves differently for no stated reason. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-ingest</artifactId>
+        </dependency>
+        <!-- Hybrid retrieval over that collection - dense + BM25 fused with RRF. Called with
+             SearchOptions.retrievalOnly(), which is the whole reason that overload exists. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-search</artifactId>
+        </dependency>
+        <!-- The vector store and the BM25 index themselves, for removing a document's entries
+             (PolicyLibrary). Used directly, so declared rather than arriving through ingest. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-indexstore</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

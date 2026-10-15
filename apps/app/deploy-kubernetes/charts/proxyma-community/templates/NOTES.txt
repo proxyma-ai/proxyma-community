@@ -1,0 +1,36 @@
+Proxyma Community server is starting: {{ include "proxyma.fullname" . }} in namespace {{ .Release.Namespace }}.
+ChromaDB and the databases come up before the port opens; give it a minute or two.
+
+  kubectl -n {{ .Release.Namespace }} rollout status statefulset/{{ include "proxyma.fullname" . }}
+
+1. Open it
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+   {{ if $.Values.ingress.tls }}https{{ else }}http{{ end }}://{{ . }}
+{{- end }}
+   Allowed host names: {{ include "proxyma.allowedHosts" . }}
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "proxyma.fullname" . }} 4246:{{ .Values.service.port }}
+   then http://localhost:4246
+{{- end }}
+
+2. Enter the access code
+{{- if or .Values.access.code .Values.secrets.existingSecret }}
+   The code you set (access.code, or access-code in your Secret).
+{{- else }}
+   The server makes one on its first start, keeps it on the volume, and prints it at every start:
+
+   kubectl -n {{ .Release.Namespace }} logs statefulset/{{ include "proxyma.fullname" . }} | grep -A1 -i "access code"
+{{- end }}
+
+   There are no accounts: whoever holds the code has every document, conversation and credential
+   this instance holds, and spends on your AI provider.
+{{- if .Values.ingress.enabled }}
+   It is reachable through the ingress. Put a login of your own in front as well (oauth2-proxy, or
+   the controller's authentication annotations): a code is not an account system.
+{{- end }}
+
+3. Back up the data volume (data-{{ include "proxyma.fullname" . }}-0). Scale to 0 first for a
+   consistent copy: H2 and ChromaDB are being written while it runs.
+
+One replica, by design: expect a minute or two of downtime on every upgrade.

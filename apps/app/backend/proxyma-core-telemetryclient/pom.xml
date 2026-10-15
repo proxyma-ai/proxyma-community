@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-telemetryclient</artifactId>
+    <name>proxyma-core-telemetryclient</name>
+    <description>Telemetry batch shipping client to the proxyma-telemetry service</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-shared-contracts</artifactId>
+        </dependency>
+        <!-- SensitivePaths: the feedback log tail is screened before it leaves the host. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <!-- FeatureGateService: Enterprise/on-premise deployments never ship telemetry off their
+             own infrastructure - see TelemetryShipper.record()'s tier gate. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-license</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

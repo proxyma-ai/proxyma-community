@@ -1,0 +1,27 @@
+From: Bo Tran <bo.tran@partner.example>
+To: Fake User <fake.user@localhost>
+Cc: Mai Nguyen <mai@example.com>
+Subject: Delivery dates for the spring order
+Date: Mon, 05 Oct 2026 09:15:00 +0700
+Message-ID: <delivery-01@partner.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="part-boundary-01"
+
+--part-boundary-01
+Content-Type: text/plain; charset=UTF-8
+
+Hi,
+
+The SALSIFY shipment leaves the warehouse on the 20th. The notes attached
+list the pallets and the two dates the trucks can come.
+
+Bo
+
+--part-boundary-01
+Content-Type: text/plain; charset=UTF-8; name="pallet-notes.txt"
+Content-Disposition: attachment; filename="pallet-notes.txt"
+
+Pallet notes. Twelve pallets, two trucks. The WOODRUFF crates go on the
+first truck because they must stay upright.
+
+--part-boundary-01--

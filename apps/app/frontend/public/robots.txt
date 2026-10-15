@@ -1,0 +1,31 @@
+# Crawl policy for the public Enterprise sandbox at enterprise-demo.proxyma.ai.
+#
+# Without it every route is fair game - including /admin, /login and the chat history under
+# /chat/. None of those are secrets (they are behind auth or scoped to a guest cookie), but none
+# of them is a useful search result either, and a crawler spending its budget on an app shell is
+# budget not spent on proxyma.ai/docs.
+#
+# The root IS the chat application rather than a marketing page, so it is allowed on purpose and
+# with modest expectations: it lets a search for "proxyma sandbox" reach the live instance. It will
+# never rank for anything descriptive, because a client-rendered app shell has no prose in it -
+# that is proxyma.ai's job, and the two should not compete for the same queries.
+#
+# This file is baked into BOTH editions' jars. On desktop it is served from localhost and nothing
+# crawls it, which is harmless.
+
+User-agent: *
+Allow: /$
+
+# Application routes. Nothing here reads as a search result.
+Disallow: /chat
+Disallow: /connectors
+Disallow: /settings
+Disallow: /admin
+Disallow: /login
+Disallow: /setup
+
+# Not pages at all.
+Disallow: /api/
+Disallow: /mcp
+Disallow: /actuator/
+Disallow: /oauth2/

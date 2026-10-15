@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core</artifactId>
+    <name>proxyma-core</name>
+    <description>Aggregator: depends on every proxyma-core-* feature module so existing single-dependency
+        consumers (proxyma-desktop, proxyma-server) need no pom.xml change. Contains no source of its own -
+        actual code lives in the per-feature proxyma-core-* modules listed below.</description>
+    <packaging>pom</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-network</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-webcontent</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-license</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-provider</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-indexstore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-graph</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-registry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-ingest</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-search</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-guardrail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-chat</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-configtransfer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-evaluation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-system</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-diagnostics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-telemetryclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-update</artifactId>
+        </dependency>
+        <!-- The connectors built on the connector framework v2, found by component scan
+             (ai.proxyma.connectors in both applications' scanBasePackages). -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-connectors</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

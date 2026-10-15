@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ai.proxyma</groupId>
+    <artifactId>proxyma-parent</artifactId>
+    <version>0.36.0</version>
+    <packaging>pom</packaging>
+    <name>proxyma-parent</name>
+    <description>PROXYMA Multi-module Maven parent</description>
+    <url>https://github.com/proxyma-ai/proxyma-community</url>
+
+    <!-- PROXYMA COMMUNITY IS AGPL-3.0-only (LICENSE and NOTICE at the repository root). Declared here
+         so every Community module's POM says so - until 2026-10-15 they inherited
+         spring-boot-starter-parent's Apache-2.0 declaration, which was never Proxyma's license.
+         ee/pom.xml replaces it for the Enterprise modules, which are proprietary. -->
+    <licenses>
+        <license>
+            <name>AGPL-3.0-only</name>
+            <url>https://www.gnu.org/licenses/agpl-3.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <modules>
+        <module>proxyma-core-common</module>
+        <module>proxyma-core-security</module>
+        <module>proxyma-core-settings</module>
+        <module>proxyma-core-network</module>
+        <module>proxyma-core-webcontent</module>
+        <module>proxyma-core-connector</module>
+        <module>proxyma-core-license</module>
+        <module>proxyma-core-provider</module>
+        <module>proxyma-core-indexstore</module>
+        <module>proxyma-core-graph</module>
+        <module>proxyma-core-registry</module>
+        <module>proxyma-core-ingest</module>
+        <module>proxyma-core-search</module>
+        <module>proxyma-core-guardrail</module>
+        <module>proxyma-core-chat</module>
+        <module>proxyma-core-configtransfer</module>
+        <module>proxyma-core-tools</module>
+        <module>proxyma-core-evaluation</module>
+        <module>proxyma-core-system</module>
+        <module>proxyma-core-diagnostics</module>
+        <module>proxyma-core-telemetryclient</module>
+        <module>proxyma-core-update</module>
+        <module>proxyma-connectors</module>
+        <module>proxyma-core</module>
+        <module>proxyma-desktop</module>
+    </modules>
+
+    <!-- The Enterprise modules (proxyma-core-auth, -system-admin, -keyaccount, the Microsoft 365
+         connectors and the proxyma-server assembly) are NOT here. They live in ee/ at the repository
+         root and join the reactor through the root pom's `server` profile, so this reactor is the
+         Community one: everything Desktop and the Home Server are built from. -->
+
+    <properties>
+        <java.version>21</java.version>
+        <!-- Where THIRD-PARTY-NOTICES' templates live (license-maven-plugin below). Right for a module
+             in this directory; ee/backend/proxyma-server overrides it. -->
+        <proxyma.third-party.dir>${project.basedir}/../../third-party</proxyma.third-party.dir>
+        <!-- Patch floor above what the Spring Boot 3.5.16 BOM manages (Netty 4.1.135, Tomcat
+             10.1.55, Jackson 2.21.4), each of which still had published advisories. Drop an
+             override once a Boot release manages that version or newer. -->
+        <netty.version>4.1.139.Final</netty.version>
+        <tomcat.version>10.1.61</tomcat.version>
+        <jackson-bom.version>2.21.7</jackson-bom.version>
+        <proxyma-shared-contracts.version>1.3.0</proxyma-shared-contracts.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-ai.version>1.1.7</spring-ai.version>
+        <lucene.version>9.11.1</lucene.version>
+        <jtokkit.version>1.1.0</jtokkit.version>
+        <jsoup.version>1.18.3</jsoup.version>
+        <flexmark.version>0.64.8</flexmark.version>
+        <readability4j.version>1.0.8</readability4j.version>
+        <htmlunit.version>4.7.0</htmlunit.version>
+        <playwright.version>1.58.0</playwright.version>
+        <smbj.version>0.14.0</smbj.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>maven-central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases><enabled>true</enabled></releases>
+        </repository>
+        <repository>
+            <id>spring-releases</id>
+            <name>Spring Releases</name>
+            <url>https://repo.spring.io/release</url>
+            <releases><enabled>true</enabled></releases>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <releases><enabled>true</enabled></releases>
+        </repository>
+        <repository>
+            <id>spring-snapshots</id>
+            <name>Spring Snapshots</name>
+            <url>https://repo.spring.io/snapshot</url>
+            <releases><enabled>false</enabled></releases>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>maven-central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases><enabled>true</enabled></releases>
+        </pluginRepository>
+        <pluginRepository>
+            <id>spring-releases</id>
+            <name>Spring Releases</name>
+            <url>https://repo.spring.io/release</url>
+            <releases><enabled>true</enabled></releases>
+        </pluginRepository>
+        <pluginRepository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <releases><enabled>true</enabled></releases>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring AI BOM -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Wire DTOs shared with proxyma-license / proxyma-telemetry. External artifact,
+                 pinned to an exact version - it is deliberately NOT at ${project.version}, since
+                 it now versions independently of this repo. -->
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-shared-contracts</artifactId>
+                <version>${proxyma-shared-contracts.version}</version>
+            </dependency>
+
+            <!-- Inter-module dependencies: all at project version -->
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-settings</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-network</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-webcontent</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-connector</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-license</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-indexstore</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-graph</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-registry</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-ingest</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-search</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-guardrail</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-chat</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-configtransfer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-system</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-diagnostics</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-telemetryclient</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-update</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-core-evaluation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.proxyma</groupId>
+                <artifactId>proxyma-connectors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- nimbus-jose-jwt -->
+            <dependency>
+                <groupId>com.nimbusds</groupId>
+                <artifactId>nimbus-jose-jwt</artifactId>
+                <version>9.40</version>
+            </dependency>
+
+            <!-- JNA: not in Spring Boot BOM -->
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.15.0</version>
+            </dependency>
+
+            <!-- Third-party: versioned here, declared without version in child poms -->
+            <dependency>
+                <groupId>com.knuddels</groupId>
+                <artifactId>jtokkit</artifactId>
+                <version>${jtokkit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.lucene</groupId>
+                <artifactId>lucene-core</artifactId>
+                <version>${lucene.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.lucene</groupId>
+                <artifactId>lucene-analysis-common</artifactId>
+                <version>${lucene.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.lucene</groupId>
+                <artifactId>lucene-queryparser</artifactId>
+                <version>${lucene.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
+            </dependency>
+            <!-- HTML->Markdown for WebFetchTool: jsoup-based, preserves headings/lists/GFM
+                 tables/links/images/code. Replaces the hand-rolled DOM-walk converter. -->
+            <dependency>
+                <groupId>com.vladsch.flexmark</groupId>
+                <artifactId>flexmark-html2md-converter</artifactId>
+                <version>${flexmark.version}</version>
+            </dependency>
+            <!-- Mozilla Readability (Firefox Reader View) JVM port, jsoup-based: real
+                 text/link-density main-content extraction for WebFetchTool. -->
+            <dependency>
+                <groupId>net.dankito.readability4j</groupId>
+                <artifactId>readability4j</artifactId>
+                <version>${readability4j.version}</version>
+            </dependency>
+            <!-- Pure-Java headless browser: JS-rendering fallback for WebFetchTool on
+                 SPA/JS-heavy pages. No external browser binary (works behind the
+                 registry-blocking corporate proxy, keeps the desktop bundle shippable). -->
+            <dependency>
+                <groupId>org.htmlunit</groupId>
+                <artifactId>htmlunit</artifactId>
+                <version>${htmlunit.version}</version>
+            </dependency>
+            <!-- Real headless-Chromium renderer: optional, server-only high-fidelity JS-rendering
+                 engine for WebFetchTool (handles hash routing + iframe content HtmlUnit can't).
+                 Requires a downloaded browser binary, so it is opt-in via proxyma.web-fetch.js-engine
+                 and degrades to HtmlUnit/static when the browser isn't installed (e.g. the desktop
+                 bundle / a registry-blocked proxied host). The jar ships everywhere; only the browser
+                 binary (installed at image build for the server deploy) is heavy. -->
+            <dependency>
+                <groupId>com.microsoft.playwright</groupId>
+                <artifactId>playwright</artifactId>
+                <version>${playwright.version}</version>
+            </dependency>
+
+            <!-- SMB2/3 from the JVM, for the network-share connector. A LIBRARY rather than a CIFS
+                 mount, and that is the whole design: the server runs in a container with no mount,
+                 and a mount would authenticate as one identity for every user, while this
+                 connector's entire point is reading a share as the SOURCE OWNER'S OWN domain
+                 account so the share's ACLs decide what is indexed. See docs/architecture.html#spec-05.
+
+                 IT COSTS ~9.2 MB IN EVERY JAR, and 8.5 MB of that is BouncyCastle (bcprov-jdk18on),
+                 which nothing else here shipped before: smbj needs it for NTLM and SMB3 crypto and
+                 it is not optional. Measured 2026-09-21 - smbj 608 KB, asn-one 67 KB, bcprov
+                 8.5 MB. On a ~342 MB desktop jar that is under 3%, which is why it was accepted
+                 rather than shelled out to a sidecar. -->
+            <dependency>
+                <groupId>com.hierynomus</groupId>
+                <artifactId>smbj</artifactId>
+                <version>${smbj.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Inherited by all 27 modules, so a test can be written next to the code it covers without
+         first editing that module's pom. Test scope, so nothing here reaches a shipped jar.
+
+         Added 2026-09-03, with the first tests. Until then this project had no test suite at all
+         and CLAUDE.md said so; `tsc -b` and `mvn package` were the only automated checks. Note
+         that every documented build command passes -DskipTests, which is right for a release
+         build and wrong for a check - CI runs `mvn test` separately for that reason. -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Default: skip spring-boot:run on all modules.
+                     Modules with a mainClass override this in their own <build><plugins>. -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <skip>true</skip>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>3.7.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>3.1.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.eirslett</groupId>
+                    <artifactId>frontend-maven-plugin</artifactId>
+                    <version>1.15.0</version>
+                </plugin>
+                <!-- THE JAVA HALF OF THIRD-PARTY-NOTICES.txt (apps/app/third-party/notices.xml).
+                     Lists every library the application jar carries - name, coordinates, project
+                     URL and license - into target/third-party/java.txt, which notices.xml then
+                     joins with the web and Python lists and the hand-written header.
+
+                     Configured HERE and declared, with no configuration of its own, by the two
+                     modules that build an application jar: proxyma-desktop and proxyma-server.
+                     The template is read from ${proxyma.third-party.dir}, which proxyma-server
+                     (in ee/backend since 2026-10-15) points back at apps/app/third-party.
+
+                     prepare-package, not the plugin's default generate-resources: `mvn test`
+                     (test:backend, which lists :proxyma-desktop) never reaches it, so the thirty-
+                     second test job does not pay for a license scan.
+
+                     Offline once the plugin itself is resolved: every license comes from the
+                     dependency POMs Maven already downloaded to build the jar.
+                     useRepositoryMissingFiles=false is what keeps it so - left on, the plugin asks
+                     every repository for a G:A:V:properties:third-party artifact per dependency
+                     with no license, which is a network round trip each and never exists.
+
+                     THE ALLOW-LIST FAILS THE BUILD. Every license name a POM states is merged to
+                     one canonical name (licenseMerges), and a dependency whose canonical license is
+                     not in includedLicenses stops the build (failOnBlacklist), as does one with no
+                     license at all (failOnMissing). So an AGPL library, or a GPL one without the
+                     Classpath Exception, cannot reach a jar unnoticed - and neither can a new
+                     spelling of a license already here, which is the price: add the spelling to
+                     the merge list. A dependency whose POM states no license at all needs an
+                     overrideUrl file naming it, read from the project's own LICENSE - there is
+                     none today, so there is no such file. -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>license-maven-plugin</artifactId>
+                    <version>2.7.1</version>
+                    <executions>
+                        <execution>
+                            <id>third-party-java</id>
+                            <phase>prepare-package</phase>
+                            <goals><goal>add-third-party</goal></goals>
+                            <configuration>
+                                <outputDirectory>${project.build.directory}/third-party</outputDirectory>
+                                <thirdPartyFilename>java.txt</thirdPartyFilename>
+                                <addOutputDirectoryAsResourceDir>false</addOutputDirectoryAsResourceDir>
+                                <useRepositoryMissingFiles>false</useRepositoryMissingFiles>
+                                <deployMissingFile>false</deployMissingFile>
+                                <force>true</force>
+                                <!-- What spring-boot:repackage puts in BOOT-INF/lib: compile,
+                                     runtime and provided. Not our own modules - they inherit
+                                     spring-boot-starter-parent's <licenses>, so without this the
+                                     list would call Proxyma itself Apache-2.0. Nor the
+                                     spring-boot-starter-* jars, which repackage leaves out - they
+                                     hold no code. Write each pattern to match the WHOLE id: with
+                                     2.7.1, `^(proxyma-|spring-boot-starter)` excluded nothing,
+                                     `spring-boot-starter.*` works. The list was checked
+                                     against BOOT-INF/lib on 2026-10-09: it differs only by the
+                                     platform-classifier copies of netty natives and Spring Boot's
+                                     own jarmode-tools. -->
+                                <excludedScopes>test,system</excludedScopes>
+                                <excludedGroups>ai\.proxyma</excludedGroups>
+                                <excludedArtifacts>proxyma-.*|spring-boot-starter.*</excludedArtifacts>
+                                <sortArtifactByName>true</sortArtifactByName>
+                                <fileTemplate>${proxyma.third-party.dir}/java-list.ftl</fileTemplate>
+                                <!-- First name is the one printed; every POM spelling seen on
+                                     2026-10-09 is listed after it. SPDX identifiers where one fits. -->
+                                <licenseMerges>
+                                    <licenseMerge>Apache-2.0|Apache License, Version 2.0|The Apache Software License, Version 2.0|Apache 2.0|The Apache License, Version 2.0|Apache 2|Apache License 2.0|Apache License Version 2.0|Apache Software License - Version 2.0|Apache License, version 2.0</licenseMerge>
+                                    <licenseMerge>MIT|MIT License|The MIT License (MIT)|The MIT License|MIT license|MIT-License</licenseMerge>
+                                    <licenseMerge>BSD-2-Clause|BSD 2-Clause License|The BSD 2-Clause License</licenseMerge>
+                                    <licenseMerge>BSD-3-Clause|BSD New license|BSD licence|The BSD License|BSD License 3|The 3-Clause BSD License|New BSD License|Revised BSD</licenseMerge>
+                                    <licenseMerge>EDL-1.0 (BSD-3-Clause)|Eclipse Distribution License - v 1.0|EDL 1.0|Eclipse Distribution License v. 1.0</licenseMerge>
+                                    <licenseMerge>EPL-1.0|Eclipse Public License - v 1.0|EPL 1.0|Eclipse Public License 1.0</licenseMerge>
+                                    <licenseMerge>EPL-2.0|EPL 2.0|Eclipse Public License v. 2.0|Eclipse Public License - v 2.0|Eclipse Public License 2.0|Eclipse Public License v2.0</licenseMerge>
+                                    <licenseMerge>GPL-2.0-only WITH Classpath-exception-2.0|GPL2 w/ CPE|GNU General Public License, version 2 with the GNU Classpath Exception</licenseMerge>
+                                    <licenseMerge>CDDL-1.1 OR GPL-2.0-only WITH Classpath-exception-2.0|CDDL + GPLv2 with classpath exception</licenseMerge>
+                                    <licenseMerge>LGPL-2.1-or-later|GNU Library General Public License v2.1 or later|GNU Lesser General Public License|GNU Lesser General Public License, Version 2.1</licenseMerge>
+                                    <licenseMerge>MPL-2.0|MPL 2.0|Mozilla Public License, Version 2.0|Mozilla Public License 2.0</licenseMerge>
+                                    <licenseMerge>CC0-1.0|Public Domain, per Creative Commons CC0|CC0</licenseMerge>
+                                    <licenseMerge>Bouncy Castle Licence (MIT)|Bouncy Castle Licence</licenseMerge>
+                                </licenseMerges>
+                                <!-- The allow-list: exactly the canonical names above, plus MIT-0.
+                                     Every other name fails the build. Adding a license here is a
+                                     decision about what the product may ship - an AGPL or a plain
+                                     GPL library must not be added to make a build pass.
+
+                                     EPL-2.0 is here for libraries that also offer a GPL-compatible
+                                     choice (Jakarta's GPL-2.0 with the Classpath Exception). The one
+                                     library under EPL-2.0 ALONE was org.aspectj:aspectjweaver, which
+                                     spring-boot-starter-data-jpa brings in through spring-aspects -
+                                     and EPL-2.0 alone is not compatible with the AGPL. Excluded since
+                                     2026-10-15 wherever a module declares that starter: spring-aspects
+                                     serves only AspectJ weaving, @Configurable and Spring Data's JPA
+                                     auditing, and Proxyma uses none of them - no @Aspect anywhere;
+                                     @Transactional and @Async are Spring's own proxies, which Spring
+                                     Boot's AopAutoConfiguration sets up without AspectJ. A module that
+                                     declares the starter again must exclude it too:
+                                     `mvn dependency:tree -Dincludes=org.aspectj` shows nothing. -->
+                                <includedLicenses>
+                                    <includedLicense>Apache-2.0</includedLicense>
+                                    <includedLicense>MIT</includedLicense>
+                                    <includedLicense>MIT-0</includedLicense>
+                                    <includedLicense>BSD-2-Clause</includedLicense>
+                                    <includedLicense>BSD-3-Clause</includedLicense>
+                                    <includedLicense>EDL-1.0 (BSD-3-Clause)</includedLicense>
+                                    <includedLicense>EPL-1.0</includedLicense>
+                                    <includedLicense>EPL-2.0</includedLicense>
+                                    <includedLicense>GPL-2.0-only WITH Classpath-exception-2.0</includedLicense>
+                                    <includedLicense>CDDL-1.1 OR GPL-2.0-only WITH Classpath-exception-2.0</includedLicense>
+                                    <includedLicense>LGPL-2.1-or-later</includedLicense>
+                                    <includedLicense>MPL-2.0</includedLicense>
+                                    <includedLicense>CC0-1.0</includedLicense>
+                                    <includedLicense>Bouncy Castle Licence (MIT)</includedLicense>
+                                </includedLicenses>
+                                <failOnBlacklist>true</failOnBlacklist>
+                                <failOnMissing>true</failOnMissing>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

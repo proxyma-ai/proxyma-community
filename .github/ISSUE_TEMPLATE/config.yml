@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue
+    url: https://github.com/proxyma-ai/proxyma-community/blob/main/SECURITY.md
+    about: Report it privately to contact@proxyma.ai - never in a public issue.
+  - name: Documentation
+    url: https://proxyma.ai/docs
+    about: Installing, configuring and using Proxyma.

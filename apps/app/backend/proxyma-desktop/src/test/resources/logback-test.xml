@@ -1,0 +1,10 @@
+<!-- The module's tests log to the console only. Without this they used logback.xml, whose file
+     appender wrote a logs/ directory into the source tree (editions-assembly-12). -->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder><pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern></encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

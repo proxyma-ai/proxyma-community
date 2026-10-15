@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-tools</artifactId>
+    <name>proxyma-core-tools</name>
+    <description>MCP tool definitions (search, connector register/remove, status, processing control) via ToolCallbackProvider</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+        </dependency>
+        <!-- The connector framework's fake HTTP API (LoopbackApi), for the Atlassian tools' tests. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-registry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-search</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <!-- Knowledge graph. Reached transitively through registry either way; declared here
+             because this module names its types directly, and a transitive dependency that a
+             refactor elsewhere could drop is not one to compile against. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-graph</artifactId>
+        </dependency>
+        <!-- RestClientConfig proxy accessors (getJavaProxy/getNoProxyHosts) for JsRenderService,
+             so HtmlUnit's own HTTP stack routes through the same proxy as every other outbound
+             client. Already on the classpath transitively via proxyma-core-connector; declared
+             explicitly here because this module now references its public API directly. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-network</artifactId>
+        </dependency>
+        <!-- ChatSkillService (readDetailByName) for ReadSkillTool - does not create a cycle:
+             proxyma-core-chat itself never depends on proxyma-core-tools. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-chat</artifactId>
+        </dependency>
+        <!-- MarkitdownService + PdfTableExtractionService for ConvertDocumentTool - no cycle:
+             proxyma-core-ingest never depends on proxyma-core-tools. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-ingest</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- Shared web rendering (Playwright/HtmlUnit) + HTML->Markdown/links extraction. WebFetchTool
+             delegates rendering to WebRenderService and extraction to HtmlContentExtractor here; the
+             web-page crawl connector reuses the exact same code. jsoup/flexmark/readability/htmlunit/
+             playwright come transitively from this module - WebFetchTool still uses jsoup directly (its
+             own Layer-1 shell resolution + rendered-DOM adoption), so jsoup stays declared below too. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-webcontent</artifactId>
+        </dependency>
+
+        <!-- HTML parsing for WebFetchTool's own Layer-1 shell/frame resolution + rendered-DOM adoption
+             (the shared HTML->Markdown extraction lives in proxyma-core-webcontent). -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+        </dependency>
+
+        <!-- Actual MCP protocol server (Streamable HTTP / SSE) autoconfiguration, registers the
+             real /mcp endpoint that spring.ai.mcp.server.* properties configure. Without this,
+             those properties are inert: only the diagnostic McpController (/api/v1/mcp/tools,
+             /api/v1/mcp/health) existed, and any real MCP client request to /mcp 404'd once past
+             the security filter (which matches the path pattern regardless of whether a handler
+             is mapped there, so an unauthenticated request looked like a 401 and masked the
+             missing route entirely). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webflux</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

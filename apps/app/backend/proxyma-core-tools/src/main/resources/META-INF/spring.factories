@@ -1,0 +1,6 @@
+# Excludes Spring AI's stock ToolCallbackConverterAutoConfiguration so WebFetchMcpToolConfig can
+# supply the MCP sync tool specs itself (webFetch returns a real ImageContent block for direct-image
+# URLs). Registered here, in proxyma-core-tools, so the exclusion travels with the module to every
+# consumer that runs the MCP server - desktop and server. See StockMcpToolConverterExclusionFilter.
+org.springframework.boot.autoconfigure.AutoConfigurationImportFilter=\
+  ai.proxyma.core.tools.StockMcpToolConverterExclusionFilter

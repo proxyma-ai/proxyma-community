@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-desktop</artifactId>
+    <name>proxyma-desktop</name>
+    <description>Desktop app: single user, local models, embedded H2, ChromaDB, no auth</description>
+
+    <properties>
+        <jre.zip.name>OpenJDK21U-jre_x64_windows_hotspot_21.0.10_7.zip</jre.zip.name>
+        <python.zip.name>python-3.13.12-embed-amd64.zip</python.zip.name>
+        <!-- Set -Dskip.installer=true to skip Inno Setup (e.g. on Linux CI) -->
+        <skip.installer>false</skip.installer>
+        <!-- Set -Dskip.frontend.build=true to reuse an already-built frontend/dist
+             (e.g. repeated backend-only dev iterations) instead of rebuilding it every time. -->
+        <skip.frontend.build>false</skip.frontend.build>
+        <frontend.dir>${project.basedir}/../../frontend</frontend.dir>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- H2 embedded DB -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Logback for standalone launcher -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <!-- JNA Platform: DPAPI (CryptProtectData) for encrypted license file storage on Windows -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Builds frontend (desktop mode) and copies its output onto the
+                 classpath as static/ so the -exec.jar serves a working UI, not just an API.
+                 Bound to generate-resources/process-resources, i.e. before compile/repackage. -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <configuration>
+                    <workingDirectory>${frontend.dir}</workingDirectory>
+                    <installDirectory>${frontend.dir}</installDirectory>
+                    <skip>${skip.frontend.build}</skip>
+                    <!-- npm has its own proxy config (~/.npmrc); don't let this plugin translate
+                         Maven's settings.xml proxy (which may embed DOMAIN\user auth) into npm
+                         CLI args - that mangles on Windows and duplicates working npm config. -->
+                    <npmInheritsProxyConfigFromMaven>false</npmInheritsProxyConfigFromMaven>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals><goal>install-node-and-npm</goal></goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <nodeVersion>v20.18.0</nodeVersion>
+                            <npmVersion>10.8.2</npmVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install</id>
+                        <goals><goal>npm</goal></goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <goals><goal>npm</goal></goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Copies the frontend build output onto the classpath (target/classes/static),
+                 after npm-build (above) but before the jar is assembled. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-frontend-dist</id>
+                        <phase>process-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${skip.frontend.build}</skip>
+                            <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${frontend.dir}/dist</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- THIRD-PARTY-NOTICES.txt, the file every package ships and Settings > About shows:
+                 the Java list (configured in the parent pom), then notices.xml joins it with the
+                 web list the frontend build just wrote, the committed Python list and the
+                 hand-written header. Both at prepare-package, in this order, so the result is in
+                 target/classes before the jar is made. apps/app/third-party/notices.xml. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>ai.proxyma.desktop.ProxymaDesktopApplication</mainClass>
+                    <skip>false</skip>
+                </configuration>
+                <executions>
+                    <!-- spring-boot-starter-parent's own repackage, which would turn the MAIN jar
+                         into a second fat jar. Off: the app is the -exec jar below, and the main jar
+                         stays plain classes, which is what the launcher jar is shaded from. -->
+                    <execution>
+                        <id>repackage</id>
+                        <phase>none</phase>
+                    </execution>
+                    <!-- App fat JAR: Spring Boot entry point, spawned by the launcher -->
+                    <execution>
+                        <id>repackage-app</id>
+                        <goals>
+                            <goal>repackage</goal>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>ai.proxyma.desktop.ProxymaDesktopApplication</mainClass>
+                            <classifier>exec</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- THE LAUNCHER JAR, a few megabytes: Boot, ProxymaLauncher, the splash, AppWindow,
+                 the parts code from proxyma-core-common, and logback. The installers carry it
+                 (wrapped by Launch4j on Windows) and every release publishes it as the `launcher`
+                 part, so a launcher fix reaches installs without a reinstall - see Boot.
+
+                 It used to be a second spring-boot:repackage of the WHOLE application with a
+                 different main class, 179 MB of which the launcher used a few classes, shipped twice
+                 in every installer. Everything it needs is listed below; a class missing from this
+                 list is a NoClassDefFoundError at the first start, which LauncherShadeTest catches:
+                 it walks the classes these filters keep, reading this list from this file. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <!-- spring-boot-starter-parent declares a shade execution of its own that
+                         replaces the main jar with EVERY dependency. Off: the app's jar is the
+                         spring-boot repackage above. -->
+                    <execution>
+                        <id>default</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>launcher-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>launcher</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>ai.proxyma:proxyma-desktop</include>
+                                    <include>ai.proxyma:proxyma-core-common</include>
+                                    <include>org.slf4j:slf4j-api</include>
+                                    <include>ch.qos.logback:logback-classic</include>
+                                    <include>ch.qos.logback:logback-core</include>
+                                </includes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <artifact>ai.proxyma:proxyma-desktop</artifact>
+                                    <includes>
+                                        <include>ai/proxyma/desktop/launcher/**</include>
+                                        <include>ai/proxyma/desktop/system/AppWindow*</include>
+                                        <include>ai/proxyma/desktop/common/ProxymaMark*</include>
+                                        <include>fonts/**</include>
+                                        <include>static/proxyma.png</include>
+                                        <include>logback.xml</include>
+                                        <include>META-INF/build-info.properties</include>
+                                    </includes>
+                                </filter>
+                                <filter>
+                                    <artifact>ai.proxyma:proxyma-core-common</artifact>
+                                    <includes>
+                                        <include>ai/proxyma/core/system/util/AppPaths*</include>
+                                        <include>ai/proxyma/core/system/util/AccessCode*</include>
+                                        <include>ai/proxyma/core/system/util/PythonLayout*</include>
+                                        <include>ai/proxyma/core/system/util/OsTrustStore*</include>
+                                        <include>ai/proxyma/core/system/parts/**</include>
+                                        <include>update-keys/**</include>
+                                    </includes>
+                                </filter>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>ai.proxyma.desktop.launcher.Boot</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- THE NOTICES' SECOND HALF (license-maven-plugin above is the first): joins the lists
+                 into target/classes/static at prepare-package.
+
+                 LAST IN THIS LIST, AND THAT IS LOAD-BEARING. The OS profiles below declare antrun
+                 too; Maven merges their executions into this declaration and runs a phase's
+                 plugins in list order. Declared above spring-boot-maven-plugin, the profiles'
+                 package-phase steps moved with it - trim-playwright-driver ran BEFORE repackage
+                 had written the exec jar it trims (seen in the build log, 2026-10-09). Here they
+                 still run after repackage and shade, as they did before. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>third-party-notices</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <ant antfile="${project.basedir}/../../third-party/notices.xml" target="assemble" inheritAll="false">
+                                    <property name="java.list" value="${project.build.directory}/third-party/java.txt"/>
+                                    <property name="web.list" value="${project.build.outputDirectory}/static/third-party/web.txt"/>
+                                    <property name="out" value="${project.build.outputDirectory}/static/THIRD-PARTY-NOTICES.txt"/>
+                                    <property name="copy" value="${project.build.directory}/THIRD-PARTY-NOTICES.txt"/>
+                                </ant>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+        PACKAGING IS PER-PLATFORM, and each profile activates on the OS it can actually run on.
+        Launch4j and Inno Setup produce a Windows executable and need a Windows host; dpkg-deb
+        produces the .deb and needs a Linux one. Selecting by OS rather than by a flag means
+        `mvn verify` does the right thing on either machine, and the release matrix needs no
+        per-OS arguments - a flag that has to be remembered is a flag that gets forgotten, and the
+        failure would be a release missing one of its two artifacts.
+
+        Everything ABOVE this point is shared: the frontend build, the app and launcher jars, and
+        build-info.
+        Only the wrapping differs.
+    -->
+    <profiles>
+        <profile>
+            <id>windows-desktop</id>
+            <!-- On Windows AND with the Windows payloads present (both must hold, Maven 3.2.2+). The
+                 public Community repository leaves out the JRE, Python and Tesseract zips for
+                 Windows (98 MB of other people's binaries - docs/development.html#oss-export), so a Windows
+                 checkout of it builds the jar, as Linux does without its own profile, instead of
+                 failing on a missing zip. Here, where the zips are, nothing changes. -->
+            <activation>
+                <os><family>windows</family></os>
+                <file><exists>${basedir}/src/assembly/tesseract/tesseract-w64.zip</exists></file>
+            </activation>
+            <build>
+                <plugins>
+            <!-- setup.iss names the version, so it is filtered - @project.version@, because
+                 spring-boot-starter-parent sets the resources plugin's delimiter to @. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>filter-setup-iss</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/installer-filtered</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/assembly/installer</directory>
+                                    <includes><include>setup.iss</include></includes>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Launch4j: wraps the launcher jar (Boot) as proxyma.exe.
+
+                 THE PROJECT VERSION MUST MATCH ^((\d(\.)?)*\d+)(-\w+)?$ - Launch4j validates the
+                 version strings it embeds in the EXE's VERSIONINFO resource against that regex and
+                 fails the build outright otherwise. One `-word` qualifier is allowed; a DOT inside
+                 the qualifier is not.
+
+                     0.1.0        ok
+                     0.1.0-rc1    ok
+                     0.1.0-rc.1   REJECTED - "'project.version' is in invalid format"
+
+                 So a pre-release must be written `-rc1`/`-beta2`, never `-rc.1`/`-beta.2`, which is
+                 the form Maven and semver both otherwise encourage. This bit when cutting the first
+                 Linux release candidate. release-desktop.yml now checks the same regex in its
+                 preflight, so the failure arrives in seconds rather than partway through a Windows
+                 build - but the constraint lives here, because this plugin is what imposes it. -->
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>2.5.0</version>
+                <executions>
+                    <execution>
+                        <id>l4j-proxyma</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>launch4j</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <headerType>gui</headerType>
+                    <outfile>${project.build.directory}/proxyma.exe</outfile>
+                    <jar>${project.build.directory}/${project.artifactId}-${project.version}-launcher.jar</jar>
+                    <icon>${project.basedir}/src/assembly/installer/proxyma.ico</icon>
+                    <errTitle>Proxyma</errTitle>
+                    <chdir>.</chdir>
+                    <manifest>${project.basedir}/src/main/resources/proxyma.manifest</manifest>
+                    <jre>
+                        <path>jre</path>
+                        <minVersion>21</minVersion>
+                        <opts>
+                        </opts>
+                    </jre>
+                    <versionInfo>
+                        <fileVersion>0.0.0.0</fileVersion>
+                        <txtFileVersion>${project.version}</txtFileVersion>
+                        <fileDescription>Proxyma Launcher</fileDescription>
+                        <copyright>Le Sy Hau</copyright>
+                        <productVersion>0.0.0.0</productVersion>
+                        <txtProductVersion>${project.version}</txtProductVersion>
+                        <productName>Proxyma</productName>
+                        <internalName>proxyma</internalName>
+                        <originalFilename>proxyma.exe</originalFilename>
+                    </versionInfo>
+                </configuration>
+            </plugin>
+
+            <!--
+                verify phase: stage the parts (target/parts-stage) and the small installer, then run
+                Inno Setup. tools/release/parts.py packs and publishes the parts; the installer
+                carries only proxyma.exe and a Java runtime.
+                Skip with: mvn verify -Dskip.installer=true  (or on non-Windows CI)
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <!-- Drop the four Playwright driver payloads this build can never run.
+                         driver-bundle carries linux, linux-arm64, mac, mac-arm64 and win32_x64 - 629 MB
+                         uncompressed - because one artifact serves every consumer, and the app part
+                         uses exactly one.
+
+                         Bound to `package`: after spring-boot:repackage builds the jar, before the
+                         parts are staged at verify.
+
+                         Declared as an execution of the antrun plugin ALREADY in this profile, not as a second
+                         <plugin> block for the same artifactId - Maven merges those and silently runs only one
+                         set of executions, which is why the first attempt at this changed nothing.
+
+                         Skipped alongside the installer so a plain local build needs no Python. -->
+                    <execution>
+                        <id>trim-playwright-driver</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <skip>${skip.installer}</skip>
+                            <target>
+                                <exec executable="python" failonerror="true">
+                                    <arg value="${project.basedir}/../../../../tools/build/trim-playwright-driver.py"/>
+                                    <arg value="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"/>
+                                    <arg value="--keep"/><arg value="win32_x64"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- The Tesseract OCR program, for the offline OCR engine, unpacked into
+                         target/tesseract-stage for the tesseract part. The zip is committed;
+                         tools/build/make-tesseract-bundle.sh made it. -->
+                    <execution>
+                        <id>unpack-tesseract</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <delete dir="${project.build.directory}/tesseract-stage" quiet="true"/>
+                                <unzip src="${project.basedir}/src/assembly/tesseract/tesseract-w64.zip"
+                                       dest="${project.build.directory}/tesseract-stage"/>
+                                <fail message="tesseract.exe missing from the bundle">
+                                    <condition><not><available
+                                        file="${project.build.directory}/tesseract-stage/tesseract/tesseract.exe"/></not></condition>
+                                </fail>
+                                <!-- The notices and license texts its GPL and LGPL libraries require,
+                                     with the written offer of their source. Kept beside the zip rather
+                                     than inside it, so they can change without rebuilding 38 MB. -->
+                                <copy todir="${project.build.directory}/tesseract-stage/tesseract">
+                                    <fileset dir="${project.basedir}/src/assembly/tesseract"
+                                             includes="THIRD-PARTY-NOTICES.txt,licenses/**"/>
+                                </copy>
+                                <fail message="THIRD-PARTY-NOTICES.txt missing from the Tesseract stage">
+                                    <condition><not><available
+                                        file="${project.build.directory}/tesseract-stage/tesseract/THIRD-PARTY-NOTICES.txt"/></not></condition>
+                                </fail>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Proxyma's application window (apps/app/desktop-shell): Electron with our
+                         main.js, staged into target/window-stage/window for the window part. Needs
+                         node and, the first time, the network for Electron's runtime (cached after
+                         that). Skipped with the installer: a fast build has no window and the app
+                         falls back to a browser, which is what AppWindow is for. -->
+                    <execution>
+                        <id>stage-desktop-shell</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <skip>${skip.installer}</skip>
+                            <target>
+                                <exec executable="node" failonerror="true">
+                                    <arg value="${project.basedir}/../../../../tools/build/stage-desktop-shell.mjs"/>
+                                    <arg value="${project.build.directory}/window-stage/window"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>build-windows-installer</id>
+                        <phase>verify</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <skip>${skip.installer}</skip>
+                            <target>
+                                <property name="staging.dir"  value="${project.build.directory}/installer-staging"/>
+                                <property name="parts.dir"    value="${project.build.directory}/parts-stage"/>
+                                <property name="releases.dir" value="${project.basedir}/../proxyma-releases/windows"/>
+                                <property name="assembly.dir" value="${project.basedir}/src/assembly"/>
+
+                                <!-- THE PARTS, one directory each, for tools/release/parts.py to pack
+                                     and publish. The launcher downloads them on the first start. -->
+                                <delete dir="${parts.dir}" quiet="true"/>
+                                <copy file="${project.build.directory}/${project.artifactId}-${project.version}-launcher.jar"
+                                      tofile="${parts.dir}/launcher/proxyma-launcher.jar"/>
+                                <copy file="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"
+                                      tofile="${parts.dir}/app/proxyma-desktop.jar"/>
+                                <!-- The window's own small files ride in the app part, so a change to
+                                     main.js does not download Electron again (ProxymaLauncher.useWindowOf). -->
+                                <copy todir="${parts.dir}/app/window-app">
+                                    <fileset dir="${project.build.directory}/window-stage/window/resources/app"/>
+                                </copy>
+                                <copy todir="${parts.dir}/window">
+                                    <fileset dir="${project.build.directory}/window-stage/window" excludes="resources/app/**"/>
+                                </copy>
+                                <copy todir="${parts.dir}/tesseract">
+                                    <fileset dir="${project.build.directory}/tesseract-stage/tesseract"/>
+                                </copy>
+                                <copy todir="${parts.dir}/python">
+                                    <fileset dir="${assembly.dir}/setup" includes="${python.zip.name},get-pip.py,requirements.txt"/>
+                                </copy>
+                                <!-- The wheels, downloaded on THIS machine (Python 3.13 and the
+                                     network needed here, never on the user's). -->
+                                <exec executable="cmd" failonerror="true">
+                                    <arg value="/c"/>
+                                    <arg value="${assembly.dir}/installer/download-wheels.bat"/>
+                                    <arg value="--unattended"/>
+                                    <arg value="${parts.dir}/python/wheels"/>
+                                    <arg value="${assembly.dir}/setup/requirements.txt"/>
+                                </exec>
+                                <!-- What those wheels are, read from the wheels: the python part's
+                                     own notices. INSIDE wheels/, because parts.py names the python
+                                     part by everything else - see tools/build/python-notices.py.
+                                     Fails if a package is missing from the committed list the jar
+                                     carries; regenerating that list is then the fix. -->
+                                <exec executable="python" failonerror="true">
+                                    <arg value="${project.basedir}/../../../../tools/build/python-notices.py"/>
+                                    <arg value="wheels"/>
+                                    <arg value="${parts.dir}/python/wheels"/>
+                                    <arg value="${parts.dir}/python/wheels/THIRD-PARTY-NOTICES-python.txt"/>
+                                </exec>
+                                <!-- The headless Chromium, by Playwright's own CLI so the revision
+                                     always matches the Playwright in the app part. -->
+                                <delete dir="${project.build.directory}/browser-stage" quiet="true"/>
+                                <java classname="com.microsoft.playwright.CLI" fork="true"
+                                      failonerror="true" classpathref="maven.runtime.classpath">
+                                    <env key="PLAYWRIGHT_BROWSERS_PATH"
+                                         value="${project.build.directory}/browser-stage"/>
+                                    <arg value="install"/>
+                                    <arg value="chromium-headless-shell"/>
+                                </java>
+                                <!-- Fail loudly rather than publish an empty part: a missing browser
+                                     is not noticed until a user reports blank pages. -->
+                                <fail message="browser staging directory is empty after 'playwright install'">
+                                    <condition>
+                                        <resourcecount when="equal" count="0">
+                                            <fileset dir="${project.build.directory}/browser-stage"
+                                                     erroronmissingdir="false"/>
+                                        </resourcecount>
+                                    </condition>
+                                </fail>
+                                <copy todir="${parts.dir}/browser">
+                                    <fileset dir="${project.build.directory}/browser-stage"/>
+                                </copy>
+
+                                <!-- THE INSTALLER: proxyma.exe, its icon and a Java runtime. The JRE
+                                     is unpacked here rather than by the installer, so Inno Setup
+                                     tracks every file and the uninstaller removes it whole. -->
+                                <delete dir="${staging.dir}" quiet="true"/>
+                                <copy file="${project.build.directory}/proxyma.exe" todir="${staging.dir}"/>
+                                <copy file="${assembly.dir}/installer/proxyma.ico" todir="${staging.dir}"/>
+                                <!-- THIRD-PARTY-NOTICES.txt for {app}: the EULA names it there. -->
+                                <copy file="${project.build.directory}/THIRD-PARTY-NOTICES.txt" todir="${staging.dir}" failonerror="true"/>
+                                <copy file="${project.build.directory}/installer-filtered/setup.iss" todir="${staging.dir}/installer"/>
+                                <unzip src="${assembly.dir}/setup/${jre.zip.name}" dest="${staging.dir}/jre">
+                                    <cutdirsmapper dirs="1"/>
+                                </unzip>
+                                <fail message="the JRE did not unpack to jre/lib/jvm.cfg">
+                                    <condition><not><available file="${staging.dir}/jre/lib/jvm.cfg"/></not></condition>
+                                </fail>
+
+                                <!-- THE LICENSE, shown and installed - never accepted. Proxyma
+                                     Community is AGPL-3.0-only (LICENSE, NOTICE at the repository
+                                     root), and the AGPL needs no acceptance to receive or run a copy
+                                     (sections 9-10), so the installer shows it on an information
+                                     page (setup.iss InfoBeforeFile) rather than the EULA's "I accept"
+                                     page it showed until 2026-10-15, and leaves both files in {app}.
+                                     The EULA is Proxyma Enterprise's alone. -->
+                                <copy file="${project.basedir}/../../../../LICENSE" tofile="${staging.dir}/LICENSE.txt" failonerror="true"/>
+                                <copy file="${project.basedir}/../../../../NOTICE" tofile="${staging.dir}/NOTICE.txt" failonerror="true"/>
+
+                                <mkdir dir="${releases.dir}"/>
+                                <exec executable="iscc" failonerror="true"
+                                      dir="${staging.dir}">
+                                    <arg value="/O${releases.dir}"/>
+                                    <arg value="installer/setup.iss"/>
+                                </exec>
+
+                                <echo message=""/>
+                                <echo message="Installer: ${releases.dir}/proxyma-x64-v${project.version}.exe"/>
+                                <echo message="Parts    : ${parts.dir} - pack with tools/release/parts.py"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>linux-desktop</id>
+            <activation>
+                <os><name>linux</name></os>
+            </activation>
+            <build>
+                <plugins>
+                    <!--
+                        verify phase: stage-linux.sh stages the parts (target/parts-stage) and the
+                        small tree the .deb installs (target/linux-stage), then build-deb.sh packages
+                        that tree into proxyma-releases/linux. tools/release/parts.py packs and
+                        publishes the parts. Skip with: mvn verify -Dskip.installer=true
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <!-- Drop the four Playwright driver payloads this build can never run.
+                                 driver-bundle carries linux, linux-arm64, mac, mac-arm64 and win32_x64 - 629 MB
+                                 uncompressed - because one artifact serves every consumer, and the app part uses
+                                 exactly one.
+
+                                 Bound to `package`: after spring-boot:repackage builds the jar, before the
+                                 parts are staged at verify.
+
+                                 Declared as an execution of the antrun plugin ALREADY in this profile, not as a second
+                                 <plugin> block for the same artifactId - Maven merges those and silently runs only one
+                                 set of executions, which is why the first attempt at this changed nothing.
+
+                                 Skipped alongside the installer so a plain local build needs no Python.
+
+                                 `python3`, NOT `python`, and the asymmetry with the Windows profile above is
+                                 deliberate rather than an oversight to tidy up. Debian and Ubuntu ship
+                                 /usr/bin/python3 and NO bare `python` - that symlink only exists if somebody
+                                 installs python-is-python3 - so `executable="python"` fails here with
+                                 `error: 2 (No such file or directory)`. It did, on the v0.5.0 tag: Deploy demo
+                                 builds the .deb on the self-hosted Linux runner and died at this step while the
+                                 GitHub-hosted Windows Release Desktop job passed, because there `python` exists.
+
+                                 Do not "fix" this by installing python-is-python3 on the host. That is a change
+                                 no commit records and no rebuild reproduces, which is the class of thing this
+                                 project has already lost a machine's worth of state to. -->
+                            <execution>
+                                <id>trim-playwright-driver</id>
+                                <phase>package</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <skip>${skip.installer}</skip>
+                                    <target>
+                                        <exec executable="python3" failonerror="true">
+                                            <arg value="${project.basedir}/../../../../tools/build/trim-playwright-driver.py"/>
+                                            <arg value="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"/>
+                                            <arg value="--keep"/><arg value="linux"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>stage-linux</id>
+                                <phase>verify</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <skip>${skip.installer}</skip>
+                                    <target>
+                                        <property name="releases.dir" value="${project.basedir}/../proxyma-releases/linux"/>
+                                        <property name="pw.classpath" refid="maven.runtime.classpath"/>
+                                        <chmod file="${project.basedir}/src/assembly/linux/stage-linux.sh" perm="+x"/>
+                                        <exec executable="bash" failonerror="true">
+                                            <arg value="${project.basedir}/src/assembly/linux/stage-linux.sh"/>
+                                            <arg value="${project.version}"/>
+                                            <arg value="${project.build.directory}"/>
+                                            <arg value="${project.basedir}/src/assembly"/>
+                                            <arg value="${releases.dir}"/>
+                                            <!-- Maven's own runtime classpath, so the script never
+                                                 has to guess where the local repository lives. -->
+                                            <env key="PW_CLASSPATH" path="${pw.classpath}"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                            <!--
+                                verify phase, AFTER stage-linux and that ordering is load-bearing:
+                                build-deb.sh packages the tree stage-linux.sh stages. Maven runs
+                                executions of one plugin in declaration order within a phase, so this
+                                sits below it on purpose; the script also refuses to run if the staged
+                                tree is absent, so a reordering fails loudly instead of publishing a
+                                hollow package.
+
+                                Skipped by the same -Dskip.installer=true, for the same reason: a
+                                plain local build should not need dpkg-deb.
+                            -->
+                            <execution>
+                                <id>build-linux-deb</id>
+                                <phase>verify</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <skip>${skip.installer}</skip>
+                                    <target>
+                                        <property name="releases.dir" value="${project.basedir}/../proxyma-releases/linux"/>
+                                        <chmod file="${project.basedir}/src/assembly/linux/build-deb.sh" perm="+x"/>
+                                        <exec executable="bash" failonerror="true">
+                                            <arg value="${project.basedir}/src/assembly/linux/build-deb.sh"/>
+                                            <arg value="${project.version}"/>
+                                            <arg value="${project.build.directory}"/>
+                                            <arg value="${project.basedir}/src/assembly"/>
+                                            <arg value="${releases.dir}"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

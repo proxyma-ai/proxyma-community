@@ -1,0 +1,28 @@
+# Reached through ingress-nginx, with the access code, the credential key and the Office sandbox
+# chosen up front.
+access:
+  code: a-long-access-code-for-ci-renders
+secrets:
+  # A well-known test value, for rendering only. Never install with it.
+  credentialKey: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+config:
+  telemetryUrl: ""
+  updateCheck: false
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: proxyma-basic-auth
+  hosts:
+    - proxyma.home.example
+  tls:
+    - secretName: proxyma-tls
+      hosts:
+        - proxyma.home.example
+office:
+  enabled: true
+  image:
+    repository: registry.example.com/proxyma-sandbox
+    tag: "0.35.0"
+  token: a-sandbox-token-for-ci-renders

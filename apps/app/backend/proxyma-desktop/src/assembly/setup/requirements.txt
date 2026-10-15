@@ -1,0 +1,21 @@
+# The Python packages Proxyma's desktop runtime installs - the python part's whole contents
+# besides the interpreter. Read by installer/download-wheels.bat and linux/stage-linux.sh to
+# download the wheels, and by ProxymaLauncher.ensurePython to install them offline.
+#
+# Changing this file changes the python part, which every install then downloads again and
+# rebuilds its Python runtime from - see tools/release/parts.py.
+# pip itself, so the part carries its wheel: the Windows embeddable Python has no pip, and
+# get-pip.py installs it from these wheels (ProxymaLauncher.installPip) rather than from PyPI, which
+# a rebuild offline or behind a proxy that blocks PyPI cannot reach.
+pip
+chromadb
+# The formats FileTypeSupport converts, and no more: [all] also pulled in audio transcription
+# (SpeechRecognition), whose bundled FLAC encoders are GPL-2.0 binaries with no notice (2026-10-09).
+markitdown[pdf,docx,pptx,xlsx,xls,outlook]
+pdfplumber
+# OCR: pypdfium2 rasterizes pages for both engines; pytesseract drives the tesseract program.
+pypdfium2
+pytesseract
+# runPython (Office Files): Word writing and charts. openpyxl and python-pptx come with markitdown's xlsx and pptx extras.
+python-docx
+matplotlib

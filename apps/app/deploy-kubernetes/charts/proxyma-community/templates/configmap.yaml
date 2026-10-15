@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "proxyma.fullname" . }}
+  labels:
+    {{- include "proxyma-common.labels" (dict "ctx" . "component" "app") | nindent 4 }}
+data:
+  # The image already carries HOME=/data, uploads as the file source, the converters, the renderer,
+  # the edition and the listen address.
+  PROXYMA_NETWORK_ALLOWED_HOSTS: {{ include "proxyma.allowedHosts" . | quote }}
+  PROXYMA_NETWORK_EXPOSE_LOCAL_FILE_API: {{ .Values.access.exposeLocalFileApi | quote }}
+  PROXYMA_NETWORK_EXPOSE_MCP: {{ .Values.access.exposeMcp | quote }}
+  # Rendered even when empty: an empty URL means "send nothing", and must reach the application.
+  PROXYMA_TELEMETRY_SERVER_URL: {{ .Values.config.telemetryUrl | quote }}
+  {{- if not .Values.config.updateCheck }}
+  PROXYMA_UPDATES_RELEASES_API_URL: ""
+  {{- end }}
+  PROXYMA_SANDBOX_URL: {{ ternary (printf "http://%s-sandbox:8080" (include "proxyma.fullname" .)) "" .Values.office.enabled | quote }}
+  # Never run the assistant's code inside this pod, with or without the sandbox.
+  PROXYMA_SANDBOX_LOCAL_ENABLED: "false"
+  {{- with .Values.config.javaOpts }}
+  JAVA_TOOL_OPTIONS: {{ . | quote }}
+  {{- end }}

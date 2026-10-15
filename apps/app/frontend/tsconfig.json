@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      // Vite resolves this per build mode (see vite.config.ts). tsc cannot be per-mode, so it
+      // resolves the DESKTOP edition - the base one. Both modules are still typechecked, since
+      // both are under src/ and both are declared `: SettingsEdition`, so neither can drift from
+      // the interface. What this mapping decides is only which one the modal is checked against,
+      // and the modal is written against the interface rather than either implementation.
+      "@settings-pages": ["./src/features/settings/pages/index.desktop.tsx"],
+      // The edition seam (src/edition/types.ts), resolved like @settings-pages: this file checks the
+      // Community edition, which every tree has; tsconfig.server.json checks Enterprise's (ee/).
+      "@edition": ["./src/edition/community.tsx"],
+      "@edition-i18n": ["./src/edition/community.i18n.ts"]
+    }
+  },
+  "include": ["src"],
+  // THE `node --test` FILES ARE NOT PART OF THIS PROGRAM. They import node:test and
+  // node:assert, which this app has no @types/node for - and adding it would be the wrong fix:
+  // it would make `process`, `Buffer` and the rest type-check inside BROWSER code, where they do
+  // not exist at runtime. A missing global that tsc accepts is a worse trade than a test file it
+  // does not check.
+  //
+  // They are not unchecked in the way that sounds, either. Everything they exercise lives in a
+  // normal module under src/ and is type-checked there; what is skipped is the assertions about
+  // it, which `node --test` runs on every gate. See tools/ci/gate.bat step 2.
+  "exclude": ["src/**/*.test.ts"]
+}

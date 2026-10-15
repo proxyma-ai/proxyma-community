@@ -1,0 +1,766 @@
+/* =====================================================================================
+   GENERATED FILE - DO NOT EDIT.
+   
+   Source: libs/ui-kit/tokens/proxyma-primitives.css
+   Regenerate: node libs/ui-kit/sync.mjs   (from the repository root)
+   
+   Edits made here are silently reverted by the next sync. Change the source instead;
+   a change that only one surface wants does not belong in the shared kit at all.
+   ===================================================================================== */
+
+/* =====================================================================================
+   PROXYMA SHARED PRIMITIVES - the CSS classes the kit components depend on.
+
+   GENERATED FILE in each consumer. Edit libs/ui-kit/tokens/proxyma-primitives.css and run
+   `node libs/ui-kit/sync.mjs` from the repository root.
+
+   Import AFTER proxyma-tokens.css and after `@tailwind base/components/utilities`, and
+   with the Tailwind preset applied - the @apply rules below resolve against the preset's
+   brand/ink/line families.
+
+   These are the classes the React components in the kit reference by name. A consumer that
+   imports the components but not this file gets an unstyled focus ring and a transparent
+   dropdown panel, both of which look like a bug rather than a missing import.
+===================================================================================== */
+
+@layer base {
+  html {
+    /* A phone turned on its side must not re-inflate the text it has just been laid out with. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* No double-tap zoom: two quick taps on a button magnified the page, and on a shell that does
+       not scroll there was nothing obvious to undo it with. Pinch zoom is untouched - that one is
+       asked for. */
+    touch-action: manipulation;
+  }
+
+  body {
+    font-family: var(--font-ui);
+    color: rgb(var(--ink-secondary));
+    background: rgb(var(--canvas));
+    /* Tracks the `sm` step in the Tailwind preset (both came down 1px together). This is
+       the default for anything that never names a size of its own, so letting it drift
+       from the scale would leave unstyled text a pixel larger than everything around it. */
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Sentence case, in primary ink. Deliberately NOT a global uppercase rule: a blanket
+     uppercase + letter-spacing transform on h1-h6 fights component-level tracking and
+     forces a `normal-case` override wherever a heading carries dynamic content (a user's
+     name, a tool title). The one upper-case text in the product is a status Badge's. */
+  h1, h2, h3, h4, h5, h6 {
+    color: rgb(var(--ink-primary));
+  }
+
+  ::selection {
+    background: rgb(var(--brand-solid) / 0.35);
+    color: rgb(var(--ink-primary));
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line) / 0.6) transparent;
+  }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--line) / 0.6); border-radius: 3px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgb(var(--line) / 0.9); }
+}
+
+/* =====================================================================================
+   THE 16px FLOOR ON TEXT CONTROLS, TOUCH DEVICES ONLY.
+
+   Safari zooms the viewport when a text control under 16px takes focus, AND DOES NOT ZOOM
+   BACK. Everything after that is what the user actually reports: the header scrolls off
+   the top, the page is wider than the screen, and there is no obvious way to undo it - so
+   one tap on the chat composer leaves the app unnavigable for the rest of the session.
+   Tapping the composer is the first thing anyone does.
+
+   THIS IS A RULE RATHER THAN A CLASS so a control added later cannot miss it. FIELD_BASE
+   is `text-xs` - 12px - so a per-component fix would have to be remembered by every future
+   field, and forgetting it produces a bug nobody traces back to a font size.
+
+   [contenteditable] IS IN THE LIST AND IS THE WHOLE REPORTED CASE. The chat composer is not
+   a <textarea> at all - MentionRichInput is a contentEditable region, because only that can
+   render a mention as a styled chip inside the text flow. Safari zooms on focusing ANY
+   editable element under 16px, so a rule naming input/textarea/select would have read as
+   the fix, passed review, and left the one control everybody touches first still doing it.
+
+   UNLAYERED, DELIBERATELY. Tailwind's `text-xs` lives in @layer utilities, which beats
+   @layer base at any specificity, so the same declaration inside `@layer base` below would
+   lose to every field in the product. Unlayered CSS outranks every layer, which is exactly
+   the weight this needs and is why it sits outside the blocks around it rather than being
+   tidied into one.
+
+   (pointer: coarse), not a width breakpoint - the same query the preset already calls
+   `touch`. The zoom is a property of the input method, not of the window: a phone in
+   landscape is 844px wide and still zooms, and a narrow window on a desktop never does.
+   Desktop keeps its 12px density untouched.
+
+   16px EXACTLY, not a minimum. A control deliberately set larger for touch is rare and can
+   say so with `!text-lg`, which is still unlayered-equivalent in weight via Tailwind's
+   important modifier. The reverse - a control quietly left at 12px - is the failure mode
+   this exists to make impossible.
+===================================================================================== */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select,
+  /* Every spelling that means editable - `contenteditable`, `="true"` and `="plaintext-only"`
+     are all the same thing to a browser, and React emits the bare prop as `="true"`. Excluding
+     `="false"` is what keeps the mention CHIPS out of it: they are non-editable spans inside
+     the composer and are meant to sit at the surrounding text size. */
+  [contenteditable]:not([contenteditable='false']) {
+    font-size: 16px;
+  }
+}
+
+/* =====================================================================================
+   THE APP SHELL: ONE BOX, EXACTLY THE PART OF THE SCREEN THE READER CAN SEE.
+
+   For a surface that is a fixed frame with scrolling regions inside it - the application and
+   the two consoles, which put `data-app-shell` on <html>. The landing site scrolls its
+   document and must NOT carry it.
+
+   The DOCUMENT never scrolls and cannot be dragged: `overflow: hidden` on <html> as well as
+   on <body> (Safari honors it for the viewport only on the root), no overscroll bounce, and a
+   body that is `position: fixed`, so there is nothing for a focused field to scroll into
+   view by moving the page.
+
+   Its height and top are the VISUAL viewport's, written by installAppViewport (the kit's
+   appViewport.ts) as --app-height and --app-top. With the on-screen keyboard up, the box is
+   what is left above it: header at the top, composer at the bottom, both reachable. Until
+   that script has run, and wherever it cannot, 100dvh at the top of the page is the same box
+   without a keyboard.
+
+   UNLAYERED, for the same reason the 16px rule above is: each app's own index.css sized its
+   body in @layer base, and this has to win over whatever is still there.
+===================================================================================== */
+html[data-app-shell] {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html[data-app-shell] body {
+  position: fixed;
+  top: var(--app-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--app-height, 100dvh);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html[data-app-shell] #root {
+  height: 100%;
+}
+
+@layer components {
+  /* Emphasis on text inputs, select triggers and cards: the BORDER changes color on hover and
+     focus, and nothing else. Was .focus-border, a box-shadow halo, until 2026-09-26 - there is no
+     glow anywhere now (see --focus-line). */
+  .focus-border {
+    transition: border-color var(--motion-fast) var(--ease-in-out);
+  }
+  .focus-border:hover,
+  .focus-border:focus-within,
+  .focus-border:focus-visible {
+    border-color: var(--focus-line);
+  }
+
+  /* Focus ring for raw <button>/<a> elements that do not go through the Button component.
+     ring-brand-solid, not ring-brand-accent: brand-accent is the DECORATIVE step (p400 in
+     dark mode, a pale blue) and a focus ring is an affordance, not decoration - it has to
+     read as the same emphasis as the button's own fill. The landing site used
+     ring-brand-accent, which is why its focus rings did not match the product's. */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2;
+    --tw-ring-offset-color: rgb(var(--canvas));
+  }
+
+  /* EVERY SURFACE THAT FLOATS over other content - modals, dropdowns and menus, popovers,
+     tooltips, toasts, the chat composer - is SOLID. No glassmorphism, since 2026-09-26
+     (maintainer's decision): no translucency, no backdrop blur, no sheen. A floating panel is
+     told apart from the page by its border and its shadow, which each call site supplies.
+     This was .glass, a frosted pane at 72% under a 20px blur, from 2026-09-25 until then.
+
+     --float-fill IS --canvas in every appearance - the Dark shade lifted its panels to the card
+     plane until 2026-10-01; see proxyma-tokens.css. */
+  .surface-float {
+    background-color: rgb(var(--float-fill));
+  }
+
+  /* A fixed page HEADER: the page's own plane, solid, so content scrolling underneath it is
+     hidden rather than shown through. Was .glass-header. */
+  .header-bar {
+    position: relative;
+    background-color: rgb(var(--canvas));
+  }
+
+  /* Numeric readouts: counts, sizes, percentages, dates, IDs. Their FIGURES are monospace so
+     digits do not jitter as values change and a column of them aligns; any word beside them is in
+     the UI face (--font-readout, since 2026-10-05). tabular-nums keeps the alignment where the
+     figures fall back to a face whose default digits are proportional. */
+  .data-readout {
+    font-family: var(--font-readout);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Hides the scrollbar on an overflow container while keeping it fully scrollable by
+     wheel, drag and keyboard - for a horizontally scrollable tab row. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+  /* The edge fade of a sideways region whose scrollbar is hidden (the kit's HScroll): a side
+     where content is cut off fades out, which is the only sign left that there is more that
+     way. A MASK, not a gradient overlay, so it needs no knowledge of the background behind it.
+     HScroll sets the two attributes as the region scrolls; with neither, there is no mask. */
+  .hscroll-fade[data-cut-start],
+  .hscroll-fade[data-cut-end] {
+    --hscroll-fade-start: 0px;
+    --hscroll-fade-end: 0px;
+    -webkit-mask-image: linear-gradient(to right, transparent, black var(--hscroll-fade-start), black calc(100% - var(--hscroll-fade-end)), transparent);
+    mask-image: linear-gradient(to right, transparent, black var(--hscroll-fade-start), black calc(100% - var(--hscroll-fade-end)), transparent);
+  }
+  .hscroll-fade[data-cut-start] { --hscroll-fade-start: 1.5rem; }
+  .hscroll-fade[data-cut-end] { --hscroll-fade-end: 1.5rem; }
+
+  /* The same for a box that scrolls DOWN (the kit's ActivityFeed): once anything is scrolled off
+     its top, the top fades out like the answer under the pinned question (.pin-fade). */
+  .feed-fade[data-cut-start] {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 2rem);
+    mask-image: linear-gradient(to bottom, transparent, black 2rem);
+  }
+}
+
+/* =====================================================================================
+   MOTION - communicates state, never decoration.
+
+   ONE VOCABULARY (maintainer, 2026-10-10: every change of state is eased, in all four apps): the
+   durations and curves are the --motion-* and --ease-* tokens, and every keyframe and transition
+   below takes them. Overlays arrive with a fade and a small scale or rise and leave with a quicker
+   fade; content that swaps fades in; colors that answer the pointer ease. Nothing bounces, nothing
+   glows, and nothing blurs but the modal scrim.
+
+   WHEN is decided in react/motion.ts: usePresence (a panel kept while it leaves), useExitGhost (a
+   dialog its caller unmounts at once), useFadeOnChange / FadeSwap, installMotion and
+   applyAppearanceSmoothly.
+===================================================================================== */
+
+/* NOTHING EASES INTO PLACE WHILE THE PAGE LOADS. installMotion() sets the attribute two frames
+   after the first paint; until then - and for the one forced style read of an appearance switch
+   (withoutTransitions) - every transition is held off, so the pre-paint theme script, a stored
+   preference and a header measuring itself land where they belong instead of sliding there.
+   Animations are not held: an entrance animation is deliberate. UNLAYERED and !important, because
+   it has to beat every `transition-*` utility. */
+html:not([data-motion-ready]) *,
+html:not([data-motion-ready]) *::before,
+html:not([data-motion-ready]) *::after {
+  transition: none !important;
+}
+
+/* EVERY CONTROL'S COLORS EASE, whether or not its class list says so. Four apps carried hover and
+   selected states written without `transition-colors` - a link, a chevron, a row in an app's own
+   page - and each changed color in one frame. A BASE rule, so a `transition-*` utility on the
+   element still decides for itself; `[class*='hover:']` reaches the rows and cards that are not
+   controls but answer the pointer (it matches `group-hover:` too). Colors, opacity and the focus
+   ring only: nothing here moves anything. */
+@layer base {
+  a, button, summary, label, input, select, textarea,
+  [role='button'], [role='link'], [role='tab'], [role='option'], [role='switch'], [role='radio'], [role='checkbox'],
+  [role='menuitem'], [role='menuitemradio'], [role='menuitemcheckbox'],
+  [class*='hover:'], [class*='focus-within:'] {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-in-out);
+  }
+}
+
+@keyframes proxyma-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes proxyma-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes proxyma-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+/* Anchored from the top: a dropdown always opens below its trigger, unlike fade-up/fade-in
+   which have no directional origin. */
+@keyframes proxyma-dropdown-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* A floating panel leaving - a menu, a dropdown, a dialog's panel: a quicker fade and a slight
+   shrink. */
+@keyframes proxyma-pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.98); }
+}
+/* Dialog entrance: a fade, a small rise and a 2% scale, eased out with no overshoot. It was a 16px
+   rise on a spring curve until 2026-10-10 - the one bouncy thing in the product. The rise stays
+   inside what the scale takes back, so a dialog as tall as its overlay never pokes past it and
+   puts a scrollbar on the overlay while it arrives. */
+@keyframes proxyma-slide-up {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* A tooltip: `translate`, not `transform`, because its POSITION is an inline transform, and an
+   animated transform replaces it - fade-up's `both` held the bubble half its width off its anchor
+   for as long as it was shown, until 2026-10-10. */
+@keyframes proxyma-tooltip-in {
+  from { opacity: 0; translate: 0 2px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+@keyframes proxyma-skeleton {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+/* Re-triggered whenever a click-time validation check fails, to draw the eye to a field or
+   list that is still invalid instead of silently doing nothing. Referenced by Input's
+   `shake` prop. */
+@keyframes proxyma-shake {
+  0%, 100%      { transform: translateX(0); }
+  10%, 90%      { transform: translateX(-1px); }
+  20%, 80%      { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60%      { transform: translateX(4px); }
+}
+
+/* BACKWARDS, not both: the end state is the element's own (no offset, opaque), and `both` held
+   `transform: translateY(0)` on it for ever - which made the app's route container the containing
+   block for everything absolutely placed below it, so an sr-only label in a key account's table
+   escaped its scrolling column and the whole page scrolled (2026-10-10). Backwards still holds the
+   start state through a delay. */
+.animate-fade-up    { animation: proxyma-fade-up var(--motion-base) var(--ease-out) backwards; }
+/* `backwards`, not `both`: once it has played, the element's own opacity (a disabled field's 50%)
+   applies again - a held animation value would outrank it for as long as the element lives. */
+.animate-fade-in    { animation: proxyma-fade-in var(--motion-base) var(--ease-out) backwards; }
+.animate-slide-up   { animation: proxyma-slide-up var(--motion-base) var(--ease-out) backwards; }
+.animate-tooltip-in { animation: proxyma-tooltip-in var(--motion-fast) var(--ease-out) both; }
+.animate-skeleton   { animation: proxyma-skeleton 1.6s ease-in-out infinite; }
+.animate-shake      { animation: proxyma-shake 400ms ease-in-out; }
+/* A PLACE THE READER WAS JUST SENT TO - a sub-agent's panel, from its name in the agents map: its
+   border and a faint tint of the brand ease in while the thread scrolls there, hold a moment, and
+   fade out. A short fade, not a flash. Only the middle is named, so both ends are the box's own
+   colours, whatever they are. 2s - SubAgentPanel.tsx's REVEAL_MS. Reduced motion: no light. */
+@keyframes proxyma-reveal {
+  30%, 50% {
+    border-color: rgb(var(--brand-accent) / 0.7);
+    background-color: rgb(var(--brand-accent) / 0.08);
+  }
+}
+.animate-reveal     { animation: proxyma-reveal 2s var(--ease-in-out); }
+
+/* WORDS AT WORK: A HORIZONTAL WAVE (maintainer's request, 2026-10-14) - a tool call's row, the
+   thinking and waiting lines, a sub-agent's name, a running step. A soft band of a second ink
+   sweeps left to right across the words, about once every 1.8s; an icon alone blinks instead
+   (working.ts says which). The words keep their own ink - `currentColor`, so a warning line stays
+   warning - and the band is primary ink, or caption ink over words already in primary ink, so it
+   shows in Light, Proxyma and Dark alike. Put it on the element that carries the words' colour.
+   Reduced motion: none of it - the words in their own ink, still. */
+@keyframes proxyma-text-wave {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .text-wave {
+    --wave-band: rgb(var(--ink-primary));
+    background-image: linear-gradient(90deg,
+      currentColor 0%, currentColor 30%,
+      var(--wave-band) 50%,
+      currentColor 70%, currentColor 100%);
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: proxyma-text-wave 1.8s linear infinite;
+  }
+  .text-wave.text-ink-primary { --wave-band: rgb(var(--ink-caption)); }
+}
+.animate-dropdown   {
+  animation: proxyma-dropdown-in var(--motion-fast) var(--ease-out) both;
+  transform-origin: top right;
+}
+/* A panel that opens UPWARD (a Popover flipped above its anchor, a Select near the bottom). */
+[data-side='top']:is(.animate-dropdown, .animate-pop-out) { transform-origin: bottom right; }
+
+/* The exits - AFTER the entrances, so a panel carrying both (its constant class string plus the
+   exit usePresence adds) leaves. Pointer events off: a closing panel must not take the click meant
+   for what is under it. */
+.animate-fade-out { animation: proxyma-fade-out var(--motion-fast) var(--ease-in) both; pointer-events: none; }
+.animate-pop-out  { animation: proxyma-pop-out var(--motion-fast) var(--ease-in) both; pointer-events: none; }
+
+/* SOMETHING IN THE FLOW coming and going (the kit's Presence): its height eases on a one-row grid,
+   as Collapse's does, and so do the margins a `space-y-*` parent gives it - the keyframes name only
+   the closed end, so the open end is whatever the page says. Content below eases rather than jumps. */
+@keyframes proxyma-collapse-in {
+  from { grid-template-rows: 0fr; opacity: 0; margin-top: 0; margin-bottom: 0; }
+}
+@keyframes proxyma-collapse-out {
+  to { grid-template-rows: 0fr; opacity: 0; margin-top: 0; margin-bottom: 0; }
+}
+.animate-collapse-in  { animation: proxyma-collapse-in var(--motion-base) var(--ease-out) backwards; }
+.animate-collapse-out { animation: proxyma-collapse-out var(--motion-base) var(--ease-in) both; pointer-events: none; }
+
+/* AN EXIT GHOST (useExitGhost): the inert copy of a dialog or status screen its caller has just
+   unmounted. Only its scrim and its panel move - everything inside is held still, or an entrance
+   animation in it (a tab's fade-in) would replay on the copy. The scrim fades on its own element
+   rather than through the overlay, because an ancestor below full opacity cuts a backdrop-filter
+   off from the page behind it, and the blur would vanish in one frame. Only the INNERMOST panel
+   moves - a status screen is a card inside a full-window dialog panel, and scaling the window
+   would pull the scrim in from the edges. A copy with no scrim anywhere fades whole. */
+[data-ghost] { pointer-events: none !important; }
+[data-ghost] *,
+[data-ghost] *::before,
+[data-ghost] *::after { animation: none !important; transition: none !important; }
+[data-ghost]:not(:has([data-scrim])) { animation: proxyma-fade-out var(--motion-fast) var(--ease-in) both !important; }
+[data-ghost] [data-scrim] { animation: proxyma-fade-out var(--motion-fast) var(--ease-in) both !important; }
+[data-ghost] [data-motion-panel]:not(:has([data-motion-panel])) { animation: proxyma-pop-out var(--motion-fast) var(--ease-in) both !important; }
+
+.stagger-fade-up > * { animation: proxyma-fade-up var(--motion-base) var(--ease-out) backwards; }
+.stagger-fade-up > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-fade-up > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-fade-up > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-fade-up > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-fade-up > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-fade-up > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-fade-up > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-fade-up > *:nth-child(8) { animation-delay: 350ms; }
+
+/* THE APPEARANCE SWITCH is one crossfade of the whole page (applyAppearanceSmoothly, through the
+   View Transitions API where the browser has it), not every surface easing its own colors. The
+   same timing serves the landing site's crossfade between pages. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* Tailwind's animate-spin sets only `animation`, with no compositing hint - a spinner
+   nested inside or near a backdrop-blur ancestor can start on a mis-computed compositor
+   layer and rotate around the wrong origin until some unrelated repaint corrects it.
+   Promoting it to its own layer up front avoids the bad first paint. */
+.animate-spin { will-change: transform; }
+
+/* The kit Spinner's arc: turned about the center of its own circle, in the drawing's coordinates
+   (the viewBox is 24 wide). Its own keyframes, so it does not depend on Tailwind having emitted
+   `spin` for some other element. See Spinner.tsx for why the box is not what rotates. */
+@keyframes proxyma-spinner { to { transform: rotate(360deg); } }
+.spinner-arc {
+  transform-origin: 12px 12px;
+  animation: proxyma-spinner 1s linear infinite;
+}
+
+/* REDUCED MOTION: nothing moves and nothing lingers - every animation and transition ends at once,
+   and motion.ts skips the exits, the fades and the appearance crossfade altogether. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* =====================================================================================
+   THE KIT COMPONENTS' OWN CLASSES, moved here from the app's index.css in the 2026-10 kit rebuild
+   so the consoles and the landing site can use the components that need them. Each was app-only
+   because its component was; the components are the kit's now.
+   ===================================================================================== */
+
+/* A FILE DROP TARGET while files are over it (DropArea, DropOverlay, SourceRow) - a success tint
+   and a static dashed ring, meaning "a valid place to drop". Static, not marching ants: with a
+   naive enter/leave toggle it read as a flicker (useFileDrop counts instead). No `position` here -
+   the caller sets it; this class once forced `relative` and collapsed an `absolute inset-0` layer.
+   Four edge gradients rather than one conic one, so the dashes are even on every side. */
+.dropzone-active { background-color: rgba(var(--success) / 0.14); }
+.dropzone-active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, rgba(var(--success) / 0.9) 50%, transparent 50%),
+    linear-gradient(90deg, rgba(var(--success) / 0.9) 50%, transparent 50%),
+    linear-gradient(0deg,  rgba(var(--success) / 0.9) 50%, transparent 50%),
+    linear-gradient(0deg,  rgba(var(--success) / 0.9) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 16px 2px, 16px 2px, 2px 16px, 2px 16px;
+  background-position: left top, left bottom, left top, right top;
+}
+
+/* Indeterminate progress (ProgressBar with no value). */
+@keyframes proxyma-progress-wave {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.progress-wave { position: relative; overflow: hidden; }
+.progress-wave::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.25) 50%, transparent 100%);
+  animation: proxyma-progress-wave 1.8s ease-in-out infinite;
+}
+
+/* Panels that arrive from the right (a toast). */
+@keyframes proxyma-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right { animation: proxyma-slide-in-right var(--motion-base) var(--ease-out); }
+/* ...and leaving the same way, quicker (a dismissed toast). */
+@keyframes proxyma-slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(16px); }
+}
+.animate-slide-out-right { animation: proxyma-slide-out-right var(--motion-fast) var(--ease-in) both; pointer-events: none; }
+
+/* PAGE SECTIONS (SettingsSections): a hairline with 3rem either side - the gap between two
+   sections must read as clearly larger than the gap between two fields (maintainer, 2026-09-24;
+   widened from 2rem on 2026-10-14); 1.75rem on a phone. A subsection keeps the tighter 2rem
+   (1.25rem on a phone) so it still reads as part of its section. A lead paragraph or link as the
+   FIRST child is the page's introduction, with nothing drawn under it. UNLAYERED and late on
+   purpose: the selectors tie with Tailwind's space-y-* on specificity, so source order hands them
+   the margin. */
+.settings-sections > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 3rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgb(var(--line) / 0.45);
+}
+:not([hidden]) ~ .settings-subsection:not([hidden]) {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgb(var(--line) / 0.45);
+}
+@media (max-width: 639.98px) {
+  .settings-sections > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+  }
+  :not([hidden]) ~ .settings-subsection:not([hidden]) {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+}
+.settings-sections > :is(p, a):first-child + :not([hidden]) {
+  margin-top: 1.5rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* The pinned question (and the hero's copy of it): no background; the answer scrolls under it
+   into the canvas colour, nearly opaque under the question and fading to nothing below it. */
+.pin-fade {
+  background: linear-gradient(to bottom,
+    rgb(var(--canvas) / 0.96) 0,
+    rgb(var(--canvas) / 0.85) 2.5rem,
+    rgb(var(--canvas) / 0) 4rem);
+}
+
+/* THE COMPOSER'S LIGHT (ComposerShell) - after Gemini's prompt box, in the brand's one colour: a
+   conic gradient turning round the composer as a 1.5px ring over its border, and the same gradient
+   blurred behind it. THE ONE GLOW IN THE PRODUCT (maintainer, 2026-09-27); the rule against glow
+   holds everywhere else. The angle is a registered property so the gradient itself turns; PAUSED,
+   not removed, when idle, so a fading light holds its angle. Reduced motion stills it. */
+@property --composer-light-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes composer-light-turn { to { --composer-light-angle: 360deg; } }
+.composer-light { isolation: isolate; }
+.composer-light-ring,
+.composer-light-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0;
+  background: conic-gradient(from var(--composer-light-angle),
+    rgb(var(--brand-accent) / 0.25) 0deg,
+    rgb(var(--brand-accent) / 0.9) 70deg,
+    rgb(var(--brand-legible)) 110deg,
+    rgb(var(--brand-accent) / 0.9) 150deg,
+    rgb(var(--brand-accent) / 0.25) 220deg,
+    rgb(var(--brand-accent) / 0.55) 290deg,
+    rgb(var(--brand-accent) / 0.25) 360deg);
+  animation: composer-light-turn 5s linear infinite paused;
+  transition: opacity var(--motion-slow) var(--ease-out);
+}
+.composer-light-ring {
+  z-index: 2;
+  padding: 1.5px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.composer-light-glow {
+  z-index: -1;
+  inset: -2px;
+  filter: blur(14px);
+  transform: scale(0.97);
+  transition: opacity var(--motion-slow) var(--ease-out), transform var(--motion-slow) var(--ease-out);
+}
+.composer-light:focus-within .composer-light-ring,
+.composer-light.is-working .composer-light-ring { opacity: 1; animation-play-state: running; }
+.composer-light:focus-within .composer-light-glow,
+.composer-light.is-working .composer-light-glow { opacity: 0.45; transform: scale(1); animation-play-state: running; }
+.composer-light.is-working .composer-light-ring,
+.composer-light.is-working .composer-light-glow { animation-duration: 2.2s; }
+.composer-light.is-working .composer-light-glow { opacity: 0.6; }
+:root:not([data-mode="dark"]) .composer-light:focus-within .composer-light-glow { opacity: 0.3; }
+:root:not([data-mode="dark"]) .composer-light.is-working .composer-light-glow { opacity: 0.4; }
+.composer-sweep.focus-border:focus-within,
+.composer-light.is-working .composer-sweep.focus-border { border-color: rgb(var(--brand-accent) / 0.3); }
+/* Lit without focus - a PICTURE of the composer (the site's scenes), which has no focus to light it.
+   ComposerShell's `alwaysLit`. It was the site's own rule in globals.css. */
+.composer-light.is-lit .composer-light-ring { opacity: 1; animation-play-state: running; }
+.composer-light.is-lit .composer-light-glow { opacity: 0.45; transform: scale(1); animation-play-state: running; }
+:root:not([data-mode="dark"]) .composer-light.is-lit .composer-light-glow { opacity: 0.3; }
+.composer-sweep.focus-border:hover:not(:focus-within) { border-color: rgb(var(--line) / 0.9); }
+
+/* ONE MINIMUM SIZE FOR EVERY DIALOG (maintainer, 2026-09-29), phone-safe: DialogShell marks its
+   panel `data-dialog-panel`, keyed on `surface-float` too so a bare tour wrapper is left alone. The
+   panel is a column and the BODY takes the extra height - `data-dialog-body`, or (for markup that
+   predates it) the child before a bordered or right-pushed footer, else the last child. */
+[data-dialog-panel].surface-float {
+  display: flex;
+  flex-direction: column;
+  min-width: min(28rem, calc(100% - 2rem));
+  min-height: min(16rem, calc(100dvh - 2rem));
+}
+[data-dialog-panel].surface-float > [data-dialog-body] { flex-grow: 1; }
+[data-dialog-panel].surface-float:not(:has(> [data-dialog-body])) > :last-child { flex-grow: 1; }
+[data-dialog-panel].surface-float:not(:has(> [data-dialog-body])):has(> :last-child:is([class*="border-t"], [class*="justify-end"])) > :last-child { flex-grow: 0; }
+[data-dialog-panel].surface-float:not(:has(> [data-dialog-body])):has(> :last-child:is([class*="border-t"], [class*="justify-end"])) > :nth-last-child(2) { flex-grow: 1; }
+
+/* A DATA TABLE STACKS ON A PHONE (TABLE_CLASS): below `sm` each row is a block and each cell a
+   line labelled by its `data-label`; a cell without one is the row's name, full width on top. Plain
+   CSS: it re-types table display and reads the label with attr(), which no class can say. */
+@media (max-width: 639.98px) {
+  table.table-stack,
+  table.table-stack > tbody,
+  table.table-stack > tbody > tr,
+  table.table-stack > tbody > tr > td { display: block; width: 100%; }
+  table.table-stack > thead { display: none; }
+  table.table-stack > tbody > tr { padding: 0.75rem 1rem; }
+  table.table-stack > tbody > tr > td {
+    padding: 0.125rem 0;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  table.table-stack > tbody > tr > td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: right;
+  }
+  table.table-stack > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    text-align: left;
+    font-family: var(--font-ui, inherit);
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    color: rgb(var(--ink-caption));
+  }
+  table.table-stack > tbody > tr > td:not([data-label]):first-child { padding-bottom: 0.375rem; }
+}
+
+/* =====================================================================================
+   PROSE - `.prose-doc`, the type of anything authored as HTML or markdown rather than as
+   components: the customer manuals, the release notes and the legal pages on the site. One scale
+   with the rest of the kit: h1 29/700, h2 21/700, h3 16/600, h4 15/600 (the server manual uses six
+   and none was styled), body 15 secondary (`TEXT.body`, since the 2026-10-15 readability pass - a
+   manual is read at length, and it was 14), the lede `TEXT.lead`, `rounded-md` code (it was 4px),
+   tables ruled between rows with sentence-case caption headers (one legal table drew a full grid).
+   `.note` and `.warn` are the kit `Callout`, its body at 14. `.prose-doc-sm` is the same at 13px -
+   a sub-agent's report in its panel.
+   ===================================================================================== */
+.prose-doc h1 { @apply text-3xl font-bold text-ink-primary mb-2; }
+.prose-doc h2 { @apply text-xl font-bold text-ink-primary mt-10 mb-3; }
+.prose-doc h3 { @apply text-base font-semibold text-ink-primary mt-6 mb-2; }
+.prose-doc h4 { @apply text-[15px] font-semibold text-ink-primary mt-5 mb-1.5; }
+.prose-doc p  { @apply text-ink-secondary text-[15px] leading-relaxed mb-4; }
+.prose-doc ul, .prose-doc ol { @apply pl-5 text-ink-secondary text-[15px] leading-relaxed mb-4 space-y-1.5; }
+.prose-doc ul { @apply list-disc; }
+.prose-doc ol { @apply list-decimal; }
+.prose-doc li > ul, .prose-doc li > ol { @apply mt-1.5 mb-0; }
+.prose-doc a  { @apply text-brand-legible underline-offset-[3px]; }
+@media (hover: hover) and (pointer: fine) { .prose-doc a:hover { text-decoration: underline; } }
+.prose-doc strong { @apply text-ink-primary font-semibold; }
+.prose-doc blockquote { @apply border-l-2 border-line pl-4 text-ink-caption mb-4; }
+.prose-doc hr { @apply border-0 border-t border-line/40 my-8; }
+.prose-doc .lede { @apply text-[17px] leading-relaxed text-ink-secondary mb-10; }
+.prose-doc .legal-meta { @apply text-sm text-ink-caption mb-10; }
+.prose-doc .note,
+.prose-doc .warn { @apply rounded-lg border px-4 py-3 mb-6; }
+.prose-doc .note { @apply border-brand-solid/30 bg-brand-solid/[0.07]; }
+.prose-doc .warn { @apply border-warning/35 bg-warning/[0.07]; }
+.prose-doc .note p, .prose-doc .warn p { @apply text-sm leading-relaxed mb-2; }
+.prose-doc .note :is(ul, ol), .prose-doc .warn :is(ul, ol) { @apply text-sm mb-2; }
+.prose-doc .note p:last-child, .prose-doc .warn p:last-child { @apply mb-0; }
+.prose-doc .note .label,
+.prose-doc .warn .label { @apply block text-sm leading-5 font-semibold text-ink-primary mb-0.5; }
+/* A table in its `.table-wrap` is the kit's TableCard (since 2026-10-15): a subtle card, cells 16 by 12
+   - the look of every table in the apps. A bare table stays ruled on the page. */
+.prose-doc .table-wrap { @apply overflow-x-auto mb-6 rounded-lg border border-line/40 bg-surface/40; }
+.prose-doc table { @apply w-full text-sm border-collapse mb-6; }
+.prose-doc .table-wrap table { @apply mb-0; }
+.prose-doc th { @apply text-left text-xs font-medium text-ink-caption border-b border-line/40 px-3 py-2 whitespace-nowrap; }
+.prose-doc td { @apply text-ink-secondary border-b border-line/20 px-3 py-2 align-top; }
+/* Inline code at 0.9em and never under 12px: Consolas's x-height is Space Grotesk's own (both 0.49 of
+   the em, measured in Edge), so a smaller step only made code read smaller than the words around it -
+   0.85em of a 14px table cell was 11.9px. */
+.prose-doc code { @apply font-mono bg-surface border border-line/60 rounded-md px-1.5 py-0.5 text-ink-primary; font-size: max(12px, 0.9em); }
+.prose-doc pre { @apply font-mono bg-canvas border border-line/50 rounded-md px-3 py-2 mb-6 overflow-x-auto text-xs leading-relaxed; }
+.prose-doc pre code { @apply bg-transparent border-0 p-0 text-[1em]; }
+.prose-doc .table-wrap :is(th, td) { @apply px-4 py-3; }
+.prose-doc .table-wrap tbody tr:last-child td { @apply border-b-0; }
+
+/* NO HORIZONTAL SCROLLBAR IN PROSE EITHER (frontend.md). A code block or a table in authored HTML
+   cannot be the kit's HScroll, so the same treatment is CSS here: where the browser can drive an
+   animation by a box's own sideways scroll, the bar is hidden and the side that is cut off fades
+   out, exactly as HScroll's mask does. Where it cannot, the thin bar stays - a hidden bar with no
+   other sign of more content would be worse than a visible one. */
+@property --prose-cut-start { syntax: '<length>'; inherits: false; initial-value: 0rem; }
+@property --prose-cut-end { syntax: '<length>'; inherits: false; initial-value: 0rem; }
+@supports (animation-timeline: scroll(self inline)) {
+  @keyframes proxyma-prose-cut {
+    from { --prose-cut-start: 0rem; --prose-cut-end: 1.5rem; }
+    1%   { --prose-cut-start: 1.5rem; }
+    99%  { --prose-cut-end: 1.5rem; }
+    to   { --prose-cut-start: 1.5rem; --prose-cut-end: 0rem; }
+  }
+  .prose-doc pre,
+  .prose-doc .table-wrap {
+    scrollbar-width: none;
+    animation: proxyma-prose-cut linear both;
+    animation-timeline: scroll(self inline);
+    -webkit-mask-image: linear-gradient(to right, transparent, black var(--prose-cut-start), black calc(100% - var(--prose-cut-end)), transparent);
+    mask-image: linear-gradient(to right, transparent, black var(--prose-cut-start), black calc(100% - var(--prose-cut-end)), transparent);
+  }
+  .prose-doc pre::-webkit-scrollbar,
+  .prose-doc .table-wrap::-webkit-scrollbar { display: none; }
+}
+.prose-doc-sm, .prose-doc-sm * { font-size: 0.8125rem; line-height: 1.5; }

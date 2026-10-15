@@ -1,0 +1,19 @@
+apiVersion: v2
+name: proxyma-community
+description: Proxyma Community server - the single-user edition (the Home Server image), behind an access code. One replica by design.
+type: application
+# BOTH VERSIONS ARE THE RELEASE'S - the pom version, the one place a version lives. Every release
+# carries this chart as proxyma-community-<version>.tgz, so the chart is versioned with the
+# application it installs; the version bump writes both, and tools/build/lint-charts.sh fails
+# while either differs from the pom.
+version: 0.36.0
+# The image tag used when image.tag is empty.
+appVersion: "0.36.0"
+# persistentVolumeClaimRetentionPolicy is beta and on by default from 1.27.
+kubeVersion: ">=1.27.0-0"
+home: https://proxyma.ai
+keywords: [ai, rag, assistant, knowledge, self-hosted]
+dependencies:
+  - name: proxyma-common
+    version: 0.1.0
+    repository: file://../proxyma-common

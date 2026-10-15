@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" data-app-shell>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Raster icons AFTER the SVG: ThemeProvider.applyFavicon rewrites the FIRST icon link only.
+         A window opened as a Chromium app - the fallback when Proxyma's own window is absent, and
+         every developer run - takes its taskbar icon from these, and from the SVG alone it drew a
+         blurry 16px rasterization (maintainer's report, 2026-09-26). -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/proxyma-192.png" />
+    <link rel="apple-touch-icon" href="/proxyma-192.png" />
+    <!-- The title until the app names the page ("Chat - Proxyma", usePageTitle) - the product name
+         alone, which is also what usePageTitle writes for a page with no title of its own. It said
+         "Proxyma - live demo" until 2026-10-03, in every edition: the Desktop window and every
+         install opened on that for a moment before the app replaced it (maintainer's report). -->
+    <title>Proxyma</title>
+    <!--
+      Deliberately minimal, and deliberately NOT a marketing page.
+
+      This one file serves every edition: the public Enterprise sandbox at
+      enterprise-demo.proxyma.ai and the desktop build running on localhost. So it carries only
+      tags that are true in both places - no canonical, no og:url, nothing naming a hostname,
+      because most installs of this file have no hostname at all and a canonical pointing at the
+      sandbox would be a lie told by every desktop copy.
+
+      A description exists so the sandbox's search result is a sentence rather than the word
+      "Proxyma". Ranking for anything beyond the brand name is proxyma.ai's job: this is a
+      client-rendered app shell with no prose for a crawler to read, and the two sites should not
+      compete for the same queries. See public/robots.txt, which keeps crawlers off the app
+      routes for the same reason.
+    -->
+    <meta
+      name="description"
+      content="A live, hosted instance of Proxyma - the self-hosted AI assistant that searches your own Jira, Confluence, Bitbucket and documents. Try it without installing anything."
+    />
+    <!-- Pre-paint appearance stamp - see the file. Synchronous and in <head> so it runs before the
+         body exists; a file rather than inline so the Content-Security-Policy can allow this origin's
+         scripts and nothing else. -->
+    <script src="/appearance-init.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

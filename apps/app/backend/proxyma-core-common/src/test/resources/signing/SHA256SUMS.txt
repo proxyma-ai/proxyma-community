@@ -1,0 +1,2 @@
+0123abcd  proxyma-x64-v9.9.9-update.zip
+4567ef01  SHA256SUMS-linux.txt

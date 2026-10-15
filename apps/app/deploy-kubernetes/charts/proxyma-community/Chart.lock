@@ -1,0 +1,6 @@
+dependencies:
+- name: proxyma-common
+  repository: file://../proxyma-common
+  version: 0.1.0
+digest: sha256:9ab74b3cd3e8ef2f05f705753e45b323525316f2fa622bc925eb6fb9c6818a4b
+generated: "2026-10-14T14:23:29.7353701+07:00"

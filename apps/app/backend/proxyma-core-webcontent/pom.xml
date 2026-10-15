@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-webcontent</artifactId>
+    <name>proxyma-core-webcontent</name>
+    <description>Shared web-content rendering + HTML-to-Markdown extraction: headless-browser render
+        engines (HtmlUnit, Playwright) and jsoup/flexmark/readability extraction, used by both the
+        webFetch tool (proxyma-core-tools) and the web-page crawl connector (proxyma-core-connector).</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <!-- NOTE: deliberately does NOT depend on proxyma-core-network. The render engines get the
+             proxy via the WebProxyProvider interface (implemented by network's RestClientConfig) so
+             this module stays a near-leaf (common only) and connector can depend on it without the
+             cycle connector -> webcontent -> network -> settings -> license -> connector. -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- HTML parsing (jsoup) + HTML->Markdown (flexmark) + main-content extraction (readability4j) -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-html2md-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.dankito.readability4j</groupId>
+            <artifactId>readability4j</artifactId>
+        </dependency>
+
+        <!-- Pure-Java headless browser (HtmlUnit) - always-available render engine. -->
+        <dependency>
+            <groupId>org.htmlunit</groupId>
+            <artifactId>htmlunit</artifactId>
+        </dependency>
+        <!-- Optional real headless Chromium (Playwright) - opt-in, self-disables where the browser
+             binary is absent (see WebRenderService/PlaywrightRenderService). -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

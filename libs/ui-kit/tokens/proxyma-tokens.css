@@ -1,0 +1,328 @@
+/* =====================================================================================
+   PROXYMA DESIGN TOKENS - the single definition, for every Proxyma surface.
+
+   GENERATED FILE in each consumer. Edit libs/ui-kit/tokens/proxyma-tokens.css and run
+   `node libs/ui-kit/sync.mjs` from the repository root. Editing the copy is silently reverted by
+   the next sync.
+
+   Four frontends import this: apps/app (desktop + server), apps/license, apps/telemetry and
+   apps/landing. Before it existed each kept its own transcription of
+   the same palette, and they had already drifted - the landing site's monospace stack led
+   with a different face, its focus ring used a different token, and its buttons hovered to
+   a different colour than the product's.
+
+   Mode selection is ONE attribute on <html>: data-mode="dark|light". Dark is the bare
+   :root block (so a page paints correctly before any script runs); light re-points the
+   SEMANTIC tokens only. Since 0.13.0 dark has two SHADES - Proxyma, which is that bare
+   block, and Dark, a neutral VS Code-style gray stamped as a SECOND attribute,
+   data-shade="black" (the name it had as a true black), beside data-mode="dark". A second attribute rather than a third mode value, so every
+   [data-mode="dark"] selector and the preset's darkMode keep matching both shades. See
+   react/appearance.ts for how a preference resolves to the two. :root IS <html>, so
+   `:root[data-mode="light"]` matches in all four builds regardless of what else that element
+   carries.
+
+   NOTHING here is per-deployment. Proxyma is one product with one palette; the tenant
+   theming layer this file replaces is gone, and its remaining branches were
+   unreachable. Do not reintroduce a deploy-time override mechanism.
+===================================================================================== */
+
+
+/* FIGURES ONLY, in the monospace face (maintainer's rule, 2026-10-05: text never uses Consolas,
+   only numbers). A readout is often a phrase - "input 12.3k", "10/5/2026, 7:25 AM", "Running 4s" -
+   and setting the whole of it in Consolas put words in a code font. This face covers the digits
+   and the punctuation inside a number and nothing else, so the browser takes every other character
+   from the next family in --font-readout, the UI face. local() only: on a machine with none of
+   these installed, figures fall back to the UI face, still tabular (.data-readout). */
+@font-face {
+  font-family: 'Proxyma Figures';
+  src: local('Consolas'), local('Cascadia Mono'), local('Cascadia Code');
+  unicode-range: U+0030-0039, U+002E, U+002C, U+003A, U+0025, U+0024;
+}
+
+:root {
+  /* --- Brand ramp -----------------------------------------------------------------
+     Generated from the primary #164E63 at a constant 196.4deg hue, the primary itself
+     landing exactly on the 900 step. MODE-INVARIANT: p500 is the same teal in light and
+     dark, the way a printed brand colour is. What changes per mode is which steps the
+     semantic tokens below point at.
+
+     Never read these directly for page chrome (background, border, body text) - use
+     --canvas/--surface/--line/--ink-* so it re-maps per mode for free. The raw steps are
+     for brand fills that must NOT re-step: the logo mark, an accent glow. */
+  --p50:  245 250 253;
+  --p100: 230 244 249;
+  --p200: 204 232 242;
+  --p300: 166 214 231;
+  --p400: 120 190 217;
+  --p500: 66 167 205;
+  --p600: 42 140 178;
+  --p700: 32 111 141;
+  --p800: 26 94 119;
+  --p900: 22 78 99;   /* #164E63 - Proxyma primary */
+  --p950: 13 44 56;
+
+  /* --- Mono scale -----------------------------------------------------------------
+     The neutral counterpart of the brand ramp: same 196.4deg hue at a near-neutral
+     9-24% saturation, so greys read as quietly related to the brand rather than as a
+     foreign pure grey. Also mode-invariant - every background, border and text colour in
+     BOTH modes is one of these eleven steps, which is what keeps the two modes balanced
+     against each other instead of each being hand-tuned. Light mode walks the scale
+     downward (canvas white -> ink n950), dark mode upward (canvas n950 -> ink n50). */
+  --n50:  251 251 252;
+  --n100: 245 247 247;
+  --n200: 234 237 238;
+  --n300: 216 221 223;
+  --n400: 177 187 190;
+  --n500: 135 150 155;
+  --n600: 102 119 125;
+  --n700: 76 90 95;
+  --n800: 49 59 63;
+  --n900: 31 40 43;
+  --n950: 17 24 26;
+
+  /* --- Semantic tokens: DARK ------------------------------------------------------
+     canvas < surface < surface-alt in lightness: canvas is the page plane, surface the
+     card/row plane sitting on it, surface-alt the overlay plane (tooltip, popover) above
+     that. Light mode inverts the direction, not the meaning. */
+  --canvas:      17 24 26;    /* n950 */
+  --surface:     31 40 43;    /* n900 */
+  --surface-alt: 49 59 63;    /* n800 */
+  --line:        49 59 63;    /* n800 */
+
+  /* The fill behind .surface-float - everything that floats. The page's own plane, so a panel reads as
+     floating above it; see proxyma-primitives.css. A token of its own so the Dark shade can
+     lift its panels to the card plane instead. */
+  --float-fill:  var(--canvas);
+
+  /* Headings are NEAR-WHITE, the mono scale's n100, since 2026-09-30 (app UI review, F29). They
+     were p200, a pale tint of the brand, on the argument that a tinted heading reads as the same
+     family as the logo - in practice every title on the page was pale cyan, which is the "neon
+     cyan on dark" tell, and the landing's dark pages read calmer without it. The teal stays where
+     it carries meaning: the planes below, the brand fills and the accents. Only the value moved;
+     the appearance's name and stored word ("gray", labelled Proxyma) did not. */
+  /* On canvas / surface / surface-alt. Unchanged by the 2026-10-15 readability pass: the ramp's
+     steps already clear it, caption at 5.9:1 on the overlay plane, the tightest of the three
+     appearances' captions before that pass. */
+  --ink-primary:   245 247 247; /* n100 - 16.7 / 14.0 / 10.7 */
+  --ink-secondary: 216 221 223; /* n300 - 13.1 / 11.0 /  8.4 - the body-copy default */
+  --ink-caption:   177 187 190; /* n400 -  9.2 /  7.7 /  5.9 */
+  --ink-disabled:  135 150 155; /* n500 -  5.9 /  4.9 /  3.8 */
+
+  /* p700, not the primary itself: #164E63 is a 2.0:1 invisible slab on a near-black page.
+     Both steps carry plain white, so a primary button is recognisably the same control in
+     both modes, just re-weighted for the page it sits on. */
+  --brand-solid:    32 111 141; /* p700 - 3.2:1 on canvas, 5.7:1 under white */
+  --brand-accent:  120 190 217; /* p400 - DECORATIVE only: dots, meter fills, borders.
+                                   Not a text-bearing fill in dark mode. */
+  --brand-pale:     22 78 99;   /* p900 - the "pale" slot is the DARK end of the ramp here */
+  --brand-on-solid: 255 255 255;
+
+  /* Text-legible variants are a SEPARATE pair, not an alias of solid/accent: a fill and a
+     piece of small text in "the brand colour" have different contrast requirements against
+     the same background. --brand-solid at p700 is only 3.2:1 as text on this canvas. */
+  --brand-legible:        166 214 231; /* p300 - 11.5:1 */
+  --brand-accent-legible: 166 214 231; /* p300 */
+
+  --success: 52 211 153;  /* emerald-400 */
+  --danger:  248 113 113; /* red-400 */
+  --warning: 251 191 36;  /* amber-400 */
+
+  /* SOLID STATUS FILLS - the background of a status badge and of a destructive button, with
+     --on-status text on top. Not --success/--danger/--warning: those are tuned as TEXT on the
+     page (brightened for dark, muted for light), and white on the dark-mode red-400 clears only
+     2.4:1 as a fill. These are MODE-INVARIANT, as a printed sign is: green-600, red-600 and
+     amber-600 carry white at 3.3:1, 4.8:1 and 3.2:1 - which is why a status badge's text is bold
+     and upper case, and why the destructive button (normal-weight words) is the red one. */
+  --success-solid: 22 163 74;
+  --danger-solid:  220 38 38;
+  --warning-solid: 217 119 6;
+  --on-status:     255 255 255;
+
+  /* The knob of a switch: white in every appearance, on the brand fill or on the line. */
+  --thumb: 255 255 255;
+
+  /* --- Elevation -------------------------------------------------------------------
+     All four steps are mode-aware. A shadow simulates the page's own light source, so the
+     near-opaque blacks that read as depth on a near-black canvas read as dirt on a white
+     one. Tailwind's shadow-sm/card/card-lg all resolve through these. */
+  --shadow-sm:      0 1px 2px rgba(0,0,0,0.4);
+  --shadow-card:    0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-card-lg: 0 2px 4px rgba(0,0,0,0.45), 0 12px 32px rgba(0,0,0,0.4);
+
+  /* NO GLOW ANYWHERE, since 2026-09-26 (maintainer's decision): no halo on fields, no glow
+     shadow, no radial wash behind the page. Emphasis is a BORDER - this is the color a
+     .focus-border takes on hover and focus. */
+  --focus-line: rgb(var(--brand-solid) / 0.55);
+
+  /* --- Motion ----------------------------------------------------------------------
+     ONE motion vocabulary for four apps (maintainer, 2026-10-10: every change of state is
+     eased). Three durations and three curves, and nothing else - no bounce, no overshoot.
+     fast: a color answering the pointer, a menu or tooltip opening (it was asked for and must
+       not keep the pointer waiting), and anything LEAVING (a menu, a tooltip, a dialog).
+     base: a dialog, a page or a tab's content arriving, and a disclosure's height -
+       Collapse's 200ms, which was the first of these.
+     slow: a quantity moving (a meter's width) and the appearance crossfade.
+     Exits are faster than entrances on purpose: what was dismissed gets out of the way.
+     The TS mirror, for timers, is MOTION_MS in react/motion.ts - change the two together. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --ease-out:    cubic-bezier(0.2, 0, 0, 1);   /* arriving: quick start, settles gently */
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);   /* leaving: starts gently, ends quick */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); /* changing in place: a color, a width */
+
+  /* --- Radius ----------------------------------------------------------------------
+     The scale is the Tailwind preset's, with no tokens of its own: 2/4/6/8/10/12/14px, tight so
+     panels and controls read as crisp rather than soft-bubbled. `rounded-md` (6px) is THE
+     control radius - buttons, fields, badges, chips; `rounded-lg` (8px) is the surface radius -
+     cards, panels, dialogs, menus. `rounded-full` is reserved for shapes that are GENUINELY
+     circular or pill-by-nature: avatars, status dots, toggles. Badges are NOT in that list - they
+     carry words and take the control radius, so a badge beside a button shares its corner. The
+     --radius-control/-card/-input tokens of the tenant era were removed on 2026-10-14. */
+
+  /* --- Type ------------------------------------------------------------------------
+     The var(..., fallback) form is what lets ONE token file serve both build systems.
+     proxyma-landing defines --font-grotesk / --font-orbitron on <html> via next/font, so
+     those win there; the three Vite apps never define them and fall through to the family
+     names loaded by their own @import. Neither build needs a per-repo edit. */
+  --font-ui:    var(--font-grotesk, 'Space Grotesk'), system-ui, sans-serif;
+  --font-brand: var(--font-orbitron, 'Orbitron'), sans-serif;
+
+  /* ONE monospace face, Consolas first. `font-mono` is for CODE - a code block, a command, a
+     key, a stack trace - where the face is what makes it readable. .data-readout is for NUMBERS:
+     the same face for its figures only (Proxyma Figures, above) and the UI face for any word
+     beside them. The two once led with different monospace faces, so a number in a stat card
+     and the code block beside it disagreed; they still share the one face for digits. */
+  --font-mono:    'Consolas', 'Cascadia Code', 'Space Mono', monospace;
+  --font-readout: 'Proxyma Figures', var(--font-ui);
+
+  /* --- Charts ----------------------------------------------------------------------
+     Categorical palette for small fixed sets where colour carries an ENTITY's identity
+     rather than emphasis or status. Deliberately outside the brand ramp: one hue cannot
+     tell four categories apart. The ordering is CVD-adjacency-validated, which is a
+     correctness property rather than a brand choice - do not re-order to taste.
+     --chart-series-other is intentionally the same muted ink in both modes; it is a
+     grouped remainder, never its own strong category. */
+  --chart-series-1: 57 135 229;  /* blue */
+  --chart-series-2: 0 131 0;     /* green */
+  --chart-series-3: 213 81 129;  /* magenta */
+  --chart-series-4: 201 133 0;   /* yellow */
+  --chart-series-other: 137 135 129;
+
+  color-scheme: dark;
+}
+
+/* --- Semantic tokens: LIGHT --------------------------------------------------------
+   This block overrides SEMANTIC tokens only. Nothing here re-declares the two ramps
+   above: light mode is expressed as nothing more than "walk the same mono scale the other
+   way". An earlier version mechanically reversed the ramps themselves (50<->950, ...) so
+   that components hardcoding a raw step would flip with the mode - that is what produced
+   an unbalanced light mode, because reversing a saturated teal ramp tints every panel,
+   border and caption with the brand hue, and each step that broke the reversal had to be
+   hand-patched back to a neutral until the two modes shared no scale at all.
+
+   Contrast was checked against --canvas, --surface and --surface-alt for every ink step. Since
+   the 2026-10-15 readability pass every ink clears AA on all three; the tightest pairing is
+   --ink-disabled on --surface-alt at 4.5:1, which backs disabled controls and placeholders. */
+:root[data-mode="light"] {
+  /* Pure white canvas rather than n50: the cards and rows sitting on it are then the
+     tinted plane, which reads cleaner than the reverse and keeps floating panels white. */
+  --canvas:      255 255 255;
+  --surface:     245 247 247; /* n100 */
+  --surface-alt: 234 237 238; /* n200 */
+  --line:        216 221 223; /* n300 - deliberately one step darker than a hairline,
+                                 since most call sites apply an opacity modifier */
+
+  /* NEUTRAL, NOT THE BRAND TEAL, since 2026-09-23 (maintainer's decision): in Light and in Dark the
+     PAGE carries no trace of the product's colour - true greys rather than the teal-tinted mono
+     scale, because a heading and a caption each carrying 9% of the brand hue add up to exactly
+     the tint this was asked to remove. The logo and the CONTROLS keep it (see below), and the
+     Proxyma appearance - the bare :root block - is where the teal still runs through everything. */
+  /* Contrast on canvas / surface / surface-alt. Caption and disabled went darker on 2026-10-15
+     (the readability pass): caption was #5a5a5a, 5.9:1 on surface-alt, where a table header or a
+     menu's second line sits; disabled was #757575, which backs every placeholder and fell to
+     3.9:1 there. Secondary went a step darker with them so the three keep their distance. */
+  --ink-primary:    24  24  24; /* #181818 - 17.8 / 16.5 / 15.1 */
+  --ink-secondary:  51  51  51; /* #333333 - 12.6 / 11.8 / 10.7 - the body-copy default */
+  --ink-caption:    82  82  82; /* #525252 -  7.8 /  7.3 /  6.6 */
+  --ink-disabled:  107 107 107; /* #6b6b6b -  5.3 /  5.0 /  4.5 - AA on every plane */
+
+  /* THE CONTROLS KEEP THE BRAND, and they are the exception the rule is written around: a
+     button, a toggle, a radio, a tag and the tick beside the current menu row are the product
+     saying "this one", and a grey product says nothing. What went neutral above is the page
+     itself - heading, body, caption - plus the glow below. */
+  --brand-solid:    22 78 99;   /* p900 - 9.1:1 under white text */
+  --brand-accent:   32 111 141; /* p700 - the decorative accent, mirroring dark's p400 */
+  --brand-pale:    245 250 253; /* p50 - the "pale" slot is the LIGHT end of the ramp here */
+  --brand-on-solid: 255 255 255;
+  --brand-legible:  26 94 119;  /* p800 - 7.2:1 */
+  --brand-accent-legible: 32 111 141; /* p700 - 5.7:1 */
+
+  /* The dark-tuned status colours are bright and saturated to pop against near-black; on
+     white they read as neon. Same hues, muted to a legible brightness. */
+  --success: 4 120 87;
+  --danger:  185 28 28;
+  --warning: 180 83 9;
+
+  --shadow-sm:      0 1px 2px rgba(17,24,26,0.06);
+  --shadow-card:    0 1px 2px rgba(17,24,26,0.05), 0 2px 8px rgba(17,24,26,0.05);
+  --shadow-card-lg: 0 2px 4px rgba(17,24,26,0.06), 0 12px 28px rgba(17,24,26,0.10);
+
+  /* Neutral, like the rest of the Light page: no brand color outside the logo. */
+  --focus-line: rgb(17 24 26 / 0.35);
+
+  /* Light-mode column of the chart palette - re-stepped per slot for contrast against a light
+     surface, NOT re-ordered. */
+  --chart-series-1: 42 120 214;
+  --chart-series-2: 0 131 0;
+  --chart-series-3: 232 123 164;
+  --chart-series-4: 237 161 0;
+
+  color-scheme: light;
+}
+
+/* --- Semantic tokens: DARK (the "black" shade) -----------------------------------------
+   The second dark shade, shown in menus as "Dark" beside "Proxyma" (the bare :root block).
+   Modelled on VS Code's own dark theme: neutral dark GRAY planes and plain white-to-gray
+   text, with none of the brand's teal tint in either. It was a true-black canvas in 0.13.0;
+   the attribute and the stored preference kept the name "black" so an install that chose it
+   keeps its choice - see react/appearance.ts. It applies only on top of dark -
+   data-mode="dark" AND data-shade="black" - so a stray shade attribute on a light page does
+   nothing.
+
+   Planes AND ink move; brand, status and chart tokens stay Proxyma's. Contrast on the canvas
+   (#181818): ink-primary 17.8:1, ink-secondary 12.0:1, ink-caption 7.7:1, ink-disabled
+   5.6:1; on --surface (#252526) 15.3 / 10.3 / 6.7 / 4.8; on --surface-alt (#2d2d30)
+   13.7 / 9.3 / 6.0 / 4.3. Secondary, caption and disabled each went up a step on 2026-10-15
+   (the readability pass) - from #cccccc, #9d9d9d (5.1:1 on surface-alt) and #858585.
+
+   NEUTRAL grays, not the teal-tinted mono scale. They are the one place this file steps off
+   the two ramps, and they are this shade's own, so nothing outside this block should reach
+   for them. */
+:root[data-mode="dark"][data-shade="black"] {
+  --canvas:      24 24 24;    /* #181818 - a step below VS Code's editor (#1e1e1e), since
+                                 2026-09-24 at the maintainer's request, so cards separate
+                                 from the page more clearly */
+  --surface:     37 37 38;    /* #252526 - its side bar and widgets */
+  --surface-alt: 45 45 48;    /* #2d2d30 */
+  --line:        60 60 60;    /* #3c3c3c */
+
+  /* Dropdowns and modals are the PAGE's plane, as in every other appearance, since 2026-10-01
+     (maintainer's feedback). They were lifted to the card plane (#252526), which made every
+     dialog - Settings above all - read brighter than the page and than the startup splash,
+     which draws on #181818. The border, the shadow and the blurred scrim set a panel apart. */
+  --float-fill:  var(--canvas);
+
+  --ink-primary:   255 255 255; /* pure white headings; Proxyma's are n100 */
+  --ink-secondary: 212 212 212; /* #d4d4d4 - VS Code's editor text (#cccccc is its chrome) */
+  --ink-caption:   171 171 171; /* #ababab */
+  --ink-disabled:  144 144 144; /* #909090 */
+
+  /* The brand tokens are NOT re-pointed here: buttons, toggles, radios, tags and the tick on
+     the current menu row stay the product's teal in every appearance - see the light block.
+     What this shade drops is the teal in the PAGE: planes, text and the border below. */
+
+  /* No brand in the emphasis border either (maintainer's decision, 2026-09-24): a neutral
+     light hairline reads as the same lift on a neutral gray. */
+  --focus-line: rgb(255 255 255 / 0.28);
+}

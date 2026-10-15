@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-connector</artifactId>
+    <name>proxyma-core-connector</name>
+    <description>Source connectors (Files, Jira, Confluence, Bitbucket, SVN, SharePoint, Teams,
+        Web Page crawl). Depends only on shared-contracts, proxyma-core-common and proxyma-core-webcontent (the shared
+        render + HTML-extraction the Web Page crawl connector reuses) - no cycle: webcontent sits below
+        connector (webcontent -> network -> settings/security/common, none of which depend on connector).</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-shared-contracts</artifactId>
+        </dependency>
+        <!-- Shared headless-browser render (WebRenderService) + HTML->Markdown/links extraction
+             (HtmlContentExtractor) for the Web Page crawl connector - the exact code webFetch uses. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-webcontent</artifactId>
+        </dependency>
+        <!-- Failures.describeFileSystem, so a sync error and a chat error word a denied or vanished
+             file the same way. Already on the path through webcontent; named so it stays there. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- SMB2/3 for the network-share connector. Version is managed in the parent pom, which
+             also carries why this is a library and not a mount. -->
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>smbj</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- The connector framework's test fixtures (LoopbackApi, under ai.proxyma.core.connector.testing)
+                 as a test-jar, so proxyma-connectors tests every connector against the same fake API.
+                 A test-scoped dependency on it resolves from target/test-classes inside the reactor. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

@@ -1,0 +1,26 @@
+Proxyma Community
+Copyright (C) 2026 Le Sy Hau <contact@proxyma.ai>
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License as published by the Free Software Foundation, version 3 of the
+License only (SPDX: AGPL-3.0-only). The full text is in the file LICENSE.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Affero General Public License for more details.
+
+Source code. Proxyma Community's source code is published at
+https://github.com/proxyma-ai/proxyma-community. If you modify it and let others interact with
+your modified version over a network, section 13 of the license requires you to offer them the
+source of YOUR version; the address the program shows for that (Settings > About) is set in
+apps/app/frontend/src/config/openSource.ts.
+
+What this license does not cover:
+
+- Proxyma Enterprise - the multi-user Enterprise Server and the modules only it contains - is
+  proprietary software. It is not licensed under the AGPL, is not part of the Community source
+  code, and is licensed separately (https://proxyma.ai/eula).
+- The names "Proxyma" and "Proxyma Community", and the Proxyma logo, are trademarks. The license
+  of the code does not grant permission to use them; see TRADEMARKS.md where it is provided.
+- Third-party components keep their own licenses. Each build lists them, with their license texts,
+  in THIRD-PARTY-NOTICES.txt (assembled from apps/app/third-party/).

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Proxyma
+GenericName=Semantic Search and AI Chat
+Comment=Search and chat over your own documents, locally
+Exec=proxyma
+Icon=proxyma
+Terminal=false
+Categories=Office;Utility;
+Keywords=search;ai;chat;documents;semantic;
+StartupWMClass=Proxyma

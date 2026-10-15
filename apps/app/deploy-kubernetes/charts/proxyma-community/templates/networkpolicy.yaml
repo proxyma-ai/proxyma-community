@@ -1,0 +1,1 @@
+{{ include "proxyma-common.networkPolicy" (dict "ctx" . "extraEgress" (list)) }}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-evaluation</artifactId>
+    <name>proxyma-core-evaluation</name>
+    <description>Chat/search latency metrics for System > Performance: the listeners that record
+        them, their own JPA entities, and the overview/export API. Runs in both deployment modes -
+        cross-user and administrators-only on server, single-user on desktop</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-chat</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-search</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <!-- Deliberately NO proxyma-core-auth dependency: that module is server-profile-only, and
+             this one now builds in both modes. The only thing it was ever used for was the
+             SUPER_ADMIN guard in AdminEvaluationController, which reads the role off the request's
+             JWT claims by string instead - see that class's guard()/callerIsSuperAdmin().
+             spring-boot-starter-data-jpa comes in transitively (via proxyma-core-settings) - not
+             re-declared here. -->
+
+        <!-- PerformanceOverviewTest runs the overview's JPQL against a real H2. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>

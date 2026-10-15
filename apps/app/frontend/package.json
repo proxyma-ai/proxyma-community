@@ -1,0 +1,48 @@
+{
+  "name": "proxyma-app",
+  "private": true,
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode desktop",
+    "dev:server": "vite --mode server",
+    "build": "tsc -b && vite build --mode desktop",
+    "build:server": "tsc -b tsconfig.server.json && vite build --mode server",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/manrope": "^5.2.8",
+    "@fontsource/orbitron": "5.2.8",
+    "@fontsource/space-grotesk": "5.2.10",
+    "@fontsource/space-mono": "5.2.9",
+    "@tanstack/react-query": "^5.50.1",
+    "axios": "^1.7.2",
+    "clsx": "^2.1.1",
+    "docx-preview": "^0.4.1",
+    "jszip": "^3.10.2",
+    "lucide-react": "^1.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.24.0",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "react-window": "^1.8.11",
+    "read-excel-file": "^9.3.10",
+    "recharts": "^2.15.4",
+    "tailwind-merge": "^2.4.0",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/react-virtualized-auto-sizer": "^1.0.4",
+    "@types/react-window": "^1.8.8",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "rollup-plugin-license": "3.7.1",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.4"
+  }
+}

@@ -1,0 +1,46 @@
+/* The brand and UI faces, bundled - the kit's proxyma-fonts.css says which and why. */
+@import './styles/proxyma/proxyma-fonts.css';
+
+/* The shared design system. Generated from libs/ui-kit - edit there, then run
+   `node libs/ui-kit/sync.mjs` from the repository root.
+
+   Every @import must precede the @tailwind directives: CSS requires @import to come before
+   any other statement, and Tailwind hoists the `@layer base` / `@layer components` blocks
+   inside the primitives into the correct layer regardless of source position. */
+@import './styles/proxyma/proxyma-tokens.css';
+@import './styles/proxyma/proxyma-primitives.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================================
+   PRODUCT-ONLY, below this line.
+
+   Everything above is shared with proxyma-license, proxyma-telemetry and proxyma-landing.
+   Only put something here if the marketing site and the two consoles genuinely have no
+   equivalent surface - a drop zone, a streaming progress bar, the chat layout's height
+   contract. If a second repo ever wants one of these, move it into the kit rather than
+   copying it, which is how the four token files drifted apart the first time.
+
+   Removed in the ui-kit consolidation, all of them unreferenced by any component:
+   .bevel-panel / .bevel-card / .bevel-btn (with --bevel), and .status-pulse with its
+   statusPulse keyframe - leftovers of the "starship" treatment the 2026-08-01 palette
+   rebuild replaced. So was .divider-scan, a gradient rule nothing drew.
+===================================================================================== */
+
+/* THE ONE VIEWPORT-HEIGHT BOX IS THE KIT'S, since 2026-10-02: <html> carries `data-app-shell`
+   (index.html) and proxyma-primitives.css pins the body to the part of the screen that is
+   actually visible. Providers.tsx fills it with a flex column (the banners at whatever height
+   they need, then everything else at flex-1 min-h-0), and AppShell, LoginPage and the rest size
+   themselves to what is left with h-full - never h-screen.
+
+   It was `height: 100dvh; overflow: hidden` on the body here. That fixed the header drifting
+   under Safari's own toolbars (100vh is the viewport with them hidden) and not the on-screen
+   keyboard: dvh does not shrink for it, so focusing the composer slid the whole page up, the
+   header left the screen and nothing could scroll it back. */
+
+/* Moved into the kit (proxyma-primitives.css) in the 2026-10 rebuild, because the components that use
+   them are the kit's now: the drop zone, the indeterminate bar, the right slide-in, the section
+   rules, the pinned question's fade, the composer's light, the dialog minimum and the stacked
+   table. */

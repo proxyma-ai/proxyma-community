@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-license</artifactId>
+    <name>proxyma-core-license</name>
+    <description>What the license in force allows (FeatureGateService, Features), read by every
+        gate, and the Community edition's /api/v1/license/status (CommunityLicenseController). No
+        license is read, verified or activated here: on Enterprise Server that is Proxyma
+        Enterprise's license client (ee/backend/proxyma-ee-license), which drives the gate through
+        FeatureGateService.refresh and markLapsed.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-shared-contracts</artifactId>
+        </dependency>
+        <!-- ConnectorType only - proxyma-core-connector is a true leaf module (zero
+             proxyma-core-* deps of its own), so this does not introduce a cycle. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>

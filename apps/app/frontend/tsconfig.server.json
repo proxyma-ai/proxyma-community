@@ -1,0 +1,24 @@
+// THE ENTERPRISE BUILD'S TYPE CHECK (`npm run build:server`). The same program as tsconfig.json, plus
+// Proxyma Enterprise's pages in ee/frontend/src at the repository root - closed source, private
+// repository only (docs/architecture.html#oss-boundary) - with the edition aliases pointing at them, as vite.config.ts
+// points them in server mode.
+//
+// The "*" path is for those files alone: they sit outside this package, so the compiler's usual
+// node_modules lookup from their directory finds nothing. It sends a bare import to this app's
+// node_modules - @types FIRST, because a match on a package with no types of its own (react) is
+// taken as an untyped module rather than passed on to the next candidate.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ee/*": ["../../../ee/frontend/src/*"],
+      "@settings-pages": ["../../../ee/frontend/src/features/settings/pages/index.server.tsx"],
+      "@edition": ["../../../ee/frontend/src/edition.tsx"],
+      "@edition-i18n": ["../../../ee/frontend/src/i18n/index.ts"],
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
+    }
+  },
+  "include": ["src", "../../../ee/frontend/src"],
+  "exclude": ["src/**/*.test.ts", "../../../ee/frontend/src/**/*.test.ts"]
+}

@@ -1,0 +1,105 @@
+# Proxyma Community server - the single-user edition (the Home Server image) - with nothing to run
+# first. This is the image-only reference file: no install script, no build, no chown.
+#
+#   docker compose -f compose.community.yaml up -d
+#   docker compose -f compose.community.yaml logs proxyma | grep -A1 "access code"
+#
+# then open http://localhost:4246 and enter the access code from the log. There are no accounts: the
+# code is the one way in, and whoever holds it has everything this instance holds. The guided package
+# beside this file (install.sh and docker-compose.yml, data in a bind-mounted ./data) is the other way
+# to install; the two read the same .env names, but are separate compose projects, so neither touches
+# the other's containers.
+#
+# Reaching it from another machine is two settings in .env, read .env.example section 1 first:
+#   BIND_ADDR=0.0.0.0                    publish the port beyond this machine
+#   PROXYMA_ALLOWED_HOSTS=homeserver.lan the names you will type in a browser
+# And COMPOSE_PROFILES=office with PROXYMA_SANDBOX_TOKEN set (openssl rand -hex 24) runs the sandbox
+# the assistant edits Office files in. Its image is built here from ./sandbox, the one thing this
+# file builds.
+#
+# What the container gets: a named volume (Docker creates it owned by the image's user), a read-only
+# system with a tmpfs for /tmp, no capabilities, and the port on loopback unless BIND_ADDR says
+# otherwise. The image's own init (tini) is process 1, so `init: true` is not set - it would put a
+# second one in front of it.
+#
+# Needs Docker Compose 2.20 or newer.
+
+name: proxyma-community
+
+services:
+
+  proxyma:
+    image: ${PROXYMA_IMAGE:-ghcr.io/proxyma-ai/proxyma-homeserver:latest}
+    restart: unless-stopped
+    stop_grace_period: 40s
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${HTTP_PORT:-4246}:4246"
+    environment:
+      # Empty: loopback names only. Naming a host is what opens this instance up, and the access code
+      # is the only sign-in behind it.
+      PROXYMA_NETWORK_ALLOWED_HOSTS: ${PROXYMA_ALLOWED_HOSTS:-}
+      # Empty: made on the first start, kept in the volume, and printed in the log at every start.
+      # Set your own (16 characters or more) to choose it.
+      PROXYMA_ACCESS_CODE: ${PROXYMA_ACCESS_CODE:-}
+      PROXYMA_NETWORK_EXPOSE_LOCAL_FILE_API: ${PROXYMA_EXPOSE_LOCAL_FILE_API:-false}
+      # The MCP endpoint hands the agent's tools, the ones that WRITE to Jira, Confluence and
+      # Bitbucket included, to any client holding the instance's token.
+      PROXYMA_NETWORK_EXPOSE_MCP: ${PROXYMA_EXPOSE_MCP:-false}
+      # The key every stored credential is encrypted with. Empty: made on the first start and kept in
+      # the volume. Set (openssl rand -base64 32) to keep it in .env instead.
+      PROXYMA_CREDENTIAL_KEY: ${PROXYMA_CREDENTIAL_KEY:-}
+      # `-` and not `:-`: an EMPTY value is a decision (send nothing) and must survive.
+      PROXYMA_TELEMETRY_SERVER_URL: ${PROXYMA_TELEMETRY_SERVER_URL-https://telemetry.proxyma.ai}
+      # Office Files: without the `office` profile runPython says the sandbox is not running - it
+      # never falls back to running code in this container.
+      PROXYMA_SANDBOX_URL: http://sandbox:8080
+      PROXYMA_SANDBOX_TOKEN: ${PROXYMA_SANDBOX_TOKEN:-}
+      PROXYMA_SANDBOX_LOCAL_ENABLED: "false"
+    volumes:
+      # Everything: the database, the search index, the vector store, conversations, uploads, logs.
+      - proxyma-data:/data
+    healthcheck:
+      # Ready: startup finished and every database answers. No access code is needed for it, and
+      # 127.0.0.1 is a Host the application always answers. ChromaDB comes up before the port opens.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "--max-time", "4", "http://127.0.0.1:4246/api/v1/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+    read_only: true
+    tmpfs:
+      # JVM, Netty, the converters' and OCR's temporary files, and the upload spool (up to 200 MB).
+      - /tmp:size=1g
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [default, sandbox]
+
+  # Office Files - runPython's code runs HERE, never in the application's container. A network with
+  # no route out that only the application shares, no volumes, a read-only system, no capabilities,
+  # memory, CPU and process limits. Built on this host from ./sandbox: its image is not published.
+  sandbox:
+    profiles: [office]
+    build: ./sandbox
+    image: proxyma-sandbox:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m
+      - /work:size=512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 1g
+    cpus: 1.0
+    environment:
+      SANDBOX_TOKEN: ${PROXYMA_SANDBOX_TOKEN:-}
+    networks: [sandbox]
+
+volumes:
+  proxyma-data:
+
+networks:
+  # internal: no route to the internet or the host's network - the sandbox reaches the application
+  # and nothing else, and only because the application joins it.
+  sandbox:
+    internal: true

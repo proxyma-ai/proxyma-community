@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-graph</artifactId>
+    <name>proxyma-core-graph</name>
+    <description>Knowledge graph: entities, aliases, mentions and relations extracted from indexed documents</description>
+
+    <!-- Deliberately thin. This module knows about connectors and documents only as UUIDs it was
+         handed - it has no dependency on proxyma-core-registry and holds no foreign key to
+         tracked_documents. That keeps the dependency edge pointing one way (whoever extracts calls
+         in here, this never reaches back out) and matches the workspace rule that modules talk
+         through events and injected interfaces rather than each other's repositories. -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <!-- Settings, for the graph.* group that gates extraction, the quota gate that refuses it
+             when the deployment is out of budget, and the platform-spend ledger it reports to. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-settings</artifactId>
+        </dependency>
+        <!-- Phase 2 arrived and brought this with it, exactly as the note here used to predict.
+             Extraction is an LLM call per chunk, so this module now resolves a model role
+             (LlmProviderFactory.getGraphChatModel) and reads token usage back off the response.
+             Still one-way: provider knows nothing about the graph. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-provider</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <!-- Without spring-aspects, and so without aspectjweaver (EPL-2.0 only, which the AGPL
+                 cannot carry): nothing in Proxyma is an @Aspect - see proxyma-parent's pom. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-aspects</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- H2 embedded database (desktop mode). The schema below is deliberately portable to both
+             H2 and PostgreSQL - no Apache AGE, no Neo4j - because desktop runs H2 and a graph
+             engine that cannot go there would split the product in two. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+</project>

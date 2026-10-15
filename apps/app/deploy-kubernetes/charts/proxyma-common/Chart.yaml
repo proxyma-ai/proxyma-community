@@ -1,0 +1,5 @@
+apiVersion: v2
+name: proxyma-common
+description: Templates shared by the proxyma-enterprise and proxyma-community charts. Not installable on its own.
+type: library
+version: 0.1.0

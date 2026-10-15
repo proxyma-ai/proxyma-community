@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-settings</artifactId>
+    <name>proxyma-core-settings</name>
+    <description>Global + per-user settings persistence, MCP guard checks, provider config DTOs</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-security</artifactId>
+        </dependency>
+        <!-- FeatureGateService: gates PATCH /api/v1/settings/org/enabled behind the org-mode/SSO
+             tier feature (ENTERPRISE only). Not in the documented module-dependency list in root
+             CLAUDE.md (settings has no listed proxyma-core-* deps there) - added deliberately
+             because this is a synchronous "reject the write" check, which an async Spring event
+             (the ChatTurnCostRecordedEvent pattern used elsewhere for a similar cross-module
+             problem) cannot express: the controller must return 403 in the same request, before
+             any write happens. No cycle results - proxyma-core-license depends only on
+             shared-contracts and proxyma-core-connector (a true leaf module), neither of which
+             depends back on proxyma-core-settings. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-license</artifactId>
+        </dependency>
+
+        <!-- Declared explicitly although it already arrives transitively through
+             proxyma-core-license, because this module USES it directly: the connection service
+             validates against the connector catalog's descriptors, and the sign-ins hand tokens to
+             sessions through its ConnectionTokenProvider. A compile-scope dependency reached
+             only by inheritance is one refactor of someone else's pom away from breaking a build
+             for a reason nobody would look for here. Still a leaf - proxyma-core-connector depends
+             on no proxyma-core module. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+        </dependency>
+        <!-- The connector framework's fake HTTP API (LoopbackApi), for the OAuth2 sign-in's tests. -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-connector</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <!-- Without spring-aspects, and so without aspectjweaver (EPL-2.0 only, which the AGPL
+                 cannot carry): nothing in Proxyma is an @Aspect - see proxyma-parent's pom. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-aspects</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- AiProvider enum (chat/embedding provider name constants used by settings DTOs) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- H2 embedded database (settings JPA entities run against H2 in desktop mode) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+</project>

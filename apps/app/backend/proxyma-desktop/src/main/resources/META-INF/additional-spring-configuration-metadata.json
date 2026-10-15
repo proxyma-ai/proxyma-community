@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "proxyma.chromadb.port",
+      "type": "java.lang.Integer",
+      "description": "Port of the ChromaDB the app starts or reaches. 0 (the default) picks a free port at every start."
+    },
+    {
+      "name": "proxyma.access.code",
+      "type": "java.lang.String",
+      "description": "The access code every API call needs (PROXYMA_ACCESS_CODE), at least 16 characters. Empty: one is generated on the first start and kept in the data directory's access-code file."
+    },
+    {
+      "name": "proxyma.h2.auto-server",
+      "type": "java.lang.String",
+      "description": "H2's AUTO_SERVER mode for the desktop databases, TRUE or FALSE (the default). A development aid: it listens on every interface."
+    },
+    {
+      "name": "proxyma.updates.releases-api-url",
+      "type": "java.lang.String",
+      "description": "GitHub Releases API base URL for the public proxyma-releases repository. E.g. https://api.github.com/repos/myorg/proxyma-releases"
+    }
+  ]
+}

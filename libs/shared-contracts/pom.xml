@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>ai.proxyma</groupId>
+    <artifactId>proxyma-shared-contracts</artifactId>
+    <version>1.3.0</version>
+    <packaging>jar</packaging>
+
+    <name>proxyma-shared-contracts</name>
+    <description>Wire DTOs shared between proxyma, proxyma-license and proxyma-telemetry</description>
+
+    <!-- No parent, on purpose. Three applications with three different parents consume this from
+         the same reactor; inheriting one of them would drag its dependencyManagement and plugin
+         config into the other two. Every version below is therefore explicit. -->
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jackson.version>2.21</jackson.version>
+        <jakarta.validation.version>3.0.2</jakarta.validation.version>
+    </properties>
+
+    <dependencies>
+        <!-- Annotations only, never databind. A DTO declares its wire shape; it does not decide
+             how anything serializes it, and pulling databind in here would put a Jackson version
+             on every consumer's classpath competing with the one their Spring Boot BOM picked. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>${jakarta.validation.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Sources travel with the jar, so "go to definition" on a DTO from a build that resolves
+                 the jar rather than the reactor module does not land in a decompiler. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

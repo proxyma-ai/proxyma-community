@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    THIRD-PARTY-NOTICES.txt - the open-source notices every Proxyma package ships, and the one
+    place that says how the file is made. The End User License Agreement names it twice, as
+    "Settings > About > Open-source licenses" and as "THIRD-PARTY-NOTICES.txt in the installation
+    folder", so neither name may change without the EULA changing first.
+
+    WHAT IT IS MADE OF, in order:
+      THIRD-PARTY-NOTICES.header.txt   hand-written: the runtimes and programs that come with
+                                       Proxyma (JRE, Python, Electron, Chromium, Node.js,
+                                       Tesseract, Launch4j, Inno Setup, fonts, the Docker images)
+                                       and the written offer of GPL and LGPL source. Edit by hand
+                                       when one of those changes.
+      Java libraries                   license-maven-plugin add-third-party, configured in
+                                       apps/app/backend/pom.xml, template java-list.ftl. Fails the
+                                       build on a license outside its allow-list.
+      the web interface                rollup-plugin-license in apps/app/frontend/vite.config.ts,
+                                       written to dist/third-party/web.txt. Fails the build on a
+                                       plain GPL or AGPL package.
+      Python packages                  python-packages.txt beside this file, GENERATED and
+                                       committed: `python tools/build/python-notices.py generate`
+                                       after any change to requirements.txt. test:checks fails
+                                       until that is done, and the release staging fails if the
+                                       wheels name a package the list does not.
+      Tesseract                        proxyma-desktop/src/assembly/tesseract/THIRD-PARTY-NOTICES.txt,
+                                       the notice that also travels in the tesseract part.
+      license texts                    licenses/Apache-2.0.txt here, and Tesseract's LGPL-2.1.txt.
+
+    WHERE IT GOES: target/classes/static/THIRD-PARTY-NOTICES.txt, so the jar carries it and the
+    web interface fetches /THIRD-PARTY-NOTICES.txt for Settings > About; and target/ beside the
+    jar, which the Windows installer puts in {app} (setup.iss) and the .deb in /opt/proxyma
+    (stage-linux.sh, build-deb.sh). The Docker images copy it out of the jar to /app.
+
+    Called by maven-antrun-plugin from proxyma-desktop and proxyma-server at prepare-package,
+    after license-maven-plugin has written the Java list.
+
+    Properties the caller passes:
+      java.list    target/third-party/java.txt, from license-maven-plugin. REQUIRED.
+      web.list     target/classes/static/third-party/web.txt, from the frontend build. Optional:
+                   a build with -Dskip.frontend.build=true has no web interface to list.
+      out          where the joined file goes - target/classes/static/THIRD-PARTY-NOTICES.txt,
+                   so the jar carries it and the web interface can fetch /THIRD-PARTY-NOTICES.txt.
+      copy         a second copy beside the jar, target/THIRD-PARTY-NOTICES.txt, for the installers
+                   and the .deb.
+-->
+<project name="third-party-notices" default="assemble" xmlns:if="ant:if" xmlns:unless="ant:unless">
+
+    <dirname property="here" file="${ant.file.third-party-notices}"/>
+    <property name="tesseract.dir" location="${here}/../backend/proxyma-desktop/src/assembly/tesseract"/>
+
+    <target name="assemble">
+        <fail unless="java.list" message="java.list not set"/>
+        <fail unless="out" message="out not set"/>
+        <fail message="${java.list} is missing - license-maven-plugin's add-third-party must run first">
+            <condition><not><available file="${java.list}"/></not></condition>
+        </fail>
+        <available file="${web.list}" property="web.present"/>
+
+        <dirname property="out.dir" file="${out}"/>
+        <mkdir dir="${out.dir}"/>
+
+        <concat destfile="${out}" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist dir="${here}" files="THIRD-PARTY-NOTICES.header.txt"/>
+        </concat>
+
+        <echo file="${out}" append="true" encoding="UTF-8" message="&#10;2. JAVA LIBRARIES&#10;=================&#10;&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist files="${java.list}"/>
+            <filterchain><headfilter lines="-1" skip="3"/></filterchain>
+        </concat>
+
+        <echo file="${out}" append="true" encoding="UTF-8" message="&#10;3. THE WEB INTERFACE&#10;====================&#10;&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes"
+                if:set="web.present">
+            <filelist files="${web.list}"/>
+            <filterchain><headfilter lines="-1" skip="3"/></filterchain>
+        </concat>
+        <echo file="${out}" append="true" encoding="UTF-8" unless:set="web.present"
+              message="This build was made without the web interface (-Dskip.frontend.build=true), so it has none&#10;to list. A release build always has one.&#10;"/>
+
+        <echo file="${out}" append="true" encoding="UTF-8" message="&#10;4. PYTHON PACKAGES&#10;==================&#10;&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist dir="${here}" files="python-packages.txt"/>
+            <filterchain><headfilter lines="-1" skip="3"/></filterchain>
+        </concat>
+
+        <echo file="${out}" append="true" encoding="UTF-8"
+              message="&#10;5. TESSERACT OCR (WINDOWS)&#10;==========================&#10;&#10;The Windows desktop downloads Tesseract as a part of its own, with this notice beside it as&#10;THIRD-PARTY-NOTICES.txt and the GPL and LGPL texts in its licenses folder. As it reads there:&#10;&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist dir="${tesseract.dir}" files="THIRD-PARTY-NOTICES.txt"/>
+        </concat>
+
+        <echo file="${out}" append="true" encoding="UTF-8"
+              message="&#10;6. LICENSE TEXTS&#10;================&#10;&#10;Two licenses in full: the Apache License 2.0, which most of the libraries above are under,&#10;and the GNU LGPL 2.1, which Hibernate ORM is under. Every other license is named in its entry,&#10;by its SPDX identifier where it has one; those texts are at https://spdx.org/licenses/.&#10;&#10;----------------------------------------------------------------------&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist dir="${here}/licenses" files="Apache-2.0.txt"/>
+        </concat>
+        <echo file="${out}" append="true" encoding="UTF-8"
+              message="&#10;----------------------------------------------------------------------&#10;&#10;"/>
+        <concat destfile="${out}" append="true" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">
+            <filelist dir="${tesseract.dir}/licenses" files="LGPL-2.1.txt"/>
+        </concat>
+
+        <copy file="${out}" tofile="${copy}" if:set="copy" overwrite="true"/>
+        <echo level="info" message="THIRD-PARTY-NOTICES.txt -> ${out}"/>
+    </target>
+</project>

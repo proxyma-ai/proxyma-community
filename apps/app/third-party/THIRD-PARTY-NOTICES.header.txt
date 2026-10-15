@@ -1,0 +1,107 @@
+THIRD-PARTY NOTICES
+===================
+
+Proxyma is made by Le Sy Hau. Proxyma Desktop and Proxyma Home Server (Proxyma Community) are
+licensed to you under the GNU Affero General Public License, version 3; Proxyma Enterprise Server
+is licensed to you under Proxyma's End User License Agreement (https://proxyma.ai/eula). Proxyma
+also contains, or downloads on its first start, software made by others. Each of those is
+licensed to you under its own license, and nothing in Proxyma's own license limits the rights
+those licenses give you. This file lists that software and says where its license texts
+are.
+
+  1. Runtimes and programs that come with Proxyma
+  2. Java libraries in the application
+  3. The web interface
+  4. Python packages
+  5. Tesseract OCR (Windows)
+  6. License texts: Apache License 2.0 and GNU LGPL 2.1
+  Source code for GPL and LGPL components - at the end of section 1
+
+The same file is THIRD-PARTY-NOTICES.txt in the installation folder, inside the application, and
+in Settings > About > Open-source licenses.
+
+WHERE THINGS ARE. The installation folder is %LOCALAPPDATA%\Programs\Proxyma on Windows and
+/opt/proxyma on Linux. What Proxyma downloads on its first start - the application, the Python
+runtime, the headless browser and, on Windows, the application window and Tesseract - is kept
+in its data folder, one folder per part: %LOCALAPPDATA%\proxyma\parts on Windows and
+~/.local/share/proxyma/parts on Linux. In the Docker images (Home Server and Enterprise Server)
+the application is in /app and the Java runtime in /opt/java/openjdk.
+
+
+1. RUNTIMES AND PROGRAMS THAT COME WITH PROXYMA
+-----------------------------------------------
+
+Eclipse Temurin Java runtime 21 (OpenJDK) - every edition
+  https://adoptium.net
+  License: GNU General Public License, version 2, with the Classpath Exception; some of its
+  components are under other licenses. Its license texts and notices are in its own legal
+  folder: jre\legal in the installation folder (Windows), /opt/proxyma/jre/legal (Linux) and
+  /opt/java/openjdk/legal (Docker images).
+
+CPython - document conversion everywhere, and the vector store on Desktop and Home Server
+  https://www.python.org
+  License: Python Software Foundation License Version 2, with the licenses of the libraries
+  CPython includes. On Windows it is python.org's embeddable distribution of 3.13, whose LICENSE.txt is
+  in the Python runtime Proxyma builds in its data folder (runtime). On Linux it is a
+  python-build-standalone build (https://github.com/astral-sh/python-build-standalone), whose
+  components and their licenses are listed by that project. In the Docker images it is
+  Ubuntu's python3 package, with its copyright file in /usr/share/doc.
+
+Electron 44 - the application window, Desktop
+  https://www.electronjs.org
+  License: MIT. Electron contains Chromium and the libraries Chromium uses, FFmpeg (GNU LGPL
+  2.1 or later) among them. Electron's LICENSE and the notices of everything it contains,
+  LICENSES.chromium.html, are beside the window program: in the window part (Windows) or in
+  /opt/proxyma/window (Linux).
+
+Chromium headless shell - the browser that renders web pages for web sources, Desktop
+  https://www.chromium.org
+  License: BSD-3-Clause, with the licenses of the code Chromium contains; its license files are
+  in the browser part.
+
+Playwright 1.58 and Node.js - drive that browser, inside the application jar
+  https://playwright.dev and https://nodejs.org
+  License: Apache-2.0 (Playwright; its LICENSE and NOTICE travel in the driver) and MIT
+  (Node.js, with the licenses of the libraries it bundles:
+  https://github.com/nodejs/node/blob/main/LICENSE). Both are in the jar's driver-bundle
+  library; a desktop build keeps only its own platform's copy.
+
+Tesseract OCR 5.4.0 - offline OCR, Windows Desktop
+  See section 5. On Linux and in the Docker images Tesseract is the operating system's own
+  tesseract-ocr package, with its copyright file in /usr/share/doc/tesseract-ocr.
+
+Launch4j - proxyma.exe, the Windows launcher
+  https://launch4j.sourceforge.net
+  License: the executable header proxyma.exe is built from is under the MIT License.
+
+Inno Setup - the Windows installer and uninstaller
+  https://jrsoftware.org/isinfo.php
+  License: Inno Setup License.
+
+Orbitron and Space Grotesk - the start-up screen, Desktop
+  License: SIL Open Font License 1.1. The fonts and their license texts (OFL.txt,
+  OFL-SpaceGrotesk.txt) are in the application jar under fonts/. The web interface's own fonts
+  are listed in section 3 with their license.
+
+The Docker images
+  Built on eclipse-temurin:21-jre-noble (Ubuntu 24.04 with the Java runtime above). Every
+  operating system package in them carries its copyright file under /usr/share/doc. Their
+  Python packages are installed from PyPI when the image is built - a part of section 4
+  (Enterprise Server has no ChromaDB) - each with its license in its .dist-info folder under
+  /opt/markitdown (Enterprise Server) or /app/python (Home Server).
+
+SOURCE CODE FOR GPL AND LGPL COMPONENTS
+
+Some of the software above is licensed under the GNU General Public License (GPL) or the GNU
+Lesser General Public License (LGPL): the Java runtime (GPL-2.0 with the Classpath Exception),
+Hibernate ORM in the application jar (LGPL-2.1-or-later), FFmpeg and the other LGPL code in
+Electron and in the Chromium headless shell, GNU libiconv in the Windows build of the lxml
+Python package (LGPL-2.1-or-later), and JBIG-KIT and GNU libiconv in Tesseract (section 5,
+whose own offer is repeated there). Logback and Java Native Access are offered under the LGPL
+as one of two licenses; Proxyma uses them under the other (EPL-1.0 and Apache-2.0).
+
+Source code for the components licensed under the GPL or LGPL is available on request at
+contact@proxyma.ai for three years from the date you received the software. Name the Proxyma
+version you received; it is provided for no more than the cost of performing the
+distribution. Most of it is also published by its own project, at the addresses in this file.
+

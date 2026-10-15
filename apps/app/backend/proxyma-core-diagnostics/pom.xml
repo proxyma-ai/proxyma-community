@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.proxyma</groupId>
+        <artifactId>proxyma-parent</artifactId>
+        <version>0.36.0</version>
+    </parent>
+
+    <artifactId>proxyma-core-diagnostics</artifactId>
+    <name>proxyma-core-diagnostics</name>
+    <description>Diagnostic event capture (desktop admin-mode telemetry precursor)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-common</artifactId>
+        </dependency>
+
+        <!-- Listens to ChatTurnCompletedEvent for the anonymized usage-stats pipeline (see
+             UsageStatsAggregationService) - diagnostics listening to chat is the same sanctioned
+             direction as proxyma-core-auth listening to ChatTurnCostRecordedEvent (consumer
+             depends on publisher, never the reverse - see root CLAUDE.md's module graph). -->
+        <dependency>
+            <groupId>ai.proxyma</groupId>
+            <artifactId>proxyma-core-chat</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <!-- Without spring-aspects, and so without aspectjweaver (EPL-2.0 only, which the AGPL
+                 cannot carry): nothing in Proxyma is an @Aspect - see proxyma-parent's pom. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-aspects</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- H2 embedded database (desktop mode) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+</project>
