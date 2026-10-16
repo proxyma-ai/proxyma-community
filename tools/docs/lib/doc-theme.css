@@ -20,13 +20,14 @@
    figure. */
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth; scroll-padding-top:24px}
-/* THE READING FACE IS INTER (maintainer, 2026-10-15: "a more readability friendly font"): tall
-   lowercase, open shapes, Il1 and O0 told apart - what long technical reading needs. 16px with
-   1.7 leading. The app's face, Space Grotesk, stays the app's: the UI guideline's specimens keep it. */
-:root{--font-doc:'Inter', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif}
+/* A heading reached from the contents lands below the appearance control, which is fixed at the top
+   right and over the column on a window narrower than the layout (maintainer, 2026-10-16: "the
+   section headings must not be covered"). */
+html{scroll-behavior:smooth; scroll-padding-top:64px}
+/* THE READING FACE IS PROXYMA'S, Space Grotesk (maintainer, 2026-10-16: "use Proxyma's font") - the
+   kit's --font-ui, as on every surface of the apps and the site. It was Inter for a day. */
 body{
-  margin:0; font-family:var(--font-doc); font-size:16px; line-height:1.7;
+  margin:0; font-family:var(--font-ui); font-size:16px; line-height:1.7;
   color:rgb(var(--ink-secondary)); background:rgb(var(--canvas));
   -webkit-font-smoothing:antialiased;
   transition:background-color var(--motion-base) var(--ease-out), color var(--motion-base) var(--ease-out);
@@ -34,11 +35,13 @@ body{
 @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *,*::before,*::after{transition:none!important; animation:none!important} }
 
 /* ---------------------------------------------------------------- layout */
-/* As wide as a 1920 screen (it was 1480, which left a fifth of a 1080p screen empty on each side;
-   maintainer, 2026-10-15: "make the content wider"). Paragraphs, lists and callouts stop at a 92ch
-   measure - the guideline's own - so a line stays readable; tables, code, figures and grids take
-   the whole column, which is what the width is for. */
-.layout{display:flex; align-items:flex-start; max-width:1920px; margin:0 auto; padding:0 32px}
+/* THE SITE'S PAGE COLUMN, contents panel included (maintainer, 2026-10-16: "use narrow width for all
+   docs, as used in the home page of the landing site"): the kit's PAGE_COLUMN, 1024px and 1280px
+   from a 1536 screen (`max-w-5xl 2xl:max-w-7xl`, libs/ui-kit/react/layout.ts). Every block takes
+   the whole content column - text, tables, code and figures alike - so no two left or right edges
+   differ; a figure too detailed for it opens maximized (doc-theme.js). */
+.layout{display:flex; align-items:flex-start; max-width:1024px; margin:0 auto; padding:0 24px}
+@media (min-width:1536px){ .layout{max-width:1280px} }
 /* The contents panel is as wide as the reader drags it (doc-theme.js): --toc-width, set before
    first paint from what this reader chose last, held between 200 and 480 here too, so a stored
    value nothing else checked cannot break the page. Eased when it changes by key or by a reset,
@@ -50,9 +53,12 @@ body{
   transition:flex-basis var(--motion-base) var(--ease-out), width var(--motion-base) var(--ease-out);
 }
 /* The logo, the name and the document's kind stay put; only the contents below them scroll
-   (maintainer, 2026-10-15). */
+   (maintainer, 2026-10-15). The contents scroll with no bar (2026-10-16), and a wheel over the panel
+   never reaches the page: `contain` stops it at either end, and doc-theme.js holds it where the
+   panel has nothing to scroll. */
 .toc-head{flex:none; padding:24px 0 14px; border-bottom:1px solid rgb(var(--line) / .45); margin-bottom:8px}
-.toc-body{flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 0 40px}
+.toc-body{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; padding:0 0 40px}
+.toc-body::-webkit-scrollbar{display:none}
 html[data-toc-resizing], html[data-toc-resizing] *{cursor:col-resize!important; user-select:none}
 html[data-toc-resizing] .toc{transition:none}
 /* The handle IS the gutter between panel and content: 12px to grab, 16px either side - the 44px
@@ -73,17 +79,9 @@ html[data-toc-resizing] .toc{transition:none}
   background:rgb(var(--brand-solid)); transform:scaleX(3);
 }
 .content{flex:1 1 auto; min-width:0; padding:40px 0 120px}
-/* THE READING COLUMN IS CENTERED in the space beside the contents (maintainer, 2026-10-15: "empty
-   space is not balanced"): text and code blocks stop at 800px - about 85 characters of Inter at
-   16px - and tables, figures and grids may run to 1280px, all centered, so the margins match. */
-.content > *{max-width:800px}
 /* A long path or identifier in running text breaks rather than pushing the page sideways on a phone
    (tables keep theirs whole: they scroll inside their card). */
 .content p, .content li{overflow-wrap:anywhere}
-/* By the content's id, so a block's own margin rule (a table's card, a callout, a check line) cannot
-   pull it back to the left edge. */
-#top > *{margin-left:auto; margin-right:auto}
-.content > .wide, .content > figure, .content > .table-wrap, .content > .grid{max-width:min(100%, 1280px)}
 
 /* ---------------------------------------------------------------- brand */
 /* The kit Logo's HORIZONTAL LOCKUP: the 28px mark with the wordmark beside it, never under it -
@@ -98,6 +96,17 @@ html[data-toc-resizing] .toc{transition:none}
 .brandmark span{font-family:var(--font-brand); font-weight:700; font-size:16px; line-height:1; letter-spacing:.05em; color:rgb(var(--brand-legible))}
 /* TEXT.eyebrow: 13/500 caption ink, sentence case. */
 .toc .doctype{font-size:13px; font-weight:500; line-height:18px; color:rgb(var(--ink-caption)); margin:0; padding:0 10px}
+/* Expand all and Collapse all: the kit Button's ghost variant at size sm, in caption ink that turns
+   primary under a mouse. Shown by doc-theme.js, which is what opens and closes the sections. */
+.toc-tools{display:flex; gap:4px; margin:10px 0 0 4px}
+.toc-tools[hidden]{display:none}
+.toc-tools button{
+  font:inherit; font-size:13px; line-height:18px; font-weight:500; height:28px; padding:0 8px; cursor:pointer;
+  border:0; border-radius:6px; background:none; color:rgb(var(--ink-caption));
+  transition:color var(--motion-fast) var(--ease-in-out);
+}
+.toc-tools button:hover{color:rgb(var(--ink-primary))}
+.toc-tools button:focus-visible{outline:2px solid rgb(var(--brand-solid)); outline-offset:2px}
 
 /* ---------------------------------------------------------------- toc */
 /* The kit's left navigation (the Settings rail, SettingsNav): rounded-md rows, the current one on
@@ -106,6 +115,10 @@ html[data-toc-resizing] .toc{transition:none}
 .toc nav ol{list-style:none; margin:0; padding:0}
 .toc nav > ol > li{margin-bottom:1px}
 .toc-row{display:flex; align-items:center; gap:2px}
+/* A section's row stays at the top of the panel while its subsections scroll under it, until the
+   next section's row pushes it out (maintainer, 2026-10-16: "make all the level 1 headings sticky").
+   On the panel's own plane, so a subsection passing under it is hidden, not printed through. */
+.toc nav > ol > li > .toc-row{position:sticky; top:0; z-index:1; background:rgb(var(--canvas))}
 .toc-row > a{flex:1 1 auto; min-width:0}
 .toc a{
   display:block; padding:5px 10px; border-radius:6px;
@@ -191,8 +204,41 @@ td code{white-space:nowrap}
 
 /* ---------------------------------------------------------------- figures */
 /* A figure is a card too (subtle, 8px). */
-figure{margin:8px 0 28px; padding:20px; border:1px solid rgb(var(--line) / .4); border-radius:8px; background:rgb(var(--surface) / .4); overflow-x:auto}
-figure .uml{margin:0 auto}
+figure{position:relative; margin:8px 0 28px; padding:20px; border:1px solid rgb(var(--line) / .4); border-radius:8px; background:rgb(var(--surface) / .4); overflow-x:auto}
+/* A diagram fits the column, its own floor lifted: in the narrow column most would otherwise scroll
+   sideways. Read in detail maximized. */
+figure .uml{margin:0 auto; min-width:0!important}
+
+/* ---------------------------------------------------------------- maximized figure */
+/* The kit iconButton('sm') in the figure's top right corner: caption ink at rest, primary under a
+   mouse, on the canvas so a diagram's line passing under it does not run through the glyph. */
+.fig-max{
+  position:absolute; top:8px; right:8px; z-index:1; display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; padding:0; cursor:pointer; border:1px solid rgb(var(--line) / .6); border-radius:6px;
+  background:rgb(var(--canvas)); color:rgb(var(--ink-caption));
+  transition:color var(--motion-fast) var(--ease-in-out);
+}
+.fig-max:hover{color:rgb(var(--ink-primary))}
+.fig-max svg{width:16px; height:16px}
+.fig-max:focus-visible{outline:2px solid rgb(var(--brand-solid)); outline-offset:2px}
+/* The kit's image lightbox: the page behind darkened and blurred (MODAL_SCRIM, as dark as the
+   lightbox's), the figure on a solid panel 16px in from every edge, as large as the window allows.
+   Eased in and out on the kit's base duration. */
+.fig-lightbox{
+  position:fixed; inset:0; z-index:100; display:flex; padding:16px;
+  background:rgb(0 0 0 / .8); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+  opacity:0; transition:opacity var(--motion-base) var(--ease-out);
+}
+.fig-lightbox.is-open{opacity:1}
+.fig-lightbox figure{
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; margin:0; padding:24px; overflow:auto;
+  background:rgb(var(--canvas)); transform:scale(.97); transition:transform var(--motion-base) var(--ease-out);
+}
+.fig-lightbox.is-open figure{transform:none}
+.fig-lightbox figure > :not(figcaption, .fig-max){flex:1 1 auto; min-height:0}
+.fig-lightbox .uml{width:100%; height:100%; max-width:none!important}
+.fig-lightbox img{width:100%; height:100%; object-fit:contain}
+html.fig-open{overflow:hidden}
 figcaption{margin-top:14px; font-size:13px; line-height:1.625; color:rgb(var(--ink-caption)); text-align:center}
 figcaption strong{color:rgb(var(--ink-secondary))}
 .legend{display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin-top:10px; font-size:13px; color:rgb(var(--ink-caption))}
@@ -258,7 +304,8 @@ figcaption strong{color:rgb(var(--ink-secondary))}
   .toc-head{border-bottom:0; padding-top:0}
   .toc-body{overflow:visible}
   .toc-resize{display:none}
-  .toc nav{max-height:44vh; overflow-y:auto}
+  .toc nav{max-height:44vh; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none}
+  .toc nav::-webkit-scrollbar{display:none}
   .content{padding:24px 0 80px}
   .appearance{top:10px; right:10px}
   h1{font-size:25px; line-height:34px}
@@ -275,11 +322,9 @@ figcaption strong{color:rgb(var(--ink-secondary))}
 
 /* ---------------------------------------------------------------- print */
 @media print{
-  .toc,.toc-resize,.appearance{display:none}
-  .layout{display:block; padding:0}
+  .toc,.toc-resize,.appearance,.fig-max,.fig-lightbox{display:none}
+  .layout{display:block; max-width:none; padding:0}
   .content{padding:0}
-  .content > *{max-width:none}
-  #top > *{margin-left:0; margin-right:0}
   h2{break-before:page}
   pre,table,figure,.note,.warn,.danger,.card{break-inside:avoid}
 }

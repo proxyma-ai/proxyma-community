@@ -143,6 +143,8 @@ class ChromaAuthTokenTest {
         ReflectionTestUtils.setField(store, "authToken", "s3cret-token");
         ReflectionTestUtils.setField(store, "authHeader", "X-Chroma-Token");
         store.startInfrastructure();
+        // The startup calls run on a thread of their own; they are over before the shared builder is used.
+        store.awaitStartup();
         seen.clear();
 
         shared.build().get().uri("http://127.0.0.1:" + server.getAddress().getPort() + "/elsewhere")

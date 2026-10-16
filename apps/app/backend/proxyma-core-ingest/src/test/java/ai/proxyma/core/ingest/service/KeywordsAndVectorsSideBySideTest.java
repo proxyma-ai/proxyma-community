@@ -103,6 +103,24 @@ class KeywordsAndVectorsSideBySideTest {
     }
 
     @Test
+    @DisplayName("a write stopped for shutdown keeps what it wrote, so it resumes rather than starts over")
+    void aStoppedWriteTakesNothingBack() {
+        // Stopped after the first batch is recorded: what was written stays, matching the count the
+        // caller saved, so a resumed write does not leave the document's first chunks missing.
+        EmbeddingService.ChunkProgressCallback progress = (done, total) -> {
+            if (done > 0) throw new EmbeddingService.Stopped("the application is shutting down");
+        };
+
+        assertThatThrownBy(() -> service.chunkAndEmbed("collection", "doc-1", "text", null, 0, null, "files", progress))
+                .isInstanceOf(EmbeddingService.Stopped.class);
+
+        verify(keywords).addDocuments(anyString(), anyString(), anyList(), any(), any());
+        verify(keywords, never()).deleteDocuments(anyString(), anyString());
+        // The one delete is the replace before the first chunk, not a take-back after the stop.
+        verify(vectors).deleteBySourceMetadata("collection", "doc-1");
+    }
+
+    @Test
     @DisplayName("a document that produced no chunks writes to neither store")
     void noChunksNoWrites() {
         when(chunking.chunk(anyString(), anyString(), any(), any())).thenReturn(List.of());

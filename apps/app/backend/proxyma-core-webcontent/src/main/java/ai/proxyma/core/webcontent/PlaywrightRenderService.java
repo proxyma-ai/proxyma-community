@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 // Optional high-fidelity JS-rendering engine for WebFetchTool, an alternative to the pure-Java
@@ -65,7 +66,8 @@ class PlaywrightRenderService {
     // true only when proxyma.web-fetch.js-engine selects an engine that includes Playwright.
     private final boolean enabled;
 
-    private final ReentrantLock lock = new ReentrantLock();
+    // Package-private for PlaywrightShutdownTest, which holds it as a render in flight would.
+    final ReentrantLock lock = new ReentrantLock();
     // Guarded by lock. unavailable is a latch: once a launch attempt fails we never retry (avoids a
     // slow failing launch on every fetch for a deployment that simply has no browser installed).
     private Playwright playwright;
@@ -92,10 +94,10 @@ class PlaywrightRenderService {
     // clean result (disabled, browser unavailable, navigation/render failure) so the caller keeps
     // its static/HtmlUnit result. Never throws.
     String render(String url) {
-        if (!enabled) return null;
+        if (!enabled || closing) return null;
         lock.lock();
         try {
-            if (!ensureBrowser()) return null;
+            if (closing || !ensureBrowser()) return null;
             BrowserContext context = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent(WebRenderService.BROWSER_USER_AGENT));
             try {
@@ -244,9 +246,37 @@ class PlaywrightRenderService {
         return String.join(",", rules);
     }
 
+    // ---- Stopping with the application ----------------------------------------------------------
+    //
+    // A RENDER IN FLIGHT DOES NOT HOLD THE SHUTDOWN, since the 0.36.0 feedback. This waited for the
+    // lock with no limit, and a render holds it for up to NAVIGATE_TIMEOUT_MS + NETWORKIDLE_TIMEOUT_MS
+    // (26 seconds) - so a restart during a crawl with JavaScript rendering stopped right after
+    // "Stopping ChromaDB process" (the bean destroyed next) until ProcessExit halted it at fifteen
+    // seconds. Reproduced on the PC 2026-10-16 against a page served in twelve seconds: the destroy
+    // waited 9.8s here, and the process was halted with its databases still open.
+    //
+    // Now no render starts once the stop has begun, and the stop waits a moment for one under way.
+    // If that one is still running, the browser is left to the process's end: Playwright's objects
+    // belong to the thread using them and cannot be closed from this one, and its driver closes the
+    // browser itself when the JVM that started it goes away.
+    static final long SHUTDOWN_WAIT_MILLIS = 1_000;
+    private volatile boolean closing;
+
     @PreDestroy
     void shutdown() {
-        lock.lock();
+        closing = true;
+        boolean locked;
+        try {
+            locked = lock.tryLock(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        if (!locked) {
+            log.info("[PlaywrightRenderService] a page render is still running - leaving the headless browser "
+                    + "to close with the process");
+            return;
+        }
         try {
             cleanup();
         } finally {

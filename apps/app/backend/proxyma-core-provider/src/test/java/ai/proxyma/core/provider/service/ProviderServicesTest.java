@@ -70,6 +70,56 @@ class ProviderServicesTest {
     }
 
     @Test
+    @DisplayName("a name that does not resolve is unknown_host however the client reports it, and says which way it went")
+    void unresolvedNameSaysTheRoute() {
+        // As the JDK client reports a name its resolver does not know (0.36.0 feedback): a
+        // ConnectException with no message, over an UnresolvedAddressException. It read
+        // "Connection refused - is the service running at that address?".
+        ResourceAccessException dns = new ResourceAccessException("I/O error on GET request",
+                (ConnectException) new ConnectException().initCause(new java.nio.channels.UnresolvedAddressException()));
+        assertThat(connectivity.classify(dns).code()).isEqualTo("unknown_host");
+        assertThat(connectivity.classify(dns).message()).isEqualTo("Could not resolve host - check the base URL.");
+
+        ProviderConnectivityService behindProxy =
+                new ProviderConnectivityService(List.of(), mock(ProviderInstanceService.class));
+        @SuppressWarnings("unchecked")
+        org.springframework.beans.factory.ObjectProvider<ai.proxyma.core.webcontent.WebProxyProvider> proxy =
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(proxy.getIfAvailable()).thenReturn(proxyBypassing(".gateway.example"));
+        behindProxy.setProxy(proxy);
+
+        // Sent direct by No proxy: the sentence names the setting that sent it there.
+        ProviderConnectivityService.Failure direct = behindProxy.classify(dns, "llm.gateway.example");
+        assertThat(direct.code()).isEqualTo("unknown_host");
+        assertThat(direct.message()).contains("went directly, not through the proxy")
+                .contains("take it off No proxy in Settings > Network");
+        ProviderConnectivityService.Failure refused = behindProxy.classify(
+                new ResourceAccessException("x", new ConnectException("refused")), "llm.gateway.example");
+        assertThat(refused.code()).isEqualTo("connection_refused");
+        assertThat(refused.message()).contains("went directly, not through the proxy");
+
+        // Sent to the proxy: a refused connection is the proxy's, and a timeout says it went there.
+        assertThat(behindProxy.classify(new ResourceAccessException("x", new ConnectException("refused")),
+                "api.anthropic.com").message()).startsWith("Could not connect to the proxy");
+        assertThat(behindProxy.classify(new java.util.concurrent.TimeoutException(), "ollama.lab.example").message())
+                .isEqualTo("Connection timed out - the request went through the proxy; "
+                        + "add the host to No proxy if it is on your network.");
+    }
+
+    private static ai.proxyma.core.webcontent.WebProxyProvider proxyBypassing(String noProxy) {
+        return new ai.proxyma.core.webcontent.WebProxyProvider() {
+            @Override public java.net.Proxy getJavaProxy() {
+                return new java.net.Proxy(java.net.Proxy.Type.HTTP, new java.net.InetSocketAddress("127.0.0.1", 3128));
+            }
+            @Override public String getNoProxyHosts() { return noProxy; }
+            @Override public boolean bypassesProxy(String host) {
+                return ai.proxyma.core.common.net.NoProxyRules.shouldBypass(host,
+                        ai.proxyma.core.common.net.NoProxyRules.parse(noProxy));
+            }
+        };
+    }
+
+    @Test
     @DisplayName("the JDK client's own timeouts are timeouts")
     void jdkTimeoutsAreTimeouts() {
         assertThat(connectivity.classify(new ResourceAccessException("x",

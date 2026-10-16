@@ -4,8 +4,10 @@
       stored words (system, light, gray, black - see libs/ui-kit/react/appearance.ts). The pre-paint
       snippet in <head> applies it before first paint; this wires the control and follows the OS.
    2. Scroll spy: the table of contents marks the section being read.
-   3. Per-section disclosure in the table of contents.
+   3. Per-section disclosure in the table of contents, and Expand all / Collapse all.
    4. The table of contents' width: a separator dragged or stepped by keyboard, remembered.
+   5. A wheel over the table of contents scrolls the contents and never the page.
+   6. A figure's maximize button: the figure as large as the window, until Minimize or Escape.
 
    Everything degrades to a plain scrolling document with anchor links if this does not run. */
 (function () {
@@ -129,13 +131,121 @@
   }
 
   function wireCarets() {
-    Array.prototype.forEach.call(document.querySelectorAll('.toc-caret'), function (btn) {
+    var carets = Array.prototype.slice.call(document.querySelectorAll('.toc-caret'));
+    carets.forEach(function (btn) {
       var sub = document.getElementById(btn.getAttribute('aria-controls'));
       if (!sub) return;
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         setExpanded(btn, sub, btn.getAttribute('aria-expanded') !== 'true');
       });
+    });
+    var tools = document.querySelector('.toc-tools');
+    if (!tools || !carets.length) return;
+    tools.removeAttribute('hidden');
+    Array.prototype.forEach.call(tools.querySelectorAll('button[data-toc-all]'), function (b) {
+      var open = b.getAttribute('data-toc-all') === 'open';
+      b.addEventListener('click', function () {
+        carets.forEach(function (btn) {
+          var sub = document.getElementById(btn.getAttribute('aria-controls'));
+          if (sub) setExpanded(btn, sub, open);
+        });
+      });
+    });
+  }
+
+  // 5. The wheel over the contents panel. `overscroll-behavior: contain` (doc-theme.css) stops a
+  // scroll at either end of the contents from carrying on into the page, but only where the
+  // contents CAN scroll; a short list, or the panel's head above the list, handed the wheel to the
+  // page (maintainer, 2026-10-16: "scrolling the table of content must NOT scroll the page"). Over
+  // the head the wheel scrolls the list; where the list cannot scroll it scrolls nothing. Only while
+  // the panel sits beside the page - stacked above it on a narrow window, it is part of the page.
+  function wireTocWheel() {
+    var toc = document.querySelector('.toc');
+    var box = document.querySelector('.toc-body');
+    if (!toc || !box) return;
+    var side = window.matchMedia ? window.matchMedia('(min-width: 961px)') : null;
+    toc.addEventListener('wheel', function (e) {
+      if (side && !side.matches) return;
+      if (e.ctrlKey) return; // a pinch or Ctrl+wheel zooms
+      if (box.contains(e.target) && box.scrollHeight > box.clientHeight) return;
+      e.preventDefault();
+      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * box.clientHeight : e.deltaY;
+      box.scrollTop += dy;
+    }, { passive: false });
+  }
+
+  // 6. Figures. Each gets a maximize button in its top right corner, which opens a copy of it in a
+  // lightbox as large as the window; the copy's own button minimizes, and so do Escape and a click
+  // on the darkened page around it. Focus goes to Minimize, and back to the button that opened it.
+  // A copy rather than the figure itself, so the page under the lightbox does not reflow.
+  var MAXIMIZE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5L9 7M6.5 13.5h-4v-4M2.5 13.5L7 9"/></svg>';
+  var MINIMIZE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5h-4v-4M9.5 6.5L14 2M2.5 9.5h4v4M6.5 9.5L2 14"/></svg>';
+
+  function wireFigures() {
+    // The document's own figures - not a figure a live kit specimen draws (`.kit`, the UI guideline).
+    var figures = Array.prototype.filter.call(document.querySelectorAll('.content figure'), function (f) {
+      return !f.closest('.kit');
+    });
+    if (!figures.length) return;
+    var root = document.documentElement;
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var open = null;
+
+    function close() {
+      if (!open) return;
+      var box = open.box, opener = open.opener;
+      open = null;
+      document.removeEventListener('keydown', onKey, true);
+      box.classList.remove('is-open');
+      root.classList.remove('fig-open');
+      var done = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+      if (reduced) done(); else { box.addEventListener('transitionend', done, { once: true }); setTimeout(done, 400); }
+      opener.focus();
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      // Focus stays on Minimize, the lightbox's one control, rather than leaving for the page.
+      else if (e.key === 'Tab' && open) { e.preventDefault(); open.min.focus(); }
+    }
+
+    function maximize(figure, opener) {
+      if (open) close();
+      var copy = figure.cloneNode(true);
+      copy.removeAttribute('id');
+      Array.prototype.forEach.call(copy.querySelectorAll('[id]'), function (el) { el.removeAttribute('id'); });
+      var min = copy.querySelector('.fig-max');
+      min.innerHTML = MINIMIZE;
+      min.setAttribute('aria-label', 'Minimize');
+      min.setAttribute('title', 'Minimize (Esc)');
+      min.addEventListener('click', close);
+      var box = document.createElement('div');
+      box.className = 'fig-lightbox';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      var cap = figure.querySelector('figcaption');
+      box.setAttribute('aria-label', cap ? cap.textContent.trim() : 'Figure');
+      box.addEventListener('click', function (e) { if (e.target === box) close(); });
+      box.appendChild(copy);
+      document.body.appendChild(box);
+      root.classList.add('fig-open');
+      open = { box: box, opener: opener, min: min };
+      document.addEventListener('keydown', onKey, true);
+      // One frame at the start state, so the fade and the scale run.
+      requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.add('is-open'); }); });
+      min.focus();
+    }
+
+    Array.prototype.forEach.call(figures, function (figure) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fig-max';
+      b.innerHTML = MAXIMIZE;
+      b.setAttribute('aria-label', 'Maximize');
+      b.setAttribute('title', 'Maximize');
+      b.addEventListener('click', function () { maximize(figure, b); });
+      figure.insertBefore(b, figure.firstChild);
     });
   }
 
@@ -209,6 +319,6 @@
     });
   }
 
-  function init() { wireAppearance(); wireCarets(); wireScrollSpy(); wireResize(); }
+  function init() { wireAppearance(); wireCarets(); wireScrollSpy(); wireResize(); wireTocWheel(); wireFigures(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

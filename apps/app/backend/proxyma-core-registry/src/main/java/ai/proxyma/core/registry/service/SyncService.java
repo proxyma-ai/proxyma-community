@@ -116,6 +116,26 @@ public class SyncService {
         this.telemetryShipper = telemetryShipper;
     }
 
+    // ---- Stopping with the application ---------------------------------------------------------
+    //
+    // SET BEFORE THE DATABASES AND THE VECTOR STORE GO (SyncOrchestratorService, on the context's
+    // close), since the 0.36.0 feedback. Passes and drains ran on into the shutdown: H2 closed under
+    // them, ChromaDB was stopped mid-upsert, the event executor refused their notifications, and
+    // every item in flight was recorded as a FAILED document - with an ERROR and a stack trace each,
+    // a retry spent, and the source put in ERROR for a pass that had simply been cut short. Now a
+    // pass stops between items and records nothing about itself, and an item cut short goes back to
+    // the queue as if the process had stopped (see stoppedByShutdown).
+    private volatile boolean stopping;
+
+    /** From now on, passes and items stop at their next safe point and record no failure. */
+    public void stopForShutdown() {
+        stopping = true;
+    }
+
+    public boolean isStopping() {
+        return stopping;
+    }
+
     private static final int BATCH_SIZE = 100;
     // How long one pull from a source may go on once it has produced something, and how often the
     // source's counters are brought up to date while it is being listed. See pull().
@@ -270,6 +290,7 @@ public class SyncService {
                     log.info("[Sync] Aborting sync for connector={} - deletion in progress", connectorId);
                     return null;
                 }
+                if (stopping) return stoppedPass(connectorId, seenIds.size());
 
                 ItemMetadata meta = pending.remove(0);
                 seenIds.add(meta.getId());
@@ -337,6 +358,8 @@ public class SyncService {
             }
             complete = sourceExhausted;
         } catch (Exception e) {
+            // A database or a listing closed under the pass by the application stopping.
+            if (stopping) return stoppedPass(connectorId, seenIds.size());
             log.error("[Sync] Reconcile interrupted for connector={} after {} items: {}",
                     connectorId, seenIds.size(), e.getMessage());
             fetchErrorMessage = SyncErrorAware.summarize(e);
@@ -480,6 +503,8 @@ public class SyncService {
         } else {
             log.warn("[Sync] Skipping purge for connector={} - iteration was incomplete", connectorId);
         }
+        // A purge cut short: the checkpoint is not moved, so the next pass lists and purges again.
+        if (stopping) return stoppedPass(connectorId, seenIds.size());
         updateConnectorCounts(connectorId);
         boolean wasFullSync = !incremental && complete && !doubtful;
         // lastSyncedAt is the "since" cutoff the next incremental sync passes to
@@ -506,7 +531,7 @@ public class SyncService {
         // Fires even when seenItems=0 (nothing changed) - ConnectorUpdateEvent only fires per
         // reconciled document, so a no-op sync would otherwise leave the frontend's displayed
         // lastSyncedAt stale indefinitely despite the backend value being correct.
-        eventPublisher.publishEvent(new ConnectorSyncedEvent(this, connectorId));
+        notifyPage(new ConnectorSyncedEvent(this, connectorId));
         log.info("[Sync] Completed {} reconcile for connector={} source={} seenItems={} skipped={} complete={}",
                 incremental ? "incremental" : "full", connectorId, type, seenIds.size(), skippedItems, complete);
         // The same six facts the log line above states, minus the connectorId. `complete` is the
@@ -537,6 +562,15 @@ public class SyncService {
                 "outcome", outcome, "error", error);
         return new PassResult(seenIds.size(), skippedItems, removed, incremental, complete && !syncFailed,
                 syncFailed ? capturedErrorMessage : partial ? partialReason : doubtNote);
+    }
+
+    // A pass the application's shutdown cut short. Null, like a pass that found its source being
+    // deleted: nothing is recorded about it - no ERROR on the source, no failure backoff, no audit
+    // entry, no checkpoint - so the next start lists the source again as if this pass never ran.
+    private PassResult stoppedPass(UUID connectorId, int seen) {
+        log.info("[Sync] Pass for connector={} stopped after {} item(s) - the application is shutting down",
+                connectorId, seen);
+        return null;
     }
 
     // What a source says when its listing came back far shorter than what is indexed - in words,
@@ -1086,6 +1120,8 @@ public class SyncService {
                 doc.setTotalChunks(total);
                 repository.save(doc);
                 publishUpdateWithChunks(doc);
+                // Saved first: the count just recorded is what a resumed write starts from.
+                if (stopping) throw new EmbeddingService.Stopped("the application is shutting down");
             };
             // wireName(), never name(): this string is written into the vector store and BM25
             // metadata of every chunk, where it outlives any single release. See
@@ -1204,6 +1240,11 @@ public class SyncService {
             diag.ok = false;
             diag.error = "gone";
         } catch (Exception e) {
+            if (stopping) {
+                diag.stopped = true;
+                stoppedByShutdown(doc, e);
+                return;
+            }
             // Full stack trace (not just e.getMessage()) - temporary, added to diagnose the
             // 2026-07-13 NoSuchFileException investigation, where the message alone (just a file
             // path for NoSuchFileException) gives no clue which step actually threw it. Also logs
@@ -1236,6 +1277,8 @@ public class SyncService {
         private final String fileClass;
         private final String size;
         boolean ok;
+        // Cut short by the application stopping: neither a success nor a failure, so not counted.
+        boolean stopped;
         String error = "unknown";
 
         ItemDiagnostics(ConnectorType sourceType, ItemMetadata meta, TrackedDocument doc) {
@@ -1251,6 +1294,7 @@ public class SyncService {
         }
 
         void finish() {
+            if (stopped) return;
             String outcome = ok ? "ok" : "failed";
             Diagnostics.timeSince(DiagOp.INGEST_ITEM, start,
                     "connector", connector, "fileClass", fileClass, "size", size, "outcome", outcome);
@@ -1276,6 +1320,37 @@ public class SyncService {
     private void deleteMarkdownCache(Path cacheFile) {
         if (cacheFile == null) return;
         try { Files.deleteIfExists(cacheFile); } catch (Exception ignored) {}
+    }
+
+    /**
+     * An item the application's shutdown cut short. NOT a failure: no FAILED row, no failure message,
+     * no retry spent, nothing for the auto-retry sweep to wait on - the item is where a process that
+     * stopped would leave it, and the next start takes it up (SyncOrchestratorService.recoverOnStartup).
+     *
+     * <p>An embedding stopped between batches ({@link EmbeddingService.Stopped}) keeps its row
+     * EMBEDDING at the chunk count it recorded, with its cached text, so it RESUMES there. Anything
+     * else goes back to QUEUED from the first chunk: a write that failed has already taken back what
+     * it wrote, and resuming after it would leave the document's first chunks missing. The row is
+     * written if the database is still there to take it; if it is not, the startup sweep finds it in
+     * the stage it reached.
+     */
+    private void stoppedByShutdown(TrackedDocument doc, Exception cause) {
+        // Finished before the stop reached it - only what came after (a notice) was refused.
+        if (doc.getStatus() == TrackedDocument.Status.COMPLETED) return;
+        boolean resumable = cause instanceof EmbeddingService.Stopped
+                && doc.getStatus() == TrackedDocument.Status.EMBEDDING && doc.getCurrentChunks() > 0;
+        log.info("[Sync] Stopped item id={} connectorId={} - the application is shutting down; it {} at the next start",
+                doc.getSourceId(), doc.getConnectorId(),
+                resumable ? "resumes from chunk " + doc.getCurrentChunks() : "is indexed again");
+        if (resumable) return;
+        try {
+            doc.setStatus(TrackedDocument.Status.QUEUED);
+            doc.setCurrentChunks(0);
+            doc.setIndexStartedAt(null);
+            repository.save(doc);
+        } catch (RuntimeException e) {
+            log.debug("[Sync] Could not requeue id={} on the way down: {}", doc.getSourceId(), e.getMessage());
+        }
     }
 
     private void setStatusAndPublish(TrackedDocument doc, TrackedDocument.Status status) {
@@ -1323,16 +1398,28 @@ public class SyncService {
     }
 
     private void publishUpdate(TrackedDocument doc) {
-        eventPublisher.publishEvent(new ConnectorUpdateEvent(
+        notifyPage(new ConnectorUpdateEvent(
                 this, doc.getConnectorId(), doc.getId(),
                 doc.getTitle(), doc.getStatus().name()));
     }
 
     private void publishUpdateWithChunks(TrackedDocument doc) {
-        eventPublisher.publishEvent(new ConnectorUpdateEvent(
+        notifyPage(new ConnectorUpdateEvent(
                 this, doc.getConnectorId(), doc.getId(),
                 doc.getTitle(), doc.getStatus().name(),
                 doc.getCurrentChunks(), doc.getTotalChunks()));
+    }
+
+    // A progress notice for the page, delivered by an @Async listener. Refused once the context is
+    // closing - Spring's executors stop taking tasks on the close event, before anything else stops
+    // - and that refusal reached the item as an exception: RH-17200 was recorded FAILED for a
+    // notification nobody would have seen. Losing a notice never fails the work it describes.
+    private void notifyPage(org.springframework.context.ApplicationEvent event) {
+        try {
+            eventPublisher.publishEvent(event);
+        } catch (org.springframework.core.task.TaskRejectedException e) {
+            log.debug("[Sync] Progress notice not delivered - the event executor is stopping: {}", e.getMessage());
+        }
     }
 
     // One targeted update of the three counters, never a save of the whole row: this runs after
@@ -1485,6 +1572,7 @@ public class SyncService {
         List<TrackedDocument> tracked = repository.findByConnectorId(connectorId);
         int purged = 0;
         for (TrackedDocument doc : tracked) {
+            if (stopping) break;
             if (doc.getStatus() == TrackedDocument.Status.DELETED) continue;
             // Purge now runs fully decoupled from any specific drain pass (previously this method
             // only ran after process()'s own loop had already driven every item to a terminal

@@ -238,6 +238,8 @@ begin
     DelTree(DataDir + '\runtime', True, True, True);
     DelTree(DataDir + '\browsers', True, True, True);
     DelTree(DataDir + '\update-staging', True, True, True);
+    // The launcher's extracted copy of the application and its class archive (ClassDataSharing).
+    DelTree(DataDir + '\class-data', True, True, True);
 
     if DirExists(DataDir) then begin
       MsgResult := MsgBox(

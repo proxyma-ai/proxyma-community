@@ -307,8 +307,12 @@ public class ChatController {
                         ChatEvent.Type.SESSION_EXPIRED.value(), null, null,
                         "Your session has expired. Please sign in again.")));
             }
+            // Asked in this order - see ChatService.isBusy.
+            boolean busy = chatService.isBusy(conversationId);
+            long next = chatEventSink.currentSequence(conversationId);
             Flux<ServerSentEvent<String>> stream = chatEventSink.subscribe(conversationId)
                     .map(this::formatSseEvent)
+                    .startWith(openEvent(chatEventSink.boot(), busy, next))
                     .mergeWith(Flux.interval(Duration.ofSeconds(15))
                             .map(i -> ServerSentEvent.<String>builder().comment("keepalive").build()));
 
@@ -939,6 +943,29 @@ public class ChatController {
                     .data("{\"type\":\"error\",\"data\":" + jsonString(SensitivePaths.scrub(String.valueOf(e.getMessage()))) + "}")
                     .build();
         }
+    }
+
+    /**
+     * THE FIRST EVENT OF EVERY CHAT STREAM, since 2026-10-16: which server this is and where the
+     * conversation stands on it. {@code data} is a JSON object {boot, busy, next} - the process's id
+     * (ChatEventSink.boot), whether anything is still to publish here (ChatService.isBusy), and the
+     * number the next event will carry. It is no event of the conversation's and is not replayed:
+     * it carries no {@code seq}, so a page's count of what it has handled never moves for it.
+     *
+     * <p>A page could not tell a restarted server from the one it had been following. The new one
+     * numbers the conversation from zero and replays nothing, so the reconnected page heard
+     * nothing, skipped nothing, and showed "Waiting for ..." for a turn that had died with the old
+     * process - and sent the next message into it as an injection, refused with 409 and left
+     * "Queued". Told another boot, or that nothing is running and it already holds every number,
+     * the page loads the conversation again instead (chatStream.ts's {@code opened}).
+     */
+    static ServerSentEvent<String> openEvent(String boot, boolean busy, long next) {
+        String data = "{\"boot\":" + jsonString(boot) + ",\"busy\":" + busy + ",\"next\":" + next + "}";
+        return ServerSentEvent.<String>builder()
+                .event("chat")
+                .data("{\"type\":\"open\",\"callId\":\"\",\"toolName\":\"\",\"data\":" + jsonString(data)
+                        + ",\"parentCallId\":\"\",\"now\":" + System.currentTimeMillis() + "}")
+                .build();
     }
 
     static String jsonString(String s) {

@@ -8,7 +8,10 @@ import { keys } from '@/services/queryKeys'
 import { settleUnfinishedToolCalls } from '../utils/settleUnfinishedToolCalls'
 import { appendSettled, applyStepLimit, applyText, claimToolCalls, lastSettled, placeInjected } from '../utils/threadOps'
 import { parseQuestions, stepLimitOf } from '../utils/askUser'
-import { accept, ended, follow, keepClose, resumeAfter, stop as stopFollowing } from '../utils/chatStream'
+import {
+  accept, carriedOnReload, ended, follow, keepClose, missed, opened, parseOpen, resumeAfter, resumePoint,
+  stop as stopFollowing,
+} from '../utils/chatStream'
 import { serverText } from '@/i18n/serverText'
 import {
   agentDone, agentText, agentToolFinished, agentToolStarted, anyAgentRunning, findAgent, startAgent,
@@ -126,7 +129,7 @@ export function useChat() {
   const instance = useChatInstance()
   const {
     stream: page, textAcc: textAccRef, manualCondense: manualCondenseRef,
-    newSegmentPending: newSegmentPendingRef, reload: reloadRef, offered: offeredRef,
+    newSegmentPending: newSegmentPendingRef, reload: reloadRef, resume: resumeRef, offered: offeredRef,
   } = instance
   const getState = instance.store.getState
   const store = useStore(instance.store)
@@ -140,7 +143,9 @@ export function useChat() {
   // but still able to call it in the session-expired branch below: neither is actually invoked
   // until well after this render's synchronous setup completes, by which point both `const`
   // bindings exist - the same forward-reference pattern doSend/processQueue already relies on.
-  const attachStream = useCallback((convId: string, afterSeq = -1) => {
+  // `resumed`: picking up a stream a hidden tab paused - its first new event says whether anything
+  // was missed meanwhile (chatStream.ts's `missed`).
+  const attachStream = useCallback((convId: string, afterSeq = -1, resumed = false) => {
     // One change to a sub-agent, wherever the call that started it is held: the turn's list, or
     // the message that claimed it - several turns up, for one working in the background.
     const updateAgent = (agentId: string, change: (agent: SubAgentInfo) => SubAgentInfo) => {
@@ -204,13 +209,36 @@ export function useChat() {
     // replace the stored unsubscribe without calling it, so the turn left behind kept writing its
     // text, tool calls and "done" into whichever conversation was on screen. The page's ONE stream,
     // whichever instance of this hook opened the last - see chatStream.ts.
-    const generation = follow(page, convId, afterSeq)
+    const generation = follow(page, convId, afterSeq, { resumed })
     const unsub = chatApi.subscribeChatEvents(
       convId,
       (event: ChatSseEvent) => {
           // Belt and braces for the same thing: an event already in flight when the stream was
           // closed must not land in the conversation that replaced it.
           if (getState().conversationId !== convId) return
+          // The stream's first event, every time it connects: which server this is, and whether
+          // anything still runs there. When what this page follows is gone - the server restarted
+          // under a turn, or nothing runs and every event is already here - nothing more will ever
+          // come, and the conversation is loaded as the server has it: the turn ends there as a
+          // stopped one does, and what was typed meanwhile is sent as a turn of its own.
+          if (event.type === 'open') {
+            const open = parseOpen(event.data)
+            if (open && opened(page, generation, open)) {
+              stopFollowing(page)
+              qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+              reloadRef.current?.(convId, { lost: true })
+            }
+            return
+          }
+          // Picked up after the tab was hidden, and the server no longer holds what came between:
+          // nothing of this stream is applied to a thread that lacks it - the conversation is loaded
+          // whole instead, as a page coming back to it would.
+          if (missed(page, generation, event.seq)) {
+            stopFollowing(page)
+            qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+            reloadRef.current?.(convId)
+            return
+          }
           // Nor an event from a stream that has been replaced.
           if (!accept(page, generation, event.seq)) return
           // What a sub-agent does in the background is not the turn speaking: it must not reset
@@ -851,6 +879,14 @@ export function useChat() {
       .then(() => store.setMessages(prev => prev.map(m => m.clientId === clientId ? { ...m, injectAccepted: true } : m)))
       .catch((e: unknown) => {
         const res = (e as { response?: { status?: number; data?: { error?: string } } }).response
+        // No turn to join. Usually the turn has just ended and its 'done' is on the way, which sends
+        // this message as the next turn. But the turn may be GONE - the server restarted under it -
+        // and then no 'done' will ever come: the stream is opened again, and its first event says
+        // which (`opened`), loading the conversation and sending the queue if it is gone.
+        if (res?.status === 409) {
+          if (getState().streaming && page.convId === convId && page.close) attachStream(convId, page.lastSeq)
+          return
+        }
         if (res?.status !== 422) return
         // Withheld by the input guardrail: taken back, with the reason, rather than sent later
         // into the same refusal.
@@ -858,7 +894,7 @@ export function useChat() {
         store.setMessages(prev => prev.filter(m => m.clientId !== clientId))
         if (res.data?.error) useToastStore.getState().addToast(res.data.error, 'danger')
       })
-  }, [store])
+  }, [store, attachStream])
 
   const send = useCallback((content: string, mentions?: string[], attachmentFiles?: string[], attachmentNames?: string[], skillMentions?: string[]) => {
     if (store.streaming) {
@@ -1025,11 +1061,12 @@ export function useChat() {
     newSegmentPendingRef.current = false
   }, [page, textAccRef, newSegmentPendingRef])
 
-  const setConversationId = useCallback((id: string | undefined) => {
+  // Settles once the history has landed (or failed to).
+  const setConversationId = useCallback((id: string | undefined): Promise<void> => {
     detach()
     if (!id) {
       store.reset()
-      return
+      return Promise.resolve()
     }
     store.setConversationId(id)
     store.setToolCalls([])
@@ -1043,7 +1080,7 @@ export function useChat() {
     store.setMessages([])
     store.setWorkflowRuns([])
     store.setLoadingHistory(true)
-    qc.fetchQuery({ queryKey: keys.conversation(id), queryFn: () => chatApi.getConversation(id) })
+    const loaded = qc.fetchQuery({ queryKey: keys.conversation(id), queryFn: () => chatApi.getConversation(id) })
       .then(data => {
         store.setMessages(data.messages.map(toStoreMessage))
       })
@@ -1056,6 +1093,7 @@ export function useChat() {
     // a reloaded table and a watched one the same table. Failure is silent - a missing step table
     // is a worse conversation, not a broken one, and the transcript above stands on its own.
     loadWorkflowRuns(id)
+    return loaded
   }, [store, qc, loadWorkflowRuns, detach])
 
   // A prompt that was open when the conversation was loaded, put back as the event that asked it
@@ -1094,7 +1132,8 @@ export function useChat() {
   // per-conversation sink is replay-all and outlives any single SSE connection, so attachStream
   // still receives the whole current turn's events from its own start, not just what's left.
   // Falls back to the plain (inactive) history load otherwise.
-  const resumeConversation = useCallback(async (id: string) => {
+  // Settles once the history has landed and, with work running, the stream is attached.
+  const resumeConversation = useCallback(async (id: string): Promise<void> => {
     detach()
     manualCondenseRef.current = false
     let status = { active: false, condensing: false, background: false }
@@ -1104,8 +1143,7 @@ export function useChat() {
       status = { active: false, condensing: false, background: false }
     }
     if (!status.active && !status.condensing && !status.background) {
-      setConversationId(id)
-      return
+      return setConversationId(id)
     }
     // A turn is running, or only sub-agents in the background are. Either way the stream is
     // followed; only a turn makes the composer a Stop button.
@@ -1150,7 +1188,7 @@ export function useChat() {
     // published: the sink still holds the turn that started them, which the transcript already
     // carries in full, and replaying it would say all of it twice.
     let eventSeq = -1
-    chatApi.getConversation(id)
+    const loaded = chatApi.getConversation(id)
       .then(data => {
         if (getState().conversationId !== id) return
         store.setMessages(data.messages.map(toStoreMessage))
@@ -1170,13 +1208,55 @@ export function useChat() {
     // between this fetch and the stream attaching below. Live events land on top of this seed and
     // are the same shape, so the two cannot disagree.
     loadWorkflowRuns(id)
+    return loaded
   }, [store, attachStream, setConversationId, loadWorkflowRuns, detach, restorePrompt])
+
+  // A tab shown again picks up the stream it let go of while hidden (chatInstance.ts): the server
+  // replays the turn and the events this page already handled are skipped, so the thread goes on as
+  // if the stream had never closed. Paused too long for the server to be sure to hold what was
+  // missed, the conversation is loaded whole. Either way, what the stream's events would have
+  // refreshed meanwhile is asked for again.
+  resumeRef.current = () => {
+    const point = resumePoint(page, Date.now())
+    if (!point) return
+    // The list, and with it (by prefix) every conversation's cached transcript.
+    qc.invalidateQueries({ queryKey: keys.conversations() })
+    qc.invalidateQueries({ queryKey: keys.activeConversations() })
+    if (getState().conversationId !== point.convId) return
+    if (point.reload) reloadRef.current?.(point.convId)
+    else attachStream(point.convId, point.afterSeq, true)
+  }
 
   // Asks the server FIRST. resumeConversation clears the thread before it fetches, so with the
   // server still out of reach it would trade a half-written answer for an empty page.
-  reloadRef.current = (id: string) =>
+  //
+  // AND KEEPS WHAT WAS TYPED, since 2026-10-16. The load clears the queue with the thread, so a
+  // message typed while the page waited on a turn the server no longer had (`lost` - see the
+  // 'open' event) vanished with it. It is put back under the loaded conversation and sent as the
+  // queue always is: to the turn running there, or as the next turn.
+  reloadRef.current = (id: string, options: { lost?: boolean } = {}) =>
     chatApi.getConversationStatus(id)
-      .then(() => { resumeConversation(id); return true })
+      .then(() => {
+        const state = getState()
+        const accepted = new Set(state.messages.filter(m => m.injectAccepted && m.clientId).map(m => m.clientId!))
+        const carried = state.conversationId === id
+          ? carriedOnReload(state.messageQueue, accepted, options.lost === true)
+          : []
+        resumeConversation(id).then(() => {
+          if (carried.length === 0 || getState().conversationId !== id) return
+          for (const q of carried) {
+            if (q.clientId) offeredRef.current.delete(q.clientId)
+            store.enqueueMessage(q)
+            store.setMessages(prev => [...prev, {
+              role: 'user', content: q.content, queued: true, clientId: q.clientId,
+              attachmentNames: q.attachmentNames, mentions: q.mentions, skillMentions: q.skillMentions,
+            }])
+          }
+          if (!getState().streaming) processQueue()
+          else for (const q of carried) if (q.clientId) offerToTurn(q.clientId)
+        })
+        return true
+      })
       .catch(() => {
         useToastStore.getState().addToast(t('Could not reach the server. Try again in a moment.'), 'danger')
         return false

@@ -1,8 +1,6 @@
 package ai.proxyma.desktop.system;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.SpringApplication;
+import ai.proxyma.core.system.util.ProcessExit;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,111 +31,28 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/desktop")
 public class ShutdownController {
 
-    private static final Logger log = LoggerFactory.getLogger(ShutdownController.class);
-
-    // Long enough for the 202 to reach the browser and be rendered, short enough that the user does
-    // not wonder whether the click registered.
-    private static final long GRACE_MILLIS = 400;
-
-    /**
-     * How long the whole context close may take before the process is halted anyway.
-     *
-     * Comfortably more than the 5s graceful-shutdown phase configured in
-     * application-desktop.properties plus a Hikari drain and ChromaDB's own stop, and well under
-     * what a person will sit through before deciding the application has frozen. The point is not
-     * to pick the perfect number - it is that SOME number exists, where before there was none.
-     */
-    private static final long CLOSE_TIMEOUT_MILLIS = 15_000;
-
     private final ConfigurableApplicationContext context;
 
     public ShutdownController(ConfigurableApplicationContext context) {
         this.context = context;
     }
 
+    /**
+     * Closes the context, then ends the process - and ends it either way, through ProcessExit.
+     *
+     * Exit code 0, never 3: the launcher treats 3 as "start me again" and would loop straight back
+     * into starting the application the user just asked to close.
+     *
+     * THIS HAD A BOUNDED CLOSE OF ITS OWN, written after a quit on 2026-09-16 left a process that
+     * never ended - the UI said goodbye, the window closed, and the next launch was refused by the
+     * single-instance lock the dead-looking process still held. ProcessExit was later made from it
+     * for the restarts, and since the 0.36.0 feedback this path uses it too, so a quit and a restart
+     * close the same way: the context closed on a thread of its own, the live threads logged and
+     * the process halted if that overruns.
+     */
     @PostMapping("/quit")
     public Mono<ResponseEntity<Void>> quit() {
-        return Mono.fromRunnable(this::shutdownShortly)
+        return Mono.fromRunnable(() -> ProcessExit.exitShortly(context, 0, "Quit requested from the UI"))
                 .thenReturn(ResponseEntity.accepted().<Void>build());
-    }
-
-    private void shutdownShortly() {
-        log.info("[Desktop] Quit requested from the UI - shutting down");
-        Thread t = new Thread(() -> {
-            try {
-                Thread.sleep(GRACE_MILLIS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            closeAndExit();
-        }, "desktop-quit");
-        t.setDaemon(false);
-        t.start();
-    }
-
-    /**
-     * Closes the context, then ends the process - and ends it either way.
-     *
-     * THIS USED TO BE TWO STATEMENTS AND IT COULD LEAVE A ZOMBIE. {@code SpringApplication.exit}
-     * closes the context synchronously with no bound of its own, so a single bean that blocks in
-     * {@code @PreDestroy} means the {@code System.exit} on the next line is never reached. What the
-     * user sees then is the worst version of this: the UI says goodbye, the window closes, the
-     * process stays, and the NEXT launch is refused by the single-instance lock the dead-looking
-     * app is still holding. The only way out is Task Manager. Observed on 2026-09-16, twice.
-     *
-     * So the close runs on its own thread and this one waits a bounded time for it. If it overruns
-     * we halt rather than exit: {@code System.exit} runs shutdown hooks, and Spring's own hook
-     * closes the very context that is already stuck, so exit would block in the same place. Halting
-     * skips every hook - which is why the close is attempted first and given time to do its work.
-     *
-     * A hard stop loses whatever the stuck bean had not finished. That is a real cost and it is the
-     * lesser one: ChromaDB is stopped by the launcher's own watchdog if we do not stop it here, and
-     * an index is rebuilt from source by design, while a process that cannot be quit or restarted
-     * has no recovery a normal user will find.
-     */
-    private void closeAndExit() {
-        Thread closer = new Thread(() -> {
-            // Closing explicitly is what lets ChromaStoreService's @PreDestroy stop the managed
-            // ChromaDB child before the process goes away.
-            // Exit code 0, never 3. The launcher treats 3 as "an update was staged, restart me" and
-            // would loop straight back into starting the application the user just asked to close.
-            int code = SpringApplication.exit(context, () -> 0);
-            System.exit(code);
-        }, "desktop-quit-close");
-        closer.setDaemon(true);
-        closer.start();
-
-        try {
-            closer.join(CLOSE_TIMEOUT_MILLIS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        if (!closer.isAlive()) return;   // the close finished and System.exit is on its way
-
-        log.warn("[Desktop] Shutdown did not finish within {}ms - halting. Threads still running:{}",
-                CLOSE_TIMEOUT_MILLIS, liveThreads());
-        Runtime.getRuntime().halt(0);
-    }
-
-    /**
-     * The threads still alive when a shutdown overruns, for the log line above.
-     *
-     * WITHOUT THIS A HALT HIDES ITS OWN CAUSE. The evidence left by the 2026-09-16 hang was a log
-     * that stopped mid-shutdown and said nothing at all about why, which is the same evidence a
-     * silent halt would leave every time from now on - a bug fixed into invisibility rather than
-     * fixed. Names and states are enough to point at the bean on the next occurrence.
-     *
-     * Daemon threads are skipped: they cannot hold the JVM open, so listing them buries the ones
-     * that can under the pools.
-     */
-    private static String liveThreads() {
-        StringBuilder sb = new StringBuilder();
-        for (Thread t : Thread.getAllStackTraces().keySet()) {
-            if (t.isDaemon() || t == Thread.currentThread()) continue;
-            sb.append("\n    ").append(t.getName()).append(' ').append(t.getState());
-            StackTraceElement[] stack = t.getStackTrace();
-            if (stack.length > 0) sb.append(" at ").append(stack[0]);
-        }
-        return sb.isEmpty() ? " (none - the blocker is not a thread this can see)" : sb.toString();
     }
 }

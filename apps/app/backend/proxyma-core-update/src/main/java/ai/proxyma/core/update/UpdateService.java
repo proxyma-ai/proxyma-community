@@ -9,6 +9,7 @@ import ai.proxyma.core.system.parts.Platform;
 import ai.proxyma.core.system.parts.ReleaseSignatures;
 import ai.proxyma.core.system.parts.Versions;
 import ai.proxyma.core.system.util.Failures;
+import ai.proxyma.core.system.util.ProcessExit;
 import ai.proxyma.core.settings.dto.UpdatesSettings;
 import ai.proxyma.core.settings.service.SettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,6 +19,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -60,7 +64,7 @@ import java.util.function.Predicate;
 // operator, from the image.
 @Service
 @Profile("!server")
-public class UpdateService {
+public class UpdateService implements ApplicationContextAware {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateService.class);
 
@@ -120,6 +124,14 @@ public class UpdateService {
         t.setDaemon(true);
         return t;
     });
+
+    // Closed on the way out (ProcessExit). Null outside a Spring context, as in a unit test.
+    private ConfigurableApplicationContext context;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        if (applicationContext instanceof ConfigurableApplicationContext configurable) context = configurable;
+    }
 
     public UpdateService(@Qualifier("externalRestClientBuilder") RestClient.Builder builder,
                          SettingsService settingsService,
@@ -421,11 +433,12 @@ public class UpdateService {
         history.record(UpdateHistory.Event.APPLIED, currentVersion,
                 availableVersion == null ? "" : availableVersion, "Restarting to apply");
         // The launcher around this JVM sees exit code 3, switches to the staged release and starts
-        // it - going back to this one by itself if the new release does not come up.
-        new Thread(() -> {
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-            System.exit(3);
-        }, "update-restart").start();
+        // it - going back to this one by itself if the new release does not come up. Through
+        // ProcessExit, so the context is closed and the exit bounded like every other restart: this
+        // was a bare System.exit(3) until the 0.36.0 feedback, closed by Spring's shutdown hook with
+        // no limit at all.
+        ProcessExit.restartShortly(context, "Restarting to apply update "
+                + (availableVersion == null ? "" : availableVersion));
     }
 
     // Parses the fields we need from GET /releases/latest JSON without pulling in Jackson here.

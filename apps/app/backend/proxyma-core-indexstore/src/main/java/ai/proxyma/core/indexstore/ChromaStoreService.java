@@ -39,8 +39,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 // ChromaDB-backed VectorStoreService.
-// Owns the full ChromaDB lifecycle: starts the process on @PostConstruct,
-// waits for it to become reachable, sets up tenant/database, and stops it on @PreDestroy.
+// Owns the full ChromaDB lifecycle: starts the process on @PostConstruct, waits for it to become
+// reachable (on a thread of its own - see startInfrastructure), sets up tenant/database, and stops
+// it on @PreDestroy.
 // When proxyma.chromadb.managed=false (e.g. externally managed instance), the process
 // management is skipped and the service connects to the existing instance instead.
 @Service
@@ -139,8 +140,16 @@ public class ChromaStoreService implements VectorStoreService {
     private static final String DATABASE_NAME = "SpringAiDatabase";
 
     private int resolvedPort;
-    private ChromaApi chromaApi;
+    private volatile ChromaApi chromaApi;
     private Process chromaProcess;
+
+    /**
+     * Completes when the startup wait has settled, whichever way it went: {@link #chromaApi} is
+     * then set, or stays null because ChromaDB never answered. Every call into ChromaDB waits on it
+     * ({@link #api()}). Already complete for a service nobody started - a test that sets the client
+     * itself.
+     */
+    private volatile CompletableFuture<Void> startup = CompletableFuture.completedFuture(null);
 
     private final Map<String, String> collectionIdCache = new ConcurrentHashMap<>();
 
@@ -195,21 +204,85 @@ public class ChromaStoreService implements VectorStoreService {
             startChromaProcess();
         }
 
+        // WAITED FOR ON A THREAD OF ITS OWN, NOT HERE, since 2026-10-16 (the 0.36.0 feedback: "the
+        // app restarting usually takes more than 15s and sometimes over a minute"). This bean is
+        // created on the main thread in the middle of the context refresh, and the wait below held
+        // the whole refresh until chroma answered - 10.7 seconds of a 77-second start on the
+        // maintainer's work laptop, 1.1 of 10 on the PC - while nothing else started. Nothing
+        // needs chroma before the first search or drain, both of which come after the refresh, so
+        // the process is started here (orphans killed first, as before, since two chromas must
+        // never share the data directory) and the rest of the context is built while it starts.
+        // A caller that arrives first waits for it in api() rather than failing.
+        CompletableFuture<Void> settled = new CompletableFuture<>();
+        startup = settled;
+        Thread waiter = new Thread(() -> {
+            try {
+                connect(chromaUrl);
+            } catch (Exception e) {
+                log.warn("ChromaDB setup at {} failed: {}", chromaUrl, Failures.describe(e));
+            } finally {
+                settled.complete(null);
+            }
+        }, "chroma-start");
+        waiter.setDaemon(true);
+        waiter.start();
+    }
+
+    private void connect(String chromaUrl) {
         if (!waitForChromaDb(chromaUrl)) {
             log.warn("ChromaDB not reachable at {} (managed={}) - search and indexing will be unavailable", chromaUrl, managed);
             return;
         }
-        chromaApi = new ChromaApi(chromaUrl, chromaClient(), objectMapper);
-        ensureTenantAndDatabase();
+        ChromaApi api = new ChromaApi(chromaUrl, chromaClient(), objectMapper);
+        chromaApi = api;
+        ensureTenantAndDatabase(api);
         log.info("ChromaDB ready on port {} (managed={})", resolvedPort, managed);
     }
 
+    /**
+     * The client, once startup has settled - null when ChromaDB never answered, which every caller
+     * already handled when the wait ran in {@code @PostConstruct}. A call that comes before chroma
+     * answers waits for it: the waiter gives up after {@link #STARTUP_TIMEOUT_SECONDS}, so this
+     * waits a little longer than that and no more.
+     */
+    private ChromaApi api() {
+        CompletableFuture<Void> pending = startup;
+        if (!pending.isDone()) {
+            try {
+                pending.get(STARTUP_TIMEOUT_SECONDS + 10L, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception ignored) {
+                // Timed out: answer with whatever there is, as the caller always did.
+            }
+        }
+        return chromaApi;
+    }
+
+    /** For a test: waits until startup has settled. */
+    void awaitStartup() {
+        api();
+    }
+
+    // Asked to stop, then waited for - briefly - and killed if it is still there. destroy() is
+    // TerminateProcess on Windows and SIGTERM elsewhere, where chroma closes its store on its own;
+    // the wait is what makes "stopped" true before the process that owns it ends, and its bound is
+    // what keeps a chroma that ignores the signal from holding the shutdown (0.36.0 feedback).
+    static final long STOP_WAIT_MILLIS = 2_000;
+
     @PreDestroy
     public void stopInfrastructure() {
-        if (chromaProcess != null && chromaProcess.isAlive()) {
-            log.info("Stopping ChromaDB process");
-            chromaProcess.destroy();
+        Process process = chromaProcess;
+        if (process == null || !process.isAlive()) return;
+        log.info("Stopping ChromaDB process");
+        process.destroy();
+        try {
+            if (process.waitFor(STOP_WAIT_MILLIS, TimeUnit.MILLISECONDS)) return;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
+        log.warn("ChromaDB did not stop within {} ms - killing it", STOP_WAIT_MILLIS);
+        process.destroyForcibly();
     }
 
     private void startChromaProcess() throws IOException {
@@ -329,7 +402,7 @@ public class ChromaStoreService implements VectorStoreService {
     // that has NOT: isHealthy() below answers by asking for the tenant, and a fresh install with no
     // store built yet would report itself unhealthy for no reason. Cheap, idempotent, and the only
     // reason this method is not dead - it was, for as long as it addressed a namespace of its own.
-    private void ensureTenantAndDatabase() {
+    private static void ensureTenantAndDatabase(ChromaApi chromaApi) {
         ChromaApi.Tenant tenant = null;
         try { tenant = chromaApi.getTenant(TENANT_NAME); } catch (Exception ignored) {}
         if (tenant == null) chromaApi.createTenant(TENANT_NAME);
@@ -433,9 +506,10 @@ public class ChromaStoreService implements VectorStoreService {
     // embedding: score = 1 - cosine distance, kept when at or above the threshold.
     private List<Document> queryOne(String collectionId, String collectionUuid, float[] vector, int topK,
                                     double minScore) {
-        ChromaApi.QueryResponse response = chromaApi.queryCollection(TENANT_NAME, DATABASE_NAME, collectionUuid,
+        ChromaApi api = api();
+        ChromaApi.QueryResponse response = api.queryCollection(TENANT_NAME, DATABASE_NAME, collectionUuid,
                 new ChromaApi.QueryRequest(vector, topK));
-        return toDocuments(chromaApi.toEmbeddingResponseList(response), minScore, collectionId);
+        return toDocuments(api.toEmbeddingResponseList(response), minScore, collectionId);
     }
 
     // Each hit stamped with the collection it came from (ChunkMetadata): its `source` is unique only
@@ -482,7 +556,7 @@ public class ChromaStoreService implements VectorStoreService {
         String uuid = resolveCollectionUuid(collectionId);
         if (uuid == null) return;
         try {
-            chromaApi.deleteEmbeddings(TENANT_NAME, DATABASE_NAME, uuid,
+            api().deleteEmbeddings(TENANT_NAME, DATABASE_NAME, uuid,
                     new ChromaApi.DeleteEmbeddingsRequest(List.of(), where));
         } catch (RuntimeException e) {
             collectionIdCache.remove(collectionId);
@@ -498,8 +572,9 @@ public class ChromaStoreService implements VectorStoreService {
         // name (same identifier buildStore()/upsert() etc. already use), so no UUID lookup is
         // needed here.
         try {
-            if (chromaApi != null) {
-                chromaApi.deleteCollection(TENANT_NAME, DATABASE_NAME, collectionId);
+            ChromaApi api = api();
+            if (api != null) {
+                api.deleteCollection(TENANT_NAME, DATABASE_NAME, collectionId);
             }
         } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
             log.debug("[Chroma] deleteCollection: {} did not exist server-side", collectionId);
@@ -585,6 +660,8 @@ public class ChromaStoreService implements VectorStoreService {
 
     @Override
     public boolean isHealthy() {
+        // The field, not api(): a health question is about now, and a chroma still starting is not
+        // healthy yet - it is not a reason to hold the caller for up to a minute.
         try {
             chromaApi.getTenant(TENANT_NAME);
             return true;
@@ -608,7 +685,7 @@ public class ChromaStoreService implements VectorStoreService {
         String cached = collectionIdCache.get(collectionName);
         if (cached != null) return cached;
         try {
-            ChromaApi.Collection col = chromaApi.getCollection(TENANT_NAME, DATABASE_NAME, collectionName);
+            ChromaApi.Collection col = api().getCollection(TENANT_NAME, DATABASE_NAME, collectionName);
             if (col != null) {
                 collectionIdCache.put(collectionName, col.id());
                 return col.id();
@@ -622,7 +699,7 @@ public class ChromaStoreService implements VectorStoreService {
     // The WRITE path only: a store built with schema initialisation creates its collection, which is
     // what a first upsert needs and what nothing that only reads or deletes may do.
     private ChromaVectorStore buildStore(String collectionName) {
-        return ChromaVectorStore.builder(chromaApi, embeddingModel)
+        return ChromaVectorStore.builder(api(), embeddingModel)
                 .collectionName(collectionName)
                 .initializeSchema(true)
                 .initializeImmediately(true)

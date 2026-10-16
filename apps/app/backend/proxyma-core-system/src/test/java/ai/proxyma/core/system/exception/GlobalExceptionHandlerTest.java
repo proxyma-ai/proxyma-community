@@ -24,7 +24,7 @@ class GlobalExceptionHandlerTest {
     @DisplayName("an absolute path in a 400's message leaves as its last segment only")
     void badRequestIsScrubbed() {
         ProblemDetail d = handler.handleBadRequest(new IllegalArgumentException(
-                "File does not exist or is not readable: /data/users/u-17/uploads/merger-plan.pdf")).block();
+                "File does not exist or is not readable: /data/users/u-17/uploads/merger-plan.pdf"), null).block();
 
         assertThat(d.getStatus()).isEqualTo(400);
         assertThat(d.getDetail()).doesNotContain("/data/users", "u-17").contains("merger-plan.pdf");
@@ -33,12 +33,12 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Windows paths, 404s, 503s and status exceptions are screened the same way")
     void everyDoorIsScrubbed() {
-        assertThat(handler.handleNotFound(new NoSuchElementException("No file C:\\Users\\alice\\Documents\\x.docx"))
+        assertThat(handler.handleNotFound(new NoSuchElementException("No file C:\\Users\\alice\\Documents\\x.docx"), null)
                 .block().getDetail()).doesNotContain("alice");
-        assertThat(handler.handleServiceUnavailable(new IllegalStateException("cannot open /home/alice/db.mv.db"))
+        assertThat(handler.handleServiceUnavailable(new IllegalStateException("cannot open /home/alice/db.mv.db"), null)
                 .block().getDetail()).doesNotContain("alice");
         ResponseEntity<ProblemDetail> r = handler.handleErrorResponse(
-                new ResponseStatusException(HttpStatus.FORBIDDEN, "denied for /var/lib/proxyma/keys/k.pem")).block();
+                new ResponseStatusException(HttpStatus.FORBIDDEN, "denied for /var/lib/proxyma/keys/k.pem"), null).block();
         assertThat(r.getStatusCode().value()).isEqualTo(403);
         assertThat(r.getBody().getDetail()).doesNotContain("/var/lib").contains("k.pem");
     }
@@ -47,7 +47,7 @@ class GlobalExceptionHandlerTest {
     @DisplayName("a 500 says only that something failed, with the id that finds it in the log")
     void internalErrorIsOpaque() {
         ProblemDetail d = handler.handleGeneric(new RuntimeException(
-                "ERROR: relation \"users\" does not exist at /opt/proxyma/app.jar")).block();
+                "ERROR: relation \"users\" does not exist at /opt/proxyma/app.jar"), null).block();
 
         assertThat(d.getStatus()).isEqualTo(500);
         assertThat(d.getDetail()).doesNotContain("relation", "users", "/opt");

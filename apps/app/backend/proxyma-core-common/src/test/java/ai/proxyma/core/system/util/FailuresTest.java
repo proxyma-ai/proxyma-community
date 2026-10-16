@@ -187,6 +187,20 @@ class FailuresTest {
         }
 
         @Test
+        void aNameNioCouldNotResolveIsNotAClassName() {
+            // As Reactor Netty reports it: no message anywhere in the chain.
+            Throwable dns = new RuntimeException(null, new java.nio.channels.UnresolvedAddressException());
+
+            assertEquals("The server's name could not be resolved. Check the address and your network.",
+                    Failures.describe(dns));
+            // With a message on the way, the lead comes first and the detail stays.
+            String described = Failures.describe(new RuntimeException("Could not connect to llm.corp",
+                    new java.nio.channels.UnresolvedAddressException()));
+            assertTrue(described.startsWith("The server's name could not be resolved"), described);
+            assertTrue(described.contains("Could not connect to llm.corp"), described);
+        }
+
+        @Test
         void anOrdinaryErrorGetsNoLead() {
             assertEquals("Bad things", Failures.describe(new IllegalStateException("Bad things")));
         }

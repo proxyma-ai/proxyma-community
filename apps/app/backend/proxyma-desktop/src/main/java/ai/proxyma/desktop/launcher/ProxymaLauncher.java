@@ -34,7 +34,8 @@ import static java.nio.file.StandardOpenOption.*;
 //   1. Single-instance lock
 //   2. ensureParts          - the parts of this release, downloaded on the first start (see below)
 //   3. ensurePython         - the Python runtime, built from the python part when it changes
-//   4. spawnApplication     - starts the Spring Boot JVM from the app part, on loopback
+//   4. spawnApplication     - starts the Spring Boot JVM from the app part, on loopback - from an
+//                             extracted copy with a class archive once ClassDataSharing has made them
 //   5. waitForAppReady      - polls /api/v1/health/ready, then dismisses the splash
 //   6. on exit code 3       - switches to a release the updater staged, rolling back if it fails
 // Before every start it also carries out a reset the user asked for (PendingReset).
@@ -191,11 +192,14 @@ public class ProxymaLauncher {
             splash.setStatus("Starting");
             int appPort = APP_PORT;
             Process appProcess;
+            ClassDataSharing.Launch launch;
             // Nothing of the application is running here, so a lock file is one a previous run
             // left - and each costs that start four seconds (StaleDatabaseLocks).
             StaleDatabaseLocks.clear(dataRoot);
             try {
-                appProcess = spawnApplication(appPort, active, store);
+                Path packedJar = applicationJar(active, store);
+                launch = ClassDataSharing.plan(ClassDataSharing.dirFor(dataRoot, packedJar), packedJar, JVM);
+                appProcess = spawnApplication(appPort, active, store, launch);
             } catch (IOException e) {
                 Optional<PartsManifest> back = justSwitched ? rollBack(active, store, splash, e) : Optional.empty();
                 if (back.isPresent()) {
@@ -214,6 +218,21 @@ public class ProxymaLauncher {
             if (ready) {
                 splash.setAppRunning();
                 Boot.startedWell(store.root());
+                // The next step towards faster starts of this release, behind the one that just
+                // finished (ClassDataSharing).
+                ClassDataSharing.prepareInBackground(launch, appProcess, javaExecutable(), JVM);
+            } else if (launch.stage() != ClassDataSharing.Stage.PACKED && !appProcess.isAlive()
+                    && appProcess.exitValue() != EXIT_CODE_UPDATE) {
+                // Died before answering while started from the extracted copy: the copy is suspect,
+                // so it goes, and this start is made again from the release's own jar - which it
+                // cannot come back to, since that start is PACKED (ClassDataSharing).
+                log.warn("Proxyma stopped while starting from {} - starting it again from the release's own jar",
+                        launch.jar());
+                ClassDataSharing.discard(launch);
+                try { Runtime.getRuntime().removeShutdownHook(reaper); } catch (IllegalStateException ignored) {}
+                splash = SplashWindow.create();
+                splash.setChromaStarting();
+                continue;
             } else if (justSwitched) {
                 // A release the updater just switched to that died starting, OR NEVER ANSWERED: one
                 // that stayed alive without answering used to be waited on for ever, and the
@@ -745,23 +764,38 @@ public class ProxymaLauncher {
 
     // -- Application -----------------------------------------------------------
 
-    private static Process spawnApplication(int appPort, PartsManifest active, PartsStore store) throws IOException {
+    /** The app part's jar, as the release ships it. */
+    private static Path applicationJar(PartsManifest active, PartsStore store) throws IOException {
         Path appDir = partDir(active, store, "app");
         Path jar = appDir == null ? null : appDir.resolve(APP_JAR);
         if (jar == null || !Files.isRegularFile(jar)) {
             throw new FileNotFoundException("The application is missing from release " + active.version());
         }
-        useWindowOf(active, store);
-        log.info("Starting Proxyma {} from {}", active.version(), jar);
+        return jar;
+    }
 
-        String java = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+    /** The Java runtime this launcher runs on, which is the one the application gets. */
+    private static String javaExecutable() {
+        return System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+    }
+
+    /** What an archive of loaded classes is tied to: the runtime that made it (ClassDataSharing). */
+    private static final String JVM = System.getProperty("java.home") + " " + System.getProperty("java.vm.version");
+
+    private static Process spawnApplication(int appPort, PartsManifest active, PartsStore store,
+                                            ClassDataSharing.Launch launch) throws IOException {
+        Path jar = launch.jar();
+        useWindowOf(active, store);
+        log.info("Starting Proxyma {} from {} ({})", active.version(), jar, launch.stage());
+
+        String java = javaExecutable();
         Path tesseract = partDir(active, store, "tesseract");
         Path tesseractExe = tesseract != null && Files.isRegularFile(tesseract.resolve("tesseract.exe"))
                 ? tesseract.resolve("tesseract.exe") : null;
         List<String> cmd = applicationCommand(java, jar, appPort, store.root(), partDir(active, store, "browser"),
                 tesseractExe, System.getProperty(AppWindow.WINDOW_DIR_PROPERTY),
                 System.getProperty("proxyma.log.dir", "logs"),
-                ManagementFactory.getRuntimeMXBean().getInputArguments());
+                ManagementFactory.getRuntimeMXBean().getInputArguments(), launch.jvmOptions());
 
         return new ProcessBuilder(cmd)
                 .redirectOutput(ProcessBuilder.Redirect.INHERIT)
@@ -772,9 +806,11 @@ public class ProxymaLauncher {
     /** The application JVM's command line. Package-private so a test can read it. */
     static List<String> applicationCommand(String java, Path jar, int appPort, Path partsRoot, Path browser,
                                            Path tesseractExe, String windowDir, String logDir,
-                                           List<String> inheritedArguments) {
+                                           List<String> inheritedArguments, List<String> jvmOptions) {
         List<String> cmd = new ArrayList<>();
         cmd.add(java);
+        // Class data sharing's, the launcher's own (ClassDataSharing) - never inherited, see below.
+        cmd.addAll(jvmOptions);
         cmd.add("-Djava.awt.headless=false");
         cmd.add("-Dproxyma.chromadb.managed=true");
         // LOOPBACK, ALWAYS, for anything started by this launcher - which is every Windows

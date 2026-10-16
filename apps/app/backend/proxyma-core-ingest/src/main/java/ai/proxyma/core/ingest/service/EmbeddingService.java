@@ -32,9 +32,26 @@ public class EmbeddingService {
         this.bm25IndexService = bm25IndexService;
     }
 
+    /**
+     * Told after each batch of vectors is written. It may throw {@link Stopped} to end the write
+     * where it is - see there.
+     */
     @FunctionalInterface
     public interface ChunkProgressCallback {
         void onProgress(int processedChunks, int totalChunks);
+    }
+
+    /**
+     * Thrown by a {@link ChunkProgressCallback} to end a write at the batch just written, because
+     * the application is stopping. Unlike a failure, it takes nothing back out: the batches written
+     * so far are exactly the ones the callback was told about, so a resumed write (startOffset at
+     * that count) continues the document rather than leaving its first chunks missing. A failure
+     * removes them, which is right for a document that will be written again from its first chunk.
+     */
+    public static final class Stopped extends RuntimeException {
+        public Stopped(String message) {
+            super(message);
+        }
     }
 
     /** One short Markdown text, written whole - see the full form below. */
@@ -113,6 +130,15 @@ public class EmbeddingService {
                 vectorStoreService.upsert(collectionId, chunks.subList(i, end));
                 if (progressCallback != null) progressCallback.onProgress(end, totalChunks);
             }
+        } catch (Stopped stopped) {
+            // The keyword write under way finishes - it is all of the document's chunks, which a
+            // resumed write replaces - and nothing is taken back.
+            try {
+                keywords.join();
+            } catch (RuntimeException alsoFailed) {
+                stopped.addSuppressed(alsoFailed);
+            }
+            throw stopped;
         } catch (RuntimeException embeddingFailed) {
             // What held before still holds: a document whose embedding failed is in neither index.
             // Wait for the keyword write that is under way, then take it back out, and the batches

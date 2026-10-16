@@ -524,7 +524,10 @@ export function ChatStartHero({ fact, greeting, as: As = 'h1', productName, clas
         <PageHero as={As} centered title={greeting} className="w-full animate-fade-up" />
       ) : (
         <As className="flex justify-center animate-fade-up">
-          <Logo size={HERO_MARK} stacked productName={productName} />
+          {/* THE MARK TURNS, the name does not (maintainer's request on 0.36.0, 2026-10-16: "make
+              this logo rotate"): the mark's own idle turn, one turn in twelve seconds - the
+              header's pace - and still under reduced motion. Logo's className reaches the mark. */}
+          <Logo size={HERO_MARK} stacked productName={productName} className="motion-safe:animate-mark-idle" />
         </As>
       )}
       <Presence show={!!fact} className="w-full">

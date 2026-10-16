@@ -1316,6 +1316,29 @@ public class ChatService implements AgentHost {
         return abortFlags.containsKey(conversationId);
     }
 
+    /**
+     * Whether anything is still to publish into this conversation's event stream: a turn running
+     * or a condensation (isActive, isCondensingNow), a turn started and not registered yet - POST
+     * /chat answered, or a report's continuation scheduled - or sub-agents at work in the
+     * background. What a page opening the stream is told (ChatController.chatEvents), since
+     * 2026-10-16: with none of these, every event there will be has its number already, and a page
+     * that holds them all and still waits is waiting for a turn that is gone - the server restarted
+     * under it. It covers everything GET .../status calls running, so a page reloaded because of it
+     * is never sent straight back to the stream by that status.
+     *
+     * <p>Asked BEFORE {@link ChatEventSink#currentSequence}, because a turn that ends normally gives
+     * its DONE a number before the finally that drops its abort flag - so "nothing is running" is
+     * never followed by an event the count did not include. A turn that THROWS and a manual
+     * condensation are the exception: their last event is published by the dispatcher just after
+     * the flag goes, and a page opening its stream in that instant loads the conversation instead
+     * of hearing it.
+     */
+    public boolean isBusy(String conversationId) {
+        return isActive(conversationId) || chatMemory.isCondensingNow(conversationId)
+                || turnsDispatched.containsKey(conversationId) || waking.contains(conversationId)
+                || hasBackgroundWork(conversationId);
+    }
+
     // -- Messages typed while a turn runs ------------------------------------------------------
 
     // A message the user sent while this conversation's turn was running, waiting for the loop's
@@ -2755,6 +2778,17 @@ public class ChatService implements AgentHost {
             if (refusal != null) {
                 publishToolResult(conversationId, scope, trackingId, refusal);
                 return new ToolResponse(toolCall.id(), toolCall.name(), refusal);
+            }
+
+            // Argument names guessed for a tool whose schema the model was never offered - see
+            // ToolArgumentCheck. Answered with the real ones rather than run with none of them.
+            String misnamed = ToolArgumentCheck.misnamedArguments(toolCall.name(),
+                    cb.getToolDefinition().inputSchema(), toolCall.arguments());
+            if (misnamed != null) {
+                log.info("[Chat] tool call '{}' not run - its argument names do not match the tool's", toolCall.name());
+                String answer = failure(misnamed);
+                publishToolResult(conversationId, scope, trackingId, answer);
+                return new ToolResponse(toolCall.id(), toolCall.name(), answer);
             }
 
             // The assistant asking the user: answered by the person, never by a tool - see

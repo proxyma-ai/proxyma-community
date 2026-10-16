@@ -63,13 +63,15 @@ public final class Failures {
             }
             current = current.getCause();
         }
-        if (parts.isEmpty()) return err.getClass().getSimpleName();
-        String joined = String.join(": ", parts);
         // A network fault's own words describe the socket, not the situation. "failure when
         // writing TLS control frames" was the whole of what a user behind a corporate proxy was
         // told when that proxy stopped connecting (seen 2026-09-24 in a feedback log) - accurate,
         // and useless. The detail stays, after a sentence saying what it probably means.
         String lead = networkLead(err);
+        // A chain with no message at all still has a lead to give: the class name is what was said
+        // before, and "WebClientRequestException" tells a person nothing.
+        if (parts.isEmpty()) return lead != null ? lead : err.getClass().getSimpleName();
+        String joined = String.join(": ", parts);
         if (lead != null) joined = lead + " (" + joined + ")";
         // A provider that answers a 500 with an HTML page puts the whole page in a message. This
         // string reaches a tool result and a chat error bubble, so it is bounded here rather than
@@ -150,7 +152,12 @@ public final class Failures {
             if (name.equals("ProxyConnectException")) {
                 return "Could not connect through the proxy. Check that it is running, or change it in Settings > Network.";
             }
-            if (t instanceof java.net.UnknownHostException) {
+            // A NIO client (Reactor Netty, the JDK's HttpClient) reports a name it could not resolve
+            // as UnresolvedAddressException, which has no message: a streamed chat turn to a host
+            // the local DNS does not know said "WebClientRequestException" and nothing else (0.36.0
+            // feedback, a gateway reachable only through a proxy and sent direct by No proxy).
+            if (t instanceof java.net.UnknownHostException
+                    || t instanceof java.nio.channels.UnresolvedAddressException) {
                 lead = "The server's name could not be resolved. Check the address and your network.";
             } else if (t instanceof javax.net.ssl.SSLException && lead == null) {
                 lead = "The secure connection was cut off - often by a proxy or firewall. "

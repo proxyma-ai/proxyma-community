@@ -315,9 +315,11 @@ public class RestClientConfig implements ai.proxyma.core.webcontent.WebProxyProv
                 log.info("[Proxy] External WebClient: no proxy configured");
             }
 
-            return WebClient.builder()
+            WebClient.Builder builder = WebClient.builder()
                     .clientConnector(new ReactorClientHttpConnector(httpClient))
                     .filter(outboundPolicyFilter());
+            if (proxy != null) builder = builder.filter(connectFailureRouteFilter(proxy.noProxy));
+            return builder;
 
         } catch (Exception e) {
             log.error("[Proxy] Failed to configure external WebClient.Builder, using default", e);
@@ -337,6 +339,52 @@ public class RestClientConfig implements ai.proxyma.core.webcontent.WebProxyProv
                     .subscribeOn(Schedulers.boundedElastic())
                     .then(Mono.defer(() -> next.exchange(request)));
         };
+    }
+
+    /**
+     * Says which way a request went when it could not connect - directly because the host is on
+     * No proxy, or through the proxy - on the streaming client, which is what every chat turn and
+     * sub-agent step uses. Given the same list the client's own bypass predicate was built from, so
+     * the sentence cannot disagree with the route actually taken. See ProxyRoute.
+     *
+     * <p>The failure stays a WebClientRequestException (ModelCall retries on that type), and what
+     * it wrapped stays under it, so every check that walks the chain still finds it.
+     */
+    static ExchangeFilterFunction connectFailureRouteFilter(String noProxy) {
+        Set<String> bypassHosts = parseNoProxyHosts(noProxy != null ? noProxy : DEFAULT_NO_PROXY);
+        return (request, next) -> next.exchange(request).onErrorMap(
+                org.springframework.web.reactive.function.client.WebClientRequestException.class,
+                e -> withRoute(e, bypassHosts));
+    }
+
+    static Throwable withRoute(org.springframework.web.reactive.function.client.WebClientRequestException e,
+                               Set<String> bypassHosts) {
+        String host = e.getUri() != null ? e.getUri().getHost() : null;
+        if (host == null || !isConnectFailure(e)) return e;
+        ProxyRoute route = shouldBypass(host, bypassHosts) ? ProxyRoute.BYPASSED : ProxyRoute.PROXY;
+        // Built before the constructor, so the page's message list (tools/i18n/server-messages.mjs)
+        // does not take it for a template: its second half is a sentence of its own, and it reaches
+        // the page in English like the network leads Failures puts before it.
+        String sentence = "Could not connect to " + host + " - " + route.note();
+        ConnectException annotated = new ConnectException(sentence);
+        annotated.initCause(e.getCause());
+        return new org.springframework.web.reactive.function.client.WebClientRequestException(
+                annotated, e.getMethod(), e.getUri(), e.getHeaders());
+    }
+
+    // The connection never came up: refused, timed out connecting, a name that did not resolve, or a
+    // proxy that would not tunnel (Netty's, matched by name like Failures does). A failure later in
+    // the exchange - a TLS alert, a reset mid-stream - says nothing about the route.
+    private static boolean isConnectFailure(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof ConnectException
+                    || t instanceof java.nio.channels.UnresolvedAddressException
+                    || t instanceof java.net.UnknownHostException
+                    || t.getClass().getSimpleName().equals("ProxyConnectException")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Bean

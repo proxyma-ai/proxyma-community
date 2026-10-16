@@ -134,12 +134,7 @@ const appearanceBoxes = ['light', 'gray', 'black'].map(ap =>
 
 const GUIDE_CSS = `
 /* The guideline's own layout. Its rules name gl-* classes only, so none reaches into a specimen. */
-/* One centered column of 1040px - the guideline is short reference text beside live specimens, which
-   need the room - and tables, figures, the index and the ramps up to 1280px, centered with it, so
-   every left edge lines up (maintainer, 2026-10-15: "empty space is not balanced"). */
-.content > *{max-width:1040px}
-.content > .table-wrap, .content > figure, .content > .grid, .content > pre, .content > .gl-index, .content > .gl-ramp{max-width:min(100%, 1280px)}
-.content > .gl-entry, .content > .gl-spec, .content > .gl-two, .content > .gl-index, .content > .gl-ramp, .content > .table-wrap{margin-left:auto; margin-right:auto}
+/* The column is the theme's - the site's page column, every block its full width (doc-theme.css). */
 .lede-sm{color:rgb(var(--ink-caption)); font-size:14px}
 .gl-entry{margin:0 0 56px}
 .gl-meta{margin:0 0 8px; font-size:13px; color:rgb(var(--ink-caption)); display:flex; flex-wrap:wrap; gap:6px; align-items:center}
@@ -204,7 +199,7 @@ ${appearanceBoxes}
    specimen; the kit's own CSS below then styles it exactly as in the app. SVG, images
    and anything sized by an attribute keep their presentation attributes. */
 @layer doc-reset{.${SCOPE}, .${SCOPE} *:not(svg, svg *, img, video, canvas, iframe, [width], [height]){all:revert}}
-/* The document reads in Inter; a specimen is the app, in the app's own face. */
+/* A specimen is the app, in the app's own face - restated here because the reset above reverts it. */
 .${SCOPE}{font-family:var(--font-ui)}
 `
 

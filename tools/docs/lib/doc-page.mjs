@@ -25,10 +25,8 @@ export function slugify(text) {
 
 function fontFaces() {
   return [
-    // The reading face of the documents (maintainer, 2026-10-15: "a more readability friendly
-    // font"): Inter, OFL 1.1 (design/docs-theme/fonts/OFL-Inter.txt). Space Grotesk stays the
-    // app's face, and the UI guideline's specimens keep it.
-    `@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(data:font/woff2;base64,${b64('design/docs-theme/fonts/inter-var-latin.woff2')}) format('woff2')}`,
+    // The reading face of the documents is the app's own (maintainer, 2026-10-16: "use Proxyma's
+    // font"), as are the UI guideline's specimens.
     `@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url(data:font/woff2;base64,${b64('design/docs-theme/fonts/space-grotesk-var-latin.woff2')}) format('woff2')}`,
     `@font-face{font-family:'Orbitron';font-style:normal;font-weight:700;font-display:swap;src:url(data:font/woff2;base64,${b64('design/docs-theme/fonts/orbitron-700-latin.woff2')}) format('woff2')}`,
   ].join('\n')
@@ -150,6 +148,7 @@ ${extraHead}
     <div class="toc-head">
       <a class="brandmark" href="#top">${logoSvg('toc-logo')}<span>Proxyma</span></a>
       <p class="doctype">${esc(doctype)}</p>
+      ${sections.some(s => s.children.length) ? `<div class="toc-tools" hidden><button type="button" data-toc-all="open">Expand all</button><button type="button" data-toc-all="close">Collapse all</button></div>` : ''}
     </div>
     <div class="toc-body">
       <nav aria-label="Contents">${tocHtml(sections)}</nav>

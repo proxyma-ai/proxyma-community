@@ -2,6 +2,7 @@ package ai.proxyma.desktop.system;
 
 import ai.proxyma.core.network.AccessGate;
 import ai.proxyma.core.system.parts.Platform;
+import ai.proxyma.core.system.util.ProcessExit;
 import ai.proxyma.desktop.common.ProxymaMark;
 import com.sun.jna.Native;
 import com.sun.jna.WString;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -30,9 +32,11 @@ public class DesktopIntegrationService {
     private int serverPort;
 
     private final AccessGate accessGate;
+    private final ConfigurableApplicationContext context;
 
-    public DesktopIntegrationService(AccessGate accessGate) {
+    public DesktopIntegrationService(AccessGate accessGate, ConfigurableApplicationContext context) {
         this.accessGate = accessGate;
+        this.context = context;
     }
 
     /**
@@ -172,9 +176,12 @@ public class DesktopIntegrationService {
                     List.of(new TrayMenu.Item("Open Proxyma", TrayMenu.Glyph.WINDOW, false, this::openWindow),
                             // A tab in the user's own browser, for anyone who prefers one to the app window.
                             new TrayMenu.Item("Open in Browser", TrayMenu.Glyph.GLOBE, false, this::openBrowser)),
+                    // Through ProcessExit like the app's own Quit, so the context is closed on a
+                    // thread of its own and the exit is bounded; this was a bare System.exit(0),
+                    // closed by Spring's shutdown hook with no limit (0.36.0 feedback).
                     List.of(new TrayMenu.Item("Quit Proxyma", TrayMenu.Glyph.POWER, true, () -> {
                         SystemTray.getSystemTray().remove(trayIcon);
-                        System.exit(0);
+                        ProcessExit.exitShortly(context, 0, "Quit requested from the tray");
                     })));
             trayIcon.addMouseListener(new MouseAdapter() {
                 // Windows reports the popup trigger on RELEASE, other toolkits on press - so both.

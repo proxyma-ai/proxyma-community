@@ -81,7 +81,10 @@ public final class ProxymaApp implements AutoCloseable {
     public static final String SETUP_TOKEN = "it-setup-token";
 
     private final Mode mode;
-    private final ManagedProcess process;
+    // Replaced by restart(), with the command and environment it was started with.
+    private volatile ManagedProcess process;
+    private volatile List<String> command;
+    private volatile Map<String, String> env;
     private final Http api;
     private final FakeLlm llm;
     private final Path dataDir;
@@ -103,6 +106,19 @@ public final class ProxymaApp implements AutoCloseable {
     public int port() { return port; }
     public String baseUrl() { return "http://127.0.0.1:" + port; }
     public ManagedProcess process() { return process; }
+
+    /**
+     * Stops the process, unless the product has already ended it - POST /api/v1/system/restart
+     * exits for the launcher or the supervisor to start it again - and starts the same command
+     * again: the same port, data and fake provider. Whatever the old process held only in memory
+     * is gone, as after a restart from Settings, an update or a crash; whatever it stored is not.
+     */
+    public void restart() {
+        process.stop();
+        process = ManagedProcess.start(mode.name().toLowerCase(java.util.Locale.ROOT), command, dataDir, env);
+        process.awaitReady("HTTP on port " + port + " again", () -> api.healthy("/api/v1/health"),
+                Duration.ofMinutes(2));
+    }
 
     /**
      * The access code of a Desktop or Home Server instance, or null on Enterprise Server.
@@ -203,7 +219,12 @@ public final class ProxymaApp implements AutoCloseable {
      * shared desktop's sources belong to every other desktop journey.
      */
     public static ProxymaApp bootDesktopOwn() {
-        return bootDesktopJar(Mode.DESKTOP, "desktop-community", List.of(), Map.of());
+        return bootDesktopOwn("desktop-community");
+    }
+
+    /** A desktop of its own under a scratch directory of its own, for a journey that restarts it. */
+    public static ProxymaApp bootDesktopOwn(String name) {
+        return bootDesktopJar(Mode.DESKTOP, name, List.of(), Map.of());
     }
 
     /**
@@ -502,7 +523,11 @@ public final class ProxymaApp implements AutoCloseable {
             llm.close();
             throw e;
         }
-        return new ProxymaApp(mode, process, api, llm, data, port);
+        ProxymaApp app = new ProxymaApp(mode, process, api, llm, data, port);
+        app.command = List.copyOf(command);
+        // A copy that keeps a null value: it REMOVES that variable from the child (ManagedProcess).
+        app.env = new HashMap<>(env);
+        return app;
     }
 
     /**

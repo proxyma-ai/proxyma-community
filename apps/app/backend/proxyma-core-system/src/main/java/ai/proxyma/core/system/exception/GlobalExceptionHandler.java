@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import ai.proxyma.core.system.util.SensitivePaths;
 
+import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -27,6 +29,15 @@ import java.util.UUID;
 // IllegalArgumentException and IllegalStateException are logged too: they are also what a
 // programming error throws, and as an unlogged 400 or 503 one never reached a log or the
 // diagnostics counters at all.
+//
+// NOTHING IS WRITTEN ONTO A RESPONSE THAT IS ALREADY UNDER WAY (feedback on 0.36.0). An error raised
+// after the first byte went out - the page's event stream when the server stops (Tomcat times out
+// every open async request as it shuts down: "Async operation timeout."), any response whose client
+// went away mid-write - still reached these handlers, and each tried to send a problem body: the
+// status and content type of a committed response are read-only, so every one ended in
+// UnsupportedOperationException, "ServerHttpResponse already committed" and a servlet stack trace,
+// and a client that simply closed its tab was logged as an "Unhandled exception". Such a response
+// is left as it is: the handler answers with nothing, and the exchange ends.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -36,6 +47,26 @@ public class GlobalExceptionHandler {
         return SensitivePaths.scrub(message);
     }
 
+    // Whether this exchange can still be answered with a status and a body. Null for a direct call
+    // (the unit tests), which always can.
+    static boolean committed(ServerWebExchange exchange) {
+        return exchange != null && exchange.getResponse().isCommitted();
+    }
+
+    // The client went away while its response was being written - an I/O failure on the socket,
+    // anywhere in the cause chain. Nothing about the server is wrong.
+    static boolean clientGone(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof IOException) return true;
+        }
+        return false;
+    }
+
+    // The body to send, or nothing when the response is already under way - see the class comment.
+    private static <T> Mono<T> answer(ServerWebExchange exchange, T body) {
+        return committed(exchange) ? Mono.empty() : Mono.just(body);
+    }
+
     // Must come before the generic Exception.class catch-all below: without this, any
     // ResponseStatusException/ErrorResponseException thrown anywhere (e.g. a legitimate 404) was
     // being matched by the generic handler instead (Exception.class matches everything with no
@@ -43,38 +74,38 @@ public class GlobalExceptionHandler {
     // original status buried in the detail string - confusing for any client that branches on the
     // actual HTTP status, including MCP clients. Preserve the real status/body these already carry.
     @ExceptionHandler({ResponseStatusException.class, ErrorResponseException.class})
-    public Mono<ResponseEntity<ProblemDetail>> handleErrorResponse(ErrorResponse ex) {
+    public Mono<ResponseEntity<ProblemDetail>> handleErrorResponse(ErrorResponse ex, ServerWebExchange exchange) {
         ProblemDetail body = ex.getBody();
         if (body.getDetail() != null) body.setDetail(scrub(body.getDetail()));
-        return Mono.just(ResponseEntity.status(ex.getStatusCode()).body(body));
+        return answer(exchange, ResponseEntity.status(ex.getStatusCode()).body(body));
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
-    public Mono<ProblemDetail> handleValidation(WebExchangeBindException ex) {
+    public Mono<ProblemDetail> handleValidation(WebExchangeBindException ex, ServerWebExchange exchange) {
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         detail.setTitle("Validation failed");
         detail.setDetail(scrub(ex.getAllErrors().stream()
                 .map(Object::toString)
                 .reduce("", (a, b) -> a.isEmpty() ? b : a + "; " + b)));
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 
     @ExceptionHandler(NoSuchElementException.class)
-    public Mono<ProblemDetail> handleNotFound(NoSuchElementException ex) {
+    public Mono<ProblemDetail> handleNotFound(NoSuchElementException ex, ServerWebExchange exchange) {
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         detail.setTitle("Not found");
         detail.setDetail(scrub(ex.getMessage()));
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public Mono<ProblemDetail> handleBadRequest(IllegalArgumentException ex) {
+    public Mono<ProblemDetail> handleBadRequest(IllegalArgumentException ex, ServerWebExchange exchange) {
         log.warn("Bad request: {}", ex.toString());
         log.debug("Bad request", ex);
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         detail.setTitle("Bad request");
         detail.setDetail(scrub(ex.getMessage()));
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 
     // A spending limit reached - the deployment's monthly limit, or a user's own quota for a service
@@ -83,25 +114,37 @@ public class GlobalExceptionHandler {
     // error" these reached until the limits moved into the gateway on 2026-09-29.
     @ExceptionHandler({ai.proxyma.core.settings.usage.GlobalQuotaExceededException.class,
             ai.proxyma.core.settings.usage.UserBudgetExceededException.class})
-    public Mono<ProblemDetail> handleLimitReached(RuntimeException ex) {
+    public Mono<ProblemDetail> handleLimitReached(RuntimeException ex, ServerWebExchange exchange) {
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.TOO_MANY_REQUESTS);
         detail.setTitle("Spending limit reached");
         detail.setDetail(scrub(ex.getMessage()));
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public Mono<ProblemDetail> handleServiceUnavailable(IllegalStateException ex) {
+    public Mono<ProblemDetail> handleServiceUnavailable(IllegalStateException ex, ServerWebExchange exchange) {
+        if (committed(exchange)) {
+            // An open request ended under way - on a stop, Tomcat times out every async request
+            // still open, and the page's event stream always is one.
+            log.debug("Response already under way ended: {}", ex.toString());
+            return Mono.empty();
+        }
         log.warn("Service unavailable: {}", ex.toString());
         log.debug("Service unavailable", ex);
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
         detail.setTitle("Service unavailable");
         detail.setDetail(scrub(ex.getMessage()));
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 
     @ExceptionHandler(Exception.class)
-    public Mono<ProblemDetail> handleGeneric(Exception ex) {
+    public Mono<ProblemDetail> handleGeneric(Exception ex, ServerWebExchange exchange) {
+        if (committed(exchange) && clientGone(ex)) {
+            // The client closed the connection while its response was being written - a tab
+            // closed or reloaded, the page reconnecting its event stream. Not a server error.
+            log.debug("Client went away mid-response: {}", ex.toString());
+            return Mono.empty();
+        }
         // Every other handler above maps a known, expected exception type to a specific status -
         // this catch-all is by definition the "something we didn't anticipate" path, so it's the
         // one place server-side logging is non-negotiable. Without this, an unhandled exception
@@ -117,6 +160,6 @@ public class GlobalExceptionHandler {
         detail.setTitle("Internal error");
         detail.setDetail("Something went wrong on the server (error " + errorId + ").");
         detail.setProperty("errorId", errorId);
-        return Mono.just(detail);
+        return answer(exchange, detail);
     }
 }

@@ -22,6 +22,11 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -43,9 +48,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 @Service
-public class SyncOrchestratorService {
+public class SyncOrchestratorService implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(SyncOrchestratorService.class);
+
+    // ---- Stopping before what sync work stands on ---------------------------------------------
+    //
+    // SYNC WORK STOPS FIRST, since the 0.36.0 feedback. Passes and drains are threads of their own
+    // that nothing told about a shutdown, so they ran on while Spring took the application apart
+    // around them: the event executor refused their notices, ChromaDB was stopped mid-upsert, the
+    // databases closed, and every item in flight became a FAILED document - and the restart that
+    // asked for all this was halted after fifteen seconds with them still running.
+    //
+    // Two steps. On the close event - the first thing a closing context does, and handled here
+    // before the executors stop taking tasks - nothing new starts and running work stops at its next
+    // safe point (SyncService.stopForShutdown). Then, as a lifecycle bean stopped in the same phase
+    // as the web server's graceful shutdown and so ALONGSIDE it rather than after it, the running
+    // passes and drains are waited for, up to the phase's own timeout, before any bean they use is
+    // destroyed. What is still running then stops on its own and records nothing as failed.
+    private volatile boolean stopping;
+    private volatile boolean lifecycleRunning;
+    // Every pass and drain thread while it runs - what the stop waits for.
+    private final Set<Thread> workers = ConcurrentHashMap.newKeySet();
+    // The web server's graceful-shutdown phase (WebServerGracefulShutdownLifecycle), so the two waits
+    // overlap. Its timeout (spring.lifecycle.timeout-per-shutdown-phase, 5s on Desktop) is the bound.
+    static final int STOP_PHASE = Integer.MAX_VALUE - 1024;
+    private static final long STOP_WAIT_MILLIS = 30_000;
 
     // Which plugin serves each type, and what its descriptor says - the cadence, the edition, the
     // service it reads through. Sessions are opened over contexts built from each source's own row.
@@ -305,6 +333,7 @@ public class SyncOrchestratorService {
     // what actually paces each connector's sync cadence.
     @Scheduled(fixedRate = 60_000)
     public void scheduledSync() {
+        if (stopping) return;
         if (globalPaused) {
             log.debug("[Orchestrator] Skipping scheduled sync: paused");
             return;
@@ -412,7 +441,7 @@ public class SyncOrchestratorService {
     // which stay below: a row can change between the read and the loop.
     @Scheduled(fixedDelay = 2_000)
     public void drainQueuedConnectors() {
-        if (globalPaused) return;
+        if (globalPaused || stopping) return;
         List<RegisteredConnector> connectors =
                 connectorRepository.findWithDrainWork(RegisteredConnector.Status.PAUSED);
 
@@ -559,7 +588,7 @@ public class SyncOrchestratorService {
 
     @Scheduled(fixedRate = 60_000)
     public void autoRetryFailedItems() {
-        if (globalPaused) return;
+        if (globalPaused || stopping) return;
         List<TrackedDocument> candidates = documentRepository.findByStatusAndRetryCountLessThanAndNextRetryAtBefore(
                 TrackedDocument.Status.FAILED, TrackedDocument.MAX_AUTO_RETRIES, Instant.now());
         // BY SOURCE: the backlog is looked at once per source, before any of its rows is requeued,
@@ -604,7 +633,7 @@ public class SyncOrchestratorService {
         // a chance to register themselves.
         String owner = ownerKey(connector);
         activeDrainsByOwner.computeIfAbsent(owner, k -> new AtomicInteger()).incrementAndGet();
-        Thread.ofVirtual().name("drain-" + connectorId).start(() -> {
+        startWorker("drain-" + connectorId, () -> {
             try {
                 // The priority holder must never wait behind already-running drains for a permit.
                 // It proceeds permit-less when none is free; its owner's other drains yield between
@@ -625,12 +654,29 @@ public class SyncOrchestratorService {
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                log.error("[Orchestrator] Drain failed for connector={}: {}", connectorId, e.getMessage(), e);
+                if (stopping) {
+                    log.debug("[Orchestrator] Drain of connector={} ended by the shutdown: {}", connectorId, e.getMessage());
+                } else {
+                    log.error("[Orchestrator] Drain failed for connector={}: {}", connectorId, e.getMessage(), e);
+                }
             } finally {
                 activeDrainsByOwner.get(owner).decrementAndGet();
                 flag.set(false);
             }
         });
+    }
+
+    // A pass or drain thread, counted in `workers` from before it starts until it ends.
+    private void startWorker(String name, Runnable body) {
+        Thread thread = Thread.ofVirtual().name(name).unstarted(() -> {
+            try {
+                body.run();
+            } finally {
+                workers.remove(Thread.currentThread());
+            }
+        });
+        workers.add(thread);
+        thread.start();
     }
 
     // Drains one connector's current backlog to empty, one item at a time (Lucene only allows one
@@ -648,6 +694,7 @@ public class SyncOrchestratorService {
     private void drainConnector(ConnectorPlugin plugin, UUID connectorId, String owner) {
         long sliceDeadline = System.currentTimeMillis() + DRAIN_SLICE_MILLIS;
         while (true) {
+            if (stopping) return;
             RegisteredConnector connector = connectorRepository.findById(connectorId).orElse(null);
             if (connector == null || connector.isDeleting()) return;
             // Its queue waits for a connection rather than failing item by item: every fetch would be
@@ -681,6 +728,7 @@ public class SyncOrchestratorService {
                                String collectionId, UUID connectorId, String owner, long sliceDeadline) {
         {
             for (TrackedDocument doc : batch) {
+                if (stopping) return false;
                 if (syncService.isConnectorDeleting(connectorId)) return false;
                 // An already-running drain must also stop within one item (not just newly-started
                 // ones via drainQueuedConnectors()) the moment its owner crosses over quota mid-batch.
@@ -859,6 +907,7 @@ public class SyncOrchestratorService {
     // waitForSlot: wait behind maxConcurrentSyncs rather than start now - see waitingForSlot.
     private boolean syncConnectorInternal(RegisteredConnector connector, boolean forceFull, boolean waitForSlot,
                                           SyncTrigger trigger) {
+        if (stopping) return false;
         if (connector.isDeleting()) {
             log.debug("[Orchestrator] Skipping sync for deleting connector={}", connector.getId());
             return false;
@@ -906,7 +955,7 @@ public class SyncOrchestratorService {
             return false;
         }
         long startedAt = System.nanoTime();
-        Thread.ofVirtual().name("sync-" + connector.getId()).start(() -> {
+        startWorker("sync-" + connector.getId(), () -> {
             try {
                 // ONE SESSION PER PASS, over a context built from this source's own row, opened here
                 // and closed when the pass ends. Sessions share nothing, so two sources of one type
@@ -918,9 +967,14 @@ public class SyncOrchestratorService {
                 if (result != null) recordPassOutcome(connector, result.ok());
                 auditPass(connector, trigger, result, null, startedAt);
             } catch (Exception e) {
-                log.error("[Orchestrator] Sync failed for connector={}: {}", connector.getId(), e.getMessage(), e);
-                recordPassOutcome(connector, false);
-                auditPass(connector, trigger, null, e, startedAt);
+                if (stopping) {
+                    // Cut short by the shutdown, not failed: no backoff, no audit entry.
+                    log.debug("[Orchestrator] Sync of connector={} ended by the shutdown: {}", connector.getId(), e.getMessage());
+                } else {
+                    log.error("[Orchestrator] Sync failed for connector={}: {}", connector.getId(), e.getMessage(), e);
+                    recordPassOutcome(connector, false);
+                    auditPass(connector, trigger, null, e, startedAt);
+                }
             } finally {
                 flag.set(false);
                 releaseSyncSlot();
@@ -1026,7 +1080,7 @@ public class SyncOrchestratorService {
      * behind the queue. A pause holds the queue as it holds the scheduler.
      */
     private void startWaiting() {
-        while (!globalPaused) {
+        while (!globalPaused && !stopping) {
             UUID next;
             synchronized (syncSlots) {
                 if (activeSyncs >= maxConcurrentSyncs || waitingForSlot.isEmpty()) return;
@@ -1057,6 +1111,7 @@ public class SyncOrchestratorService {
      * looks like the original sync failing.
      */
     private void runQueuedFollowUp(UUID connectorId) {
+        if (stopping) return;
         if (!resyncRequested.remove(connectorId)) return;
         boolean forceFull = forceFullRequested.remove(connectorId);
         try {
@@ -1111,6 +1166,91 @@ public class SyncOrchestratorService {
         String service = catalog.displayName(catalog.protocolFor(type));
         return "This source has no " + service + " connection. Edit it and choose one, or add one in "
                 + "Settings > Connections.";
+    }
+
+    // ---- Lifecycle --------------------------------------------------------------------------
+
+    /**
+     * The first step of a stop: nothing new starts, and running work stops at its next safe point.
+     * On the close event, ordered first, so it is in force before Spring's executors stop taking
+     * tasks (they do on this same event) and long before any bean is destroyed.
+     */
+    @EventListener(ContextClosedEvent.class)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void onContextClosed() {
+        beginStopping();
+    }
+
+    void beginStopping() {
+        if (stopping) return;
+        stopping = true;
+        syncService.stopForShutdown();
+        log.info("[Orchestrator] Stopping sync work for shutdown ({} pass(es) and drain(s) running)", workers.size());
+    }
+
+    /** Whether any pass or drain thread is still running. */
+    boolean hasRunningWork() {
+        return !workers.isEmpty();
+    }
+
+    // Waits for the running passes and drains to end, up to `millis`. True when they all did.
+    boolean awaitWorkers(long millis) {
+        long deadline = System.currentTimeMillis() + millis;
+        while (!workers.isEmpty() && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return workers.isEmpty();
+    }
+
+    @Override
+    public void start() {
+        lifecycleRunning = true;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return lifecycleRunning;
+    }
+
+    @Override
+    public int getPhase() {
+        return STOP_PHASE;
+    }
+
+    @Override
+    public void stop() {
+        beginStopping();
+        finishStopping();
+    }
+
+    // Asynchronous, so the web server's graceful shutdown in the same phase waits alongside it.
+    @Override
+    public void stop(Runnable callback) {
+        beginStopping();
+        Thread.ofPlatform().daemon().name("sync-stop").start(() -> {
+            try {
+                finishStopping();
+            } finally {
+                callback.run();
+            }
+        });
+    }
+
+    private void finishStopping() {
+        long started = System.currentTimeMillis();
+        boolean done = awaitWorkers(STOP_WAIT_MILLIS);
+        lifecycleRunning = false;
+        if (done) {
+            log.info("[Orchestrator] Sync work stopped in {} ms", System.currentTimeMillis() - started);
+        } else {
+            log.info("[Orchestrator] {} sync thread(s) still finishing an item as the application stops",
+                    workers.size());
+        }
     }
 
     /**

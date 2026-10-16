@@ -69,7 +69,6 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
   const { t } = useTranslation()
   // The thread's side gutter: 8px on a phone and 24px from `sm` up on the chat page, 12px in a panel.
   const gutter = compact ? 'px-3' : 'px-2 sm:px-6'
-  const bottomRef = useRef<HTMLDivElement>(null)
   const pendingQuestions = useChatStore(s => s.pendingQuestions)
   // NOT WHILE CONDENSING, nor on the render that ends it. A condensation adds nothing to read, and
   // following it to the bottom pulled a reader who had scrolled up back down two or three times
@@ -100,7 +99,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
       // A scroll since pushed the hold on; wait for the new end of it.
       if (heldUntil.current > Date.now()) { catchUp(); return }
       missed.current = false
-      bottomRef.current?.scrollIntoView({ behavior: scrollBehavior() })
+      scrollToEnd(scrollerRef.current)
     }, wait + 20)
   }
   useEffect(() => () => window.clearTimeout(catchUpTimer.current), [])
@@ -152,7 +151,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
       })
       if (top !== null) { scroller.scrollTo({ top, behavior: scrollBehavior() }); return }
     }
-    bottomRef.current?.scrollIntoView({ behavior: scrollBehavior() })
+    scrollToEnd(scrollerRef.current)
   }, [messages, streaming, toolCalls, condensing, pendingApprovals, pendingEnableRequests, pendingQuestions])
 
   // A LOADED CONVERSATION OPENS AT ITS LATEST MESSAGE. The effect above cannot do it: the history
@@ -267,7 +266,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
       heldUntil.current = 0
       if (wasHeld && missed.current) {
         missed.current = false
-        bottomRef.current?.scrollIntoView({ behavior: scrollBehavior() })
+        scrollToEnd(scrollerRef.current)
       }
       missed.current = false
     }
@@ -486,7 +485,12 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
           thread sat visibly further in than the composer under it (2026-10-02). The phone gutter
           is 8px, for the same reason - the messages are the page. */}
       <span role="status" className="sr-only">{announcement}</span>
-      <div ref={scrollerRef} className={cn('flex-1 min-h-0 overflow-y-auto py-5 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
+      {/* RELATIVE, so the scroller is the containing block of every absolutely placed thing in the
+          thread (0.36.0 feedback). Without it a screen-reader-only label in a tool row or a
+          sub-agent's panel was placed against this component's root, outside the scroller, and
+          the thread's whole height overflowed the chat page's own box - which a scroll to the end
+          then scrolled (see scrollToEnd). */}
+      <div ref={scrollerRef} className={cn('relative flex-1 min-h-0 overflow-y-auto py-5 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
         <div className={THREAD_COLUMN}>
           {sections.map((section, si) => (
             // One section per question: the user's message and every reply under it.
@@ -497,11 +501,20 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
           ))}
           {sections.length === 0 && live}
           {messages.slice(settled).map((_, k) => renderMessage(settled + k, false))}
-          <div ref={bottomRef} />
         </div>
       </div>
     </div>
   )
+}
+
+// TO THE END OF THE THREAD, moving the thread's own scroller and nothing else (0.36.0 feedback,
+// 2026-10-16: "after hit enter, the chat input jumped to the middle of the screen"). It was
+// `scrollIntoView` on an empty marker after the last line, which scrolls EVERY scrollable ancestor
+// until the marker is at its top - the chat page's own `overflow-hidden` box included, whenever
+// anything overflowed it (the scroller's `relative` is the other half). That box cannot be
+// scrolled back by the reader, so the composer stayed mid-screen over an empty band.
+function scrollToEnd(scroller: HTMLElement | null) {
+  scroller?.scrollTo({ top: scroller.scrollHeight, behavior: scrollBehavior() })
 }
 
 // A smooth scroll, except under reduced motion: an explicit `behavior` wins over the CSS that turns

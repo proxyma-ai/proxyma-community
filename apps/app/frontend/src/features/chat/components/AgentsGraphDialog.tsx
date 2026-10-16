@@ -2,8 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Bot } from 'lucide-react'
 import { ModalShell } from '@/components/ui/ModalShell'
 import {
-  Collapse,
-  Caption, DialogBody, DialogHeader, DisclosureButton, EmptyValue, HScroll, Presence, StatGrid, StatTile, StateMark, TABLE_CLASS,
+  DialogBody, DialogHeader, DisclosureButton, EmptyValue, HScroll, Presence, StatGrid, StatTile, StateMark, TABLE_CLASS,
   TABLE_FLUSH, TableEmptyRow, TableSkeletonRows, TD_COMPACT, Th, THEAD_TR, TR, cn, workingMotion, type WorkState,
 } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
@@ -13,8 +12,6 @@ import { useConversationAgents } from '../hooks/useConversationAgents'
 import { useConversationUsage } from '../hooks/useConversationUsage'
 import { useServerNow } from '../hooks/useServerNow'
 import { formatElapsed } from '../utils/formatElapsed'
-import { SubAgentSteps } from './SubAgentPanel'
-import { ToolCallDetailModal } from './ToolCallDetailModal'
 import { formatUsd } from '@/utils/formatters'
 import {
   activeMs, compactTokens, elapsedMs, workSpans,
@@ -23,7 +20,6 @@ import {
 import { agentWorkState } from '../utils/agentState'
 import { delegationCall } from '../utils/subAgent'
 import type { RevealTarget } from '../utils/threadReveal'
-import type { ToolCallInfo } from '../types/chat.types'
 
 // THE AGENTS MAP (maintainer's request, 2026-10-03): every agent this conversation has used - the
 // main one and each sub-agent, finished ones included - and what each has used, opened from beside
@@ -39,9 +35,11 @@ import type { ToolCallInfo } from '../types/chat.types'
 // the thread scrolls to that sub-agent's panel, which opens and lights up for a moment - or, for
 // the main agent, to the latest turn (threadReveal.ts). The name is a button of its own.
 //
-// The rest of a sub-agent's row, and its chevron, open ITS BLOCK in place, under its row (0.29.1
-// feedback): the same steps, text and report its panel shows in the thread (SubAgentSteps), so a
-// run can be read here too. Clicking again folds it.
+// AND THAT IS ALL A SUB-AGENT'S ROW DOES, since the 0.36.0 feedback (maintainer's, 2026-10-16: "No
+// need to show these. Just clicking on the sub agent title to jump to the sub agent position in the
+// main chat"). Its row and a chevron opened its steps in place under it (0.29.1 feedback), a second
+// copy of what its panel in the thread shows; both went. The main agent's chevron still folds the
+// sub-agents under it.
 //
 // TOTAL TIME is the wall clock: the time during which at least one agent worked - the main agent's
 // turns and every sub-agent's run, overlaps counted once (activeMs). Not the sum of everyone's.
@@ -65,8 +63,6 @@ export function AgentsGraphDialog({ conversationId, onClose }: { conversationId:
   // The server's clock, ticking while anything works - every time here is the server's.
   const now = useServerNow(live)
   const [subsOpen, setSubsOpen] = useState(true)
-  const [openAgents, setOpenAgents] = useState<ReadonlySet<string>>(() => new Set())
-  const [detail, setDetail] = useState<ToolCallInfo | null>(null)
 
   const subs = data?.subAgents ?? []
   const priced = (data?.total.costUsd ?? 0) > 0
@@ -81,13 +77,6 @@ export function AgentsGraphDialog({ conversationId, onClose }: { conversationId:
     onClose()
     revealInThread(target)
   }
-
-  const toggleAgent = (id: string) => setOpenAgents(prev => {
-    const next = new Set(prev)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    return next
-  })
 
   return (
     <ModalShell
@@ -166,19 +155,14 @@ export function AgentsGraphDialog({ conversationId, onClose }: { conversationId:
                       {t('No sub-agents yet. The ones the agent starts appear here, finished ones included.')}
                     </TableEmptyRow>
                   ) : subsOpen && subs.map((a, i) => (
-                    <SubAgentRows
+                    <SubAgentRow
                       key={a.id}
                       agent={a}
                       last={i === subs.length - 1}
                       now={now}
                       priced={priced}
-                      columns={columns}
-                      open={openAgents.has(a.id)}
-                      onToggle={() => toggleAgent(a.id)}
-                      // Where the thread keeps what it did, live and after a reload.
-                      call={delegationCall(messages, liveCalls, a.id)}
-                      onOpenDetail={setDetail}
-                      onGo={() => goTo({ kind: 'agent', agentId: a.id })}
+                      // Only where the thread has its panel to go to - live, or after a reload.
+                      onGo={delegationCall(messages, liveCalls, a.id) ? () => goTo({ kind: 'agent', agentId: a.id }) : undefined}
                     />
                   ))}
                 </>
@@ -187,91 +171,53 @@ export function AgentsGraphDialog({ conversationId, onClose }: { conversationId:
           </table>
         </HScroll>
       </DialogBody>
-      {detail && (
-        <ToolCallDetailModal
-          toolName={detail.toolName}
-          arguments={detail.arguments}
-          result={detail.result}
-          onClose={() => setDetail(null)}
-        />
-      )}
     </ModalShell>
   )
 }
 
-function SubAgentRows({ agent, last, now, priced, columns, open, onToggle, call, onOpenDetail, onGo }: {
+function SubAgentRow({ agent, last, now, priced, onGo }: {
   agent: SubAgentSpend
   last: boolean
   now: number
   priced: boolean
-  columns: number
-  open: boolean
-  onToggle: () => void
-  call: ToolCallInfo | undefined
-  onOpenDetail: (tc: ToolCallInfo) => void
-  onGo: () => void
+  onGo?: () => void
 }) {
   const { t } = useTranslation()
   const ms = elapsedMs(agent, now)
   const state = agentWorkState(agent.status)
   return (
-    <>
-      <AgentRow
-        clickable
-        onClick={onToggle}
-        name={
-          // The edge from the main agent: a trunk down the left - stopping at the last sub-agent's
-          // branch - and a branch to each at the height of its robot. Not on a phone, where each row
-          // is a block of its own.
-          <span className="relative flex items-center gap-1.5 min-w-0 sm:pl-6">
-            <span aria-hidden="true" className={cn('hidden sm:block absolute left-[7px] -top-2 w-px bg-line', last ? 'h-[calc(50%+0.5rem)]' : '-bottom-2')} />
-            <span aria-hidden="true" className="hidden sm:block absolute left-[7px] top-1/2 w-4 h-px bg-line" />
-            {/* To its panel in the thread - only where the thread has one to go to. */}
-            <AgentName title={agent.title || t('Sub-agent')} state={state} onGo={call ? onGo : undefined} />
-            <Presence show={agent.mode === 'async' && (state === 'running' || state === 'pending')} collapse={false} className="shrink-0">
-              <span className="text-ink-caption">{t('Background')}</span>
-            </Presence>
-            <ChevronButton open={open} onToggle={onToggle} labels={{ show: t('Show its steps'), hide: t('Hide its steps') }} />
-          </span>
-        }
-        model={[agent.provider, agent.model]}
-        duration={ms == null ? null : formatElapsed(ms, t)}
-        spend={agent}
-        priced={priced}
-        context={agent.contextTokens ? { used: agent.contextTokens, window: agent.contextWindow ?? 0 } : null}
-      />
-      {/* Always in the table, so it can ease open and shut (the kit's Collapse); while shut the
-          row has no border, or two hairlines would sit where one row is. */}
-      <tr className={cn(TR, !open && 'border-b-0')}>
-        <td colSpan={columns} className="p-0">
-          <Collapse open={open} className="px-3 pb-3 sm:px-0">
-            {/* Its block: the same body its panel in the thread has, starting where its row's robot
-                does (0.29.2 feedback), on the dialog's own background with no box of its own
-                (0.31.0 feedback). It GROWS inside the dialog's one scrolling body rather than
-                scrolling in a box of its own - two scroll regions, one inside the other (CHAT-29).
-                The indent is on the block, not the cell: this cell is its row's first, and the
-                table's first-cell rule takes a cell's own left padding away from `sm` up. */}
-            <div className="sm:ml-6 py-1 space-y-1">
-              {call
-                ? <SubAgentSteps call={call} steps={[]} onOpenDetail={onOpenDetail} />
-                : <Caption>{t('Its steps are not loaded in this conversation.')}</Caption>}
-            </div>
-          </Collapse>
-        </td>
-      </tr>
-    </>
+    <AgentRow
+      name={
+        // The edge from the main agent: a trunk down the left - stopping at the last sub-agent's
+        // branch - and a branch to each at the height of its robot. Not on a phone, where each row
+        // is a block of its own.
+        <span className="relative flex items-center gap-1.5 min-w-0 sm:pl-6">
+          <span aria-hidden="true" className={cn('hidden sm:block absolute left-[7px] -top-2 w-px bg-line', last ? 'h-[calc(50%+0.5rem)]' : '-bottom-2')} />
+          <span aria-hidden="true" className="hidden sm:block absolute left-[7px] top-1/2 w-4 h-px bg-line" />
+          <AgentName title={agent.title || t('Sub-agent')} state={state} onGo={onGo} />
+          <Presence show={agent.mode === 'async' && (state === 'running' || state === 'pending')} collapse={false} className="shrink-0">
+            <span className="text-ink-caption">{t('Background')}</span>
+          </Presence>
+        </span>
+      }
+      model={[agent.provider, agent.model]}
+      duration={ms == null ? null : formatElapsed(ms, t)}
+      spend={agent}
+      priced={priced}
+      context={agent.contextTokens ? { used: agent.contextTokens, window: agent.contextWindow ?? 0 } : null}
+    />
   )
 }
 
-// The chevron TRAILING a name - the kit's DisclosureButton, the one chevron button the thread's
-// panels use too (CHAT-21). Wrapped so a click on it is not also a click on the row it sits in.
+// The chevron TRAILING the main agent's name, folding the sub-agents under it - the kit's
+// DisclosureButton, the one chevron button the thread's panels use too (CHAT-21).
 function ChevronButton({ open, onToggle, labels }: {
   open: boolean
   onToggle: () => void
   labels: { show: string; hide: string }
 }) {
   return (
-    <span className="shrink-0 flex" onClick={e => e.stopPropagation()}>
+    <span className="shrink-0 flex">
       <DisclosureButton open={open} onToggle={onToggle} labels={labels} />
     </span>
   )
@@ -281,7 +227,7 @@ function ChevronButton({ open, onToggle, labels }: {
 // StateMark), the robot for every agent, held still beside a wave across its name while it works
 // (working.ts - words wave, an icon alone blinks). With `onGo` the name
 // is a button that goes to the agent in the thread - underlined under a mouse, as a tool row's name
-// is; a click on it is not also a click on the row it sits in.
+// is.
 function AgentName({ title, state, strong = false, onGo }: {
   title: string
   state: WorkState
@@ -307,7 +253,7 @@ function AgentName({ title, state, strong = false, onGo }: {
   )
 }
 
-function AgentRow({ name, model, duration, spend, priced, context, clickable = false, onClick }: {
+function AgentRow({ name, model, duration, spend, priced, context }: {
   name: ReactNode
   // Provider and model, either of which may be missing.
   model: (string | null | undefined)[]
@@ -317,17 +263,12 @@ function AgentRow({ name, model, duration, spend, priced, context, clickable = f
   priced: boolean
   // How full the agent's context is; null where nothing has been measured yet.
   context: { used: number; window: number } | null
-  // A sub-agent's row opens its steps. A pointer and no fill: the kit's interactive row tints on
-  // focus-within, which stayed on after its chevron was clicked and sat apart from the dialog's
-  // background (0.31.0 feedback).
-  clickable?: boolean
-  onClick?: () => void
 }) {
   const { t } = useTranslation()
   const shownModel = model.filter(Boolean).join(' / ')
   const figure = cn(TD_COMPACT, 'text-right data-readout text-ink-secondary whitespace-nowrap')
   return (
-    <tr className={cn(TR, 'animate-fade-in', clickable && 'cursor-pointer')} onClick={onClick}>
+    <tr className={cn(TR, 'animate-fade-in')}>
       <td className={cn(TD_COMPACT, 'max-w-[18rem]')}>{name}</td>
       <td data-label={t('Provider / model')} className={cn(TD_COMPACT, 'text-ink-secondary max-w-[14rem]')}>
         {shownModel ? <span className="block truncate" title={shownModel}>{shownModel}</span> : <EmptyValue />}

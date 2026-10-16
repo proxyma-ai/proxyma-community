@@ -173,6 +173,16 @@ public final class ManagedProcess implements AutoCloseable {
         }
     }
 
+    /** Whether the process exits within {@code timeout} - one the product ends itself, as a restart from Settings does. */
+    public boolean awaitExit(Duration timeout) {
+        try {
+            return process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
     /** Waits for a line matching a predicate - used to read the fake provider's chosen port. */
     public String awaitLine(Predicate<String> matches, Duration timeout) {
         Instant deadline = Instant.now().plus(timeout);

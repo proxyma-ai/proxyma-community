@@ -15,8 +15,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ApplicationCommandTest {
 
     private static List<String> command(List<String> inherited) {
+        return command(inherited, List.of());
+    }
+
+    private static List<String> command(List<String> inherited, List<String> jvmOptions) {
         return ProxymaLauncher.applicationCommand("java", Path.of("app.jar"), 4246, Path.of("parts"),
-                null, null, null, "logs", inherited);
+                null, null, null, "logs", inherited, jvmOptions);
     }
 
     @Test
@@ -34,5 +38,13 @@ class ApplicationCommandTest {
         assertThat(cmd).doesNotContain("-Dserver.address=0.0.0.0", "-Dproxyma.network.allowed-hosts=*",
                 "-Dproxyma.access.code=chosen-by-someone-else", "-Xmx2g");
         assertThat(cmd).contains("-Dfile.encoding=UTF-8");
+    }
+
+    @Test
+    void classDataSharingOptionsComeBeforeTheJar() {
+        List<String> cmd = command(List.of(), List.of("-XX:SharedArchiveFile=x.jsa", "-Xshare:auto"));
+        assertThat(cmd.indexOf("-XX:SharedArchiveFile=x.jsa")).isPositive().isLessThan(cmd.indexOf("-jar"));
+        assertThat(cmd.indexOf("-Xshare:auto")).isLessThan(cmd.indexOf("-jar"));
+        assertThat(cmd.subList(cmd.size() - 2, cmd.size())).containsExactly("-jar", "app.jar");
     }
 }

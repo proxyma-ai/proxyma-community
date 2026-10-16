@@ -20,6 +20,8 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 // Backs the Settings page's model comboboxes (Chat/Query Expansion/Reranking/Embedding model
 // fields): fetches the live model list from whichever provider is currently selected, on demand
@@ -55,44 +57,79 @@ public class ProviderModelsController {
     // person - for that long.
     private static final Duration REMOTE_WAIT = Duration.ofSeconds(15);
 
+    // Package-private so a test need not wait the whole of it.
+    Duration remoteWait = REMOTE_WAIT;
+
     // listModels() does blocking HTTP internally, so it runs on BlockingWork - the pool for work that
     // waits on a remote server - and never on a WebFlux event loop or on boundedElastic, which every
     // blocking database read shares.
     // `provider` is a configured instance's ID now, not a protocol name - the model list depends on
     // the base URL and credential, which belong to the instance. Two instances of one protocol
     // legitimately return different lists.
+    //
+    // A FAILURE IS AN ANSWER, NOT AN ERROR SIGNAL. The call's own failure is turned into the response
+    // inside the callable, so nothing it throws can arrive after the dropdown stopped waiting: the
+    // timeout cancels the call, cancelling interrupts the thread (which ends the request rather than
+    // leaving it to its read bound), and the interrupted request then failed into a subscriber that
+    // had gone - Reactor's onErrorDropped, an ERROR and a stack trace in the log for every provider
+    // slower than the timeout (0.36.0 feedback, four of them at once). The failure that comes too late
+    // is logged at DEBUG and dropped; the timeout already answered.
     @GetMapping("/{provider}/models")
     public Mono<ResponseEntity<Object>> listModels(@PathVariable String provider) {
         log.info("[ProviderModelsController] Listing models for providerId={}", provider);
-        return Mono.fromCallable(() -> {
-                    ResolvedProvider resolved = factory.resolveProvider(provider)
-                            .orElseThrow(() -> new UnknownProvider("No configured provider with id " + provider));
-                    LlmProviderAdapter adapter = factory.getAdapter(provider);
-                    if (adapter == null) {
-                        throw new UnknownProvider("No adapter for protocol " + resolved.protocol());
-                    }
-                    List<String> models = adapter.listModels(resolved);
-                    log.info("[ProviderModelsController] '{}' returned {} model(s)",
-                            resolved.name(), models.size());
-                    return new ModelListResponse(models);
-                })
+        AtomicBoolean abandoned = new AtomicBoolean();
+        // The base URL's host, once resolved, so a timeout can say which way the request went too.
+        AtomicReference<String> host = new AtomicReference<>();
+        return Mono.fromCallable(() -> fetch(provider, host, abandoned))
                 .subscribeOn(Schedulers.fromExecutor(BlockingWork.executor()))
-                .timeout(REMOTE_WAIT)
-                .map(resp -> ResponseEntity.ok((Object) resp))
-                // Full stack trace (not just getMessage()) logged here so a hang-vs-refused-vs-401-vs-
-                // parse-error is still distinguishable from the server log alone even though the
-                // client-facing body below is a short classified summary, not the raw exception.
-                .onErrorResume(e -> {
-                    log.warn("[ProviderModelsController] Failed to list models for provider={}", provider, e);
-                    // The failure as thrown - classify finds its cause; unwrapping one here turned
-                    // every network failure into unknown_error.
-                    var err = e instanceof UnknownProvider
-                            ? new ProviderConnectivityService.Failure("unknown_provider", e.getMessage())
-                            : connectivity.classify(e);
-                    return Mono.just(ResponseEntity.status(statusFor(err.code()))
-                            .body((Object) Map.of("error", err.code(),
-                                    "message", err.message() == null ? "" : err.message())));
-                });
+                // Before the cancel reaches subscribeOn, which is what interrupts the call.
+                .doOnCancel(() -> abandoned.set(true))
+                .timeout(remoteWait)
+                .onErrorResume(e -> Mono.just(failed(provider, host.get(), e)));
+    }
+
+    private ResponseEntity<Object> fetch(String provider, AtomicReference<String> host, AtomicBoolean abandoned) {
+        try {
+            ResolvedProvider resolved = factory.resolveProvider(provider)
+                    .orElseThrow(() -> new UnknownProvider("No configured provider with id " + provider));
+            host.set(ProviderConnectivityService.hostOf(resolved));
+            LlmProviderAdapter adapter = factory.getAdapter(provider);
+            if (adapter == null) {
+                throw new UnknownProvider("No adapter for protocol " + resolved.protocol());
+            }
+            List<String> models = adapter.listModels(resolved);
+            log.info("[ProviderModelsController] '{}' returned {} model(s)", resolved.name(), models.size());
+            return ResponseEntity.ok((Object) new ModelListResponse(models));
+        } catch (RuntimeException e) {
+            if (abandoned.get()) {
+                log.debug("[ProviderModelsController] provider={} failed after the timeout had answered: {}",
+                        provider, e.toString());
+                // Nobody is subscribed any more; a null completes the callable empty.
+                return null;
+            }
+            return failed(provider, host.get(), e);
+        }
+    }
+
+    private ResponseEntity<Object> failed(String provider, String host, Throwable e) {
+        if (e instanceof java.util.concurrent.TimeoutException) {
+            // Our own wait running out: its stack trace is Reactor's timer, which says nothing.
+            log.warn("[ProviderModelsController] Failed to list models for provider={}: no answer within {}s",
+                    provider, remoteWait.toSeconds());
+        } else {
+            // Full stack trace (not just getMessage()) so a refused-vs-401-vs-parse-error is still
+            // distinguishable from the server log alone even though the client-facing body below is
+            // a short classified summary, not the raw exception.
+            log.warn("[ProviderModelsController] Failed to list models for provider={}", provider, e);
+        }
+        // The failure as thrown - classify finds its cause; unwrapping one here turned every network
+        // failure into unknown_error.
+        var err = e instanceof UnknownProvider
+                ? new ProviderConnectivityService.Failure("unknown_provider", e.getMessage())
+                : connectivity.classify(e, host);
+        return ResponseEntity.status(statusFor(err.code()))
+                .body((Object) Map.of("error", err.code(),
+                        "message", err.message() == null ? "" : err.message()));
     }
 
     // This controller's own lookup failing - the one case that is "unknown_provider". An adapter's

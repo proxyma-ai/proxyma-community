@@ -361,23 +361,30 @@ html:not([data-motion-ready]) *::after {
 .animate-reveal     { animation: proxyma-reveal 2s var(--ease-in-out); }
 
 /* WORDS AT WORK: A HORIZONTAL WAVE (maintainer's request, 2026-10-14) - a tool call's row, the
-   thinking and waiting lines, a sub-agent's name, a running step. A soft band of a second ink
-   sweeps left to right across the words, about once every 1.8s; an icon alone blinks instead
-   (working.ts says which). The words keep their own ink - `currentColor`, so a warning line stays
-   warning - and the band is primary ink, or caption ink over words already in primary ink, so it
-   shows in Light, Proxyma and Dark alike. Put it on the element that carries the words' colour.
-   Reduced motion: none of it - the words in their own ink, still. */
+   thinking and waiting lines, a sub-agent's name, a running step. A band of full ink sweeps left to
+   right across the words, about once every 1.8s; an icon alone blinks instead (working.ts says
+   which). Put it on the element that carries the words' colour.
+
+   STRONG ENOUGH TO SEE, since the 0.36.0 feedback (maintainer's, 2026-10-16: "the wave effects are
+   too weak for sub agent title when running, tool callings"). The band was primary ink over the
+   words' own, or caption ink over words already primary - neighbours in every mode, so on a
+   sub-agent's name it was barely there - and 120% of the words' width, so no edge of it ever
+   crossed them. Now the words at rest are their own ink at 45% (mixed with transparent, so they dim
+   towards whatever surface they sit on, a dialog's or the thread's), and a band of primary ink about
+   half their width passes over them - bright on the dark modes, dark on Light. A warning line stays
+   warning at rest. Reduced motion: none of it - the words in their own ink, still. */
 @keyframes proxyma-text-wave {
   from { background-position: 100% 0; }
   to   { background-position: 0 0; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .text-wave {
+    --wave-rest: color-mix(in srgb, currentColor 45%, transparent);
     --wave-band: rgb(var(--ink-primary));
     background-image: linear-gradient(90deg,
-      currentColor 0%, currentColor 30%,
+      var(--wave-rest) 0%, var(--wave-rest) 41%,
       var(--wave-band) 50%,
-      currentColor 70%, currentColor 100%);
+      var(--wave-rest) 59%, var(--wave-rest) 100%);
     background-size: 300% 100%;
     background-repeat: no-repeat;
     -webkit-background-clip: text;
@@ -385,7 +392,6 @@ html:not([data-motion-ready]) *::after {
     -webkit-text-fill-color: transparent;
     animation: proxyma-text-wave 1.8s linear infinite;
   }
-  .text-wave.text-ink-primary { --wave-band: rgb(var(--ink-caption)); }
 }
 .animate-dropdown   {
   animation: proxyma-dropdown-in var(--motion-fast) var(--ease-out) both;
@@ -763,4 +769,13 @@ html:not([data-motion-ready]) *::after {
   .prose-doc pre::-webkit-scrollbar,
   .prose-doc .table-wrap::-webkit-scrollbar { display: none; }
 }
-.prose-doc-sm, .prose-doc-sm * { font-size: 0.8125rem; line-height: 1.5; }
+/* The words of a sub-agent's text and report, at its panel's 13px. Element-qualified, so (0,1,1)
+   beats the thread's own `text-[15px] leading-relaxed` (PROSE_CHAT, 0,1,0) whichever comes later in
+   the sheet: the bare `*` lost to them once the 2026-10-15 readability pass wrote them on every
+   paragraph and list, and a sub-agent's text read at 15px between its 13px steps (0.36.0
+   feedback). Code keeps the CodeBlock's own size. */
+.prose-doc-sm,
+.prose-doc-sm :is(p, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, div, span, a, strong, em, table, th, td) {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}

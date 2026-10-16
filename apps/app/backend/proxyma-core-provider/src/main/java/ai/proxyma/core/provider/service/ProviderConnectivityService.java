@@ -1,12 +1,16 @@
 package ai.proxyma.core.provider.service;
 
 import ai.proxyma.core.common.concurrent.BlockingWork;
+import ai.proxyma.core.network.ProxyRoute;
 import ai.proxyma.core.provider.adapter.LlmProviderAdapter;
 import ai.proxyma.core.settings.event.ProviderSettingsChangedEvent;
 import ai.proxyma.core.settings.provider.ProviderInstanceService;
 import ai.proxyma.core.settings.provider.ResolvedProvider;
+import ai.proxyma.core.webcontent.WebProxyProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -19,8 +23,10 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.net.ConnectException;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.net.SocketTimeoutException;
+import java.nio.channels.UnresolvedAddressException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -80,10 +86,19 @@ public class ProviderConnectivityService {
     private final AtomicBoolean sweeping = new AtomicBoolean();
     private final AtomicBoolean dirty = new AtomicBoolean();
 
+    // Optional, for saying which way a failed request went (ProxyRoute). Absent, nothing is said
+    // about the route - the classification itself does not depend on it.
+    private ObjectProvider<WebProxyProvider> proxy;
+
     public ProviderConnectivityService(List<LlmProviderAdapter> adapters,
                                        ProviderInstanceService providerInstances) {
         this.adapters = adapters;
         this.providerInstances = providerInstances;
+    }
+
+    @Autowired(required = false)
+    void setProxy(ObjectProvider<WebProxyProvider> proxy) {
+        this.proxy = proxy;
     }
 
     public Connectivity current() {
@@ -227,7 +242,7 @@ public class ProviderConnectivityService {
                             ? "Reachable, but it reports no models."
                             : "Reachable (" + models.size() + " model(s)).");
         } catch (Exception e) {
-            Failure f = classify(e);
+            Failure f = classify(e, hostOf(provider));
             // Azure OpenAI has no model-listing API, so it can be configured and correct while being
             // unprobeable. Marked not-probeable rather than unreachable: counting it as a failure
             // would let an install whose ONLY provider is Azure be told nothing connects, which we
@@ -253,6 +268,20 @@ public class ProviderConnectivityService {
      * the two disagreed - the thing this method exists to prevent.
      */
     public Failure classify(Throwable thrown) {
+        return classify(thrown, null);
+    }
+
+    /**
+     * {@link #classify(Throwable)}, for a request to {@code host}: a failure to connect also says
+     * which way the request went - directly because the host is on No proxy, or through the proxy
+     * (ProxyRoute). The codes do not change with it; only the sentence does.
+     *
+     * <p>A name that does not resolve is "unknown_host" however the client reports it. The JDK and
+     * Netty clients report it as an UnresolvedAddressException under a ConnectException, which was
+     * classified "connection_refused" - "is the service running at that address?" about a server
+     * the request never found (0.36.0 feedback).
+     */
+    public Failure classify(Throwable thrown, String host) {
         Throwable e = unwrapped(thrown);
         if (e instanceof IllegalStateException) {
             // Adapters throw this for "required setting not configured" (missing API key/base URL).
@@ -280,23 +309,51 @@ public class ProviderConnectivityService {
         }
         // The network, wherever in the chain it surfaced. The JDK client's own timeouts are
         // HttpTimeoutException (and HttpConnectTimeoutException under it), not SocketTimeoutException.
+        ProxyRoute route = routeOf(host);
         if (inChain(e, java.util.concurrent.TimeoutException.class)
                 || inChain(e, SocketTimeoutException.class)
                 || inChain(e, java.net.http.HttpTimeoutException.class)) {
-            return new Failure("timeout", "Connection timed out.");
+            return new Failure("timeout", route == ProxyRoute.NONE
+                    ? "Connection timed out."
+                    : "Connection timed out - " + route.note() + ".");
         }
-        if (inChain(e, UnknownHostException.class)) {
-            return new Failure("unknown_host", "Could not resolve host - check the base URL.");
+        if (inChain(e, UnknownHostException.class) || inChain(e, UnresolvedAddressException.class)) {
+            return new Failure("unknown_host", switch (route) {
+                case NONE -> "Could not resolve host - check the base URL.";
+                // Through a proxy the proxy resolves the server's name; the one this machine could
+                // not resolve was the proxy's own.
+                case PROXY -> "Could not resolve the proxy's address - check it in Settings > Network.";
+                case BYPASSED -> "Could not resolve host - " + route.note() + ".";
+            });
         }
         if (inChain(e, ConnectException.class)) {
-            return new Failure("connection_refused",
-                    "Connection refused - is the service running at that address?");
+            return new Failure("connection_refused", switch (route) {
+                case NONE -> "Connection refused - is the service running at that address?";
+                // Through a proxy the connection that failed is the one to the proxy.
+                case PROXY -> "Could not connect to the proxy - check that it is running, "
+                        + "or change it in Settings > Network.";
+                case BYPASSED -> "Connection refused - " + route.note() + ".";
+            });
         }
         if (e instanceof ResourceAccessException || e instanceof java.io.IOException) {
             return new Failure("connection_failed", e.getMessage());
         }
         return new Failure("unknown_error",
                 e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+    }
+
+    private ProxyRoute routeOf(String host) {
+        return ProxyRoute.of(proxy != null ? proxy.getIfAvailable() : null, host);
+    }
+
+    /** The host a provider's base URL names, or null when it names none. */
+    public static String hostOf(ResolvedProvider provider) {
+        if (provider == null || provider.baseUrl() == null || provider.baseUrl().isBlank()) return null;
+        try {
+            return URI.create(provider.baseUrl().trim()).getHost();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // A future's or a proxy's wrapper says nothing; what it wraps does.

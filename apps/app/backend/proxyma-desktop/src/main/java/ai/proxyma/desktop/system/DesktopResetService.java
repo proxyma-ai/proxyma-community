@@ -2,10 +2,12 @@ package ai.proxyma.desktop.system;
 
 import ai.proxyma.core.settings.global.GlobalSettingRepository;
 import ai.proxyma.core.system.util.AppPaths;
+import ai.proxyma.core.system.util.ProcessExit;
 import ai.proxyma.desktop.launcher.PendingReset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,12 +53,9 @@ public class DesktopResetService {
 
     private static final Logger log = LoggerFactory.getLogger(DesktopResetService.class);
 
-    // Same code SystemController uses for a restart, and the launcher's restart signal. See
-    // ProxymaLauncher: it applies any staged update, then any pending reset, then starts the app.
-    private static final int EXIT_CODE_RESTART = 3;
-
     private final GlobalSettingRepository globalSettingRepository;
     private final AppPaths appPaths;
+    private final ConfigurableApplicationContext context;
 
     // What lives OUTSIDE the data directory, as this installation resolved it. Only the app knows
     // these - the launcher reads no configuration - so the marker carries them (editions-assembly-04).
@@ -76,7 +75,9 @@ public class DesktopResetService {
     @Value("${proxyma.storage.local.root:/data}")
     private String storageRoot;
 
-    public DesktopResetService(GlobalSettingRepository globalSettingRepository, AppPaths appPaths) {
+    public DesktopResetService(GlobalSettingRepository globalSettingRepository, AppPaths appPaths,
+                               ConfigurableApplicationContext context) {
+        this.context = context;
         this.globalSettingRepository = globalSettingRepository;
         this.appPaths = appPaths;
     }
@@ -122,12 +123,11 @@ public class DesktopResetService {
         return dirs;
     }
 
-    // Exit on a thread of its own after a beat, so the HTTP response is actually written before the
-    // JVM goes away. Same shape as the server's reset, for the same reason.
+    // Exit code 3, the launcher's restart signal - it applies any staged update, then any pending
+    // reset, then starts the app (ProxymaLauncher). Through ProcessExit, after a beat for the HTTP
+    // response, and with the context closed and bounded like every other exit: this called
+    // System.exit bare until the 0.36.0 feedback.
     private void restart() {
-        new Thread(() -> {
-            try { Thread.sleep(500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
-            System.exit(EXIT_CODE_RESTART);
-        }, "desktop-reset-restart").start();
+        ProcessExit.restartShortly(context, "Reset requested");
     }
 }

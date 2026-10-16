@@ -1,5 +1,6 @@
 import { createChatStore, type ChatStore } from '@/store/chatStore'
-import { newChatStream, stop as stopFollowing, type ChatStream } from '../utils/chatStream'
+import { newChatStream, pause, stop as stopFollowing, type ChatStream } from '../utils/chatStream'
+import { createHiddenPause } from '../utils/hiddenPause'
 import { createInstanceRegistry } from './instanceRegistry'
 
 /**
@@ -43,10 +44,16 @@ export interface ChatInstance {
    */
   newSegmentPending: { current: boolean }
   /**
-   * Loads the open conversation again from the server - what the lost-connection notice offers. Set
-   * by the mounted useChat, because the stream handler that raises that notice is defined first.
+   * Loads the open conversation again from the server - what the lost-connection notice offers, and
+   * what a stream does whose turn is gone (`lost`, chatStream.ts's `opened`). Set by the mounted
+   * useChat, because the stream handler that raises that notice is defined first.
    */
-  reload: { current: ((id: string) => Promise<boolean>) | null }
+  reload: { current: ((id: string, options?: { lost?: boolean }) => Promise<boolean>) | null }
+  /**
+   * Picks up the stream a hidden tab paused (chatStream.ts's `pause`), when the tab is shown again.
+   * Set by the mounted useChat, like `reload`; a chat no useChat ever drove has no stream to pause.
+   */
+  resume: { current: (() => void) | null }
   /** Queued messages already offered to the running turn - see useChat's offerToTurn. */
   offered: { current: Set<string> }
 }
@@ -68,6 +75,7 @@ export function createChatInstance(key: string, options: ChatInstanceOptions = {
     manualCondense: { current: false },
     newSegmentPending: { current: false },
     reload: { current: null },
+    resume: { current: null },
     offered: { current: new Set<string>() },
   }
 }
@@ -90,10 +98,42 @@ export function mainChatInstance(): ChatInstance {
 // server-side, and a panel shown again resumes it from the server.
 const IDLE_GRACE_MS = 10_000
 
+// Every chat on the page that may hold a stream: the main one, and each keyed one until it goes.
+const live = new Set<ChatInstance>([main])
+
 const registry = createInstanceRegistry<ChatInstance>({
-  dispose: instance => stopFollowing(instance.stream),
+  dispose: instance => {
+    live.delete(instance)
+    stopFollowing(instance.stream)
+  },
   graceMs: IDLE_GRACE_MS,
 })
+
+// A TAB HIDDEN FOR HALF A MINUTE LETS GO OF ITS CHAT STREAMS (the 0.36.0 feedback). A browser keeps
+// six HTTP/1.1 connections per site across ALL its tabs - and Desktop's http://127.0.0.1 is never
+// spoken HTTP/2 - while a chat stream holds one for as long as a turn or a background sub-agent
+// runs. A few tabs left in the background used the pool up, and the next page's requests waited
+// for ever. Shown again, each chat picks up where it was (useChat's `resume`); the turn itself never
+// stopped, server-side.
+const HIDDEN_GRACE_MS = 30_000
+
+if (typeof document !== 'undefined') {
+  const tab = createHiddenPause({
+    graceMs: HIDDEN_GRACE_MS,
+    pause: () => {
+      const now = Date.now()
+      for (const instance of live) pause(instance.stream, now)
+    },
+    resume: () => { for (const instance of live) instance.resume.current?.() },
+  })
+  const follow = () => {
+    if (document.visibilityState === 'hidden') tab.hidden()
+    else tab.visible()
+  }
+  document.addEventListener('visibilitychange', follow)
+  // A tab opened in the background starts hidden, with no change to announce it.
+  follow()
+}
 
 /**
  * The instance for `key`, made on first use. The options are read when it is made; a later call
@@ -101,7 +141,11 @@ const registry = createInstanceRegistry<ChatInstance>({
  */
 export function chatInstanceFor(key: string, options: ChatInstanceOptions = {}): ChatInstance {
   if (key === MAIN_CHAT_KEY) return main
-  return registry.get(key, () => createChatInstance(key, options))
+  return registry.get(key, () => {
+    const instance = createChatInstance(key, options)
+    live.add(instance)
+    return instance
+  })
 }
 
 /** Holds the instance for `key` while something shows it; call the result to let it go. */

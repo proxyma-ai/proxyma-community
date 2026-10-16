@@ -417,7 +417,11 @@ class IngestApiTest {
             d.put("metadata", Map.of("team", "Platform"));
             push(token, d).expectStatus().isOk();
 
-            h.drainUntil(() -> h.trackedItem(source, "rn-1").getStatus() == TrackedDocument.Status.COMPLETED);
+            // The item is saved COMPLETED and the source's counters are written just after it
+            // (SyncService.updateConnectorCounts), so wait for both: reading the count the moment the
+            // status turned failed the 0.36.2 dev pipeline on a busy runner.
+            h.drainUntil(() -> h.trackedItem(source, "rn-1").getStatus() == TrackedDocument.Status.COMPLETED
+                    && h.sources.findById(source.getId()).orElseThrow().getProcessedCount() == 1);
 
             String collection = IngestHarness.collectionOf(source);
             verify(h.keywords).addDocuments(eq(collection), eq("doc:rn-1"),

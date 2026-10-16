@@ -162,11 +162,11 @@ export function SubAgentPanel({ call, steps, conversationId, onOpenDetail }: Pro
 /**
  * What a sub-agent did, as its panel's body shows it: what it said and the tools it called, in
  * order; under them what it is doing now; and, once it has ended, its report - or, for a
- * delegation stored before 2026-10-02, its steps and verdict. The thread's panel and the agents map
- * (AgentsGraphDialog, which opens a sub-agent's block in place) both draw this, so the two show one
- * run the same way.
+ * delegation stored before 2026-10-02, its steps and verdict. Only the thread draws it since the
+ * 0.36.0 feedback - the agents map, which drew it under a sub-agent's row, now sends the reader to
+ * this panel instead.
  */
-export function SubAgentSteps({ call, steps, onOpenDetail }: {
+function SubAgentSteps({ call, steps, onOpenDetail }: {
   call: ToolCallInfo
   steps: ToolCallInfo[]
   onOpenDetail: (tc: ToolCallInfo) => void

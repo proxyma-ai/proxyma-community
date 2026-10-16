@@ -253,6 +253,9 @@ export interface ChatSseEvent {
     | 'usage' | 'title' | 'workflow-run' | 'retry' | 'guardrail' | 'step-limit' | 'prompt-closed' | 'error' | 'session-expired' | 'done'
     | 'sub-agent-start' | 'sub-agent-wait' | 'sub-agent-thinking' | 'sub-agent-text' | 'sub-agent-done'
     | 'sub-agent-reported' | 'turn-start'
+    // The stream's own first event, no event of the conversation's: which server this is and
+    // whether anything still runs there (ChatController.openEvent, chatStream.ts's `opened`).
+    | 'open'
   callId: string
   toolName: string
   data: string

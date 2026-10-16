@@ -65,6 +65,13 @@ public class EventStreamController {
     // too) - but every connector-scoped message is filtered per-subscriber against the caller's
     // own userId so registering a private connector never broadcasts its title/status to every
     // other connected client (SEC-D4). Legacy/global messages (Scope.GLOBAL) are unaffected.
+    //
+    // THE FIRST EVENT NAMES WHOSE STREAM IT IS (STREAM_IDENTITY): the user id the filter above uses,
+    // or null for nobody. The page shares one stream between all its tabs (eventsShare.ts), and the
+    // session can change in one tab while the stream was opened under another: without being told,
+    // the tab holding the stream cannot know whose events it is relaying, and it relayed one
+    // account's events into a tab still showing another, and kept an anonymous stream open after a
+    // sign-in. It is the caller's own id, which /api/v1/auth/me already gives them.
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> stream(ServerWebExchange exchange) {
         return resolveUserId(exchange).flatMapMany(userId -> {
@@ -72,8 +79,22 @@ public class EventStreamController {
             return eventSink.getFlux()
                     .filter(msg -> msg.scope().visibleTo(uid))
                     .map(msg -> ServerSentEvent.builder(msg.json()).build())
+                    .startWith(identity(uid))
                     .mergeWith(Flux.interval(Duration.ofSeconds(30)).map(i -> KEEPALIVE));
         });
+    }
+
+    static final String STREAM_IDENTITY = "stream-identity";
+
+    ServerSentEvent<String> identity(String uid) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("type", STREAM_IDENTITY);
+        body.put("userId", uid);
+        try {
+            return ServerSentEvent.builder(json.writeValueAsString(body)).build();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("could not write the stream's identity", e);
+        }
     }
 
     private Mono<String> resolveUserId(ServerWebExchange exchange) {

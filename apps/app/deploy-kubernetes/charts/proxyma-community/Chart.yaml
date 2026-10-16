@@ -6,9 +6,9 @@ type: application
 # carries this chart as proxyma-community-<version>.tgz, so the chart is versioned with the
 # application it installs; the version bump writes both, and tools/build/lint-charts.sh fails
 # while either differs from the pom.
-version: 0.36.0
+version: 0.36.2
 # The image tag used when image.tag is empty.
-appVersion: "0.36.0"
+appVersion: "0.36.2"
 # persistentVolumeClaimRetentionPolicy is beta and on by default from 1.27.
 kubeVersion: ">=1.27.0-0"
 home: https://proxyma.ai

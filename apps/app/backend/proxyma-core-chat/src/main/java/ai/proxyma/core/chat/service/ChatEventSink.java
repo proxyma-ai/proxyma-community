@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,6 +28,16 @@ public class ChatEventSink {
     // 30-minute write-tool approval wait, the longest a conversation can legitimately sit with no
     // new events and no connected subscriber.
     private static final Duration REAP_IDLE_THRESHOLD = Duration.ofMinutes(45);
+
+    // WHICH NUMBERING the sequence numbers below belong to: a random id per process, since
+    // 2026-10-16. Every map here is in memory, so a restarted server numbers each conversation's
+    // events from zero again and holds no replay of anything published before it started. A page
+    // that reconnected to it went on skipping every event at or below the number it last saw - and
+    // waited for ever for a turn that had died with the old process, its next message refused as
+    // an injection into a turn that was not running. A stream says this id when it opens
+    // (ChatController.chatEvents), and a page that held another one knows its numbers mean nothing
+    // here.
+    private final String boot = UUID.randomUUID().toString();
 
     private final ConcurrentHashMap<String, Sinks.Many<ChatEvent>> sinks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicLong> sequenceCounters = new ConcurrentHashMap<>();
@@ -119,6 +130,11 @@ public class ChatEventSink {
         sequenceCounters.computeIfAbsent(conversationId, k -> new AtomicLong(0));
         orderingStates.computeIfAbsent(conversationId, k -> new OrderingState());
         return sink.asFlux();
+    }
+
+    /** This process's id - the numbering every sequence number it hands out belongs to. */
+    public String boot() {
+        return boot;
     }
 
     /** The number the conversation's next event will carry; 0 when it has published none. */

@@ -5,6 +5,7 @@ import type {
   Conversation, ConversationSnapshot, ChatSseEvent, PermissionMode, SharedConversation, WorkflowRunSnapshot,
 } from '../types/chat.types'
 import type { ConversationAgents } from '../utils/agentsGraph'
+import { nextReconnectDelay } from '../utils/reconnect'
 
 export interface ConversationsPage {
   items: Conversation[]
@@ -151,14 +152,15 @@ export const chatApi = {
   ): (() => void) => {
     // Native EventSource exposes no HTTP status on error (a 429 from the rate limiter looks
     // identical to a genuine network blip), so a failed connection is retried generically with
-    // capped exponential backoff instead of failing hard on the very first error - only after
-    // all retries are exhausted does the caller see "Connection lost".
-    const MAX_RETRIES = 4
-    const BASE_DELAY_MS = 1000
+    // capped exponential backoff instead of failing hard on the very first error - only once
+    // the budget is spent does the caller see "Connection lost". The budget outlasts an
+    // application restart (nextReconnectDelay, reconnect.ts).
 
     let es: EventSource | null = null
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let attempt = 0
+    // When the stream was last open, or first tried: the reconnect budget runs from here.
+    let downSince = Date.now()
     let closed = false
     // The last event handed on. The server replays the whole turn to every connection, so a
     // RECONNECT - which the retry below makes by itself - delivers everything already handled a
@@ -204,23 +206,25 @@ export const chatApi = {
 
       // A long-running turn can hit several ordinary transient reconnects (proxy blips, brief
       // network hiccups) that each succeed individually but, without this, would still count
-      // toward MAX_RETRIES since the 'chat' listener above only resets `attempt` on a terminal
+      // toward the retry budget since the 'chat' listener above only resets `attempt` on a terminal
       // event - never just because the connection came back. onopen fires on the initial
       // connect AND on every successful reconnect, so it ties the retry budget to actual
       // connection health instead, preventing the budget from exhausting mid-stream on a
       // response that's simply taking a while.
       es.onopen = () => {
         attempt = 0
+        downSince = Date.now()
       }
 
       es.onerror = () => {
         es?.close()
         if (closed) return
-        if (attempt >= MAX_RETRIES) {
+        if (attempt === 0) downSince = Date.now()
+        const delay = nextReconnectDelay(attempt, downSince, Date.now())
+        if (delay === null) {
           onError(connectionLostMessage, true)
           return
         }
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt)
         attempt += 1
         retryTimer = setTimeout(connect, delay)
       }
