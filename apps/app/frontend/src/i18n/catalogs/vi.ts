@@ -431,6 +431,7 @@ export const vi: Record<string, string> = {
   'Suggested prompts': 'Câu hỏi gợi ý',
   'Could not start this conversation. Try again.': 'Không thể bắt đầu cuộc trò chuyện này. Hãy thử lại.',
   '{title} reported back': '{title} đã báo cáo lại',
+  '{title} sent a message': '{title} đã gửi một tin nhắn',
   'Stopped at the limit of {count} step.|Stopped at the limit of {count} steps.': 'Đã dừng ở giới hạn {count} bước.',
   'Step limit reached': 'Đã đạt giới hạn số bước',
   'The agent has used its {count} step and is not finished.|The agent has used its {count} steps and is not finished.':
@@ -480,10 +481,22 @@ export const vi: Record<string, string> = {
   'Found the main themes': 'Đã tìm các chủ đề chính',
   'Remembering': 'Đang ghi nhớ',
   'Remembered': 'Đã ghi nhớ',
+  'Updating memory': 'Đang cập nhật bộ nhớ',
+  'Updated memory': 'Đã cập nhật bộ nhớ',
+  'Forgetting a memory': 'Đang xóa một mục bộ nhớ',
+  'Forgot a memory': 'Đã xóa một mục bộ nhớ',
   'Loading skill': 'Đang tải kỹ năng',
   'Loaded skill': 'Đã tải kỹ năng',
   'Working on a sub-task': 'Đang xử lý một tác vụ con',
   'Finished a sub-task': 'Đã hoàn thành một tác vụ con',
+  'Updating a sub-task': 'Đang cập nhật một tác vụ con',
+  'Updated a sub-task': 'Đã cập nhật một tác vụ con',
+  'Stopping a sub-task': 'Đang dừng một tác vụ con',
+  'Stopped a sub-task': 'Đã dừng một tác vụ con',
+  'Asking the main agent': 'Đang hỏi tác nhân chính',
+  'Asked the main agent': 'Đã hỏi tác nhân chính',
+  'Telling the main agent': 'Đang báo tác nhân chính',
+  'Told the main agent': 'Đã báo tác nhân chính',
   'Searching the web': 'Đang tìm kiếm trên web',
   'Searched the web': 'Đã tìm kiếm trên web',
   'Reading page': 'Đang đọc trang',
@@ -862,6 +875,8 @@ export const vi: Record<string, string> = {
   'Created {key}': 'Đã tạo {key}',
   // The one tool display-name override: "Delegate" names the mechanism, "Agent" what is seen.
   'Agent': 'Tác nhân',
+  'Direct agent': 'Điều phối tác nhân',
+  'Message main agent': 'Nhắn tác nhân chính',
 
   // -- the Sources page -----------------------------------------------------------
   'All': 'Tất cả',
@@ -2871,6 +2886,16 @@ export const vi: Record<string, string> = {
   'Command': 'Lệnh',
   'Connected to {server}. Tools available: {count}.': 'Đã kết nối tới {server}. Số công cụ khả dụng: {count}.',
   'Could not connect: {reason}': 'Không thể kết nối: {reason}',
+  'Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).':
+    'Không thể kết nối: {reason}. Máy chủ MCP thường trả lời tại địa chỉ kết thúc bằng /mcp (hoặc /sse với kiểu truyền cũ).',
+  "That address answered, but not as a Subversion repository. Use the repository's root URL.":
+    'Địa chỉ đó có trả lời, nhưng không phải là một kho Subversion. Hãy dùng URL gốc của kho mã.',
+  'GitLab answers at {address}. Use that address as the GitLab URL.':
+    'GitLab trả lời tại {address}. Hãy dùng địa chỉ đó làm URL GitLab.',
+  "Zendesk has nothing at {address}. Check the connection's address.":
+    'Zendesk không có gì tại {address}. Hãy kiểm tra địa chỉ của kết nối.',
+  "Freshdesk has nothing at {address}. Check the connection's address.":
+    'Freshdesk không có gì tại {address}. Hãy kiểm tra địa chỉ của kết nối.',
   'Could not start the sign-in.': 'Không thể bắt đầu đăng nhập.',
   'Environment variables': 'Biến môi trường',
   'Every user on this server can use its tools through this connection.':
@@ -3932,10 +3957,10 @@ export const vi: Record<string, string> = {
   'That is not an item of a Freshdesk source.': 'Đó không phải một mục của nguồn Freshdesk.',
   'That is not an item of a Zendesk source.': 'Đó không phải một mục của nguồn Zendesk.',
   'This connection has no API key. Add it in Settings > Connections.': 'Kết nối này chưa có API key. Hãy thêm trong Cài đặt > Kết nối.',
-  'This connection has no Freshdesk domain. Add it in Settings > Connections.':
-    'Kết nối này chưa có tên miền Freshdesk. Hãy thêm trong Cài đặt > Kết nối.',
-  'This connection has no Zendesk subdomain. Add it in Settings > Connections.':
-    'Kết nối này chưa có tên miền phụ Zendesk. Hãy thêm trong Cài đặt > Kết nối.',
+  'This connection has no Freshdesk domain. Add it in Settings > Connections, or for your own domain, the Freshdesk address under More options.':
+    'Kết nối này chưa có tên miền Freshdesk. Hãy thêm trong Cài đặt > Kết nối, hoặc với tên miền riêng của bạn, điền Địa chỉ Freshdesk trong Thêm tùy chọn.',
+  'This connection has no Zendesk subdomain. Add it in Settings > Connections, or for your own domain, the Zendesk address under More options.':
+    'Kết nối này chưa có tên miền phụ Zendesk. Hãy thêm trong Cài đặt > Kết nối, hoặc với tên miền riêng của bạn, điền Địa chỉ Zendesk trong Thêm tùy chọn.',
   'This connection has no agent email address or API token. Add them in Settings > Connections.':
     'Kết nối này chưa có địa chỉ email của nhân viên hỗ trợ hoặc API token. Hãy thêm trong Cài đặt > Kết nối.',
   'Zendesk article {0} is a draft now.': 'Bài viết Zendesk {0} hiện là bản nháp.',
@@ -4028,6 +4053,12 @@ export const vi: Record<string, string> = {
   'The service account key could not be read. Paste the whole JSON key again.': 'Không đọc được khóa service account. Hãy dán lại toàn bộ khóa JSON.',
   'The service answered the sign-in without a token.': 'Dịch vụ đã phản hồi lần đăng nhập mà không có token.',
   'The service answered with something that is not JSON.': 'Dịch vụ đã phản hồi bằng nội dung không phải JSON.',
+  "{0} answered with a web page instead of its API. Check the connection's address.":
+    '{0} đã trả về một trang web thay vì API. Hãy kiểm tra địa chỉ của kết nối.',
+  'Salesforce answered the sign-in without a token ({0}).':
+    'Salesforce trả lời lần đăng nhập mà không kèm token ({0}).',
+  'This repository is not on the server of the SVN connection "{0}" ({1}), and its saved credential is only sent there. Choose a connection to the repository\'s own server.':
+    'Kho mã này không nằm trên máy chủ của kết nối SVN "{0}" ({1}), và thông tin đăng nhập đã lưu chỉ được gửi tới đó. Hãy chọn một kết nối tới chính máy chủ của kho mã.',
   'This connection does not sign in.': 'Kết nối này không đăng nhập.',
   'This connection has no client id and secret. Add them in Settings > Connections.': 'Kết nối này chưa có client id và secret. Hãy thêm trong Cài đặt > Kết nối.',
   'This connection has no server address. Add one in Settings > Connections.': 'Kết nối này chưa có địa chỉ máy chủ. Hãy thêm trong Cài đặt > Kết nối.',

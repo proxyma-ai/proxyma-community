@@ -437,6 +437,62 @@ class GitLabConnectorTest {
     }
 
     @Test
+    @DisplayName("a page copied from the browser is cut back to the instance where GitLab's own path says where it is")
+    void pastedPages() {
+        Map<String, String> cases = new LinkedHashMap<>();
+        cases.put("https://gitlab.com/acme/web/-/issues/4", "https://gitlab.com");
+        cases.put("https://www.gitlab.com/acme", "https://gitlab.com");
+        cases.put("https://gitlab.com/api/v4/", "https://gitlab.com");
+        cases.put("https://git.example/acme/web/-/merge_requests?state=opened", "https://git.example/acme/web");
+        cases.put("https://git.example/gitlab/acme/web/-/tree/main#readme", "https://git.example/gitlab/acme/web");
+        cases.put("https://git.example/gitlab/api/v4/projects", "https://git.example/gitlab");
+        cases.put("https://git.example/dashboard/projects", "https://git.example");
+        cases.put("https://git.example/groups/acme/-/issues", "https://git.example");
+        cases.put("https://git.example/-/profile", "https://git.example");
+        cases.put("https://git.example:8443/gitlab", "https://git.example:8443/gitlab");
+        cases.put("https://git.example/acme/dashboard", "https://git.example/acme/dashboard");
+        cases.forEach((typed, web) -> assertThat(GitLabApi.webBase(typed)).as(typed).isEqualTo(web));
+        assertThat(GitLabApi.apiBase("https://git.example/gitlab/acme/web/-/issues")).isEqualTo("https://git.example/gitlab/acme/web/api/v4");
+    }
+
+    @Test
+    @DisplayName("the Test of a project page finds the instance above it and says so, changing nothing; a page where GitLab is not says so")
+    void testFindsTheInstance() {
+        // A project page under an instance at /gitlab: its own path answers with the web app, the one
+        // above it with GitLab's 404 page, and /gitlab with the API.
+        byte[] page = "<!DOCTYPE html><html><body>GitLab</body></html>".getBytes(StandardCharsets.UTF_8);
+        api.on("GET", "/gitlab/acme/web/api/v4/user").body(page, "text/html; charset=utf-8");
+        api.on("GET", "/gitlab/acme/api/v4/user").status(404).body(page, "text/html");
+        api.on("GET", "/gitlab/api/v4/user").json("{'username':'ana'}");
+        GitLabConnectionPlugin connection = new GitLabConnectionPlugin();
+        ResolvedCredentials typed = ResolvedCredentials.token(api.baseUrl() + "/gitlab/acme/web", TOKEN);
+
+        ConnectionTestResult found = connection.test(typed, ConnectorHttp.direct());
+
+        assertThat(found.ok()).isFalse();
+        assertThat(found.template()).isEqualTo("GitLab answers at {address}. Use that address as the GitLab URL.");
+        assertThat(found.message()).isEqualTo("GitLab answers at " + api.baseUrl() + "/gitlab. Use that address as the GitLab URL.");
+        assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).containsExactly(
+                "/gitlab/acme/web/api/v4/user", "/gitlab/acme/api/v4/user", "/gitlab/api/v4/user");
+        assertThat(api.requests()).allSatisfy(r -> assertThat(r.header("PRIVATE-TOKEN")).isEqualTo(TOKEN));
+
+        // A refused token at the instance is still GitLab answering.
+        api.reset();
+        api.on("GET", "/acme/api/v4/user").body(page, "text/html");
+        api.on("GET", "/api/v4/user").status(401).json("{'message':'401 Unauthorized'}");
+        assertThat(connection.test(ResolvedCredentials.token(api.baseUrl() + "/acme", TOKEN), ConnectorHttp.direct()).message())
+                .isEqualTo("GitLab answers at " + api.baseUrl() + ". Use that address as the GitLab URL.");
+
+        // No GitLab anywhere on the host: the page is named for what it is.
+        api.reset();
+        api.on("GET", "/acme/api/v4/user").body(page, "text/html");
+        api.on("GET", "/api/v4/user").body(page, "text/html");
+        ConnectionTestResult none = connection.test(ResolvedCredentials.token(api.baseUrl() + "/acme", TOKEN), ConnectorHttp.direct());
+        assertThat(none.ok()).isFalse();
+        assertThat(none.message()).isEqualTo("GitLab answered with a web page instead of its API. Check the connection's address.");
+    }
+
+    @Test
     @DisplayName("the descriptor: identity is the path without case, and the path's form is checked")
     void descriptor() {
         Map<String, String> config = ConfigValidator.validate(GitLabConnectorPlugin.DESCRIPTOR.fields(),

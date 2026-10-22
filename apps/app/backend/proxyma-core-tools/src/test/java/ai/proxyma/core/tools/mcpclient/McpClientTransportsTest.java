@@ -152,6 +152,36 @@ class McpClientTransportsTest {
     }
 
     @Test
+    @DisplayName("streamable HTTP: a server's root typed for its endpoint - 404, 405 or a web page - is told apart from other failures")
+    void endpointMissingFromTheAddress() throws Exception {
+        http = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        http.createContext("/missing", ex -> reply(ex, 404, "<html>Not Found</html>"));
+        http.createContext("/method", ex -> reply(ex, 405, ""));
+        http.createContext("/page", ex -> {
+            ex.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+            reply(ex, 200, "<!DOCTYPE html><html><body>Sign in</body></html>");
+        });
+        http.createContext("/gone/mcp", ex -> reply(ex, 404, ""));
+        http.createContext("/refused", ex -> reply(ex, 500, ""));
+        http.start();
+        String base = "http://127.0.0.1:" + http.getAddress().getPort();
+        McpServerConfig config = new McpServerConfig(McpServerConfig.Transport.STREAMABLE_HTTP, null, null,
+                McpServerConfig.Auth.NONE, null, null, null);
+
+        for (String path : List.of("/missing", "/method/", "/page")) {
+            ResolvedMcpServer s = server(config, base + path, null);
+            RuntimeException e = assertThrows(RuntimeException.class, () -> manager().probe(s));
+            assertTrue(McpServerToolSource.missesItsEndpoint(s, e), path + ": " + e.getMessage());
+        }
+        // At an address that already ends in /mcp the path is not the problem; nor is a server error.
+        for (String path : List.of("/gone/mcp", "/refused")) {
+            ResolvedMcpServer s = server(config, base + path, null);
+            RuntimeException e = assertThrows(RuntimeException.class, () -> manager().probe(s));
+            assertTrue(!McpServerToolSource.missesItsEndpoint(s, e), path + ": " + e.getMessage());
+        }
+    }
+
+    @Test
     @DisplayName("a result the server marks as an error is the failure envelope; media is named, not passed on")
     void rendering() {
         String failed = McpServerToolSource.render(new McpSchema.CallToolResult(

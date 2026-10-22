@@ -45,7 +45,7 @@ public class SourceContextFactory {
 
     /** The context of one registered source - or of a candidate a registration is still checking. */
     public SourceContext build(RegisteredConnector source) {
-        Map<String, String> config = StoredConfig.fields(source.getConnectorType(), source.getConfig());
+        Map<String, String> config = StoredConfig.fields(source.getConnectorType(), source.getConfig(), source.getName());
         ResolvedCredentials credentials = endpoints.connection(source).map(this::credentials)
                 .orElse(ResolvedCredentials.none());
         return new SourceContext(source.getId(), source.getConnectorType(), source.getUserId(), source.getName(),

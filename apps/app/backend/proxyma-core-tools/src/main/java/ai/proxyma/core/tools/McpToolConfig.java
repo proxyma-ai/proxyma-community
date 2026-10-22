@@ -120,6 +120,8 @@ public class McpToolConfig {
             RecallTool recallTool,
             SearchConversationsTool searchConversationsTool,
             DelegateTool delegateTool,
+            SteerSubAgentTool steerSubAgentTool,
+            MessageMainAgentTool messageMainAgentTool,
             SearchJiraIssuesTool searchJiraIssuesTool,
             GetJiraIssueTool getJiraIssueTool,
             ListJiraProjectsTool listJiraProjectsTool,
@@ -210,6 +212,8 @@ public class McpToolConfig {
         tools.add(recallTool);
         tools.add(searchConversationsTool);
         tools.add(delegateTool);
+        tools.add(steerSubAgentTool);
+        tools.add(messageMainAgentTool);
         tools.add(searchJiraIssuesTool);
         tools.add(getJiraIssueTool);
         tools.add(listJiraProjectsTool);

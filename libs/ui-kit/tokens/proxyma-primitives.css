@@ -353,7 +353,7 @@ html:not([data-motion-ready]) *::after {
 /* WORDS AT WORK: A HORIZONTAL WAVE (maintainer's request, 2026-10-14) - a tool call's row, the
    thinking and waiting lines, a sub-agent's name, a running step. A band of full ink sweeps left to
    right across the words, about once every 1.8s; an icon alone blinks instead (working.ts says
-   which). Put it on the element that carries the words' colour.
+   which). Put it on the element that carries the words' color.
 
    STRONG ENOUGH TO SEE, since the 0.36.0 feedback (maintainer's, 2026-10-16: "the wave effects are
    too weak for sub agent title when running, tool callings"). The band was primary ink over the
@@ -361,25 +361,31 @@ html:not([data-motion-ready]) *::after {
    sub-agent's name it was barely there - and 120% of the words' width, so no edge of it ever
    crossed them. Now the words at rest are their own ink at 45% (mixed with transparent, so they dim
    towards whatever surface they sit on, a dialog's or the thread's), and a band of primary ink about
-   half their width passes over them - bright on the dark modes, dark on Light. A warning line stays
-   warning at rest. Reduced motion: none of it - the words in their own ink, still. */
+   half their width passes over them - bright on the dark modes, dark on Light.
+
+   OPACITY, NOT LIGHT, since the 0.36.2 feedback (maintainer's, 2026-10-17: "it feels like a spot of
+   light running from the start of the text to the end - what I want is the text's opacity, not its
+   brightness"). The band was a SECOND INK, primary over words of their own color, with hard edges
+   - a highlight passing. Now nothing changes the words' color: a mask fades them to 35% and a soft
+   band of full opacity, about 80% of their width, rises and falls across them. A warning line is
+   warning throughout. Keyboard focus holds it still, since a mask clips the focus ring outside the
+   box. Reduced motion: none of it - the words at full opacity, still. */
 @keyframes proxyma-text-wave {
-  from { background-position: 100% 0; }
-  to   { background-position: 0 0; }
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to   { -webkit-mask-position: 0 0; mask-position: 0 0; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .text-wave {
-    --wave-rest: color-mix(in srgb, currentColor 45%, transparent);
-    --wave-band: rgb(var(--ink-primary));
-    background-image: linear-gradient(90deg,
-      var(--wave-rest) 0%, var(--wave-rest) 41%,
-      var(--wave-band) 50%,
-      var(--wave-rest) 59%, var(--wave-rest) 100%);
-    background-size: 300% 100%;
-    background-repeat: no-repeat;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .text-wave:not(:focus-visible) {
+    --wave-mask: linear-gradient(90deg,
+      rgb(0 0 0 / 0.35) 0%, rgb(0 0 0 / 0.35) 36%,
+      rgb(0 0 0 / 0.75) 44%, rgb(0 0 0 / 1) 50%, rgb(0 0 0 / 0.75) 56%,
+      rgb(0 0 0 / 0.35) 64%, rgb(0 0 0 / 0.35) 100%);
+    -webkit-mask-image: var(--wave-mask);
+    mask-image: var(--wave-mask);
+    -webkit-mask-size: 300% 100%;
+    mask-size: 300% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
     animation: proxyma-text-wave 1.8s linear infinite;
   }
 }

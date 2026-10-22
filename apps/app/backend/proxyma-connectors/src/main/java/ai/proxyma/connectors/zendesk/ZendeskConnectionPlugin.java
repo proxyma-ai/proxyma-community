@@ -149,6 +149,11 @@ public class ZendeskConnectionPlugin implements ConnectionPlugin {
         } catch (ConnectorHttpException e) {
             if (e.status() == 401) return ConnectionTestResult.failed(refused);
             if (e.status() == 404) {
+                // The subdomain sentence only when the subdomain is what was used.
+                if (connection.hasBaseUrl()) {
+                    return ConnectionTestResult.failed("Zendesk has nothing at {address}. Check the connection's address.",
+                            "address", ZendeskApi.accountUrl(connection));
+                }
                 return ConnectionTestResult.failed("Zendesk has no account at that subdomain. Check the subdomain.");
             }
             return ConnectionTestResult.failed(e.getMessage());

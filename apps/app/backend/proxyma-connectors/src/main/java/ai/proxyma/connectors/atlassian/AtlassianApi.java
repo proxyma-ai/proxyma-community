@@ -2,6 +2,8 @@ package ai.proxyma.connectors.atlassian;
 
 import ai.proxyma.core.connector.spi.ApiAuth;
 import ai.proxyma.core.connector.spi.ApiClient;
+import ai.proxyma.core.connector.spi.AtlassianCloud;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.connector.spi.AuthKind;
 import ai.proxyma.core.connector.spi.ConnectorAuthException;
 import ai.proxyma.core.connector.spi.ConnectorHttp;
@@ -56,13 +58,24 @@ final class AtlassianApi {
     }
 
     /**
-     * The address a product's paths are joined to: on Cloud the SITE, {@code https://SITE.atlassian.net},
-     * whether the connection was typed with Confluence's {@code /wiki} or not - one Cloud connection
-     * serves Jira and Confluence alike, each adding its own path; on Data Center the server as typed.
+     * The address Jira's paths are joined to: on Cloud the SITE, {@code https://SITE.atlassian.net},
+     * whether the connection was typed with {@code /wiki}, {@code /jira} or a page below either - one
+     * Cloud connection serves Jira and Confluence alike, each adding its own path ({@link AtlassianCloud});
+     * on Data Center the server's root, cut before any page that was pasted with it and keeping the
+     * path the server is installed under ({@link AtlassianServer}).
      */
     static String productBase(ResolvedCredentials connection) {
         String base = base(connection);
-        return isCloud(connection) ? base.replaceAll("(?i)/wiki$", "") : base;
+        return isCloud(connection) ? AtlassianCloud.site(base) : AtlassianServer.jiraRoot(base);
+    }
+
+    /**
+     * The address Confluence's paths are joined to: on Cloud the site (its API is under {@code /wiki},
+     * which the caller adds); on Data Center the server's root, as {@link #productBase} for Jira.
+     */
+    static String confluenceBase(ResolvedCredentials connection) {
+        String base = base(connection);
+        return isCloud(connection) ? AtlassianCloud.site(base) : AtlassianServer.confluenceRoot(base);
     }
 
     static ApiClient client(ConnectorHttp http, ResolvedCredentials connection, String service, String baseUrl) {

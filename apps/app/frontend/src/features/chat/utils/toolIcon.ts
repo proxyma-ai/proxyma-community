@@ -1,6 +1,6 @@
 import {
   MessageCircleQuestion,
-  AppWindow, ArrowRightLeft, Bot, Brain, BrainCog, Database, Download, FileCheck, FilePen,
+  AppWindow, ArrowRightLeft, Bot, BotMessageSquare, MessageSquareReply, Brain, BrainCog, Database, Download, FileCheck, FilePen,
   FilePlus, FileSearch, FileText, FileType, FileX, Files, FolderOpen, FolderTree, Save, GitBranch, GitCommitHorizontal,
   GitCompare, GitMerge, GitPullRequest, GitPullRequestArrow, GitPullRequestDraft, Globe, Info,
   History, List, MessageSquare, Paperclip, MessageSquarePlus, MessageSquareX, Pencil, Plug, Plus, Search, Tag,
@@ -64,6 +64,8 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   readSkill:            FileText,     // Skills' own icon in the settings rail
   askUser:              MessageCircleQuestion, // the assistant asking you
   delegate:             Bot,          // the row reads "Agent", so show an agent
+  steerSubAgent:        BotMessageSquare, // the main agent telling one of its agents something
+  messageMainAgent:     MessageSquareReply, // a sub-agent talking back to the agent that started it
   read:                 FileText,
   grep:                 FileSearch,   // searching INSIDE files, not for them
   convertDocument:      FileType,

@@ -12,6 +12,10 @@ const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   // actually sees happen - a second agent doing a piece of the task, with its own tool calls
   // nested under this row.
   delegate: 'Agent',
+  // The main agent directing one it started - a message, or a stop.
+  steerSubAgent: 'Direct agent',
+  // A sub-agent talking back to the agent that started it.
+  messageMainAgent: 'Message main agent',
   // The REST passthroughs. "Call Bitbucket Api" names the mechanism; the modal it titles shows the
   // method and path underneath, so the title only has to say whose API it was.
   callJiraApi: 'Jira request',

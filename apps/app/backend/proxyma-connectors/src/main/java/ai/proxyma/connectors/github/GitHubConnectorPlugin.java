@@ -8,6 +8,7 @@ import ai.proxyma.core.connector.spi.ConnectorDescriptor;
 import ai.proxyma.core.connector.spi.ConnectorPlugin;
 import ai.proxyma.core.connector.spi.ConnectorSession;
 import ai.proxyma.core.connector.spi.FieldSpec;
+import ai.proxyma.core.connector.spi.ServiceAddress;
 import ai.proxyma.core.connector.spi.SourceContext;
 import org.springframework.stereotype.Component;
 
@@ -99,10 +100,12 @@ public class GitHubConnectorPlugin implements ConnectorPlugin {
         return webBase(serverUrl) + "/" + repo.strip();
     }
 
-    static String webBase(String apiBase) {
-        String base = apiBase == null || apiBase.isBlank() ? GitHubApi.DEFAULT_BASE_URL : apiBase.strip();
-        base = base.replaceAll("/+$", "");
-        if (base.equalsIgnoreCase(GitHubApi.DEFAULT_BASE_URL)) return "https://github.com";
-        return base.replaceFirst("(?i)/api/v3$", "");
+    /** The web address for a connection's API URL, in any form GitHubApi.apiBase takes it. */
+    static String webBase(String address) {
+        String api = GitHubApi.apiBase(address).replaceAll("/+$", "");
+        if (api.equalsIgnoreCase(GitHubApi.DEFAULT_BASE_URL)) return "https://github.com";
+        String host = ServiceAddress.host(api);
+        if (host.endsWith(".ghe.com") && host.startsWith("api.")) return "https://" + host.substring("api.".length());
+        return api.replaceFirst("(?i)/api/v3$", "");
     }
 }

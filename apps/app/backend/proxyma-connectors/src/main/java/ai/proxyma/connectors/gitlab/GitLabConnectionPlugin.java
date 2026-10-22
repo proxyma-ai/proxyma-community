@@ -2,6 +2,8 @@ package ai.proxyma.connectors.gitlab;
 
 import ai.proxyma.core.connector.ConnectionProtocol;
 import ai.proxyma.core.connector.ConnectorType;
+import ai.proxyma.core.connector.spi.ApiClient;
+import ai.proxyma.core.connector.spi.ApiResponse;
 import ai.proxyma.core.connector.spi.AuthKind;
 import ai.proxyma.core.connector.spi.AuthMethod;
 import ai.proxyma.core.connector.spi.ConnectionPlugin;
@@ -13,6 +15,7 @@ import ai.proxyma.core.connector.spi.FieldSpec;
 import ai.proxyma.core.connector.spi.OAuth2Spec;
 import ai.proxyma.core.connector.spi.ProtocolDescriptor;
 import ai.proxyma.core.connector.spi.ResolvedCredentials;
+import ai.proxyma.core.connector.spi.ServiceAddress;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +41,8 @@ public class GitLabConnectionPlugin implements ConnectionPlugin {
     static final String AUTHORIZE_URL = "https://gitlab.com/oauth/authorize";
     static final String TOKEN_URL = "https://gitlab.com/oauth/token";
     static final String READ_SCOPE = "read_api";
+    // How many shorter paths the Test asks before giving up on finding the instance.
+    static final int MAX_PROBES = 6;
 
     static final ProtocolDescriptor DESCRIPTOR = ProtocolDescriptor.builder(ConnectionProtocol.GITLAB)
             .displayName("GitLab")
@@ -71,7 +76,19 @@ public class GitLabConnectionPlugin implements ConnectionPlugin {
     @Override
     public ConnectionTestResult test(ResolvedCredentials connection, ConnectorHttp http) {
         try {
-            JsonNode me = GitLabApi.client(http, connection).getJson("user");
+            ApiClient api = GitLabApi.client(http, connection);
+            ApiResponse answer = api.get("user");
+            if (answer.status() == 404 || answer.ok() && answer.isWebPage()) {
+                // Nothing at the address as typed - often a project or group page, whose path cannot
+                // be told from an instance's own subpath by its text. Shorter paths of it are asked;
+                // the stored address is not changed behind the person's back.
+                String found = instanceAbove(connection, http);
+                if (found != null) {
+                    return ConnectionTestResult.failed("GitLab answers at {address}. Use that address as the GitLab URL.",
+                            "address", found);
+                }
+            }
+            JsonNode me = api.requireOk(answer).json();
             String username = me.path("username").asText("");
             return ConnectionTestResult.ok("Signed in as {user}", "user", username);
         } catch (ConnectorHttpException e) {
@@ -79,6 +96,34 @@ public class GitLabConnectionPlugin implements ConnectionPlugin {
             return ConnectionTestResult.failed(e.getMessage());
         } catch (ConnectorAuthException e) {
             return ConnectionTestResult.failed(e.getMessage());
+        }
+    }
+
+    /**
+     * The nearest shorter path of the connection's address that GitLab's API answers at, down to the
+     * host's root, or null - "answers" being JSON, a refused token included, since that too is GitLab
+     * speaking. At most {@link #MAX_PROBES} are asked, all on the connection's own host.
+     */
+    static String instanceAbove(ResolvedCredentials connection, ConnectorHttp http) {
+        String typed = GitLabApi.webBase(connection.hasBaseUrl() ? connection.baseUrl() : GitLabApi.DEFAULT_BASE_URL);
+        int segments = ServiceAddress.segments(typed).size();
+        for (int keep = segments - 1, asked = 0; keep >= 0 && asked < MAX_PROBES; keep--, asked++) {
+            String candidate = ServiceAddress.prefix(typed, keep);
+            try {
+                if (speaksGitLab(GitLabApi.client(http, connection, candidate).get("user"))) return candidate;
+            } catch (ConnectorHttpException | ConnectorAuthException e) {
+                return null; // the host itself failed; a shorter path of it will not do better
+            }
+        }
+        return null;
+    }
+
+    private static boolean speaksGitLab(ApiResponse answer) {
+        if (!(answer.ok() || answer.status() == 401 || answer.status() == 403) || answer.isWebPage()) return false;
+        try {
+            return answer.json().isObject();
+        } catch (ConnectorHttpException e) {
+            return false;
         }
     }
 }

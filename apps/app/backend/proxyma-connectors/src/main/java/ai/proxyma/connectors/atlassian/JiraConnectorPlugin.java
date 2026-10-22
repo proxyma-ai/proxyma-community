@@ -2,6 +2,8 @@ package ai.proxyma.connectors.atlassian;
 
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.jira.JiraOwnerPreferences;
+import ai.proxyma.core.connector.spi.AtlassianCloud;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.connector.spi.ConnectorDescriptor;
 import ai.proxyma.core.connector.spi.ConnectorPlugin;
 import ai.proxyma.core.connector.spi.ConnectorSession;
@@ -71,11 +73,16 @@ public class JiraConnectorPlugin implements ConnectorPlugin {
         return identity(config);
     }
 
-    /** The project's page - Data Center and Cloud both answer {@code /projects/KEY}. */
+    /**
+     * The project's page - Data Center and Cloud both answer {@code /projects/KEY}, Cloud at its site
+     * and Data Center at its root, whatever page the address was pasted from.
+     */
     @Override
     public String webUrl(Map<String, String> config, String serverUrl) {
         String key = identity(config);
         if (key.isEmpty() || serverUrl == null || serverUrl.isBlank()) return null;
-        return serverUrl.strip().replaceAll("/+$", "") + "/projects/" + key;
+        String base = serverUrl.strip().replaceAll("/+$", "");
+        base = AtlassianCloud.isCloudHost(base) ? AtlassianCloud.site(base) : AtlassianServer.jiraRoot(base);
+        return base + "/projects/" + key;
     }
 }

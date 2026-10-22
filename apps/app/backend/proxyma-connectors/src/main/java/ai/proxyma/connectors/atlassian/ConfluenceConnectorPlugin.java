@@ -1,6 +1,8 @@
 package ai.proxyma.connectors.atlassian;
 
 import ai.proxyma.core.connector.ConnectorType;
+import ai.proxyma.core.connector.spi.AtlassianCloud;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.connector.spi.ConnectorDescriptor;
 import ai.proxyma.core.connector.spi.ConnectorPlugin;
 import ai.proxyma.core.connector.spi.ConnectorSession;
@@ -56,9 +58,9 @@ public class ConfluenceConnectorPlugin implements ConnectorPlugin {
         String key = identity(config);
         if (key.isEmpty() || serverUrl == null || serverUrl.isBlank()) return null;
         String base = serverUrl.strip().replaceAll("/+$", "");
-        if (base.toLowerCase(java.util.Locale.ROOT).contains(".atlassian.net")) {
-            return base.replaceAll("(?i)/wiki$", "") + "/wiki/spaces/" + key;
+        if (AtlassianCloud.isCloudHost(base)) {
+            return AtlassianCloud.site(base) + "/wiki/spaces/" + key;
         }
-        return base + "/display/" + key;
+        return AtlassianServer.confluenceRoot(base) + "/display/" + key;
     }
 }

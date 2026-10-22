@@ -24,10 +24,19 @@ export function useFollowingBox(deps: DependencyList) {
   const wheelImpl = useRef<(e: WheelEvent) => void>(() => {})
   const onWheelRef = useRef((e: WheelEvent) => wheelImpl.current(e))
 
+  // ONCE A FRAME, in the frame (2026-10-17). Every running sub-agent's panel follows its newest line,
+  // and set at each change, reading scrollHeight forced a layout per panel per event - with eight at
+  // work, the most of what the page spent. Read in the frame, the first read lays the page out and
+  // the rest find it laid out: setting scrollTop changes no layout.
+  const frame = useRef(0)
   const toEnd = () => {
     missed.current = false
-    const el = box.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (frame.current) return
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0
+      const el = box.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
   }
 
   const catchUp = () => {
@@ -50,7 +59,10 @@ export function useFollowingBox(deps: DependencyList) {
     catchUp()
   }, deps)
 
-  useEffect(() => () => window.clearTimeout(timer.current), [])
+  useEffect(() => () => {
+    window.clearTimeout(timer.current)
+    cancelAnimationFrame(frame.current)
+  }, [])
 
   // Following again, with anything that arrived during the hold brought into view at once.
   const resume = () => {

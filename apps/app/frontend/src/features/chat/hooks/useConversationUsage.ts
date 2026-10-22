@@ -3,21 +3,15 @@ import { chatApi } from '../services/chatApi'
 import { keys } from '@/services/queryKeys'
 import type { ConversationUsage } from '../types/chat.types'
 
-// Shares its query key with useChat's own imperative chatApi.getConversation() fetches, so the
-// invalidation useChat already runs after every turn ('done'/'error' SSE branches) refetches this
-// too - no separate plumbing needed to keep the token-usage meter live turn to turn.
+// The usage meter: its own small endpoint and its own key (since 2026-10-17). It shared the whole
+// conversation's key and refetched the WHOLE transcript to read six numbers - after every turn, and
+// again whenever the history list was invalidated, since that key sat under the list's. With
+// background sub-agents each report is a turn, so a run of eight loaded the conversation a dozen
+// times. useChat merges each 'usage' event in and invalidates this after a turn.
 export function useConversationUsage(conversationId: string | undefined) {
-  return useQuery({
-    queryKey: keys.conversation(conversationId ?? ''),
-    queryFn: () => chatApi.getConversation(conversationId!),
+  return useQuery<ConversationUsage>({
+    queryKey: keys.conversationUsage(conversationId ?? ''),
+    queryFn: () => chatApi.getConversationUsage(conversationId!),
     enabled: !!conversationId,
-    select: (data): ConversationUsage => ({
-      inputTokens: data.inputTokens,
-      outputTokens: data.outputTokens,
-      cacheReadTokens: data.cacheReadTokens,
-      cacheWriteTokens: data.cacheWriteTokens,
-      contextTokens: data.contextTokens,
-      contextTokenLimit: data.contextTokenLimit,
-    }),
   })
 }

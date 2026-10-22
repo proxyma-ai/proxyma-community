@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { appendSettled, applyStepLimit, applyText, claimToolCalls, placeInjected, settledLength } from './threadOps.ts'
+import { appendSettled, applyStepLimit, applyText, claimToolCalls, idlessTail, placeInjected, settledLength, withServerIds } from './threadOps.ts'
 import type { ChatMessage, ToolCallInfo } from '../types/chat.types'
 
 const user = (content: string, extra: Partial<ChatMessage> = {}): ChatMessage => ({ role: 'user', content, ...extra })
@@ -94,4 +94,24 @@ test('queued messages always trail the thread', () => {
   assert.equal(settledLength(before), 1)
   assert.deepEqual(shape(appendSettled(before, agent('x'))), ['U:q', 'A:x', 'U:one (queued)', 'U:two (queued)'])
   assert.equal(settledLength([user('q')]), 1)
+})
+
+test('the turn just streamed is the messages at the end with no id, queued ones aside', () => {
+  assert.equal(idlessTail([user('q', { id: 1 }), agent('a', { id: 2 }), user('q2'), agent('a2')]), 2)
+  assert.equal(idlessTail([user('q', { id: 1 }), agent('a', { id: 2 })]), 0)
+  assert.equal(idlessTail([user('q', { id: 1 }), agent('a'), queued('later', 'c1')]), 1)
+  assert.equal(idlessTail([]), 0)
+})
+
+test('ids from the end of a tail: earlier messages keep theirs, queued ones are left alone', () => {
+  const thread = [user('q', { id: 1 }), agent('a', { id: 2 }), user('q2'), agent('a2'), queued('later', 'c1')]
+  const next = withServerIds(thread, [{ id: 3 }, { id: 4 }], true)
+  assert.deepEqual(next.map(m => m.id), [1, 2, 3, 4, undefined])
+  assert.equal(next[0], thread[0])
+  assert.equal(withServerIds(next, [{ id: 3 }, { id: 4 }], true), next, 'nothing changed: the same array')
+})
+
+test('ids from a whole transcript shorter than the thread: what it does not have loses a stale id', () => {
+  const thread = [user('hidden', { id: 9 }), user('q', { id: 1 }), agent('a')]
+  assert.deepEqual(withServerIds(thread, [{ id: 1 }, { id: 2 }]).map(m => m.id), [undefined, 1, 2])
 })

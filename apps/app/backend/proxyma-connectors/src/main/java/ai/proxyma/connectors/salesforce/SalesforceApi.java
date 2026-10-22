@@ -7,9 +7,12 @@ import ai.proxyma.core.connector.spi.ConnectorAuthException;
 import ai.proxyma.core.connector.spi.ConnectorHttp;
 import ai.proxyma.core.connector.spi.RateLimitHint;
 import ai.proxyma.core.connector.spi.ResolvedCredentials;
+import ai.proxyma.core.connector.spi.ServiceAddress;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,6 +42,8 @@ final class SalesforceApi {
     static final String REQUEST_LIMIT_EXCEEDED = "REQUEST_LIMIT_EXCEEDED";
     /** The token answer's field naming the org's API address - kept by the sign-in (OAuth2Spec.grantFields). */
     static final String INSTANCE_URL = "instance_url";
+    private static final String LIGHTNING = ".lightning.force.com";
+    private static final String SETUP = ".salesforce-setup.com";
 
     /** The org's daily allowance, spent: a 403 that is a rate limit, not a refusal. */
     static final RateLimitHint RATE_LIMIT = ((RateLimitHint) (response, now) -> {
@@ -74,7 +79,7 @@ final class SalesforceApi {
         if (!connection.hasBaseUrl()) {
             throw new ConnectorAuthException("This connection has no My Domain URL. Add it in Settings > Connections.");
         }
-        String base = connection.baseUrl().strip().replaceAll("/+$", "");
+        String base = myDomain(connection.baseUrl());
         // A sign-in's token answer names the org's API address (instance_url, kept on the connection
         // by OAuth2ConnectionService). It is the address that matters when the connection's own is a
         // login server - a sandbox signed in at test.salesforce.com - and it is checked like the JWT
@@ -82,6 +87,34 @@ final class SalesforceApi {
         String instance = connection.grant(INSTANCE_URL);
         if (instance != null && !instance.isBlank()) base = SalesforceJwt.checkedInstance(instance, base);
         return new Org(client(http, base, ApiAuth.bearer(connection)), base);
+    }
+
+    /**
+     * The org's address for whatever was typed as its My Domain URL - very often the browser's bar,
+     * {@code https://acme.lightning.force.com/lightning/page/home}, whose path joined to the token
+     * endpoint answers with a page. A My Domain URL has no path, and its Lightning and Setup hosts
+     * are the same org's: {@code X.lightning.force.com} is {@code X.my.salesforce.com} (a sandbox's
+     * {@code X--SBX.sandbox.lightning.force.com} is {@code X--SBX.sandbox.my.salesforce.com}), and
+     * {@code X.my.salesforce-setup.com} is {@code X.my.salesforce.com}. Any other Salesforce host
+     * keeps its scheme and host alone. A host that is not Salesforce's (a relay, a test server) keeps
+     * its path up to Salesforce's own {@code /lightning}, {@code /services} or {@code /_ui}.
+     */
+    static String myDomain(String address) {
+        if (address == null || address.isBlank()) return address;
+        String host = ServiceAddress.host(address);
+        if (host.isEmpty()) return address.strip().replaceAll("/+$", ""); // not a URL: refused in words
+        String mapped = host;
+        if (host.endsWith(LIGHTNING)) {
+            mapped = host.substring(0, host.length() - LIGHTNING.length()) + ".my.salesforce.com";
+        } else if (host.endsWith(SETUP)) {
+            mapped = host.substring(0, host.length() - SETUP.length()) + ".salesforce.com";
+        }
+        String org = mapped;
+        if (SalesforceJwt.SALESFORCE_DOMAINS.stream().noneMatch(org::endsWith)) {
+            return ServiceAddress.cutAt(address, "lightning", "services", "_ui");
+        }
+        URI uri = URI.create(address.strip());
+        return uri.getScheme().toLowerCase(Locale.ROOT) + "://" + org + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
     }
 
     private static ApiClient client(ConnectorHttp http, String base, ApiAuth auth) {

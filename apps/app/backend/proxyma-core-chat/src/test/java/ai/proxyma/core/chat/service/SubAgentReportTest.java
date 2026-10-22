@@ -80,7 +80,7 @@ class SubAgentReportTest {
         var reports = SubAgentService.reportsIn(message);
         assertThat(reports).hasSize(2);
         assertThat(reports.get(0)).containsExactly("11111111-2222-3333-4444-555555555555",
-                "Extract 'Gemini' pricing", "COMPLETED");
+                "Extract 'Gemini' pricing", "COMPLETED", "report");
         assertThat(reports.get(1)[2]).isEqualTo("PARTIAL");
     }
 

@@ -11,8 +11,9 @@
 //
 //   node tools/testing/fake-services.mjs --port 8798
 //
-// Then add a GitHub connection whose API URL (under More options) is http://127.0.0.1:8798/github
-// with any token, and a GitHub source for the repository octo-org/handbook. For Slack, a connection
+// Then add a GitHub connection whose API URL (under More options) is http://127.0.0.1:8798/github/api/v3
+// with any token (a host that is not github.com is a GitHub Enterprise Server, spoken to under
+// /api/v3), and a GitHub source for the repository octo-org/handbook. For Slack, a connection
 // whose API URL is http://127.0.0.1:8798/slack/api with any bot token, and a Slack source with no
 // channel named (every public channel) or #leadership for the private one. Likewise a GitLab
 // connection whose GitLab URL is http://127.0.0.1:8798/gitlab, with any token, and a source for the
@@ -288,6 +289,8 @@ function paged(res, url, items) {
 }
 
 function github(req, res, url, rest) {
+  // The connector speaks to any host but github.com as a GitHub Enterprise Server, under /api/v3.
+  if (rest === 'api/v3' || rest.startsWith('api/v3/')) rest = rest.slice('api/v3/'.length)
   if (!/^Bearer \S+/.test(req.headers.authorization ?? '')) {
     return json(res, 401, { message: 'Requires authentication', documentation_url: 'https://docs.github.com/rest' })
   }

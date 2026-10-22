@@ -251,11 +251,17 @@ class ToolSkillGating {
     }
 
     private List<ToolCallback> withDelegateIfAvailable(List<ToolCallback> callbacks) {
+        // A sub-agent's line to its main agent is never the main agent's own - SubAgentService.toolsFor
+        // adds it back for a background sub-agent.
+        callbacks = callbacks.stream()
+                .filter(cb -> !SubAgentService.DelegateToolNames.MESSAGE_MAIN.equals(cb.getToolDefinition().name()))
+                .toList();
         if (subAgentService.isAvailable()) {
             return callbacks;
         }
         return callbacks.stream()
-                .filter(cb -> !SubAgentService.DelegateToolNames.DELEGATE.equals(cb.getToolDefinition().name()))
+                .filter(cb -> !SubAgentService.DelegateToolNames.DELEGATE.equals(cb.getToolDefinition().name())
+                        && !SubAgentService.DelegateToolNames.STEER.equals(cb.getToolDefinition().name()))
                 .toList();
     }
 

@@ -300,8 +300,15 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
     }
   }, [loading])
 
-  // A new message, or a streamed answer growing, moves questions without a scroll event.
-  useEffect(() => { recomputePinned.current() }, [messages])
+  // A new message, or a streamed answer growing, moves questions without a scroll event. Once a
+  // frame: it measures every question, and with sub-agents at work the messages change many times a
+  // frame's worth of time.
+  const pinFrame = useRef(0)
+  useEffect(() => {
+    if (pinFrame.current) return
+    pinFrame.current = requestAnimationFrame(() => { pinFrame.current = 0; recomputePinned.current() })
+  }, [messages])
+  useEffect(() => () => cancelAnimationFrame(pinFrame.current), [])
 
   // AN AGENT'S NAME CLICKED IN THE AGENTS MAP (threadReveal.ts): the latest turn, or the sub-agent's
   // panel - which opens and lights up by itself (SubAgentPanel). A frame late, so the map has

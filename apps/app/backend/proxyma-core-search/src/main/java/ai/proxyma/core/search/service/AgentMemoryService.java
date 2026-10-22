@@ -145,13 +145,14 @@ public class AgentMemoryService {
     }
 
     /**
-     * The user's own correction of one entry: its text, its category, or both. The entry keeps its
-     * place - the id's timestamp, which is what orders the list and dates it - and takes the new
-     * category's code, so the id still says what it is. Returns the entry as it now reads; empty when
-     * there is no such entry of this user's.
+     * A correction of one entry: its text, its category, or both - the user's from Settings > Memory,
+     * or the agent's through {@code remember} with an id. The entry keeps its place - the id's
+     * timestamp, which is what orders the list and dates it - and takes the new category's code, so
+     * the id still says what it is. Returns the entry as it now reads; empty when there is no such
+     * entry of this user's. An agent's edit records the conversation it was made in, as remember does.
      *
-     * <p>No dedup guard: the user is saying what this entry should be, and replacing a DIFFERENT entry
-     * that happens to read alike would delete something they did not touch.
+     * <p>No dedup guard: the caller is saying what this entry should be, and replacing a DIFFERENT
+     * entry that happens to read alike would delete something they did not touch.
      */
     public java.util.Optional<MemoryEntry> edit(String userId, String id, String text, MemoryCategory category) {
         java.util.Optional<MemoryEntry> current = read(userId, id);
@@ -165,7 +166,7 @@ public class AgentMemoryService {
         String newId = recategorized(oldId, cat);
         String collectionId = memoryCollectionId(userId);
         deleteEntry(collectionId, oldId);
-        write(userId, collectionId, newId, newText, cat, null);
+        write(userId, collectionId, newId, newText, cat, SearchContext.getConversationId());
         return java.util.Optional.of(entry(newId, newText));
     }
 

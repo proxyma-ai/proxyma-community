@@ -1502,7 +1502,10 @@ public class ConnectorService {
     private boolean applyNativeConfig(RegisteredConnector r, ConnectorDescriptor descriptor, Map<String, Object> updates) {
         boolean named = descriptor.fields().stream().anyMatch(f -> updates.containsKey(f.key()));
         if (!named) return false;
-        Map<String, String> stored = ConfigJson.parse(r.getConfig());
+        // Through the one reader, with the name: a Jira project an older build registered stored its
+        // server's URL here, and read as JSON it had no key - so the key the dialog sent was "a
+        // different source". Saved, the row then holds its key as JSON like any other.
+        Map<String, String> stored = StoredConfig.fields(r.getConnectorType(), r.getConfig(), r.getName());
         Map<String, Object> given = new LinkedHashMap<>();
         descriptor.fields().forEach(f -> {
             if (updates.containsKey(f.key())) given.put(f.key(), updates.get(f.key()));
@@ -1595,6 +1598,20 @@ public class ConnectorService {
                 throw new IllegalArgumentException("This source's network path cannot be read: " + e.getMessage());
             }
             r.setConnectionId(networkShareConnection(host, r.getUserId(), wanted).id());
+            return true;
+        }
+        if (r.getConnectorType() == ConnectorType.SVN) {
+            // A repository may only move to a connection for ITS OWN server, as registration checks:
+            // the connection's credential is sent to the repository's URL, and a move to another
+            // server was accepted and then failed every sync (registerSvnRepo's note).
+            ResolvedConnection target = registrationConnection(ConnectorType.SVN, r.getUserId(), wanted);
+            String repo = repositoryOf(r);
+            if (repo == null || !SvnUrls.isUnder(target.baseUrl(), repo)) {
+                throw new IllegalArgumentException("This repository is not on the server of the SVN connection \""
+                        + target.name() + "\" (" + SvnUrls.canonical(target.baseUrl()) + "), and its saved "
+                        + "credential is only sent there. Choose a connection to the repository's own server.");
+            }
+            r.setConnectionId(target.id());
             return true;
         }
         // The config is left alone: it is the source's fields, never its server's URL - moving a source

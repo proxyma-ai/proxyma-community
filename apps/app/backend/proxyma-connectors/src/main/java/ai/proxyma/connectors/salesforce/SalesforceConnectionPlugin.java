@@ -104,11 +104,11 @@ public class SalesforceConnectionPlugin implements ConnectionPlugin {
     }
 
     // https://<host> for an https address on a Salesforce domain (SalesforceJwt.SALESFORCE_DOMAINS),
-    // else null.
+    // else null - a Lightning or Setup address as its My Domain (SalesforceApi.myDomain).
     static String salesforceOrigin(String url) {
         if (url == null || url.isBlank()) return null;
         try {
-            URI uri = URI.create(url.strip());
+            URI uri = URI.create(SalesforceApi.myDomain(url));
             String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getPort() > 0 && uri.getPort() != 443) return null;
             return SalesforceJwt.SALESFORCE_DOMAINS.stream().anyMatch(host::endsWith) ? "https://" + host : null;

@@ -120,6 +120,8 @@ class SubAgentServiceTest {
         final List<List<ToolCall>> rounds = new CopyOnWriteArrayList<>();
         final List<String> scopes = new CopyOnWriteArrayList<>();
         final CountDownLatch settled = new CountDownLatch(1);
+        // What ChatService does with a sub-agent's messageMainAgent call: hands it to the service.
+        volatile SubAgentService service;
 
         @Override public ToolResponseMessage callTools(String conversationId, List<ToolCall> calls, AtomicBoolean stop,
                                                        AgentScope scope) {
@@ -129,8 +131,11 @@ class SubAgentServiceTest {
             long seq = 100 + rounds.size() * 10L;
             for (ToolCall call : calls) {
                 scope.toolStarted(call.id(), call.name(), call.arguments(), seq++, 1_000);
-                scope.toolFinished(call.id(), "{\"results\":[]}", seq++, 2_000);
-                responses.add(new ToolResponseMessage.ToolResponse(call.id(), call.name(), "{\"results\":[]}"));
+                String result = SubAgentService.DelegateToolNames.MESSAGE_MAIN.equals(call.name())
+                        ? service.messageMain(conversationId, scope.agentId(), call.arguments(), stop)
+                        : "{\"results\":[]}";
+                scope.toolFinished(call.id(), result, seq++, 2_000);
+                responses.add(new ToolResponseMessage.ToolResponse(call.id(), call.name(), result));
             }
             return ToolResponseMessage.builder().responses(responses).build();
         }
@@ -177,7 +182,8 @@ class SubAgentServiceTest {
         // Built before the stubbing below: tool() stubs too, and Mockito cannot nest one inside another.
         ToolCallback[] registered = {
                 tool("searchIndexedSources"), tool("createJiraIssue"), tool("runPython"),
-                tool("askUser"), tool("delegate"), tool("useServer")};
+                tool("askUser"), tool("delegate"), tool("useServer"), tool("steerSubAgent"),
+                tool("messageMainAgent")};
         tools = mock(ToolCallbackProvider.class);
         when(tools.getToolCallbacks()).thenReturn(registered);
         ObjectProvider<ToolCallbackProvider> toolProvider = mock(ObjectProvider.class);
@@ -216,6 +222,7 @@ class SubAgentServiceTest {
         events = mock(ApplicationEventPublisher.class);
         service = new SubAgentService(settingsService, gateway, toolProvider, events, new ChatEventSink(),
                 identity, usageRecorder, memory, guardrail, gating, hostProvider, repository);
+        host.service = service;
     }
 
     @AfterEach
@@ -406,7 +413,7 @@ class SubAgentServiceTest {
     }
 
     @Test
-    @DisplayName("inside a conversation it is offered the main agent's tools, writes included - but not delegate or useServer")
+    @DisplayName("inside a conversation it is offered the main agent's tools, writes included - but not delegate, useServer or steerSubAgent")
     void writeToolsAreOfferedInsideAConversation() {
         session.says("Nothing to do.\nSTATUS: COMPLETED");
 
@@ -620,5 +627,220 @@ class SubAgentServiceTest {
         assertThat(done.done()).isTrue();
         assertThat(done.result()).isEqualTo("{\"results\":[]}");
         assertThat(done.endedAt()).isEqualTo(2_000L);
+    }
+
+    // -- The main agent's hold on it (steerSubAgent, 0.36.2 feedback) ----------------------------
+
+    // The first model call, held until released, answering with `answer`.
+    private CountDownLatch holdFirstCall(CountDownLatch release, AssistantMessage answer) {
+        CountDownLatch calling = new CountDownLatch(1);
+        session.script.add((m, t) -> {
+            calling.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return answer;
+        });
+        return calling;
+    }
+
+    @Test
+    @DisplayName("a message from the main agent reaches a running sub-agent before its next step, and only from its own conversation")
+    void aMessageReachesItBeforeItsNextStep() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch calling = holdFirstCall(release, AssistantMessage.builder().content("")
+                .toolCalls(List.of(new ToolCall("call-1", "function", "searchIndexedSources", "{}"))).build());
+        session.says("Prices in EUR: Sonnet is 2.80.\nSTATUS: COMPLETED");
+
+        String agentId = (String) service.delegate(CONV, "delegate-1", request(null)).get("agentId");
+        assertThat(calling.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(service.tell("another-conversation", agentId, "x")).isEqualTo(SubAgentService.Told.NOT_RUNNING);
+        assertThat(service.tell(CONV, "no-such-agent", "x")).isEqualTo(SubAgentService.Told.NOT_RUNNING);
+        assertThat(service.tell(CONV, agentId, "The user wants the prices in EUR."))
+                .isEqualTo(SubAgentService.Told.QUEUED);
+        release.countDown();
+        assertThat(host.settled.await(10, TimeUnit.SECONDS)).isTrue();
+
+        List<Message> second = session.prompts.get(1);
+        assertThat(second.get(second.size() - 2)).isInstanceOf(ToolResponseMessage.class);
+        assertThat(second.get(second.size() - 1)).isInstanceOf(UserMessage.class);
+        assertThat(second.get(second.size() - 1).getText())
+                .isEqualTo(SubAgentService.AGENT_MESSAGE_MARKER + "\nThe user wants the prices in EUR.");
+        assertThat(session.prompts.get(0).get(0).getText()).contains(SubAgentService.AGENT_MESSAGE_MARKER);
+        assertThat(service.takeReports(CONV)).extracting(SubAgentService.Settled::report)
+                .containsExactly("Prices in EUR: Sonnet is 2.80.");
+    }
+
+    @Test
+    @DisplayName("a message that arrives while it writes its report keeps it working, rather than being lost")
+    void aMessageDuringItsReportKeepsItWorking() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch calling = holdFirstCall(release, new AssistantMessage("Sonnet is $3.\nSTATUS: COMPLETED"));
+        session.says("Sonnet is $3, and Haiku is $1.\nSTATUS: COMPLETED");
+
+        String agentId = (String) service.delegate(CONV, "delegate-1", request(null)).get("agentId");
+        assertThat(calling.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(service.tell(CONV, agentId, "Add Haiku as well.")).isEqualTo(SubAgentService.Told.QUEUED);
+        release.countDown();
+        assertThat(host.settled.await(10, TimeUnit.SECONDS)).isTrue();
+
+        assertThat(session.prompts).hasSize(2);
+        List<Message> second = session.prompts.get(1);
+        assertThat(second.get(second.size() - 2).getText()).isEqualTo("Sonnet is $3.\nSTATUS: COMPLETED");
+        assertThat(second.get(second.size() - 1).getText()).endsWith("Add Haiku as well.");
+        assertThat(service.takeReports(CONV)).extracting(SubAgentService.Settled::report)
+                .containsExactly("Sonnet is $3, and Haiku is $1.");
+        assertThat(service.tell(CONV, agentId, "And Opus?")).as("once it has reported, nothing is queued")
+                .isEqualTo(SubAgentService.Told.NOT_RUNNING);
+    }
+
+    @Test
+    @DisplayName("the main agent's stop ends it at once, says who stopped it, and wakes nobody")
+    void theMainAgentStopsIt() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch calling = holdFirstCall(release, new AssistantMessage("too late"));
+
+        String agentId = (String) service.delegate(CONV, "delegate-1", request(null)).get("agentId");
+        assertThat(calling.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(service.stopByAgent("another-conversation", agentId)).isFalse();
+        assertThat(service.stopByAgent(CONV, agentId)).isTrue();
+        assertThat(service.tell(CONV, agentId, "one more thing")).as("a stopping run reads nothing more")
+                .isIn(SubAgentService.Told.FINISHING, SubAgentService.Told.NOT_RUNNING);
+        for (int i = 0; i < 200 && service.hasRunning(CONV); i++) Thread.sleep(20);
+        release.countDown();
+
+        assertThat(service.hasRunning(CONV)).isFalse();
+        assertThat(session.prompts).as("no last words for a run its agent stopped").hasSize(1);
+        assertThat(host.settled.getCount()).as("its own stop does not start a turn").isEqualTo(1);
+        List<SubAgentService.Settled> reports = service.takeReports(CONV);
+        assertThat(reports).extracting(SubAgentService.Settled::status).containsExactly("STOPPED");
+        assertThat(reports.get(0).report()).contains("Stopped by the agent that started it.");
+    }
+
+    @Test
+    @DisplayName("a message on the first step joins the task as one user turn")
+    void aMessageOnTheFirstStepJoinsTheTask() {
+        List<Message> messages = new ArrayList<>(List.of(new SystemMessage("rules"), new UserMessage("the task")));
+        SubAgentService.deliver(messages, List.of("first", "second"));
+
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(1).getText()).isEqualTo("the task\n\n"
+                + SubAgentService.AGENT_MESSAGE_MARKER + "\nfirst\n\n" + SubAgentService.AGENT_MESSAGE_MARKER + "\nsecond");
+        SubAgentService.deliver(messages, List.of());
+        assertThat(messages).hasSize(2);
+    }
+
+    // -- The sub-agent's side: messageMainAgent ---------------------------------------------------
+
+    private void callsWith(String id, String tool, String arguments) {
+        session.script.add((m, t) -> AssistantMessage.builder().content("")
+                .toolCalls(List.of(new ToolCall(id, "function", tool, arguments))).build());
+    }
+
+    private List<SubAgentService.Note> awaitNotes() throws InterruptedException {
+        for (int i = 0; i < 250; i++) {
+            List<SubAgentService.Note> taken = service.takeNotes(CONV);
+            if (!taken.isEmpty()) return taken;
+            Thread.sleep(20);
+        }
+        throw new AssertionError("the sub-agent's message never reached the main agent");
+    }
+
+    @Test
+    @DisplayName("a background sub-agent's question pauses it until the main agent answers, and the answer is its result")
+    void aQuestionWaitsForTheMainAgentsAnswer() throws Exception {
+        callsWith("call-1", "messageMainAgent", "{\"message\":\"EUR or USD?\",\"waitForReply\":true}");
+        session.says("Prices in EUR: Sonnet is 2.80.\nSTATUS: COMPLETED");
+
+        String agentId = (String) service.delegate(CONV, "delegate-1", request(null)).get("agentId");
+        List<SubAgentService.Note> notes = awaitNotes();
+
+        assertThat(session.offered.get(0)).as("a background sub-agent is offered its line to the main agent")
+                .contains("messageMainAgent").doesNotContain("steerSubAgent", "delegate");
+        assertThat(notes).hasSize(1);
+        assertThat(notes.get(0).agentId()).isEqualTo(agentId);
+        assertThat(notes.get(0).text()).isEqualTo("EUR or USD?");
+        assertThat(notes.get(0).waiting()).isTrue();
+        assertThat(host.settled.getCount()).as("the main agent is woken to hear it").isZero();
+        Thread.sleep(200);
+        assertThat(session.prompts).as("it waits rather than working on").hasSize(1);
+        assertThat(service.hasRunning(CONV)).isTrue();
+
+        assertThat(service.tell(CONV, agentId, "EUR, please.")).isEqualTo(SubAgentService.Told.ANSWERED);
+        awaitNoneRunning();
+
+        List<Message> second = session.prompts.get(1);
+        assertThat(second.get(second.size() - 1)).isInstanceOf(ToolResponseMessage.class);
+        assertThat(((ToolResponseMessage) second.get(second.size() - 1)).getResponses().get(0).responseData())
+                .contains("\"reply\":\"EUR, please.\"");
+        assertThat(service.takeReports(CONV)).extracting(SubAgentService.Settled::report)
+                .containsExactly("Prices in EUR: Sonnet is 2.80.");
+    }
+
+    @Test
+    @DisplayName("a message it does not wait on reaches the main agent while it carries on")
+    void aMessageWithoutWaitingCarriesOn() throws Exception {
+        callsWith("call-1", "messageMainAgent", "{\"message\":\"The page lists prices in EUR only.\"}");
+        session.says("Done.\nSTATUS: COMPLETED");
+
+        service.delegate(CONV, "delegate-1", request(null));
+        awaitNoneRunning();
+
+        List<SubAgentService.Note> notes = service.takeNotes(CONV);
+        assertThat(notes).extracting(SubAgentService.Note::text).containsExactly("The page lists prices in EUR only.");
+        assertThat(notes.get(0).waiting()).isFalse();
+        assertThat(session.prompts).hasSize(2);
+        assertThat(service.takeNotes(CONV)).as("each message is handed over once").isEmpty();
+    }
+
+    @Test
+    @DisplayName("a sync sub-agent cannot message its main agent, which is blocked waiting for its report")
+    void aSyncSubAgentDoesNotTalk() {
+        callsWith("call-1", "messageMainAgent", "{\"message\":\"EUR?\",\"waitForReply\":true}");
+        session.says("Prices in USD.\nSTATUS: COMPLETED");
+
+        Map<String, Object> result = service.delegate(CONV, "delegate-1", request("sync"));
+
+        assertThat(session.offered.get(0)).doesNotContain("messageMainAgent");
+        assertThat(result).containsEntry("status", "COMPLETED");
+        List<Message> second = session.prompts.get(1);
+        assertThat(((ToolResponseMessage) second.get(second.size() - 1)).getResponses().get(0).responseData())
+                .contains("Put this in your report");
+        assertThat(service.takeNotes(CONV)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a sub-agent waiting on its question is stopped like any other")
+    void aWaitingSubAgentCanBeStopped() throws Exception {
+        callsWith("call-1", "messageMainAgent", "{\"message\":\"EUR or USD?\",\"waitForReply\":true}");
+        session.says("never");
+
+        String agentId = (String) service.delegate(CONV, "delegate-1", request(null)).get("agentId");
+        awaitNotes();
+        assertThat(service.stopByAgent(CONV, agentId)).isTrue();
+        awaitNoneRunning();
+
+        assertThat(session.prompts).hasSize(1);
+        assertThat(service.takeReports(CONV)).extracting(SubAgentService.Settled::status).containsExactly("STOPPED");
+    }
+
+    @Test
+    @DisplayName("a sub-agent's message names it, and the transcript reads it back as a message, not a report")
+    void aNoteIsMarkedAndReadBack() {
+        String text = SubAgentService.noteMessage(List.of(
+                new SubAgentService.Note("0f1e2d3c-aaaa-bbbb-cccc-000000000001", "Read the pricing page", "EUR or USD?", true)));
+
+        assertThat(text).startsWith(SubAgentService.NOTE_MARKER).contains("QUESTION").contains("EUR or USD?")
+                .contains("steerSubAgent");
+        assertThat(SubAgentService.isReportMessage(text)).isTrue();
+        List<String[]> read = SubAgentService.reportsIn(text);
+        assertThat(read).hasSize(1);
+        assertThat(read.get(0)).containsExactly("0f1e2d3c-aaaa-bbbb-cccc-000000000001", "Read the pricing page",
+                "RUNNING", "message");
+        String both = SubAgentService.reportMessage(List.of(new SubAgentService.Settled(
+                "0f1e2d3c-aaaa-bbbb-cccc-000000000002", "Other", "COMPLETED", "Found it.", 3)), List.of()) + "\n\n" + text;
+        assertThat(SubAgentService.reportsIn(both)).extracting(r -> r[3]).containsExactly("report", "message");
     }
 }

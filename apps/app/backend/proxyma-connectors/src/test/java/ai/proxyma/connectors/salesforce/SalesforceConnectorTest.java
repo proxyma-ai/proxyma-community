@@ -334,6 +334,58 @@ class SalesforceConnectorTest {
     }
 
     @Test
+    @DisplayName("a My Domain URL copied from the browser is the org's address: its path dropped, a Lightning or Setup host its My Domain")
+    void myDomainAddresses() {
+        Map<String, String> cases = new LinkedHashMap<>();
+        cases.put("https://acme.lightning.force.com/lightning/page/home", "https://acme.my.salesforce.com");
+        cases.put("https://acme--uat.sandbox.lightning.force.com/lightning/o/Account/list?filterName=Recent",
+                "https://acme--uat.sandbox.my.salesforce.com");
+        cases.put("https://acme-dev-ed.develop.lightning.force.com/", "https://acme-dev-ed.develop.my.salesforce.com");
+        cases.put("https://acme.my.salesforce-setup.com/lightning/setup/SetupOneHome/home", "https://acme.my.salesforce.com");
+        cases.put("https://acme.my.salesforce.com/", "https://acme.my.salesforce.com");
+        cases.put("https://ACME.my.salesforce.com/services/oauth2/token", "https://acme.my.salesforce.com");
+        cases.put("https://login.salesforce.com/?locale=uk", "https://login.salesforce.com");
+        // Not Salesforce's host: kept up to Salesforce's own paths, so a relay under a path still works.
+        cases.put("https://relay.example/salesforce/lightning/page/home", "https://relay.example/salesforce");
+        cases.put("https://relay.example/salesforce/", "https://relay.example/salesforce");
+        cases.forEach((typed, org) -> assertThat(SalesforceApi.myDomain(typed)).as(typed).isEqualTo(org));
+
+        // The browser sign-in goes to the org's My Domain, not to the Lightning host typed.
+        assertThat(new SalesforceConnectionPlugin().oauth2(Map.of(), "https://acme.lightning.force.com/lightning/page/home")
+                .tokenUrl()).isEqualTo("https://acme.my.salesforce.com/services/oauth2/token");
+    }
+
+    @Test
+    @DisplayName("the JWT sign-in at an address with a page's path asks the token endpoint at the org's root; a page or an error in its place says so")
+    void jwtAtAPastedAddress() throws Exception {
+        KeyPair keys = rsa();
+        api.on("POST", "/services/oauth2/token").json("{'access_token':'jwt-1','instance_url':'" + api.baseUrl() + "'}");
+        api.on("GET", "/services/oauth2/userinfo").json("{'preferred_username':'integration@acme.com'}");
+        SalesforceConnectionPlugin connection = new SalesforceConnectionPlugin();
+        ConnectionTestResult ok = connection.test(jwt(api.baseUrl() + "/lightning/page/home", pem(keys, false)),
+                ConnectorHttp.direct());
+        assertThat(ok.message()).isEqualTo("Signed in as integration@acme.com on 127.0.0.1");
+        assertThat(api.requests()).extracting(LoopbackApi.Recorded::path)
+                .containsExactly("/services/oauth2/token", "/services/oauth2/userinfo");
+
+        // A sign-in page where the token endpoint should be: named for what it is.
+        api.reset();
+        SalesforceJwt.forgetAll();
+        api.on("POST", "/services/oauth2/token").body("<html><body>Login</body></html>".getBytes(StandardCharsets.UTF_8),
+                "text/html;charset=UTF-8");
+        ConnectionTestResult page = connection.test(jwt(api.baseUrl(), pem(keys, false)), ConnectorHttp.direct());
+        assertThat(page.ok()).isFalse();
+        assertThat(page.message()).isEqualTo("Salesforce answered with a web page instead of its API. Check the connection's address.");
+
+        // An answer with no token but a reason keeps the reason.
+        api.reset();
+        SalesforceJwt.forgetAll();
+        api.on("POST", "/services/oauth2/token").rawJson("{\"error\":\"invalid_client\",\"error_description\":\"invalid client credentials\"}");
+        ConnectionTestResult reason = connection.test(jwt(api.baseUrl(), pem(keys, false)), ConnectorHttp.direct());
+        assertThat(reason.message()).isEqualTo("Salesforce answered the sign-in without a token (invalid client credentials).");
+    }
+
+    @Test
     @DisplayName("an instance_url that is not Salesforce's is refused, and a refused assertion says what to check")
     void jwtRefusals() throws Exception {
         KeyPair keys = rsa();

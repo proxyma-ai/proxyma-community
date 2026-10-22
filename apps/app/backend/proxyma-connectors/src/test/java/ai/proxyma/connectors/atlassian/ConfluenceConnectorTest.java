@@ -224,6 +224,23 @@ class ConfluenceConnectorTest {
             assertThat(new ConfluenceConnectionPlugin().test(dataCenter(), ConnectorHttp.direct()).message())
                     .isEqualTo("Confluence did not accept the token.");
         }
+
+        @Test
+        @DisplayName("an address pasted from a space's page is spoken to at the server's root, its context path kept")
+        void pastedFromAPage() {
+            ResolvedCredentials pasted = new ResolvedCredentials(null, ConnectionProtocol.CONFLUENCE, AuthKind.TOKEN,
+                    api.baseUrl() + "/confluence/spaces/OPS/overview?mode=global", null, Map.of("token", PAT), Map.of(), null);
+            api.on("GET", "/confluence/rest/api/user/current").json("{'username':'ana','displayName':'Ana Lima'}");
+            api.on("GET", "/confluence/rest/api/space/OPS").json("{'key':'OPS'}");
+
+            assertThat(new ConfluenceConnectionPlugin().test(pasted, ConnectorHttp.direct()).message()).isEqualTo("Signed in as Ana Lima");
+            try (ConnectorSession s = session(pasted)) {
+                assertThat(s.verifyAccess()).isEqualTo(AccessCheck.verified());
+            }
+            assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).allMatch(p -> p.startsWith("/confluence/rest/"));
+            assertThat(new ConfluenceConnectorPlugin().webUrl(Map.of("spaceKey", "OPS"),
+                    "https://wiki.example.com/confluence/display/OPS/Runbook")).isEqualTo("https://wiki.example.com/confluence/display/OPS");
+        }
     }
 
     @Nested

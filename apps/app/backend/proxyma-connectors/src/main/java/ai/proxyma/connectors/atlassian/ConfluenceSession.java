@@ -92,14 +92,9 @@ final class ConfluenceSession implements ConnectorSession {
         this.spaceKey = key == null ? "" : key.strip();
     }
 
-    /** A Cloud connection's site, {@code https://SITE.atlassian.net}, whether or not it was typed with /wiki. */
-    static String site(ResolvedCredentials connection) {
-        return AtlassianApi.base(connection).replaceAll("(?i)/wiki$", "");
-    }
-
     private ApiClient api() {
         if (api == null) {
-            base = cloud ? site(connection) : AtlassianApi.base(connection);
+            base = AtlassianApi.confluenceBase(connection);
             api = AtlassianApi.client(context.http(), connection, "Confluence", base);
         }
         return api;

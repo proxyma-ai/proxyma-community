@@ -85,7 +85,7 @@ final class SalesforceJwt implements TokenSupplier {
     SalesforceJwt(ConnectorHttp http, ResolvedCredentials connection, Clock clock) {
         this.http = http;
         this.clock = clock == null ? Clock.systemUTC() : clock;
-        this.loginUrl = connection.hasBaseUrl() ? connection.baseUrl().strip().replaceAll("/+$", "") : LOGIN;
+        this.loginUrl = connection.hasBaseUrl() ? SalesforceApi.myDomain(connection.baseUrl()) : LOGIN;
         this.consumerKey = trim(connection.setting(CONSUMER_KEY));
         this.username = trim(connection.username());
         String pem = connection.secret(PRIVATE_KEY);
@@ -163,7 +163,17 @@ final class SalesforceJwt implements TokenSupplier {
         }
         String token = body == null ? null : body.path("access_token").asText(null);
         String instance = body == null ? null : body.path("instance_url").asText(null);
-        if (token == null || token.isBlank()) throw new ConnectorAuthException("Salesforce answered the sign-in without a token.");
+        if (token == null || token.isBlank()) {
+            // Not JSON: json() says what came back instead - a web page, most often, from an address
+            // that is not the org's.
+            if (body == null) {
+                response.json();
+                throw new ConnectorAuthException("Salesforce answered the sign-in without a token.");
+            }
+            String reason = body.path("error_description").asText(body.path("error").asText(""));
+            if (!reason.isBlank()) throw new ConnectorAuthException("Salesforce answered the sign-in without a token (" + reason + ").");
+            throw new ConnectorAuthException("Salesforce answered the sign-in without a token.");
+        }
         return new Grant(token, checkedInstance(instance, loginUrl), clock.instant().plus(LIFETIME));
     }
 

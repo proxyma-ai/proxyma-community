@@ -7,6 +7,8 @@ import ai.proxyma.core.tools.ToolIds;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.confluence.ConfluenceConnector;
 import ai.proxyma.core.connector.confluence.ConfluenceConnector.ConfluencePageDto;
+import ai.proxyma.core.connector.spi.AtlassianCloud;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.search.domain.SearchContext;
 import ai.proxyma.core.settings.service.McpGuardService;
 import org.springframework.stereotype.Service;
@@ -139,15 +141,16 @@ class ConfluenceToolService {
     }
 
     /**
-     * What the connector's paths ({@code /rest/api/...}) are joined to: a Data Center server as typed;
+     * What the connector's paths ({@code /rest/api/...}) are joined to: a Data Center server's root,
+     * cut before any page the address was pasted from and keeping the path it is installed under;
      * on an Atlassian Cloud site, the site's {@code /wiki}, where Confluence lives - typed with it or
      * not, and a Cloud connection made as Jira (which serves Confluence too) never is. The pages'
      * web addresses the connector builds from it land under /wiki as well, as Cloud serves them.
      */
     static String apiBase(ToolConnectorResolver.Target target) {
         String base = target.baseUrl().replaceAll("/+$", "");
-        if (!target.atlassianCloud()) return base;
-        return base.replaceAll("(?i)/wiki$", "") + "/wiki";
+        if (!target.atlassianCloud()) return AtlassianServer.confluenceRoot(base);
+        return AtlassianCloud.site(base) + "/wiki";
     }
 
     Map<String, Object> callConfluenceApi(String method, String path, String body) {

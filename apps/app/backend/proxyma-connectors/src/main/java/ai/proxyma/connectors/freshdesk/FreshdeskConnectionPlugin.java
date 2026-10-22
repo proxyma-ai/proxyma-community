@@ -55,6 +55,11 @@ public class FreshdeskConnectionPlugin implements ConnectionPlugin {
         } catch (ConnectorHttpException e) {
             if (e.status() == 401) return ConnectionTestResult.failed("Freshdesk did not accept the API key.");
             if (e.status() == 404) {
+                // The domain sentence only when the domain is what was used.
+                if (connection.hasBaseUrl()) {
+                    return ConnectionTestResult.failed("Freshdesk has nothing at {address}. Check the connection's address.",
+                            "address", FreshdeskApi.accountUrl(connection));
+                }
                 return ConnectionTestResult.failed("Freshdesk has no account at that domain. Check the domain.");
             }
             return ConnectionTestResult.failed(e.getMessage());

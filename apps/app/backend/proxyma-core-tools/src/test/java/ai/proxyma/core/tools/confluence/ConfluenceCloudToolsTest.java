@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 /**
  * The agent's Confluence tools on an Atlassian Cloud site live under the site's {@code /wiki} -
  * whether the connection was typed with it or not, and a Cloud connection made as Jira never is -
- * while a Data Center server is spoken to at the address as typed.
+ * while a Data Center server is spoken to at its root, a context path it is installed under kept.
  */
 class ConfluenceCloudToolsTest {
 
@@ -31,8 +31,19 @@ class ConfluenceCloudToolsTest {
                 AuthKind.BASIC))).isEqualTo("https://acme.atlassian.net/wiki");
         assertThat(ConfluenceToolService.apiBase(new ToolConnectorResolver.Target("https://acme.atlassian.net/wiki/",
                 "a:b", AuthKind.BASIC))).isEqualTo("https://acme.atlassian.net/wiki");
+        assertThat(ConfluenceToolService.apiBase(new ToolConnectorResolver.Target("https://acme.atlassian.net/jira",
+                "a:b", AuthKind.BASIC))).isEqualTo("https://acme.atlassian.net/wiki");
         assertThat(ConfluenceToolService.apiBase(new ToolConnectorResolver.Target("https://wiki.corp/confluence", "pat",
                 AuthKind.TOKEN))).isEqualTo("https://wiki.corp/confluence");
+    }
+
+    @Test
+    @DisplayName("Data Center: an address pasted from a page is the server's root, its context path kept")
+    void dataCenterPastedFromAPage() {
+        assertThat(ConfluenceToolService.apiBase(new ToolConnectorResolver.Target(
+                "https://wiki.corp/confluence/display/OPS/Runbook", "pat", AuthKind.TOKEN))).isEqualTo("https://wiki.corp/confluence");
+        assertThat(ConfluenceToolService.apiBase(new ToolConnectorResolver.Target(
+                "https://wiki.corp/pages/viewpage.action?pageId=1", "pat", AuthKind.TOKEN))).isEqualTo("https://wiki.corp");
     }
 
     @Test

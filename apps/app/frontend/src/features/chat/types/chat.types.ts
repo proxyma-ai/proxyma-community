@@ -71,6 +71,9 @@ export interface SubAgentReported {
   agentId: string
   title: string
   status: SubAgentStatus
+  // 'message' for a message a running sub-agent sent its main agent (messageMainAgent); absent for
+  // a report.
+  kind?: 'message'
 }
 
 // One invocation of a workflow: the plan and the live state of every step, as ONE object. The

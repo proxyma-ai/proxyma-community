@@ -6,7 +6,7 @@ import type { InfiniteData } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { keys } from '@/services/queryKeys'
 import { settleUnfinishedToolCalls } from '../utils/settleUnfinishedToolCalls'
-import { appendSettled, applyStepLimit, applyText, claimToolCalls, lastSettled, placeInjected } from '../utils/threadOps'
+import { appendSettled, applyStepLimit, applyText, claimToolCalls, idlessTail, lastSettled, placeInjected, withServerIds } from '../utils/threadOps'
 import { parseQuestions, stepLimitOf } from '../utils/askUser'
 import {
   accept, carriedOnReload, ended, follow, keepClose, missed, opened, parseOpen, resumeAfter, resumePoint,
@@ -226,6 +226,7 @@ export function useChat() {
             if (open && opened(page, generation, open)) {
               stopFollowing(page)
               qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+              qc.invalidateQueries({ queryKey: keys.conversationUsage(convId) })
               reloadRef.current?.(convId, { lost: true })
             }
             return
@@ -236,6 +237,7 @@ export function useChat() {
           if (missed(page, generation, event.seq)) {
             stopFollowing(page)
             qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+            qc.invalidateQueries({ queryKey: keys.conversationUsage(convId) })
             reloadRef.current?.(convId)
             return
           }
@@ -437,11 +439,12 @@ export function useChat() {
               // thread says so at this point: what the agent says next is its reaction to it. As
               // with a message typed mid-turn, the steps taken before it stay above it.
               try {
-                const d = JSON.parse(event.data) as { title?: string; status?: string }
+                const d = JSON.parse(event.data) as { title?: string; status?: string; kind?: string }
                 const unclaimed = takeUnclaimedToolCalls()
                 store.setMessages(prev => appendSettled(claimToolCalls(prev, unclaimed), {
                   role: 'assistant', content: '',
-                  subAgentReports: [{ agentId: event.callId, title: d.title ?? '', status: agentStatus(d.status) }],
+                  subAgentReports: [{ agentId: event.callId, title: d.title ?? '', status: agentStatus(d.status),
+                    ...(d.kind === 'message' ? { kind: 'message' as const } : {}) }],
                 }))
                 newSegmentPendingRef.current = true
               } catch { /* ignore parse errors, mirrors the 'usage' case's own try/catch style */ }
@@ -563,6 +566,8 @@ export function useChat() {
                 const usage = JSON.parse(event.data) as ConversationUsage
                 qc.setQueryData(keys.conversation(convId), (prev: ({ messages: unknown[] } & ConversationUsage) | undefined) =>
                   prev ? { ...prev, ...usage } : prev)
+                qc.setQueryData(keys.conversationUsage(convId), (prev: ConversationUsage | undefined) =>
+                  prev ? { ...prev, ...usage } : prev)
               } catch { /* ignore parse errors */ }
               break
             }
@@ -638,6 +643,7 @@ export function useChat() {
           // refetching. Without this, reselecting a just-chatted-in conversation from history
           // can show messages from before this turn completed.
           qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+          qc.invalidateQueries({ queryKey: keys.conversationUsage(convId) })
           // A brand-new conversation's real title normally arrives live, via the 'title' event
           // handled above: the backend now requests it as soon as the first user message lands, so
           // it resolves mid-turn while this sink is still open (see ConversationTitleService).
@@ -666,20 +672,17 @@ export function useChat() {
           // no counterpart LOSES its id rather than keeping a stale one - a rewind aimed at a stale
           // id used to delete the whole conversation. And when no id changed, the same array is
           // kept, so nothing re-renders and the view does not scroll.
-          chatApi.getConversation(convId).then(data => {
-            store.setMessages(prev => {
-              const offset = prev.length - data.messages.length
-              let changed = false
-              const next = prev.map((m, i) => {
-                const fetched = offset >= 0 ? data.messages[i - offset] : data.messages[i]
-                const id = fetched?.id
-                if (id === m.id) return m
-                changed = true
-                return { ...m, id }
-              })
-              return changed ? next : prev
-            })
-          }).catch(() => {})
+          //
+          // ONLY THE IDS OF THE TAIL since 2026-10-17: of the messages with no id yet, plus one, from
+          // the end of the transcript. The whole conversation after every turn was most of what a page
+          // received while background sub-agents reported, each report being a turn - and the message
+          // that started them carries all their steps. Nothing without an id, nothing asked for.
+          const missing = idlessTail(getState().messages)
+          if (missing > 0) {
+            chatApi.getMessageIds(convId, missing + 1).then(ids => {
+              store.setMessages(prev => withServerIds(prev, ids.map(id => ({ id: id ?? undefined })), true))
+            }).catch(() => {})
+          }
           processQueue()
         },
         (err: string, connectionLost = false) => {
@@ -746,6 +749,7 @@ export function useChat() {
           }
           qc.invalidateQueries({ queryKey: keys.conversations() })
           qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+          qc.invalidateQueries({ queryKey: keys.conversationUsage(convId) })
           processQueue()
         },
         () => {
@@ -780,6 +784,7 @@ export function useChat() {
               })
               qc.invalidateQueries({ queryKey: keys.conversations() })
               qc.invalidateQueries({ queryKey: keys.conversation(convId) })
+              qc.invalidateQueries({ queryKey: keys.conversationUsage(convId) })
               processQueue()
             }
           })

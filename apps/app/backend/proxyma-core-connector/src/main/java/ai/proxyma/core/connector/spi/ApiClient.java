@@ -499,8 +499,9 @@ public final class ApiClient {
     }
 
     // An answer not yet read: its body is a stream until buffer() reads it whole - once; a second
-    // buffer() hands back the same answer.
-    private static final class Raw {
+    // buffer() hands back the same answer. Not static: the answer carries the client's service name,
+    // for the sentence json() throws on a web page.
+    private final class Raw {
         final URI uri;
         final int status;
         final HttpHeaders headers;
@@ -524,9 +525,9 @@ public final class ApiClient {
                     throw new ConnectorHttpException("The answer was larger than " + (MAX_BUFFERED_BYTES / (1024 * 1024))
                             + " MB, so it was not read.", status, uri.getRawPath());
                 }
-                buffered = new ApiResponse(uri, status, headers, bytes);
+                buffered = new ApiResponse(uri, status, headers, bytes, service);
             } catch (IOException e) {
-                buffered = new ApiResponse(uri, status, headers, new byte[0]);
+                buffered = new ApiResponse(uri, status, headers, new byte[0], service);
             }
             return buffered;
         }

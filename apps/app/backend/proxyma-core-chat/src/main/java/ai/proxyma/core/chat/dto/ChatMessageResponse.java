@@ -42,8 +42,12 @@ public record ChatMessageResponse(
         this(id, role, content, toolCalls, attachmentNames, mentions, skillMentions, workflowRunId, stepLimit, null);
     }
 
-    /** One sub-agent whose report reached the main agent; status is lower case, as the events have it. */
-    public record SubAgentReported(String agentId, String title, String status) {}
+    /**
+     * One sub-agent whose report reached the main agent; status is lower case, as the events have it.
+     * kind is "message" for a message a running sub-agent sent (messageMainAgent), else null.
+     */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record SubAgentReported(String agentId, String title, String status, String kind) {}
 
     // Field names match the frontend's ToolCallInfo shape exactly (see chat.types.ts) so no
     // frontend type change is needed to consume this. startedAt and endedAt are epoch

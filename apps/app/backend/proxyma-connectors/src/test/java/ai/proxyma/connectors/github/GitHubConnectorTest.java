@@ -39,6 +39,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GitHubConnectorTest {
 
     private static final String TOKEN = "ghp_test-token";
+    // The loopback server is not github.com, so it is spoken to as a GitHub Enterprise Server: under
+    // /api/v3, which the connector puts after the address it is given.
+    private static final String V3 = "/api/v3";
     private LoopbackApi api;
     private final List<Duration> waits = new ArrayList<>();
     private final GitHubConnectorPlugin plugin = new GitHubConnectorPlugin();
@@ -46,7 +49,7 @@ class GitHubConnectorTest {
     @BeforeEach
     void start() {
         api = LoopbackApi.start();
-        api.on("GET", "/repos/acme/web").json("{'default_branch':'main','html_url':'https://github.com/acme/web',"
+        api.on("GET", V3 + "/repos/acme/web").json("{'default_branch':'main','html_url':'https://github.com/acme/web',"
                 + "'pushed_at':'2026-10-10T08:00:00Z'}");
     }
 
@@ -68,17 +71,17 @@ class GitHubConnectorTest {
     }
 
     private void issuesInTwoPages() {
-        api.on("GET", "/repos/acme/web/issues").json("[{'number':1,'title':'Login fails','updated_at':'2026-10-01T10:00:00Z',"
+        api.on("GET", V3 + "/repos/acme/web/issues").json("[{'number':1,'title':'Login fails','updated_at':'2026-10-01T10:00:00Z',"
                         + "'html_url':'https://github.com/acme/web/issues/1','user':{'login':'ana'}},"
                         + "{'number':2,'title':'Fix login','updated_at':'2026-10-02T10:00:00Z','pull_request':{},"
                         + "'html_url':'https://github.com/acme/web/pull/2','user':{'login':'bo'}}]",
-                "Link", "<" + api.url("/repos/acme/web/issues?state=all&page=2") + ">; rel=\"next\"");
-        api.on("GET", "/repos/acme/web/issues").query("page", "2").json("[{'number':3,'title':'Dark mode',"
+                "Link", "<" + api.url(V3 + "/repos/acme/web/issues?state=all&page=2") + ">; rel=\"next\"");
+        api.on("GET", V3 + "/repos/acme/web/issues").query("page", "2").json("[{'number':3,'title':'Dark mode',"
                 + "'updated_at':'2026-10-03T10:00:00Z','html_url':'https://github.com/acme/web/issues/3','user':{'login':'cy'}}]");
     }
 
     private void docsTree(String sha) {
-        api.on("GET", "/repos/acme/web/git/trees/main").query("recursive", "1").json("{'sha':'" + sha + "','truncated':false,'tree':["
+        api.on("GET", V3 + "/repos/acme/web/git/trees/main").query("recursive", "1").json("{'sha':'" + sha + "','truncated':false,'tree':["
                 + "{'path':'README.md','type':'blob','sha':'b-readme','size':120},"
                 + "{'path':'docs','type':'tree','sha':'t-docs'},"
                 + "{'path':'docs/guide.md','type':'blob','sha':'b-guide','size':300},"
@@ -118,8 +121,8 @@ class GitHubConnectorTest {
             assertThat(r.header("Authorization")).isEqualTo("Bearer " + TOKEN);
             assertThat(r.header("X-GitHub-Api-Version")).isEqualTo(GitHubApi.API_VERSION);
         });
-        assertThat(api.requests("/repos/acme/web/issues").get(0).param("state")).isEqualTo("all");
-        assertThat(api.requests("/repos/acme/web/issues").get(0).param("since")).isNull();
+        assertThat(api.requests(V3 + "/repos/acme/web/issues").get(0).param("state")).isEqualTo("all");
+        assertThat(api.requests(V3 + "/repos/acme/web/issues").get(0).param("since")).isNull();
     }
 
     @Test
@@ -129,13 +132,13 @@ class GitHubConnectorTest {
         try (ConnectorSession s = session(Map.of("repository", "acme/web", "pullRequests", false))) {
             assertThat(drain(s.list(ListRequest.full()))).extracting(ItemMetadata::getId).containsExactly("issue:1", "issue:3");
         }
-        assertThat(api.requests("/repos/acme/web/git/trees/main")).isEmpty();
+        assertThat(api.requests(V3 + "/repos/acme/web/git/trees/main")).isEmpty();
     }
 
     @Test
     @DisplayName("a changes pass asks for what changed since the last pass, and skips a tree it has already listed")
     void incrementalListing() {
-        api.on("GET", "/repos/acme/web/issues").json("[{'number':3,'title':'Dark mode','updated_at':'2026-10-12T10:00:00Z',"
+        api.on("GET", V3 + "/repos/acme/web/issues").json("[{'number':3,'title':'Dark mode','updated_at':'2026-10-12T10:00:00Z',"
                 + "'html_url':'https://github.com/acme/web/issues/3','user':{'login':'cy'}}]");
         docsTree("t1");
         Instant since = Instant.parse("2026-10-12T09:00:00Z");
@@ -145,13 +148,13 @@ class GitHubConnectorTest {
             assertThat(drain(listing)).extracting(ItemMetadata::getId).containsExactly("issue:3");
             assertThat(listing.nextCursor()).isEqualTo("tree:t1");
         }
-        assertThat(api.requests("/repos/acme/web/issues").get(0).param("since"))
+        assertThat(api.requests(V3 + "/repos/acme/web/issues").get(0).param("since"))
                 .isEqualTo(since.minus(GitHubSession.OVERLAP).toString());
 
         // The branch moved on: its files are listed again, and the new tree is the next cursor.
         api.reset();
-        api.on("GET", "/repos/acme/web").json("{'default_branch':'main','html_url':'https://github.com/acme/web'}");
-        api.on("GET", "/repos/acme/web/issues").json("[]");
+        api.on("GET", V3 + "/repos/acme/web").json("{'default_branch':'main','html_url':'https://github.com/acme/web'}");
+        api.on("GET", V3 + "/repos/acme/web/issues").json("[]");
         docsTree("t2");
         try (ConnectorSession s = session(Map.of("repository", "acme/web", "docs", true))) {
             Listing listing = s.list(ListRequest.changes(since, "tree:t1"));
@@ -164,7 +167,7 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("only files under the chosen folder, and a truncated tree is a partial listing that purges nothing")
     void docsPathAndTruncatedTrees() {
-        api.on("GET", "/repos/acme/web/git/trees/main").query("recursive", "1").json("{'sha':'t9','truncated':true,'tree':["
+        api.on("GET", V3 + "/repos/acme/web/git/trees/main").query("recursive", "1").json("{'sha':'t9','truncated':true,'tree':["
                 + "{'path':'README.md','type':'blob','sha':'b1','size':10},"
                 + "{'path':'docs/guide.md','type':'blob','sha':'b2','size':10}]}");
         try (ConnectorSession s = session(Map.of("repository", "acme/web", "issues", false, "pullRequests", false,
@@ -179,9 +182,9 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("a page that fails mid-listing is an errored listing - nothing is removed for what it did not reach")
     void failedPageIsNoDeletion() {
-        api.on("GET", "/repos/acme/web/issues").json("[{'number':1,'title':'A','updated_at':'2026-10-01T10:00:00Z'}]",
-                "Link", "<" + api.url("/repos/acme/web/issues?page=2") + ">; rel=\"next\"");
-        api.on("GET", "/repos/acme/web/issues").query("page", "2").status(500);
+        api.on("GET", V3 + "/repos/acme/web/issues").json("[{'number':1,'title':'A','updated_at':'2026-10-01T10:00:00Z'}]",
+                "Link", "<" + api.url(V3 + "/repos/acme/web/issues?page=2") + ">; rel=\"next\"");
+        api.on("GET", V3 + "/repos/acme/web/issues").query("page", "2").status(500);
         try (ConnectorSession s = session(Map.of("repository", "acme/web"))) {
             Listing listing = s.list(ListRequest.full());
             assertThat(drain(listing)).extracting(ItemMetadata::getId).containsExactly("issue:1");
@@ -193,13 +196,13 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("an issue is fetched as one markdown document with every page of its comments")
     void fetchIssue() throws IOException {
-        api.on("GET", "/repos/acme/web/issues/1").json("{'number':1,'title':'Login fails','state':'open',"
+        api.on("GET", V3 + "/repos/acme/web/issues/1").json("{'number':1,'title':'Login fails','state':'open',"
                 + "'user':{'login':'ana'},'assignees':[{'login':'bo'}],'labels':[{'name':'bug'}],"
                 + "'created_at':'2026-10-01T09:00:00Z','updated_at':'2026-10-01T10:00:00Z',"
                 + "'html_url':'https://github.com/acme/web/issues/1','body':'The login page loops.'}");
-        api.on("GET", "/repos/acme/web/issues/1/comments").json("[{'user':{'login':'bo'},'created_at':'2026-10-01T09:30:00Z',"
-                + "'body':'Reproduced on Safari.'}]", "Link", "<" + api.url("/repos/acme/web/issues/1/comments?page=2") + ">; rel=\"next\"");
-        api.on("GET", "/repos/acme/web/issues/1/comments").query("page", "2")
+        api.on("GET", V3 + "/repos/acme/web/issues/1/comments").json("[{'user':{'login':'bo'},'created_at':'2026-10-01T09:30:00Z',"
+                + "'body':'Reproduced on Safari.'}]", "Link", "<" + api.url(V3 + "/repos/acme/web/issues/1/comments?page=2") + ">; rel=\"next\"");
+        api.on("GET", V3 + "/repos/acme/web/issues/1/comments").query("page", "2")
                 .json("[{'user':{'login':'ana'},'created_at':'2026-10-01T09:40:00Z','body':'Fixed by #2.'}]");
 
         String md = text(fetch("issue:1"));
@@ -213,14 +216,14 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("a pull request is fetched with its branches, comments, reviews and review comments")
     void fetchPull() throws IOException {
-        api.on("GET", "/repos/acme/web/pulls/2").json("{'number':2,'title':'Fix login','state':'closed',"
+        api.on("GET", V3 + "/repos/acme/web/pulls/2").json("{'number':2,'title':'Fix login','state':'closed',"
                 + "'merged_at':'2026-10-02T11:00:00Z','user':{'login':'bo'},'head':{'ref':'fix-login'},'base':{'ref':'main'},"
                 + "'created_at':'2026-10-02T09:00:00Z','updated_at':'2026-10-02T11:00:00Z','html_url':'https://github.com/acme/web/pull/2',"
                 + "'body':'Stops the redirect loop.'}");
-        api.on("GET", "/repos/acme/web/issues/2/comments").json("[]");
-        api.on("GET", "/repos/acme/web/pulls/2/reviews").json("[{'user':{'login':'ana'},'state':'APPROVED',"
+        api.on("GET", V3 + "/repos/acme/web/issues/2/comments").json("[]");
+        api.on("GET", V3 + "/repos/acme/web/pulls/2/reviews").json("[{'user':{'login':'ana'},'state':'APPROVED',"
                 + "'submitted_at':'2026-10-02T10:30:00Z','body':'Looks right.'}]");
-        api.on("GET", "/repos/acme/web/pulls/2/comments").json("[{'user':{'login':'ana'},'path':'src/login.ts',"
+        api.on("GET", V3 + "/repos/acme/web/pulls/2/comments").json("[{'user':{'login':'ana'},'path':'src/login.ts',"
                 + "'created_at':'2026-10-02T10:00:00Z','body':'Nit: rename this.'}]");
 
         String md = text(fetch("pull:2"));
@@ -233,7 +236,7 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("a documentation file is fetched raw from the branch")
     void fetchFile() throws IOException {
-        api.on("GET", "/repos/acme/web/contents/docs/guide.md").query("ref", "main").text("# Guide\n\nHello.");
+        api.on("GET", V3 + "/repos/acme/web/contents/docs/guide.md").query("ref", "main").text("# Guide\n\nHello.");
 
         assertThat(text(fetch("file:docs/guide.md"))).isEqualTo("# Guide\n\nHello.");
         assertThat(api.last().header("Accept")).isEqualTo("application/vnd.github.raw");
@@ -243,8 +246,8 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("an item GitHub no longer has is gone - removed at once rather than retried")
     void goneItems() {
-        api.on("GET", "/repos/acme/web/issues/9").status(404).json("{'message':'Not Found'}");
-        api.on("GET", "/repos/acme/web/issues/8").status(410).json("{'message':'This issue was deleted'}");
+        api.on("GET", V3 + "/repos/acme/web/issues/9").status(404).json("{'message':'Not Found'}");
+        api.on("GET", V3 + "/repos/acme/web/issues/8").status(410).json("{'message':'This issue was deleted'}");
         assertThatThrownBy(() -> fetch("issue:9")).isInstanceOf(ItemGoneException.class);
         assertThatThrownBy(() -> fetch("issue:8")).isInstanceOf(ItemGoneException.class);
     }
@@ -255,11 +258,11 @@ class GitHubConnectorTest {
         try (ConnectorSession s = session(Map.of("repository", "acme/web"))) {
             assertThat(s.verifyAccess()).isEqualTo(AccessCheck.verified());
         }
-        api.on("GET", "/repos/acme/nope").status(404).json("{'message':'Not Found'}");
+        api.on("GET", V3 + "/repos/acme/nope").status(404).json("{'message':'Not Found'}");
         try (ConnectorSession s = session(Map.of("repository", "acme/nope"))) {
             assertThat(s.verifyAccess().detail()).isEqualTo("GitHub has no repository acme/nope, or the token cannot see it.");
         }
-        api.on("GET", "/repos/acme/locked").status(401).json("{'message':'Bad credentials'}");
+        api.on("GET", V3 + "/repos/acme/locked").status(401).json("{'message':'Bad credentials'}");
         try (ConnectorSession s = session(Map.of("repository", "acme/locked"))) {
             assertThat(s.verifyAccess().detail()).isEqualTo("GitHub did not accept the token. Replace it in Settings > Connections.");
         }
@@ -269,7 +272,7 @@ class GitHubConnectorTest {
     @DisplayName("GitHub's rate limit is waited out when it resets soon, and reported - not sat out - when it does not")
     void rateLimits() {
         long soon = Instant.now().getEpochSecond() + 3;
-        api.on("GET", "/repos/acme/web/issues").status(403).header("x-ratelimit-remaining", "0")
+        api.on("GET", V3 + "/repos/acme/web/issues").status(403).header("x-ratelimit-remaining", "0")
                 .header("x-ratelimit-reset", String.valueOf(soon)).then().json("[]");
         try (ConnectorSession s = session(Map.of("repository", "acme/web"))) {
             Listing listing = s.list(ListRequest.full());
@@ -280,7 +283,7 @@ class GitHubConnectorTest {
 
         api.reset();
         long later = Instant.now().getEpochSecond() + 3600;
-        api.on("GET", "/repos/acme/web/issues").status(403).header("x-ratelimit-remaining", "0")
+        api.on("GET", V3 + "/repos/acme/web/issues").status(403).header("x-ratelimit-remaining", "0")
                 .header("x-ratelimit-reset", String.valueOf(later));
         try (ConnectorSession s = session(Map.of("repository", "acme/web"))) {
             Listing listing = s.list(ListRequest.full());
@@ -293,7 +296,7 @@ class GitHubConnectorTest {
     @Test
     @DisplayName("the connection's Test is who the token belongs to")
     void connectionTest() {
-        api.on("GET", "/user").json("{'login':'ana'}");
+        api.on("GET", V3 + "/user").json("{'login':'ana'}");
         GitHubConnectionPlugin connection = new GitHubConnectionPlugin();
         ConnectionTestResult ok = connection.test(ResolvedCredentials.token(api.baseUrl(), TOKEN), ConnectorHttp.direct());
         assertThat(ok.ok()).isTrue();
@@ -301,23 +304,66 @@ class GitHubConnectorTest {
         assertThat(ok.template()).isEqualTo("Signed in as {user}");
 
         api.reset();
-        api.on("GET", "/user").status(401).json("{'message':'Bad credentials'}");
+        api.on("GET", V3 + "/user").status(401).json("{'message':'Bad credentials'}");
         ConnectionTestResult refused = connection.test(ResolvedCredentials.token(api.baseUrl(), TOKEN), ConnectorHttp.direct());
         assertThat(refused.ok()).isFalse();
         assertThat(refused.message()).isEqualTo("GitHub did not accept the token.");
+
+        // A proxy's sign-in page in front of the server: the Test says it is a page, and where to look.
+        api.reset();
+        api.on("GET", V3 + "/user").body("<html><body>Sign in</body></html>".getBytes(StandardCharsets.UTF_8), "text/html");
+        ConnectionTestResult page = connection.test(ResolvedCredentials.token(api.baseUrl(), TOKEN), ConnectorHttp.direct());
+        assertThat(page.ok()).isFalse();
+        assertThat(page.message())
+                .isEqualTo("GitHub answered with a web page instead of its API. Check the connection's address.");
     }
 
     @Test
-    @DisplayName("a GitHub Enterprise Server is the same connector under its own API address")
+    @DisplayName("a GitHub Enterprise Server is reached at /api/v3 whether the API URL was typed with it, without it, or as a repository page")
     void enterpriseServerBaseUrl() {
-        api.on("GET", "/api/v3/repos/acme/web").json("{'default_branch':'main'}");
         Map<String, String> config = ConfigValidator.validate(GitHubConnectorPlugin.DESCRIPTOR.fields(),
                 Map.of("repository", "acme/web"));
-        try (ConnectorSession s = plugin.open(SourceContext.of(ConnectorType.GITHUB, config,
-                ResolvedCredentials.token(api.baseUrl() + "/api/v3", TOKEN), ConnectorHttp.direct()))) {
-            assertThat(s.verifyAccess()).isEqualTo(AccessCheck.verified());
+        for (String typed : List.of(api.baseUrl() + "/api/v3", api.baseUrl() + "/api/v3/", api.baseUrl(),
+                api.baseUrl() + "/acme/web/issues?q=is%3Aopen", api.baseUrl() + "/api/v3/repos/acme")) {
+            try (ConnectorSession s = plugin.open(SourceContext.of(ConnectorType.GITHUB, config,
+                    ResolvedCredentials.token(typed, TOKEN), ConnectorHttp.direct()))) {
+                assertThat(s.verifyAccess()).as(typed).isEqualTo(AccessCheck.verified());
+            }
+            assertThat(api.last().path()).as(typed).isEqualTo("/api/v3/repos/acme/web");
         }
-        assertThat(api.last().path()).isEqualTo("/api/v3/repos/acme/web");
+
+        // The connection's Test goes to the same place.
+        api.on("GET", V3 + "/user").json("{'login':'ana'}");
+        ConnectionTestResult ok = new GitHubConnectionPlugin().test(
+                ResolvedCredentials.token(api.baseUrl() + "/acme", TOKEN), ConnectorHttp.direct());
+        assertThat(ok.message()).isEqualTo("Signed in as ana");
+        assertThat(api.last().path()).isEqualTo("/api/v3/user");
+    }
+
+    @Test
+    @DisplayName("an API URL in any form becomes the API's address, and the repository's page follows it")
+    void apiAddresses() {
+        Map<String, String> cases = new LinkedHashMap<>();
+        cases.put("https://api.github.com", "https://api.github.com");
+        cases.put("https://api.github.com/", "https://api.github.com");
+        cases.put("https://github.com/acme/web", "https://api.github.com");
+        cases.put("https://www.github.com", "https://api.github.com");
+        cases.put("https://ghe.corp.example/api/v3", "https://ghe.corp.example/api/v3");
+        cases.put("https://ghe.corp.example/api/v3/repos/acme/web", "https://ghe.corp.example/api/v3");
+        cases.put("https://ghe.corp.example", "https://ghe.corp.example/api/v3");
+        cases.put("https://ghe.corp.example/acme/web/pulls#top", "https://ghe.corp.example/api/v3");
+        cases.put("https://ghe.corp.example:8443/orgs/acme", "https://ghe.corp.example:8443/api/v3");
+        cases.put("https://acme.ghe.com/acme/web", "https://api.acme.ghe.com");
+        cases.put("https://api.acme.ghe.com", "https://api.acme.ghe.com");
+        cases.forEach((typed, api) -> assertThat(GitHubApi.apiBase(typed)).as(typed).isEqualTo(api));
+        assertThat(GitHubApi.apiBase(null)).isEqualTo(GitHubApi.DEFAULT_BASE_URL);
+
+        Map<String, String> repo = Map.of("repository", "acme/web");
+        assertThat(plugin.webUrl(repo, null)).isEqualTo("https://github.com/acme/web");
+        assertThat(plugin.webUrl(repo, "https://github.com/acme")).isEqualTo("https://github.com/acme/web");
+        assertThat(plugin.webUrl(repo, "https://ghe.corp.example/api/v3")).isEqualTo("https://ghe.corp.example/acme/web");
+        assertThat(plugin.webUrl(repo, "https://ghe.corp.example/acme")).isEqualTo("https://ghe.corp.example/acme/web");
+        assertThat(plugin.webUrl(repo, "https://api.acme.ghe.com")).isEqualTo("https://acme.ghe.com/acme/web");
     }
 
     @Test

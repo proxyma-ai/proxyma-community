@@ -209,6 +209,11 @@ function truncate(s: string): string {
   return flat.length > MAX_DETAIL ? `${flat.slice(0, MAX_DETAIL - 1)}...` : flat
 }
 
+// A model's boolean argument, sent either as JSON true or as the string.
+function isTrue(v: unknown): boolean {
+  return v === true || v === 'true'
+}
+
 // searchJiraIssues -> ["Searching Jira issues", "Searched Jira issues"].
 // A name whose first word is not a verb we know falls back to its humanized self in both tenses,
 // which is no worse than what the row said before and is never wrong.
@@ -273,6 +278,29 @@ export function toolActivity(tc: ToolCallInfo, t: Translate): string {
   // the instruction it wrote for the sub-agent. The row's own spinner and tick say running or done.
   if (tc.toolName === 'delegate' && typeof args.title === 'string' && args.title.trim()) {
     return truncate(args.title.trim())
+  }
+  // A memory entry corrected or deleted by its id says so: "Remembered" would claim a new one.
+  if (tc.toolName === 'remember' && typeof args.id === 'string' && args.id.trim()) {
+    if (isTrue(args.forget)) return tc.done ? t('Forgot a memory') : t('Forgetting a memory')
+    const detail = detailFrom({ fact: args.fact })
+    const p = tc.done ? t('Updated memory') : t('Updating memory')
+    return detail ? `${p} - ${detail}` : p
+  }
+  // The main agent directing a sub-agent it started: what it told it, or that it stopped it.
+  if (tc.toolName === 'steerSubAgent') {
+    if (isTrue(args.stop)) return tc.done ? t('Stopped a sub-task') : t('Stopping a sub-task')
+    const detail = detailFrom({ message: args.message })
+    const p = tc.done ? t('Updated a sub-task') : t('Updating a sub-task')
+    return detail ? `${p} - ${detail}` : p
+  }
+  // A sub-agent talking to the agent that started it, in its own panel: a question it waits on, or
+  // something it tells it and carries on.
+  if (tc.toolName === 'messageMainAgent') {
+    const detail = detailFrom({ message: args.message })
+    const p = isTrue(args.waitForReply)
+      ? (tc.done ? t('Asked the main agent') : t('Asking the main agent'))
+      : (tc.done ? t('Told the main agent') : t('Telling the main agent'))
+    return detail ? `${p} - ${detail}` : p
   }
   // A path between two things names both: "Traced connections - Ana and Ledger".
   if (tc.toolName === 'findGraphPath' && typeof args.from === 'string' && typeof args.to === 'string') {

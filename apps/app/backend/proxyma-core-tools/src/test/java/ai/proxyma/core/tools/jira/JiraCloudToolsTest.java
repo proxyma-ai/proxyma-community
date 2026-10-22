@@ -62,6 +62,18 @@ class JiraCloudToolsTest {
     }
 
     @Test
+    @DisplayName("a Cloud connection typed with /jira, as the browser shows it, searches at the site")
+    void cloudSearchTypedWithJira() {
+        when(resolver.target(eq(ConnectorType.JIRA), any(), any(), eq(Access.READ))).thenReturn(
+                new ToolConnectorResolver.Target(api.baseUrl() + "/jira/", "ana@example.com:api-token", AuthKind.BASIC));
+        api.on("POST", "/rest/api/3/search/jql").json("{'issues':[{'key':'HELP-1','fields':{'summary':'Printer jams'}}],"
+                + "'isLast':true}");
+
+        assertThat(tools.searchJiraIssues("project = HELP", 20)).extracting(m -> m.get("key")).containsExactly("HELP-1");
+        assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).containsExactly("/rest/api/3/search/jql");
+    }
+
+    @Test
     @DisplayName("a Data Center connection keeps the GET search on the server as typed")
     void dataCenterSearch() {
         when(resolver.target(eq(ConnectorType.JIRA), any(), any(), eq(Access.READ))).thenReturn(
@@ -69,5 +81,19 @@ class JiraCloudToolsTest {
         api.on("GET", "/jira/rest/api/2/search").json("{'issues':[{'key':'HELP-2','fields':{'summary':'Laptops'}}],'total':1}");
 
         assertThat(tools.searchJiraIssues("project = HELP", 20)).extracting(m -> m.get("key")).containsExactly("HELP-2");
+    }
+
+    @Test
+    @DisplayName("a Data Center address pasted from an issue page searches at the server's root, its context path kept")
+    void dataCenterPastedFromAPage() {
+        when(resolver.target(eq(ConnectorType.JIRA), any(), any(), eq(Access.READ))).thenReturn(
+                new ToolConnectorResolver.Target(api.baseUrl() + "/jira/browse/HELP-2?focus=1", "pat", AuthKind.TOKEN));
+        api.on("GET", "/jira/rest/api/2/search").json("{'issues':[{'key':'HELP-2','fields':{'summary':'Laptops'}}],'total':1}");
+
+        List<Map<String, Object>> found = tools.searchJiraIssues("project = HELP", 20);
+
+        assertThat(found).extracting(m -> m.get("key")).containsExactly("HELP-2");
+        assertThat(found.get(0).get("url")).isEqualTo(api.baseUrl() + "/jira/browse/HELP-2");
+        assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).containsExactly("/jira/rest/api/2/search");
     }
 }

@@ -370,9 +370,11 @@ class DefaultChatSkillSeeder {
               `category`: `knowledge` (default - durable facts, resolved answers, project \
               details) or `user` (this user's preferences, role, and corrections - store the \
               correction, not the mistake).
-            - Only a near-identical restatement replaces an old entry by itself. For a \
-              correction, `recall` the old entry and restate it closely with the new facts, so \
-              it replaces rather than contradicts it. Briefly say what you noted.
+            - To correct an entry, `remember` with its `id` from `recall` and the corrected \
+              statement - it replaces that entry, never one saved beside it. To delete one that \
+              is wrong or no longer true, `remember` with its `id` and `forget` true. Without an \
+              `id`, only a near-identical restatement replaces an old entry. Briefly say what you \
+              noted, changed or deleted.
             - Skip details that matter only to the current task, or are obvious from the message.
             - The user can read, edit and delete every entry (Settings > Memory). An entry that \
               is gone was deleted on purpose: do not save it again unless they say it again.

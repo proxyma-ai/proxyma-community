@@ -29,8 +29,9 @@ public interface AgentHost {
     ToolResponseMessage callTools(String conversationId, List<ToolCall> calls, AtomicBoolean stop, AgentScope scope);
 
     /**
-     * A background sub-agent has finished and its report is waiting. The host hands it to the
-     * conversation's running turn at its next step, or starts a turn for it when none is running.
+     * A background sub-agent has something waiting for the main agent: its report, or a message it
+     * sent while it works (messageMainAgent). The host hands it to the conversation's running turn
+     * at its next step, or starts a turn for it when none is running.
      */
     void subAgentSettled(String conversationId);
 

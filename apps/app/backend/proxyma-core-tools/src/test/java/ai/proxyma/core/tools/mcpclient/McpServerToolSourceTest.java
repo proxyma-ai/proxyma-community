@@ -135,6 +135,19 @@ class McpServerToolSourceTest {
         assertFalse(failed.ok());
         assertTrue(failed.message().startsWith("Could not connect: "), failed.message());
         assertFalse(failed.message().contains("{reason}"), failed.message());
+        assertEquals("Could not connect: {reason}", failed.template());
+
+        // A 404 at a server's root: the raw reason, then where MCP servers usually answer.
+        ResolvedMcpServer root = new ResolvedMcpServer(UUID.randomUUID(), "ana", "Tickets", "https://t.example/",
+                anas.config(), McpServerConfig.McpSecrets.empty(), false, null, "v1");
+        when(clients.probe(root)).thenThrow(new McpClientManager.McpServerUnavailableException("Tickets",
+                org.springframework.web.reactive.function.client.WebClientResponseException.create(404, "Not Found",
+                        null, null, null)));
+        var hinted = source.probe(root);
+        assertFalse(hinted.ok());
+        assertEquals("Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp "
+                + "(or /sse for the older transport).", hinted.template());
+        assertTrue(hinted.message().startsWith("Could not connect: 404 Not Found."), hinted.message());
     }
 
     @Test

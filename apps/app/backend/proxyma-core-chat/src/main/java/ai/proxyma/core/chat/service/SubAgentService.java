@@ -132,6 +132,14 @@ public class SubAgentService {
     // offloaded file is not worth a megabyte per run.
     private static final int MAX_STORED_RESULT_CHARS = 4000;
     private static final int MAX_TITLE_CHARS = 200;
+    // One message from the main agent to a running sub-agent - see tell.
+    static final int MAX_MESSAGE_CHARS = 4000;
+    /** What a message from the main agent starts with, in the sub-agent's context. */
+    static final String AGENT_MESSAGE_MARKER = "[From the agent that started you]";
+    /** What a sub-agent's message starts with, in the main agent's context - see noteMessage. */
+    public static final String NOTE_MARKER = "[Sub-agent message]";
+    // How long a sub-agent waits for the main agent's reply before it carries on without one.
+    static final long REPLY_WAIT_MILLIS = TimeUnit.MINUTES.toMillis(10);
 
     // {{PRODUCT_NAME}} is substituted per run from ProductIdentity, exactly as
     // SystemPromptService.DEFAULT is for the main agent. The identity and instruction
@@ -157,6 +165,9 @@ public class SubAgentService {
               lost. `grep` it for a term from your task, then `read` it with `offset` at a match's line. \
               Never present a sample as the whole.
             - Never fabricate a source or a quote. A partial honest result beats a confident wrong one.
+            - A message beginning "[From the agent that started you]" may arrive while you work: more \
+              information or a change of course. Follow it as part of your instructions.
+            {{TALK}}
 
             YOUR REPORT:
             - Your FINAL message - the one with no tool call - is your report, and the only thing the agent \
@@ -173,6 +184,14 @@ public class SubAgentService {
             - You have the tools of the agent that started you, except that you cannot delegate. A call that \
               creates, changes or deletes something may wait for the user's approval, as it would for that \
               agent. A refusal is final: report it, never work around it.""";
+
+    // A background run's line to the agent that started it. A SYNC run has none: that agent is
+    // waiting for its report and reads nothing else until it comes.
+    private static final String TALK_ASYNC = """
+            - `messageMainAgent` reaches the agent that started you while you work: to ask what only it \
+              or the user can settle (waitForReply true - you pause until it answers), or to tell it \
+              something it needs before your report. Never for progress updates; your report says \
+              what you did.""";
 
     private static final String ACCESS_DETACHED = """
             - There is no user here and you cannot ask questions. You are read-only: if the task needs a \
@@ -230,6 +249,8 @@ public class SubAgentService {
     enum Halt {
         /** The user pressed its Stop, or the conversation was deleted. */
         USER("Stopped by the user."),
+        /** The main agent stopped it (steerSubAgent). */
+        AGENT("Stopped by the agent that started it."),
         /** The turn it was working for was stopped (SYNC only). */
         TURN("The turn this sub-agent was working for was stopped."),
         /** It reached its time limit. */
@@ -244,6 +265,9 @@ public class SubAgentService {
 
     /** A finished background sub-agent whose report the main agent has not been given yet. */
     public record Settled(String agentId, String title, String status, String report, long seconds) {}
+
+    /** A running sub-agent's message the main agent has not been given yet - see messageMain. */
+    public record Note(String agentId, String title, String text, boolean waiting) {}
 
     private final SettingsService settingsService;
     private final LlmGateway llmGateway;
@@ -271,6 +295,9 @@ public class SubAgentService {
     // Conversations with a report still owed to the main agent. A hint that saves a query on every
     // step of every turn; the table is the truth.
     private final Set<String> owed = ConcurrentHashMap.newKeySet();
+    // Messages running sub-agents have sent their main agent, by conversation, not yet handed over.
+    // In memory only: a restart ends every run that sent one, and its report says so.
+    private final ConcurrentHashMap<String, List<Note>> notes = new ConcurrentHashMap<>();
 
     private final AtomicInteger threadNumber = new AtomicInteger();
     private final ExecutorService background = Executors.newCachedThreadPool(task -> {
@@ -501,6 +528,9 @@ public class SubAgentService {
             // Forced BEFORE the last budgeted call, not after it: the point is that this step
             // produces a usable report rather than one more tool call nobody will execute.
             if (iteration == maxIterations) appendOnce(messages, FINAL_TURN_INSTRUCTION);
+            // What the main agent said since the last step, before this step's call - after the
+            // instruction above, so appendOnce still recognizes it and the two are one user turn.
+            deliver(messages, run.takeMessages());
 
             // Resolved every step, as the main agent's list is: a skill the sub-agent read on the
             // step before has to bring its tools in for this one.
@@ -544,6 +574,21 @@ public class SubAgentService {
             messages.add(assistant);
 
             if (!assistant.hasToolCalls()) {
+                // A message the main agent sent while this answer was being written has not been
+                // read: it goes on, with that message, rather than reporting past it. Taken and
+                // closed in one step, so a later message is refused rather than queued unread.
+                // With no step left it cannot go on, and that message is not read; the main agent
+                // has the report and can start another.
+                List<String> late = run.takeOrClose();
+                if (!late.isEmpty() && iteration < maxIterations) {
+                    log.info("[SubAgent] agentId={} had a message waiting as it finished - going on", run.id);
+                    run.closeText();
+                    deliver(messages, late);
+                    continue;
+                }
+                if (!late.isEmpty()) {
+                    log.info("[SubAgent] agentId={} had a message waiting with no step left - not read", run.id);
+                }
                 String text = assistant.getText();
                 if (text == null || text.isBlank()) {
                     return SubAgentReport.failed("The sub-agent finished without writing a report.");
@@ -736,12 +781,28 @@ public class SubAgentService {
         messages.add(new UserMessage(instruction));
     }
 
+    // The main agent's messages, as one user turn after the last step's results. Joined to a user
+    // turn already last (the task, on the first step) rather than put beside it: two user turns in
+    // a row are refused by some providers.
+    static void deliver(List<Message> messages, List<String> notes) {
+        if (notes.isEmpty()) return;
+        String text = notes.stream().map(n -> AGENT_MESSAGE_MARKER + "\n" + n)
+                .collect(java.util.stream.Collectors.joining("\n\n"));
+        int lastIndex = messages.size() - 1;
+        if (lastIndex >= 0 && messages.get(lastIndex) instanceof UserMessage user) {
+            messages.set(lastIndex, new UserMessage(user.getText() + "\n\n" + text));
+        } else {
+            messages.add(new UserMessage(text));
+        }
+    }
+
     private String systemPrompt(Run run, Request request) {
         String instructions = request.instructions() == null || request.instructions().isBlank()
                 ? "Carry out the task you are given, thoroughly and accurately."
                 : request.instructions().strip();
         return FRAME.replace("{{PRODUCT_NAME}}", productIdentity.getProductName())
                 .replace("{{ACCESS}}", run.hosted() ? ACCESS_HOSTED : ACCESS_DETACHED)
+                .replace("{{TALK}}", talks(run) ? TALK_ASYNC : "")
                 + instructions;
     }
 
@@ -788,9 +849,17 @@ public class SubAgentService {
             // calls to them take the same approval (they go through the conversation's tool path).
             visible = ExternalTools.merge(externalTools, visible, unlocked, SearchContext.getUserId());
         }
-        return visible.stream()
+        // Its line to the agent that started it: a background run's only, and never the main
+        // agent's, which is why the resolution above leaves it out.
+        List<ToolCallback> offered = new ArrayList<>(visible.stream()
                 .filter(cb -> ChatService.refusedToSubAgents(cb.getToolDefinition().name()) == null)
-                .toList();
+                .filter(cb -> !DelegateToolNames.MESSAGE_MAIN.equals(cb.getToolDefinition().name()))
+                .toList());
+        if (talks(run)) {
+            all.stream().filter(cb -> DelegateToolNames.MESSAGE_MAIN.equals(cb.getToolDefinition().name()))
+                    .findFirst().ifPresent(offered::add);
+        }
+        return offered;
     }
 
     // Optional: the connected MCP servers' tools (ExternalToolSource).
@@ -910,6 +979,8 @@ public class SubAgentService {
         SubAgentReport report = run.mode == Mode.ASYNC
                 ? new SubAgentReport(raw.status(), guardRetrieved("a sub-agent's report", raw.report()))
                 : raw;
+        // From here a message to it is refused, not queued for a run that will never read it.
+        run.takeOrClose();
         run.end(report);
         if (!run.hosted()) return report;
         // FORGOTTEN - its conversation was deleted while it ran (forget). Nothing of it is kept:
@@ -921,7 +992,8 @@ public class SubAgentService {
             return report;
         }
 
-        boolean wakes = run.mode == Mode.ASYNC && run.halt != Halt.USER;
+        // Stopped by the user or by the main agent itself, nobody needs a turn started to hear it.
+        boolean wakes = run.mode == Mode.ASYNC && run.halt != Halt.USER && run.halt != Halt.AGENT;
         try {
             persistEnd(run, report);
         } catch (Exception e) {
@@ -1017,9 +1089,31 @@ public class SubAgentService {
         return running.values().stream().filter(r -> conversationId.equals(r.conversationId)).count();
     }
 
-    /** Whether a finished background sub-agent's report is still owed to this conversation's agent. */
+    /**
+     * Whether something from a background sub-agent is still owed to this conversation's agent: a
+     * finished one's report, or a running one's message.
+     */
     public boolean hasUndelivered(String conversationId) {
-        return owed.contains(conversationId);
+        return owed.contains(conversationId) || hasNotes(conversationId);
+    }
+
+    private boolean hasNotes(String conversationId) {
+        List<Note> pending = notes.get(conversationId);
+        if (pending == null) return false;
+        synchronized (pending) {
+            return !pending.isEmpty();
+        }
+    }
+
+    /** The messages running sub-agents have sent this conversation's agent, oldest first - each once. */
+    public List<Note> takeNotes(String conversationId) {
+        List<Note> pending = notes.get(conversationId);
+        if (pending == null) return List.of();
+        synchronized (pending) {
+            List<Note> taken = List.copyOf(pending);
+            pending.clear();
+            return taken;
+        }
     }
 
     /**
@@ -1050,7 +1144,8 @@ public class SubAgentService {
     }
 
     private static final Pattern REPORT_HEAD = Pattern.compile(
-            "(?m)^" + Pattern.quote(REPORT_MARKER) + " \"(.*)\" \\(agent ([0-9a-fA-F-]+)\\) - ([A-Z]+)");
+            "(?m)^(" + Pattern.quote(REPORT_MARKER) + "|" + Pattern.quote(NOTE_MARKER)
+                    + ") \"(.*)\" \\(agent ([0-9a-fA-F-]+)\\) - ([A-Z]+)");
 
     /**
      * The message that puts reports in front of the main agent. A user-role message, because that
@@ -1089,25 +1184,185 @@ public class SubAgentService {
                 .toList();
     }
 
+    /** Whether a stored message is sub-agents' reports or messages to the main agent - never the user's words. */
     public static boolean isReportMessage(String content) {
-        return content != null && content.startsWith(REPORT_MARKER);
+        return content != null && (content.startsWith(REPORT_MARKER) || content.startsWith(NOTE_MARKER));
     }
 
-    /** Which sub-agents a report message carries, as {agentId, title, status} - for the transcript. */
+    /**
+     * What a report message carries, in order, as {agentId, title, status, kind} - for the
+     * transcript. kind is "report", or "message" for a running sub-agent's message (status RUNNING).
+     */
     public static List<String[]> reportsIn(String content) {
         List<String[]> out = new ArrayList<>();
         if (content == null) return out;
         Matcher matcher = REPORT_HEAD.matcher(content);
-        while (matcher.find()) out.add(new String[] {matcher.group(2), matcher.group(1), matcher.group(3)});
+        while (matcher.find()) {
+            boolean note = NOTE_MARKER.equals(matcher.group(1));
+            out.add(new String[] {matcher.group(3), matcher.group(2), note ? "RUNNING" : matcher.group(4),
+                    note ? "message" : "report"});
+        }
         return out;
+    }
+
+    /**
+     * The message that puts running sub-agents' messages in front of the main agent - after any
+     * reports in the same turn, marked so the transcript draws it as what it is.
+     */
+    public static String noteMessage(List<Note> pending) {
+        StringBuilder sb = new StringBuilder();
+        for (Note n : pending) {
+            if (sb.length() > 0) sb.append("\n\n");
+            sb.append(NOTE_MARKER).append(" \"").append(n.title().replace('"', '\'')).append("\" (agent ")
+              .append(n.agentId()).append(") - ").append(n.waiting() ? "QUESTION" : "MESSAGE").append("\n\n")
+              .append(n.text());
+        }
+        boolean waiting = pending.stream().anyMatch(Note::waiting);
+        sb.append("\n\n(From a sub-agent you started, which is still working - not from the user. ");
+        sb.append(waiting
+                ? "A QUESTION pauses it until you answer with steerSubAgent and its agentId, or for at most "
+                  + TimeUnit.MILLISECONDS.toMinutes(REPLY_WAIT_MILLIS) + " minutes. Answer what you can; ask the "
+                  + "user only what you cannot.)"
+                : "Reply with steerSubAgent only if it changes what it should do.)");
+        return sb.toString();
     }
 
     /** Stops one sub-agent. False when it is not running in this conversation. */
     public boolean stop(String conversationId, String agentId) {
-        Run run = running.get(agentId);
+        return stop(conversationId, agentId, Halt.USER);
+    }
+
+    /**
+     * The main agent stops one of its sub-agents (steerSubAgent). False when it is not running in
+     * this conversation. Its report, STOPPED, reaches the main agent like any other, without
+     * starting a turn.
+     */
+    public boolean stopByAgent(String conversationId, String agentId) {
+        return stop(conversationId, agentId, Halt.AGENT);
+    }
+
+    private boolean stop(String conversationId, String agentId, Halt reason) {
+        Run run = conversationId == null || agentId == null ? null : running.get(agentId.strip());
         if (run == null || !conversationId.equals(run.conversationId)) return false;
-        run.halt(Halt.USER);
+        run.halt(reason);
         return true;
+    }
+
+    /** What became of a message to a sub-agent. */
+    public enum Told {
+        /** Queued: it reads it before its next step. */
+        QUEUED,
+        /** It was waiting on a question of its own, and has this as the answer now. */
+        ANSWERED,
+        /** No sub-agent of that id runs in this conversation. */
+        NOT_RUNNING,
+        /** It has finished, or is stopping; its report is on its way. */
+        FINISHING
+    }
+
+    /**
+     * A message from the main agent to one of its running sub-agents (steerSubAgent) - more
+     * information, or a change of course. It is put in the sub-agent's context before its next
+     * model call; one that has just written its report goes on with it instead (loop).
+     */
+    public Told tell(String conversationId, String agentId, String message) {
+        Run run = conversationId == null || agentId == null ? null : running.get(agentId.strip());
+        if (run == null || !conversationId.equals(run.conversationId)) return Told.NOT_RUNNING;
+        if (run.stop.get()) return Told.FINISHING;
+        String text = message.strip();
+        if (text.length() > MAX_MESSAGE_CHARS) text = text.substring(0, MAX_MESSAGE_CHARS);
+        // A sub-agent waiting on a question of its own takes this as the answer, at once.
+        java.util.concurrent.CompletableFuture<String> waiting = run.awaitingReply;
+        if (waiting != null && waiting.complete(text)) return Told.ANSWERED;
+        return run.tell(text) ? Told.QUEUED : Told.FINISHING;
+    }
+
+    // Whether a run may message its main agent: a background one inside a conversation. A SYNC
+    // one's agent is blocked in delegate and reads nothing until the report.
+    private static boolean talks(Run run) {
+        return run.hosted() && run.mode == Mode.ASYNC;
+    }
+
+    /**
+     * A sub-agent's {@code messageMainAgent} call, answered here rather than by a tool: ChatService
+     * hands it over from the conversation's tool path with the calling sub-agent's id. The message
+     * reaches the main agent as a report does (hasUndelivered, takeNotes, AgentHost.subAgentSettled).
+     * With waitForReply the call holds - off the run's clock, like a wait for the user - until the
+     * main agent answers with steerSubAgent, the run is stopped, or {@link #REPLY_WAIT_MILLIS} pass.
+     */
+    public String messageMain(String conversationId, String agentId, String arguments, AtomicBoolean abort) {
+        Run run = agentId == null ? null : running.get(agentId);
+        if (run == null || conversationId == null || !conversationId.equals(run.conversationId)) {
+            return failureJson("No running sub-agent made this call.");
+        }
+        if (!talks(run)) {
+            return failureJson("The agent that started you is waiting for your report and reads nothing else "
+                    + "until it comes. Put this in your report.");
+        }
+        String message;
+        boolean wait;
+        try {
+            com.fasterxml.jackson.databind.JsonNode args = JSON.readTree(arguments == null || arguments.isBlank() ? "{}" : arguments);
+            message = args.path("message").asText("").strip();
+            com.fasterxml.jackson.databind.JsonNode w = args.path("waitForReply");
+            wait = w.asBoolean(false) || "true".equalsIgnoreCase(w.asText(""));
+        } catch (Exception e) {
+            return failureJson("Call messageMainAgent with `message` set.");
+        }
+        if (message.isEmpty()) return failureJson("Call messageMainAgent with `message` set.");
+        if (message.length() > MAX_MESSAGE_CHARS) message = message.substring(0, MAX_MESSAGE_CHARS);
+        // It reaches the main agent as a user-role message, as a report does - so the same
+        // retrieval boundary a background report crosses (settle).
+        message = guardRetrieved("a sub-agent's message", message);
+
+        java.util.concurrent.CompletableFuture<String> reply = wait ? new java.util.concurrent.CompletableFuture<>() : null;
+        // Set before the message is out, so an answer that comes back at once finds it.
+        run.awaitingReply = reply;
+        notes.computeIfAbsent(conversationId, k -> new ArrayList<>());
+        List<Note> pending = notes.get(conversationId);
+        synchronized (pending) {
+            pending.add(new Note(run.id, run.title, message, wait));
+        }
+        log.info("[SubAgent] agentId={} messaged its main agent wait={}", run.id, wait);
+        try {
+            agentHost.getObject().subAgentSettled(conversationId);
+        } catch (Exception e) {
+            log.warn("[SubAgent] could not hand agentId={}'s message to its conversation: {}", run.id, e.getMessage(), e);
+        }
+        if (!wait) {
+            return json(Map.of("success", true, "note", "Sent. Carry on with your task; a reply, if it sends "
+                    + "one, arrives as a message beginning " + AGENT_MESSAGE_MARKER + "."));
+        }
+
+        run.waitingForUser(true);
+        boolean answered = false;
+        try {
+            long deadline = System.currentTimeMillis() + REPLY_WAIT_MILLIS;
+            while (System.currentTimeMillis() < deadline) {
+                if (run.stop.get() || (abort != null && abort.get())) return failureJson(run.stopNote());
+                try {
+                    String answer = reply.get(250, TimeUnit.MILLISECONDS);
+                    answered = true;
+                    return json(Map.of("success", true, "reply", answer));
+                } catch (java.util.concurrent.TimeoutException ignored) {
+                    // still waiting
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return failureJson(run.stopNote());
+                } catch (java.util.concurrent.ExecutionException e) {
+                    return failureJson("No reply.");
+                }
+            }
+            return json(Map.of("success", true, "note", "No reply in "
+                    + TimeUnit.MILLISECONDS.toMinutes(REPLY_WAIT_MILLIS) + " minutes. Carry on with your best "
+                    + "judgment, and say in your report what you assumed."));
+        } finally {
+            run.awaitingReply = null;
+            run.waitingForUser(false);
+            // A reply that came in as the wait ended is not dropped: it is read before the next step.
+            String late = answered || !reply.isDone() || reply.isCompletedExceptionally() ? null : reply.getNow(null);
+            if (late != null) run.tell(late);
+        }
     }
 
     /**
@@ -1121,6 +1376,7 @@ public class SubAgentService {
                     r.halt(Halt.USER);
                 });
         owed.remove(conversationId);
+        notes.remove(conversationId);
         try {
             runRepository.deleteByConversationId(conversationId);
         } catch (Exception e) {
@@ -1361,6 +1617,14 @@ public class SubAgentService {
         /** Its conversation is gone (forget): its ending keeps nothing. */
         volatile boolean forgotten;
 
+        // The main agent's messages not yet read, and whether it still reads any - see tell. A lock
+        // of its own: the run's monitor numbers stream events, which a message has no part in.
+        private final Object inboxLock = new Object();
+        /** Set while a messageMainAgent call waits for the main agent's answer - see tell. */
+        volatile java.util.concurrent.CompletableFuture<String> awaitingReply;
+        private final List<String> inbox = new ArrayList<>();
+        private boolean inboxClosed;
+
         private final List<Entry> entries = new ArrayList<>();
         private Entry openText;
         private int segments;
@@ -1400,6 +1664,37 @@ public class SubAgentService {
 
         void halt(Halt reason) {
             if (stop.compareAndSet(false, true)) halt = reason;
+        }
+
+        /** Queues a message; false once it reads no more. */
+        boolean tell(String message) {
+            synchronized (inboxLock) {
+                if (inboxClosed) return false;
+                inbox.add(message);
+                return true;
+            }
+        }
+
+        List<String> takeMessages() {
+            synchronized (inboxLock) {
+                if (inbox.isEmpty()) return List.of();
+                List<String> taken = List.copyOf(inbox);
+                inbox.clear();
+                return taken;
+            }
+        }
+
+        /** What is queued; with nothing queued, it reads no more from now on. */
+        List<String> takeOrClose() {
+            synchronized (inboxLock) {
+                if (inbox.isEmpty()) {
+                    inboxClosed = true;
+                    return List.of();
+                }
+                List<String> taken = List.copyOf(inbox);
+                inbox.clear();
+                return taken;
+            }
         }
 
         synchronized void addUsage(TokenUsage usage, double cost, String provider, String model) {
@@ -1619,6 +1914,10 @@ public class SubAgentService {
     // module depends on this one, not the reverse).
     public static final class DelegateToolNames {
         public static final String DELEGATE = "delegate";
+        /** The main agent's message to, or stop of, a running sub-agent - SteerSubAgentTool. */
+        public static final String STEER = "steerSubAgent";
+        /** A background sub-agent's message to its main agent - answered by SubAgentService.messageMain. */
+        public static final String MESSAGE_MAIN = "messageMainAgent";
         private DelegateToolNames() {}
     }
 }

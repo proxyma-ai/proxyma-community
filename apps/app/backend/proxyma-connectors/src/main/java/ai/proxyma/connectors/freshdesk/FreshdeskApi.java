@@ -7,6 +7,7 @@ import ai.proxyma.core.connector.spi.ConnectorHttp;
 import ai.proxyma.core.connector.spi.RateLimitHint;
 import ai.proxyma.core.connector.spi.RatePacing;
 import ai.proxyma.core.connector.spi.ResolvedCredentials;
+import ai.proxyma.core.connector.spi.ServiceAddress;
 import org.springframework.http.HttpHeaders;
 
 import java.nio.charset.StandardCharsets;
@@ -81,16 +82,24 @@ final class FreshdeskApi {
         if (connection.hasBaseUrl()) return trimAddress(connection.baseUrl());
         String domain = domain(connection.settings());
         if (domain == null) {
-            throw new ConnectorAuthException("This connection has no Freshdesk domain. Add it in Settings > Connections.");
+            throw new ConnectorAuthException("This connection has no Freshdesk domain. Add it in Settings > Connections, "
+                    + "or for your own domain, the Freshdesk address under More options.");
         }
         return "https://" + domain + ".freshdesk.com";
     }
 
-    /** {@code https://acme.freshdesk.com/api/v2/} and {@code https://acme.freshdesk.com} are one account. */
+    /**
+     * The account's address for a Freshdesk address in any form - a page copied from the browser
+     * included, since the API is at the account's root ({@code /api/v2}) and a page's path joined to
+     * it answers with the web app. On freshdesk.com that is the scheme and host; on any other host (a
+     * custom portal domain, a test server) the address up to Freshdesk's own pages - {@code /api},
+     * the agent view's {@code /a}, the portal's {@code /support}, {@code /helpdesk} and {@code /login}.
+     */
     static String trimAddress(String address) {
-        String base = address.strip().replaceAll("/+$", "");
-        if (base.toLowerCase(Locale.ROOT).endsWith(API_PATH)) base = base.substring(0, base.length() - API_PATH.length());
-        return base.replaceAll("/+$", "");
+        String host = ServiceAddress.host(address);
+        if (host.isEmpty()) return address.strip().replaceAll("/+$", ""); // not a URL: refused in words
+        if (host.endsWith(".freshdesk.com")) return ServiceAddress.origin(address);
+        return ServiceAddress.cutAt(address, "api", "a", "support", "helpdesk", "login");
     }
 
     /**

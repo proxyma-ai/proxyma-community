@@ -188,9 +188,44 @@ public class McpServerToolSource implements ExternalToolSource, McpServerProbe {
             return ConnectionTester.Result.ok("Connected to {server}. Tools available: {count}.",
                     "server", result.serverName(), "count", String.valueOf(result.tools()));
         } catch (RuntimeException e) {
-            return ConnectionTester.Result.failed("Could not connect: {reason}",
-                    "reason", McpClientManager.McpServerUnavailableException.reason(e));
+            String reason = McpClientManager.McpServerUnavailableException.reason(e);
+            if (missesItsEndpoint(server, e)) {
+                return ConnectionTester.Result.failed("Could not connect: {reason}. MCP servers usually answer at an "
+                        + "address ending in /mcp (or /sse for the older transport).", "reason", reason);
+            }
+            return ConnectionTester.Result.failed("Could not connect: {reason}", "reason", reason);
         }
+    }
+
+    /**
+     * Whether a failed Test looks like a server's address without its endpoint's path - the URL is
+     * the endpoint itself, and people type the server's root: no such page (404), a page that takes
+     * no POST (405) or a web page instead of the protocol, at an address not ending in /mcp or /sse.
+     * Only what the streamable HTTP transport reports can be read this way; the SSE one waits for an
+     * event that never comes and fails on its timeout, which says nothing about the address.
+     */
+    static boolean missesItsEndpoint(ResolvedMcpServer server, Throwable failure) {
+        if (server.config().isStdio() || server.url() == null) return false;
+        String path;
+        try {
+            path = java.net.URI.create(server.url().strip()).getPath();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        path = (path == null ? "" : path).replaceAll("/+$", "").toLowerCase(java.util.Locale.ROOT);
+        if (path.endsWith("/mcp") || path.endsWith("/sse")) return false;
+        for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof org.springframework.web.reactive.function.client.WebClientResponseException r
+                    && (r.getStatusCode().value() == 404 || r.getStatusCode().value() == 405)) {
+                return true;
+            }
+            // The SDK's own words for an answer that is neither JSON nor an event stream.
+            String m = t.getMessage();
+            if (m != null && m.startsWith("Unknown media type returned") && m.toLowerCase(java.util.Locale.ROOT).contains("text/html")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // -------------------------------------------------------------------------------------------------

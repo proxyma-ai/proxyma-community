@@ -142,6 +142,31 @@ class ConnectorHttpTest {
     }
 
     @Test
+    @DisplayName("a web page where JSON was expected names the service and the address; other non-JSON keeps the plain sentence")
+    void webPagesAreNamed() {
+        api.on("GET", "/html").body("<!DOCTYPE html><html><body>Sign in</body></html>".getBytes(StandardCharsets.UTF_8),
+                "text/html; charset=utf-8");
+        // Served as text, but a page all the same - a proxy that labels everything text/plain.
+        api.on("GET", "/untyped").body("\n  <html><body>Jira</body></html>".getBytes(StandardCharsets.UTF_8), "text/plain");
+        api.on("GET", "/text").text("OK");
+        String page = "Fake answered with a web page instead of its API. Check the connection's address.";
+
+        assertThatThrownBy(() -> client().getJson("html")).isInstanceOfSatisfying(ConnectorHttpException.class, e -> {
+            assertThat(e).hasMessage(page);
+            assertThat(e.status()).isEqualTo(200);
+        });
+        assertThatThrownBy(() -> client().getJson("untyped")).hasMessage(page);
+        assertThatThrownBy(() -> client().getJson("text"))
+                .hasMessage("The service answered with something that is not JSON.");
+        // A client with no service name still says something whole.
+        ApiClient unnamed = http.client(api.baseUrl()).build();
+        assertThatThrownBy(() -> unnamed.getJson("html"))
+                .hasMessage("The service answered with a web page instead of its API. Check the connection's address.");
+        assertThat(client().get("html").isWebPage()).isTrue();
+        assertThat(client().get("text").isWebPage()).isFalse();
+    }
+
+    @Test
     @DisplayName("a URL a response names on another host is refused, and nothing is sent there")
     void otherHostsAreRefused() {
         try (LoopbackApi other = LoopbackApi.start()) {

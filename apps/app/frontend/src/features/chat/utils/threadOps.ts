@@ -95,3 +95,39 @@ export function applyStepLimit(
   }
   return claimToolCalls(messages, unclaimed, limit)
 }
+
+/**
+ * How many messages at the end of the thread proper have no server id yet - what a turn just
+ * streamed. Queued messages are not the server's yet and are not counted. The page asks for that
+ * many from the end of the transcript (`tail`) rather than for the whole conversation (2026-10-17).
+ */
+export function idlessTail(messages: ChatMessage[]): number {
+  let n = 0
+  for (let i = settledLength(messages) - 1; i >= 0 && messages[i].id === undefined; i--) n++
+  return n
+}
+
+/**
+ * The server's ids put on the thread proper, aligned at its END with what the server sent - the
+ * two are the same append-only sequence, but not always the same length (the transcript hides
+ * rows). A message with a counterpart takes its id; one without LOSES its id rather than keeping a
+ * stale one (a rewind aimed at a stale id once deleted a whole conversation). `partial`: the server
+ * sent only its last messages, so the ones before them are simply not in this answer and keep
+ * theirs. Queued messages are left alone. The same array when nothing changed, so nothing
+ * re-renders.
+ */
+export function withServerIds(messages: ChatMessage[], fetched: { id?: number }[], partial = false): ChatMessage[] {
+  const end = settledLength(messages)
+  const offset = end - fetched.length
+  let changed = false
+  const next = messages.map((m, i) => {
+    if (i >= end) return m
+    const j = i - offset
+    if (j < 0 && partial) return m
+    const id = j >= 0 ? fetched[j]?.id : undefined
+    if (id === m.id) return m
+    changed = true
+    return { ...m, id }
+  })
+  return changed ? next : messages
+}

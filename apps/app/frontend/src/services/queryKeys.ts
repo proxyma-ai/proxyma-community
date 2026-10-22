@@ -21,6 +21,9 @@ export const keys = {
   jobs:              ()          => ['jobs'] as const,
   conversations:    ()          => ['conversations'] as const,
   conversation:     (id: string)=> ['conversations', id] as const,
+  // NOT under 'conversations': the history list is invalidated after every turn, and under that
+  // prefix each invalidation refetched the meter too (2026-10-17).
+  conversationUsage: (id: string) => ['conversation-usage', id] as const,
   // A key account's panel History - the caller's conversations bound to the account. Under
   // 'conversations', so every invalidation of `conversations()` refreshes it too, as an OBJECT, which
   // can never be read as a conversation id.

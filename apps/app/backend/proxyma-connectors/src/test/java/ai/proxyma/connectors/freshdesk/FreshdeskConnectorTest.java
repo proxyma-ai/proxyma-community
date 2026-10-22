@@ -320,10 +320,42 @@ class FreshdeskConnectorTest {
         ResolvedCredentials noAccount = new ResolvedCredentials(null, ConnectionProtocol.FRESHDESK, AuthKind.TOKEN, null, null,
                 Map.of("token", KEY), Map.of(), null);
         assertThat(connection.test(noAccount, ConnectorHttp.direct()).message())
-                .isEqualTo("This connection has no Freshdesk domain. Add it in Settings > Connections.");
+                .isEqualTo("This connection has no Freshdesk domain. Add it in Settings > Connections, "
+                        + "or for your own domain, the Freshdesk address under More options.");
         ResolvedCredentials byDomain = new ResolvedCredentials(null, ConnectionProtocol.FRESHDESK, AuthKind.TOKEN, null, null,
                 Map.of("token", KEY), Map.of("domain", "https://Acme.freshdesk.com/a/"), null);
         assertThat(FreshdeskApi.accountUrl(byDomain)).isEqualTo("https://acme.freshdesk.com");
+
+        // Nothing at a typed address: the sentence names the address, not a domain nobody typed.
+        api.reset();
+        ConnectionTestResult nothing = connection.test(key(), ConnectorHttp.direct());
+        assertThat(nothing.template()).isEqualTo("Freshdesk has nothing at {address}. Check the connection's address.");
+        assertThat(nothing.message()).isEqualTo("Freshdesk has nothing at " + api.baseUrl() + ". Check the connection's address.");
+        ResolvedCredentials byDomainOnly = new ResolvedCredentials(null, ConnectionProtocol.FRESHDESK, AuthKind.TOKEN, null, null,
+                Map.of("token", KEY), Map.of("domain", "acme"), null);
+        assertThat(FreshdeskApi.accountUrl(byDomainOnly)).isEqualTo("https://acme.freshdesk.com");
+    }
+
+    @Test
+    @DisplayName("a Freshdesk address copied from the browser is the account's root, where the API is")
+    void pastedAddresses() {
+        Map<String, String> cases = new LinkedHashMap<>();
+        cases.put("https://acme.freshdesk.com/api/v2/", "https://acme.freshdesk.com");
+        cases.put("https://Acme.freshdesk.com/a/tickets/12?filter=open", "https://acme.freshdesk.com");
+        cases.put("https://acme.freshdesk.com/support/solutions/articles/31", "https://acme.freshdesk.com");
+        cases.put("https://support.acme.example/support/home", "https://support.acme.example");
+        cases.put("https://support.acme.example/a/dashboard/default", "https://support.acme.example");
+        cases.put("https://support.acme.example/helpdesk/tickets", "https://support.acme.example");
+        cases.put("https://support.acme.example/", "https://support.acme.example");
+        // A test server or a relay under a path of its own keeps it.
+        cases.put("http://127.0.0.1:8798/freshdesk/a/tickets", "http://127.0.0.1:8798/freshdesk");
+        cases.forEach((typed, account) -> assertThat(FreshdeskApi.trimAddress(typed)).as(typed).isEqualTo(account));
+
+        // Every call goes to the root's /api/v2, whatever page was typed.
+        api.on("GET", "/api/v2/agents/me").json("{'id':8,'contact':{'name':'Linh Vo'}}");
+        ResolvedCredentials pasted = new ResolvedCredentials(null, ConnectionProtocol.FRESHDESK, AuthKind.TOKEN,
+                api.baseUrl() + "/a/tickets/1", null, Map.of("token", KEY), Map.of("domain", "acme"), null);
+        assertThat(new FreshdeskConnectionPlugin().test(pasted, ConnectorHttp.direct()).message()).isEqualTo("Signed in as Linh Vo");
     }
 
     @Test

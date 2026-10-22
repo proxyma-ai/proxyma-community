@@ -1057,20 +1057,36 @@ public class ChatService implements AgentHost {
     private Message takeReports(String conversationId) {
         if (!subAgentService.hasUndelivered(conversationId)) return null;
         List<SubAgentService.Settled> reports = subAgentService.takeReports(conversationId);
-        if (reports.isEmpty()) return null;
+        // And what running sub-agents have said meanwhile (messageMainAgent), after the reports.
+        List<SubAgentService.Note> notes = subAgentService.takeNotes(conversationId);
+        if (reports.isEmpty() && notes.isEmpty()) return null;
         for (SubAgentService.Settled report : reports) {
-            String data;
-            try {
-                data = JSON.writeValueAsString(Map.of("title", report.title() == null ? "" : report.title(),
-                        "status", report.status().toLowerCase(Locale.ROOT)));
-            } catch (Exception e) {
-                data = "{}";
-            }
-            eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                    ChatEvent.Type.SUB_AGENT_REPORTED.value(), report.agentId(), null, data));
+            publishReported(conversationId, report.agentId(), report.title(), report.status(), null);
         }
-        return new org.springframework.ai.chat.messages.UserMessage(
-                SubAgentService.reportMessage(reports, subAgentService.runningTitles(conversationId)));
+        for (SubAgentService.Note note : notes) {
+            publishReported(conversationId, note.agentId(), note.title(), "RUNNING", "message");
+        }
+        String text = reports.isEmpty() ? ""
+                : SubAgentService.reportMessage(reports, subAgentService.runningTitles(conversationId));
+        if (!notes.isEmpty()) text = (text.isEmpty() ? "" : text + "\n\n") + SubAgentService.noteMessage(notes);
+        return new org.springframework.ai.chat.messages.UserMessage(text);
+    }
+
+    // The thread's line where a report - or a running sub-agent's message, `kind` "message" -
+    // reached the main agent.
+    private void publishReported(String conversationId, String agentId, String title, String status, String kind) {
+        String data;
+        try {
+            Map<String, Object> fields = new java.util.LinkedHashMap<>();
+            fields.put("title", title == null ? "" : title);
+            fields.put("status", status.toLowerCase(Locale.ROOT));
+            if (kind != null) fields.put("kind", kind);
+            data = JSON.writeValueAsString(fields);
+        } catch (Exception e) {
+            data = "{}";
+        }
+        eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                ChatEvent.Type.SUB_AGENT_REPORTED.value(), agentId, null, data));
     }
 
     /** A background sub-agent has reported - see {@link AgentHost#subAgentSettled}. */
@@ -1681,7 +1697,8 @@ public class ChatService implements AgentHost {
                         List<ChatMessageResponse.SubAgentReported> reported =
                                 SubAgentService.reportsIn(row.getContent()).stream()
                                         .map(r -> new ChatMessageResponse.SubAgentReported(r[0],
-                                                SensitivePaths.scrub(r[1]), r[2].toLowerCase(Locale.ROOT)))
+                                                SensitivePaths.scrub(r[1]), r[2].toLowerCase(Locale.ROOT),
+                                                "message".equals(r[3]) ? "message" : null))
                                         .toList();
                         result.add(new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT,
                                 "", null, null, null, null, null, null, reported));
@@ -2799,6 +2816,16 @@ public class ChatService implements AgentHost {
                 return new ToolResponse(toolCall.id(), toolCall.name(), answers);
             }
 
+            // A sub-agent messaging the agent that started it: answered by that agent, never by a
+            // tool - see SubAgentService.messageMain. The reply, if it waits for one, is the result.
+            if (SubAgentService.DelegateToolNames.MESSAGE_MAIN.equals(toolCall.name())) {
+                String answer = scope == null
+                        ? failure("Only a sub-agent can message the agent that started it.")
+                        : subAgentService.messageMain(conversationId, scope.agentId(), toolCall.arguments(), abort);
+                publishToolResult(conversationId, scope, trackingId, answer);
+                return new ToolResponse(toolCall.id(), toolCall.name(), answer);
+            }
+
             String denial = awaitApprovalIfNeeded(conversationId, toolCall, trackingId, abort, scope);
             if (denial != null) {
                 publishToolResult(conversationId, scope, trackingId, denial);
@@ -2855,8 +2882,9 @@ public class ChatService implements AgentHost {
     /**
      * Why a sub-agent may not call this tool, or null if it may.
      *
-     * <p>Two tools, and each for a reason that is about the CONVERSATION rather than about trust.
+     * <p>Three tools, and each for a reason that is about the CONVERSATION rather than about trust.
      * {@code delegate}: a sub-agent that starts sub-agents has no bound on what one turn spends.
+     * {@code steerSubAgent}: the conversation's sub-agents are the main agent's to direct.
      * {@code useServer}: it switches which Jira, Confluence or Bitbucket server the whole
      * conversation talks to, and several sub-agents run in it at once - one switching it would
      * send another's write to the wrong server. The main agent switches before it delegates.
@@ -2864,6 +2892,10 @@ public class ChatService implements AgentHost {
     static String refusedToSubAgents(String toolName) {
         if (SubAgentService.DelegateToolNames.DELEGATE.equals(toolName)) {
             return failure("A sub-agent cannot delegate. Do this part yourself, or report it as remaining.");
+        }
+        // Sub-agents are the main agent's to direct, and a sub-agent has none of its own.
+        if (SubAgentService.DelegateToolNames.STEER.equals(toolName)) {
+            return failure("A sub-agent cannot direct other sub-agents.");
         }
         if (WriteToolRegistry.CONVERSATION_STATE_NAMES.contains(toolName)) {
             return failure("A sub-agent cannot switch the conversation's server - other agents share it. "

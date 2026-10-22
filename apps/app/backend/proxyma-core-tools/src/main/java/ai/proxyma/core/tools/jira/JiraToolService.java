@@ -6,6 +6,8 @@ import ai.proxyma.core.tools.ToolConnectorResolver.Access;
 import ai.proxyma.core.tools.ToolIds;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.jira.JiraConnector;
+import ai.proxyma.core.connector.spi.AtlassianCloud;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.search.domain.SearchContext;
 import ai.proxyma.core.settings.service.McpGuardService;
 import org.springframework.stereotype.Service;
@@ -268,12 +270,14 @@ class JiraToolService {
     }
 
     // The connection's Jira. On an Atlassian Cloud site that is the site itself: one Cloud connection
-    // serves Jira and Confluence, and one made as Confluence may have been typed with /wiki.
+    // serves Jira and Confluence, and it may have been typed with /wiki, /jira or a page below either.
+    // On Data Center it is the server's root - an address pasted from an issue or board page is cut
+    // before that page, keeping the path the server is installed under.
     private ToolConnectorResolver.Target target(String projectKey, Access access) {
         ToolConnectorResolver.Target target = resolver.target(ConnectorType.JIRA, LABEL, projectKey, access);
-        if (!target.atlassianCloud()) return target;
-        return new ToolConnectorResolver.Target(target.baseUrl().replaceAll("(?i)/wiki/*$", ""), target.credential(),
-                target.authKind());
+        String base = target.atlassianCloud()
+                ? AtlassianCloud.site(target.baseUrl()) : AtlassianServer.jiraRoot(target.baseUrl());
+        return new ToolConnectorResolver.Target(base, target.credential(), target.authKind());
     }
 
     /**

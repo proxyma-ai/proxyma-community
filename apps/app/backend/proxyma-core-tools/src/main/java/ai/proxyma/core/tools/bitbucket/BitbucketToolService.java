@@ -7,6 +7,7 @@ import ai.proxyma.core.tools.ToolIds;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.bitbucket.BitbucketAccessDeniedException;
 import ai.proxyma.core.connector.bitbucket.BitbucketConnector;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.search.domain.SearchContext;
 import ai.proxyma.core.settings.service.McpGuardService;
 import ai.proxyma.core.system.util.AppPaths;
@@ -401,11 +402,15 @@ class BitbucketToolService {
     //
     // ONE RESOLUTION PER CALL (see JiraToolService.on), refused for a write unless the connection's
     // Write switch is on - and the key and slug checked for their shape first (ToolIds), since both
-    // go into REST paths.
+    // go into REST paths. The server is its root: an address pasted from a repository's page is cut
+    // before that page, keeping the path the server is installed under.
     private ToolConnectorResolver.Target target(String projectKey, String repoSlug, Access access) {
         if (projectKey != null) ToolIds.key("project key", projectKey);
         if (repoSlug != null) ToolIds.slug(repoSlug);
-        return resolver.target(ConnectorType.BITBUCKET, LABEL, sourceKey(projectKey, repoSlug), access);
+        ToolConnectorResolver.Target target =
+                resolver.target(ConnectorType.BITBUCKET, LABEL, sourceKey(projectKey, repoSlug), access);
+        return new ToolConnectorResolver.Target(AtlassianServer.bitbucketRoot(target.baseUrl()), target.credential(),
+                target.authKind());
     }
 
     // Must match what registration wrote, exactly - a mismatch here does not fail, it silently

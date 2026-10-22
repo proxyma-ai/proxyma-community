@@ -1,6 +1,7 @@
 package ai.proxyma.core.connector.bitbucket;
 
 import ai.proxyma.core.connector.AccessCheck;
+import ai.proxyma.core.connector.spi.AtlassianServer;
 import ai.proxyma.core.connector.spi.AuthKind;
 import ai.proxyma.core.connector.spi.ConnectorDescriptor;
 import ai.proxyma.core.connector.spi.ConnectorPlugin;
@@ -87,8 +88,8 @@ public class BitbucketConnector implements ConnectorPlugin {
         this.restClient = restClient;
         // Kept apart, so verifyAccess() can say WHICH piece is missing: a source with a server but no
         // token used to arrive there with the server blanked too, and was told to configure a URL it
-        // already had.
-        this.authBaseUrl = (baseUrl == null || baseUrl.isBlank()) ? null : baseUrl.replaceAll("/+$", "");
+        // already had. The server's root, whatever page of it the address was pasted from.
+        this.authBaseUrl = (baseUrl == null || baseUrl.isBlank()) ? null : AtlassianServer.bitbucketRoot(baseUrl);
         this.authAccessToken = (token == null || token.isBlank()) ? null : token;
         this.authProjectKey = projectKey;
         this.authRepoSlug = repoSlug;
@@ -142,7 +143,7 @@ public class BitbucketConnector implements ConnectorPlugin {
         String projectKey = config.get("projectKey");
         String repoSlug = config.get("repoSlug");
         if (serverUrl == null || serverUrl.isBlank() || projectKey == null || repoSlug == null) return null;
-        return serverUrl.strip().replaceAll("/+$", "") + "/projects/" + projectKey + "/repos/" + repoSlug;
+        return AtlassianServer.bitbucketRoot(serverUrl) + "/projects/" + projectKey + "/repos/" + repoSlug;
     }
 
     // NOT CONFIGURED IS AN ERROR, not an empty repository - see FailedSyncIterator. A source with no
@@ -204,6 +205,9 @@ public class BitbucketConnector implements ConnectorPlugin {
             + "then register the repository again.";
     private static final String BAD_NAME =
             "The repository must be given as <projectKey>/<repoSlug>.";
+    // The same sentence as the connection's Test, so the two share one translation.
+    private static final String PAGE_NOT_API =
+            "The server answered with a page instead of its API. Check the URL is the server's own address.";
 
     // 401 and 403 are two different problems with two different fixes, and used to share one
     // sentence ("authentication failed. Check access token.") - which sent the owner of a perfectly
@@ -848,7 +852,7 @@ public class BitbucketConnector implements ConnectorPlugin {
         if (projectKey == null || projectKey.isBlank() || repoSlug == null || repoSlug.isBlank()) {
             throw new IllegalStateException(BAD_NAME);
         }
-        return fetchRepoWith(baseUrl.replaceAll("/+$", ""), accessToken, projectKey, repoSlug);
+        return fetchRepoWith(AtlassianServer.bitbucketRoot(baseUrl), accessToken, projectKey, repoSlug);
     }
 
     private BitbucketRepoInfo fetchRepoWith(String baseUrl, String token, String projectKey, String repoSlug) {
@@ -873,6 +877,11 @@ public class BitbucketConnector implements ConnectorPlugin {
                                     + " " + resp.getStatusText()); })
                     .body(String.class);
 
+            // A 200 that is a page - a sign-in or SSO gateway in front of the server, or the address
+            // of something that is not Bitbucket - reached a server; it is not "cannot reach".
+            if (body != null && body.stripLeading().startsWith("<")) {
+                throw new IllegalStateException(PAGE_NOT_API);
+            }
             JsonNode root = objectMapper.readTree(body);
             String slug = root.path("slug").asText();
             String name = root.path("name").asText();

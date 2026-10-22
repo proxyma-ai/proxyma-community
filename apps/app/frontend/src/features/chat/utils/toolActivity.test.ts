@@ -41,6 +41,24 @@ test('a delegation is named by the title the agent gave it', () => {
   assert.equal(toolActivity(call('delegate', { title: 'SAI project review' }), t), 'SAI project review')
 })
 
+test('a memory entry corrected or deleted by its id is not called remembered', () => {
+  assert.equal(toolActivity(call('remember', { fact: 'Ships on Tuesdays' }), t), 'Remembered Ships on Tuesdays')
+  assert.equal(toolActivity(call('remember', { id: 'e1', fact: 'Ships on Tuesdays' }), t), 'Updated memory - Ships on Tuesdays')
+  assert.equal(toolActivity(call('remember', { id: 'e1', forget: true }), t), 'Forgot a memory')
+  assert.equal(toolActivity(call('remember', { id: 'e1', forget: 'true' }), t), 'Forgot a memory')
+})
+
+test('directing a sub-agent says what it was told, or that it was stopped', () => {
+  assert.equal(toolActivity(call('steerSubAgent', { agentId: 'a1', message: 'Prices in EUR' }), t), 'Updated a sub-task - Prices in EUR')
+  assert.equal(toolActivity(call('steerSubAgent', { agentId: 'a1', stop: true }), t), 'Stopped a sub-task')
+})
+
+test('a sub-agent asks the main agent, or tells it and carries on', () => {
+  assert.equal(toolActivity(call('messageMainAgent', { message: 'EUR or USD?', waitForReply: true }), t), 'Asked the main agent - EUR or USD?')
+  assert.equal(toolActivity(call('messageMainAgent', { message: 'EUR or USD?', waitForReply: true }, '{}', false), t), 'Asking the main agent - EUR or USD?')
+  assert.equal(toolActivity(call('messageMainAgent', { message: 'Prices are in EUR' }), t), 'Told the main agent - Prices are in EUR')
+})
+
 test('a REST passthrough says what its method and path do', () => {
   assert.equal(toolActivity(call('callJiraApi', { method: 'PUT', path: '/rest/api/2/issue/PROJ-1/assignee' }), t), 'Assigned PROJ-1')
 })

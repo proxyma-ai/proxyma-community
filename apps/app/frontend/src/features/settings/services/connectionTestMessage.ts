@@ -49,6 +49,16 @@ export function connectionTestMessage(result: ConnectionTestResult, t: Translate
     case 'Microsoft 365 could not be reached: {reason}': return t('Microsoft 365 could not be reached: {reason}', p)
     case 'Connected to {server}. Tools available: {count}.': return t('Connected to {server}. Tools available: {count}.', p)
     case 'Could not connect: {reason}': return t('Could not connect: {reason}', p)
+    case 'Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).':
+      return t('Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).', p)
+    case "That address answered, but not as a Subversion repository. Use the repository's root URL.":
+      return t("That address answered, but not as a Subversion repository. Use the repository's root URL.")
+    case 'GitLab answers at {address}. Use that address as the GitLab URL.':
+      return t('GitLab answers at {address}. Use that address as the GitLab URL.', p)
+    case "Zendesk has nothing at {address}. Check the connection's address.":
+      return t("Zendesk has nothing at {address}. Check the connection's address.", p)
+    case "Freshdesk has nothing at {address}. Check the connection's address.":
+      return t("Freshdesk has nothing at {address}. Check the connection's address.", p)
     default: return serverText(result.message)
   }
 }

@@ -370,7 +370,38 @@ class ZendeskConnectorTest {
         ResolvedCredentials noAccount = new ResolvedCredentials(null, ConnectionProtocol.ZENDESK, AuthKind.BASIC, null, EMAIL,
                 Map.of("token", TOKEN), Map.of(), null);
         assertThat(connection.test(noAccount, ConnectorHttp.direct()).message())
-                .isEqualTo("This connection has no Zendesk subdomain. Add it in Settings > Connections.");
+                .isEqualTo("This connection has no Zendesk subdomain. Add it in Settings > Connections, "
+                        + "or for your own domain, the Zendesk address under More options.");
+
+        // Nothing at a typed address: the sentence names the address, not the subdomain beside it.
+        api.reset();
+        ConnectionTestResult nothing = connection.test(basic(), ConnectorHttp.direct());
+        assertThat(nothing.template()).isEqualTo("Zendesk has nothing at {address}. Check the connection's address.");
+        assertThat(nothing.message()).isEqualTo("Zendesk has nothing at " + api.baseUrl() + ". Check the connection's address.");
+    }
+
+    @Test
+    @DisplayName("a Zendesk address copied from the browser is the account's root, where the API is")
+    void pastedAddresses() {
+        Map<String, String> cases = new LinkedHashMap<>();
+        cases.put("https://acme.zendesk.com/api/v2/", "https://acme.zendesk.com");
+        cases.put("https://Acme.zendesk.com/agent/tickets/12", "https://acme.zendesk.com");
+        cases.put("https://acme.zendesk.com/hc/en-us/articles/360001", "https://acme.zendesk.com");
+        cases.put("https://support.acme.example/hc/en-us", "https://support.acme.example");
+        cases.put("https://support.acme.example/agent/dashboard", "https://support.acme.example");
+        cases.put("https://support.acme.example/access/unauthenticated?return_to=x", "https://support.acme.example");
+        cases.put("https://support.acme.example/admin/home", "https://support.acme.example");
+        cases.put("https://support.acme.example", "https://support.acme.example");
+        // A test server or a relay under a path of its own keeps it.
+        cases.put("http://127.0.0.1:8798/zendesk/agent/tickets/1", "http://127.0.0.1:8798/zendesk");
+        cases.forEach((typed, account) -> assertThat(ZendeskApi.trimAddress(typed)).as(typed).isEqualTo(account));
+
+        // Every call goes to the root's /api/v2, whatever page was typed.
+        api.on("GET", "/api/v2/users/me").json("{'user':{'id':7,'name':'Rosa Diaz'}}");
+        ResolvedCredentials pasted = new ResolvedCredentials(null, ConnectionProtocol.ZENDESK, AuthKind.BASIC,
+                api.baseUrl() + "/agent/tickets/1", EMAIL, Map.of("token", TOKEN), Map.of("subdomain", "acme"), null);
+        assertThat(new ZendeskConnectionPlugin().test(pasted, ConnectorHttp.direct()).message())
+                .isEqualTo("Signed in as Rosa Diaz on acme");
     }
 
     @Test

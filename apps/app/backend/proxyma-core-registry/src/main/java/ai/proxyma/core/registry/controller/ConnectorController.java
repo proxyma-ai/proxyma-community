@@ -196,7 +196,7 @@ public class ConnectorController {
         // type, whose config is the folder's path - withheld above, and withheld here.
         ConnectorDescriptor descriptor = catalog.descriptor(r.getConnectorType());
         if (descriptor != null && !r.getConnectorType().isFileBacked()) {
-            m.put("fields", StoredConfig.fields(r.getConnectorType(), r.getConfig()));
+            m.put("fields", StoredConfig.fields(r.getConnectorType(), r.getConfig(), r.getName()));
         }
         // The file-scope knobs, surfaced so the connector modal can show and edit them (see
         // PATCH /{id}/config) - for a folder, and since 2026-09-27 for every file-based type (an
@@ -225,7 +225,7 @@ public class ConnectorController {
         // The source's own page in the service, which its name links to - its plugin's answer. An
         // http(s) address or nothing: a config column can hold a path, which never reaches a client.
         String webUrl = r.getConnectorType().isFileBacked() ? null : catalog.plugin(r.getConnectorType())
-                .map(p -> p.webUrl(StoredConfig.fields(r.getConnectorType(), r.getConfig()), endpoint.baseUrl()))
+                .map(p -> p.webUrl(StoredConfig.fields(r.getConnectorType(), r.getConfig(), r.getName()), endpoint.baseUrl()))
                 .orElse(null);
         m.put("webUrl", webUrl != null && (webUrl.startsWith("https://") || webUrl.startsWith("http://")) ? webUrl : null);
         m.put("graphEnabled", r.isGraphEnabled());

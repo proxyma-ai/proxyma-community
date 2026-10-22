@@ -80,16 +80,26 @@ export function AgentPrompts({ conversationId, approvals, enableRequests, questi
 export function SubAgentReportedNotice({ reports }: { reports: SubAgentReported[] }) {
   const { t } = useTranslation()
   const AgentIcon = toolIcon(DELEGATE)
+  const MessageIcon = toolIcon('messageMainAgent')
   return (
     <div className="mb-3 space-y-1">
-      {reports.map(r => {
+      {reports.map((r, i) => {
+        const title = r.title || t('Sub-agent')
+        // A running sub-agent's message (messageMainAgent): delivered, so it is drawn done; the
+        // message and any reply are the call's row in its panel.
+        if (r.kind === 'message') {
+          return (
+            <ActivityLine key={`${r.agentId}-message-${i}`} icon={MessageIcon} state="done"
+              label={t('{title} sent a message', { title })} maxWidth="max-w-full" />
+          )
+        }
         // The robot finished, as its panel and the agents graph draw it.
         return (
           <ActivityLine
-            key={r.agentId}
+            key={`${r.agentId}-${i}`}
             icon={AgentIcon}
             state={agentWorkState(r.status)}
-            label={t('{title} reported back', { title: r.title || t('Sub-agent') })}
+            label={t('{title} reported back', { title })}
             maxWidth="max-w-full"
           />
         )

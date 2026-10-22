@@ -105,6 +105,10 @@ class JiraConnectorTest {
         assertThat(plugin.identity(Map.of("projectKey", " proj "))).isEqualTo("PROJ");
         assertThat(plugin.webUrl(Map.of("projectKey", "PROJ"), "https://acme.atlassian.net/"))
                 .isEqualTo("https://acme.atlassian.net/projects/PROJ");
+        assertThat(plugin.webUrl(Map.of("projectKey", "PROJ"), "https://acme.atlassian.net/jira"))
+                .isEqualTo("https://acme.atlassian.net/projects/PROJ");
+        assertThat(plugin.webUrl(Map.of("projectKey", "PROJ"), "https://corp.example/jira"))
+                .isEqualTo("https://corp.example/jira/projects/PROJ");
     }
 
     @Nested
@@ -251,6 +255,28 @@ class JiraConnectorTest {
             assertThat(new JiraConnectionPlugin().test(dataCenter(), ConnectorHttp.direct()).message())
                     .isEqualTo("Jira did not accept the token.");
         }
+
+        @Test
+        @DisplayName("an address pasted from an issue page is spoken to at the server's root, its context path kept")
+        void pastedFromAPage() {
+            // Registration said "Project PROJ was not found on https://host/jira/browse/PROJ-1": every
+            // API path was joined to the issue page. The server lives under /jira, which must stay.
+            ResolvedCredentials pasted = new ResolvedCredentials(null, ConnectionProtocol.JIRA, AuthKind.TOKEN,
+                    api.baseUrl() + "/jira/browse/PROJ-1?filter=1#comment", null, Map.of("token", PAT), Map.of(), null);
+            api.on("GET", "/jira/rest/api/2/myself").json("{'name':'ana','displayName':'Ana Lima'}");
+            api.on("GET", "/jira/rest/api/2/search").json("{'total':1,'issues':["
+                    + issue("PROJ-1", "Login fails", "2026-10-01T10:00:00.000+0000") + "]}");
+
+            assertThat(new JiraConnectionPlugin().test(pasted, ConnectorHttp.direct()).message()).isEqualTo("Signed in as Ana Lima");
+            try (ConnectorSession s = session(pasted, null)) {
+                assertThat(s.verifyAccess()).isEqualTo(AccessCheck.verified());
+                List<ItemMetadata> items = drain(s.list(ListRequest.full()));
+                assertThat(items.get(0).getExtra("url")).isEqualTo(api.baseUrl() + "/jira/browse/PROJ-1");
+            }
+            assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).allMatch(p -> p.startsWith("/jira/rest/"));
+            assertThat(new JiraConnectorPlugin().webUrl(Map.of("projectKey", "PROJ"), "https://corp.example/jira/secure/Dashboard.jspa"))
+                    .isEqualTo("https://corp.example/jira/projects/PROJ");
+        }
     }
 
     @Nested
@@ -354,6 +380,24 @@ class JiraConnectorTest {
             api.reset();
             api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima'}");
             assertThat(new JiraConnectionPlugin().test(cloud(), ConnectorHttp.direct()).message()).isEqualTo("Signed in as Ana Lima");
+        }
+
+        @Test
+        @DisplayName("a site typed with /jira, as the browser shows it, is spoken to at the site (0.36.3 feedback)")
+        void typedWithJira() {
+            // Jira Cloud's pages live under /jira, and that path answers every API call with the web
+            // app - so the Test said "a page instead of its API" and every project was "not found".
+            ResolvedCredentials typed = new ResolvedCredentials(null, ConnectionProtocol.JIRA, AuthKind.BASIC,
+                    api.baseUrl() + "/jira/", EMAIL, Map.of("token", API_TOKEN), Map.of(), null);
+            api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima'}");
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[" + issue("PROJ-1", "One", "2026-03-26T14:08:31.000+0000")
+                    + "],'isLast':true}");
+
+            assertThat(new JiraConnectionPlugin().test(typed, ConnectorHttp.direct()).message()).isEqualTo("Signed in as Ana Lima");
+            try (ConnectorSession s = session(typed, null)) {
+                assertThat(s.verifyAccess().rejected()).isFalse();
+            }
+            assertThat(api.requests()).extracting(LoopbackApi.Recorded::path).noneMatch(p -> p.startsWith("/jira"));
         }
 
         @Test

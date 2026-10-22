@@ -193,7 +193,7 @@ export const ANIMATIONS: { cls: string; use: string }[] = [
   { cls: 'animate-dropdown', use: 'A menu or popover opening (pop-out when it closes).' },
   { cls: 'animate-skeleton', use: 'A loading placeholder (Skeleton).' },
   { cls: 'animate-pulse', use: 'An ICON at work - 1Hz blink (StateMark, StatusDot).' },
-  { cls: 'text-wave', use: 'WORDS at work - a band sweeping across them (working.ts).' },
+  { cls: 'text-wave', use: 'WORDS at work - a band of opacity sweeping across them (working.ts).' },
   { cls: 'animate-shake', use: 'A field that failed a submit (useShake).' },
   { cls: 'animate-reveal', use: 'A place the reader was just sent to.' },
   { cls: 'animate-mark-idle', use: 'The mark\'s idle turn where nothing measures it.' },

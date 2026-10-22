@@ -2,6 +2,7 @@ import { http } from '@/services/httpClient'
 import { ENV } from '@/config/env'
 import { LIST_PAGE_SIZE } from '@/components/ui/kit'
 import type {
+  ConversationUsage,
   Conversation, ConversationSnapshot, ChatSseEvent, PermissionMode, SharedConversation, WorkflowRunSnapshot,
 } from '../types/chat.types'
 import type { ConversationAgents } from '../utils/agentsGraph'
@@ -33,6 +34,12 @@ export const chatApi = {
     http.get<ConversationsPage>('/api/v1/chat/conversations', { params: { page, size } }).then(r => r.data),
   getConversation: (id: string) =>
     http.get<ConversationSnapshot>(`/api/v1/chat/conversations/${id}`).then(r => r.data),
+  // The ids alone of the transcript's last `tail` messages, in order - what a page needs after a turn.
+  getMessageIds: (id: string, tail: number) =>
+    http.get<(number | null)[]>(`/api/v1/chat/conversations/${id}/message-ids`, { params: { tail } }).then(r => r.data),
+  // The usage meter's six numbers, without the transcript.
+  getConversationUsage: (id: string) =>
+    http.get<ConversationUsage>(`/api/v1/chat/conversations/${id}/usage`).then(r => r.data),
   deleteConversation: (id: string) =>
     http.delete(`/api/v1/chat/conversations/${id}`),
   setPinned: (id: string, pinned: boolean) =>

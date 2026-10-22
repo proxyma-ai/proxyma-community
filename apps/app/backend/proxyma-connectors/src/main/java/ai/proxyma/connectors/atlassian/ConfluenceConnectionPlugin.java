@@ -29,7 +29,7 @@ public class ConfluenceConnectionPlugin implements ConnectionPlugin {
     public ConnectionTestResult test(ResolvedCredentials connection, ConnectorHttp http) {
         try {
             boolean cloud = AtlassianApi.isCloud(connection);
-            String base = cloud ? ConfluenceSession.site(connection) : AtlassianApi.base(connection);
+            String base = AtlassianApi.confluenceBase(connection);
             JsonNode me = AtlassianApi.client(http, connection, "Confluence", base)
                     .getJson((cloud ? "wiki/" : "") + "rest/api/user/current");
             String name = me.path("displayName").asText("");

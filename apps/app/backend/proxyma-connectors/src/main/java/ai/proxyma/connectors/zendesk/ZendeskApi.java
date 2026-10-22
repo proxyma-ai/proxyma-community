@@ -8,6 +8,7 @@ import ai.proxyma.core.connector.spi.ConnectorHttp;
 import ai.proxyma.core.connector.spi.RateLimitHint;
 import ai.proxyma.core.connector.spi.RatePacing;
 import ai.proxyma.core.connector.spi.ResolvedCredentials;
+import ai.proxyma.core.connector.spi.ServiceAddress;
 import org.springframework.http.HttpHeaders;
 
 import java.nio.charset.StandardCharsets;
@@ -98,16 +99,24 @@ final class ZendeskApi {
         if (connection.hasBaseUrl()) return trimAddress(connection.baseUrl());
         String subdomain = subdomain(connection.settings());
         if (subdomain == null) {
-            throw new ConnectorAuthException("This connection has no Zendesk subdomain. Add it in Settings > Connections.");
+            throw new ConnectorAuthException("This connection has no Zendesk subdomain. Add it in Settings > Connections, "
+                    + "or for your own domain, the Zendesk address under More options.");
         }
         return "https://" + subdomain + ".zendesk.com";
     }
 
-    /** {@code https://acme.zendesk.com/api/v2/} and {@code https://acme.zendesk.com} are one account. */
+    /**
+     * The account's address for a Zendesk address in any form - a page copied from the browser
+     * included, since the API is at the account's root ({@code /api/v2}) and a page's path joined to
+     * it answers with the web app. On zendesk.com that is the scheme and host; on any other host (a
+     * host-mapped domain, a test server) the address up to Zendesk's own pages - {@code /api},
+     * {@code /hc}, {@code /agent}, {@code /access}, {@code /admin}, {@code /auth} and the like.
+     */
     static String trimAddress(String address) {
-        String base = address.strip().replaceAll("/+$", "");
-        if (base.toLowerCase(Locale.ROOT).endsWith(API_PATH)) base = base.substring(0, base.length() - API_PATH.length());
-        return base.replaceAll("/+$", "");
+        String host = ServiceAddress.host(address);
+        if (host.isEmpty()) return address.strip().replaceAll("/+$", ""); // not a URL: refused in words
+        if (host.endsWith(".zendesk.com")) return ServiceAddress.origin(address);
+        return ServiceAddress.cutAt(address, "api", "hc", "agent", "access", "admin", "auth", "knowledge", "explore");
     }
 
     /**

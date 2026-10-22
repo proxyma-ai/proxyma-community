@@ -378,6 +378,60 @@ public class ChatController {
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 
+    // THE IDS ALONE, of the transcript's last `tail` messages, in order (2026-10-17) - what a page
+    // needs once a turn has streamed: the message that started background sub-agents carries every
+    // one of their steps, and even its tail was tens of kilobytes. Null where a row stands for no
+    // single stored message, as in the transcript.
+    @GetMapping("/chat/conversations/{id}/message-ids")
+    public Mono<ResponseEntity<List<Long>>> conversationMessageIds(@PathVariable String id,
+                                                                   @RequestParam(required = false) Integer tail,
+                                                                   ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            String guestSessionId = resolveGuestSessionId(exchange, false);
+            Conversation conv = chatService.getConversation(id);
+            if (!canAccessConversation(conv, uid, guestSessionId))
+                return ResponseEntity.status(404).<List<Long>>build();
+            List<Long> ids = tailOf(chatService.getTranscript(id).messages(), tail).stream()
+                    .map(ai.proxyma.core.chat.dto.ChatMessageResponse::id)
+                    .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(ids);
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    /** The last `tail` items, or all of them when `tail` is absent, not positive or not smaller. */
+    static <T> List<T> tailOf(List<T> items, Integer tail) {
+        if (tail == null || tail <= 0 || tail >= items.size()) return items;
+        return items.subList(items.size() - tail, items.size());
+    }
+
+    // WHAT THE CONVERSATION HAS SPENT, and how full its context is - the composer's meter, which
+    // refetched the WHOLE transcript after every turn to read these six numbers (2026-10-17). Same
+    // ownership check as the conversation itself.
+    @GetMapping("/chat/conversations/{id}/usage")
+    public Mono<ResponseEntity<Map<String, Object>>> conversationUsage(@PathVariable String id,
+                                                                       ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            String guestSessionId = resolveGuestSessionId(exchange, false);
+            Conversation conv = chatService.getConversation(id);
+            if (!canAccessConversation(conv, uid, guestSessionId))
+                return ResponseEntity.status(404).<Map<String, Object>>build();
+            return ResponseEntity.ok(usageOf(conv, chatService.getContextTokenLimit()));
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    static Map<String, Object> usageOf(Conversation conv, long contextTokenLimit) {
+        Map<String, Object> usage = new java.util.LinkedHashMap<>();
+        usage.put("inputTokens", conv.getInputTokens());
+        usage.put("outputTokens", conv.getOutputTokens());
+        usage.put("cacheReadTokens", conv.getCacheReadTokens());
+        usage.put("cacheWriteTokens", conv.getCacheWriteTokens());
+        usage.put("contextTokens", conv.getContextTokens());
+        usage.put("contextTokenLimit", contextTokenLimit);
+        return usage;
+    }
+
     // The conversation's agents - the main one and every sub-agent, finished ones included - and
     // what each spent: the agents graph beside the composer's model. Same ownership check as the
     // conversation itself.
