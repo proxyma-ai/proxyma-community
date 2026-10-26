@@ -17,6 +17,10 @@ export interface MemoryEntry {
 export const memoryApi = {
   list: () =>
     http.get<MemoryEntry[]>('/api/v1/memory').then(r => r.data),
+  // An entry the person writes - the composer's "Remember something". Through the agent's own
+  // remember path, so a restated fact replaces the entry it restates.
+  create: (text: string, category: MemoryCategory) =>
+    http.post<MemoryEntry>('/api/v1/memory', { text, category }).then(r => r.data),
   edit: (id: string, text: string, category: MemoryCategory) =>
     http.put<MemoryEntry>(`/api/v1/memory/${encodeURIComponent(id)}`, { text, category }).then(r => r.data),
   remove: (ids: string[]) =>

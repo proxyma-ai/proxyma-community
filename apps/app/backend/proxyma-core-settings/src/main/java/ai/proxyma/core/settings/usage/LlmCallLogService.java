@@ -1,6 +1,7 @@
 package ai.proxyma.core.settings.usage;
 
 import ai.proxyma.core.common.spend.SpendSubject;
+import ai.proxyma.core.common.usage.CostSource;
 import ai.proxyma.core.common.usage.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +62,21 @@ public class LlmCallLogService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(SpendSubject subject, String role, String provider, String model,
                        TokenUsage usage, double costUsd) {
+        record(subject, role, provider, model, usage, costUsd, usage == null ? null : usage.costSource());
+    }
+
+    /** {@link #record(SpendSubject, String, String, String, TokenUsage, double)} with where the cost came from. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(SpendSubject subject, String role, String provider, String model,
+                       TokenUsage usage, double costUsd, CostSource source) {
+        record(subject, role, provider, model, usage, costUsd, source, null, null);
+    }
+
+    /** The same, with what the call did with the provider's cache and until when it stays warm. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(SpendSubject subject, String role, String provider, String model,
+                       TokenUsage usage, double costUsd, CostSource source,
+                       String cacheOutcome, java.time.Instant cacheWarmUntil) {
         try {
             if (subject == null || role == null) return;
             if (provider == null || provider.isBlank() || model == null || model.isBlank()) {
@@ -81,6 +97,11 @@ public class LlmCallLogService {
             row.setCacheReadTokens(counts.cacheReadTokens());
             row.setCacheWriteTokens(counts.cacheWriteTokens());
             row.setCostUsd(costUsd);
+            row.setCostSource((source != null ? source : CostSource.NONE).name());
+            row.setLongCacheWriteTokens(counts.cacheWriteTokens() > 0
+                    ? Math.min(counts.longCacheWriteTokens(), counts.cacheWriteTokens()) : null);
+            row.setCacheOutcome(cacheOutcome);
+            row.setCacheWarmUntil(cacheOutcome == null ? null : cacheWarmUntil);
             repository.save(row);
             // Per-user quotas count from here - see LlmSpendRecordedEvent - and only what the user
             // pays for: a service charged to the platform (CostCenterSettings) is logged against the

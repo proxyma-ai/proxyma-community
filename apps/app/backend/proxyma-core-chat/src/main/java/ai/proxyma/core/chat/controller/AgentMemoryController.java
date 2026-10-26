@@ -51,6 +51,7 @@ public class AgentMemoryController {
     }
 
     public record EditRequest(String text, String category) {}
+    public record CreateRequest(String text, String category) {}
     public record IdsRequest(List<String> ids, String category) {}
 
     @GetMapping
@@ -59,6 +60,32 @@ public class AgentMemoryController {
                 ? Mono.just(ResponseEntity.status(401).<List<MemoryEntry>>build())
                 : Mono.fromCallable(() -> ResponseEntity.ok(memory.list(owner.get(), null, MAX_ENTRIES)))
                         .subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    /**
+     * An entry the person writes themselves - the composer's "Remember something" - through the
+     * agent's own remember path, so the near-duplicate guard replaces a restated fact rather than
+     * keeping both. Knowledge unless it says it is about the user.
+     */
+    @PostMapping
+    public Mono<ResponseEntity<MemoryEntry>> create(@RequestBody CreateRequest request, ServerWebExchange exchange) {
+        return owner(exchange).flatMap(owner -> {
+            if (owner.isEmpty()) return Mono.just(ResponseEntity.status(401).<MemoryEntry>build());
+            if (request == null || request.text() == null || request.text().isBlank()) {
+                return Mono.just(ResponseEntity.badRequest().<MemoryEntry>build());
+            }
+            Optional<MemoryCategory> category = category(request.category());
+            if (request.category() != null && !request.category().isBlank() && category.isEmpty()) {
+                return Mono.just(ResponseEntity.badRequest().<MemoryEntry>build());
+            }
+            return Mono.fromCallable(() -> {
+                        String id = memory.remember(owner.get(), request.text(), category.orElse(MemoryCategory.KNOWLEDGE));
+                        return Optional.ofNullable(id).flatMap(i -> memory.read(owner.get(), i))
+                                .map(ResponseEntity::ok)
+                                .orElseGet(() -> ResponseEntity.badRequest().build());
+                    })
+                    .subscribeOn(Schedulers.boundedElastic());
+        });
     }
 
     @PutMapping("/{id}")

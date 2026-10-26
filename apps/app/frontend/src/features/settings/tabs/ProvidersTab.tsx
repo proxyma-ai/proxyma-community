@@ -1,14 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2, Plus, Pencil } from 'lucide-react'
 import {
   BrandMark, Button, Callout, Caption, Checkbox, RuleChecklist, Combobox, DialogBody, DialogFooter,
-  DialogHeader, EmptyState, Field, FormColumns, FormStack, InlineNotice, Input, List, ListRow,
+  DialogHeader, Disclosure, EmptyState, Field, FormColumns, FormStack, InlineNotice, Input, List, ListRow,
   MetaList, Presence, Readout, RowActions, SecretInput, Select, SettingsSections, FadeSwap,
   IconButton,
 } from '@/components/ui/kit'
 import { providerMarkId } from '@/features/indexing/utils/sourceMarks'
 import { costPricingApi, type ModelPricing } from '../services/costPricingApi'
+import { EMPTY_RATE_FORM, hasLongTier, rateFormOf, ratePayload, type RateForm } from '../utils/callCost'
+import { tokenCountLabel } from '../utils/modelDefaults'
+import { useDebounce } from '@/hooks/useDebounce'
+import { useDates } from '@/hooks/useDates'
 import { providerModelsApi } from '../services/providerModelsApi'
 import { providersApi } from '../services/providersApi'
 import type { ProviderInstance } from '../services/providersApi'
@@ -376,7 +380,7 @@ function ProviderInstanceRow({ instance, onEdit }: {
 // EmbeddingSettings, OcrSettings - all ''). Two roles are required for the product to work at all -
 // the agent's model (chat) and the embedding model (indexing and semantic search) - and two are
 // worth knowing about while setting up: a vision model for OCR (blank leaves OCR off) and the
-// rates cost tracking prices calls with (no rate counts as $0). Everything else on the AI &
+// rates cost tracking prices calls with (no rate falls back to a list price, else $0). Everything else on the AI &
 // Knowledge tabs follows the agent or is off by default, so it is not listed.
 //
 // Read from the SAME settings queries the tabs use (useResolved, pending edits included), so a step
@@ -542,7 +546,7 @@ function ProviderPricingSection({ instance }: { instance: ProviderInstance }) {
     // rows mean before they are read.
     <Field
       label={t('Model pricing')}
-      description={t('What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate counts as $0.')}
+      description={t('What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate is priced at its list price where one is known, else at $0.')}
     >
       {isLoading ? (
         <ListSkeleton count={2} />
@@ -586,7 +590,7 @@ function ProviderPricingSection({ instance }: { instance: ProviderInstance }) {
           verb={t('delete')}
           confirmLabel={t('Delete')}
           pendingLabel={t('Deleting...')}
-          consequences={[t('Calls to this model will be estimated at $0 cost going forward.')]}
+          consequences={[t('Calls to this model will be priced at its list price where one is known, else at $0.')]}
           pending={remove.isPending}
           onConfirm={() => remove.mutate(deleteTarget.id)}
           onCancel={() => setDeleteTarget(null)}
@@ -617,6 +621,16 @@ function PricingRow({ row, onEditClick, onDeleteClick }: {
             t('{price} out', { price: formatUsd(row.outputPricePerMillion) }),
             t('{price} cache read', { price: formatUsd(row.cacheReadPricePerMillion) }),
             t('{price} cache write', { price: formatUsd(row.cacheWritePricePerMillion) }),
+            row.cacheWriteLongPricePerMillion != null
+              && t('{price} 1-hour cache write', { price: formatUsd(row.cacheWriteLongPricePerMillion) }),
+            // The long tier by its in and out alone - each blank one is the standard rate.
+            row.longContextThresholdTokens != null && row.longContextThresholdTokens > 0
+              && t('above {tokens} tokens: {input} in, {output} out', {
+                tokens: tokenCountLabel(row.longContextThresholdTokens),
+                input: formatUsd(row.longInputPricePerMillion ?? row.inputPricePerMillion),
+                output: formatUsd(row.longOutputPricePerMillion ?? row.outputPricePerMillion),
+              }),
+            row.pricingSchedule === 'DEEPSEEK_OFF_PEAK' && t('off-peak half price'),
             <span key="unit" className="text-ink-disabled">{t('per 1M tokens')}</span>,
           ]} />
         </Readout>
@@ -781,8 +795,17 @@ function ProviderHeaderModal({ initial, taken, onSave, onClose }: {
 
 // One shared modal for both add and edit, always scoped to ONE provider - `instance` is the
 // provider whose dialog opened it, so there is no provider picker any more. When `editing` is set
-// the model is disabled too (provider + model identify the row; the PATCH endpoint only accepts
-// the 4 price fields) and only the prices are submitted as an update instead of a create.
+// the model is disabled too (provider + model identify the row; the PATCH endpoint takes the
+// rates only) and every rate is submitted as an update instead of a create - the PATCH replaces
+// them all.
+//
+// ADDING, a model picked or typed is looked up in the server's built-in LIST PRICES (debounced) and,
+// while no price has been typed, its rates fill the form, with a line saying so and as of when. A
+// price the user typed is never overwritten, and a model the list does not know changes nothing
+// typed - it only takes back a prefill the list made for an earlier model.
+//
+// WIDER, NOT TALLER (no dialog scrolls): three columns, the less common long-context tier behind a
+// disclosure - open from the start for a row that has one.
 //
 // THE MODEL COMBOBOX ACTUALLY WORKS NOW. GET /api/v1/providers/{provider}/models resolves its path
 // segment as an instance ID (see ProviderModelsController -> ProviderInstanceService.resolve),
@@ -799,22 +822,53 @@ function ProviderPricingModal({ instance, editing, onClose }: {
   const isEdit = editing !== null
   const comboboxLabels = useModelComboboxLabels()
 
+  const dates = useDates()
+
   const [model, setModel] = useState(editing?.model ?? '')
-  const [inputPrice, setInputPrice] = useState(String(editing?.inputPricePerMillion ?? ''))
-  const [outputPrice, setOutputPrice] = useState(String(editing?.outputPricePerMillion ?? ''))
-  const [cacheReadPrice, setCacheReadPrice] = useState(String(editing?.cacheReadPricePerMillion ?? ''))
-  const [cacheWritePrice, setCacheWritePrice] = useState(String(editing?.cacheWritePricePerMillion ?? ''))
+  const [form, setForm] = useState<RateForm>(() => rateFormOf(editing))
+  const [longOpen, setLongOpen] = useState(() => hasLongTier(rateFormOf(editing)))
+  // A price the user typed: from then on no list price touches the form. The schedule chosen by
+  // hand is kept apart - it is not a price, so it neither stops a prefill nor is replaced by one.
+  const [typed, setTyped] = useState(false)
+  const [scheduleChosen, setScheduleChosen] = useState(false)
+  // The list price the form holds, by its date - shown as one line until something is typed.
+  const [prefilledAsOf, setPrefilledAsOf] = useState<string | null>(null)
+  const edit = (key: keyof RateForm) => (value: string) => {
+    setTyped(true)
+    setForm(f => ({ ...f, [key]: value }))
+  }
 
   const { options: modelOptions, status: modelStatus, errorText: modelsError, onOpen: openModels } = useProviderModels(instance.id)
 
+  // Adding only. 404 (a model the list does not know) arrives as null.
+  const lookup = useDebounce(model.trim(), 400)
+  const listPrice = useQuery({
+    queryKey: keys.modelListPrice(lookup),
+    queryFn: () => costPricingApi.listPrice(lookup),
+    enabled: !isEdit && lookup.length > 0,
+    retry: false,
+    staleTime: Infinity,
+  })
+  // No model is no list price; undefined while the answer is on its way.
+  const found = lookup ? listPrice.data : null
+  useEffect(() => {
+    if (isEdit || typed || found === undefined) return
+    if (found) {
+      const prefill = rateFormOf(found)
+      setForm(f => (scheduleChosen ? { ...prefill, schedule: f.schedule } : prefill))
+      setLongOpen(open => open || hasLongTier(prefill))
+      setPrefilledAsOf(found.asOf)
+    } else if (prefilledAsOf) {
+      // An earlier model's list price, nothing typed over it: it is not this model's price.
+      setForm(f => (scheduleChosen ? { ...EMPTY_RATE_FORM, schedule: f.schedule } : EMPTY_RATE_FORM))
+      setPrefilledAsOf(null)
+    }
+    // Only a new answer prefills: the form, or the flags, changing under it must not run this again.
+  }, [found])
+
   const save = useMutation({
     mutationFn: () => {
-      const data = {
-        inputPricePerMillion: Number(inputPrice) || 0,
-        outputPricePerMillion: Number(outputPrice) || 0,
-        cacheReadPricePerMillion: Number(cacheReadPrice) || 0,
-        cacheWritePricePerMillion: Number(cacheWritePrice) || 0,
-      }
+      const data = ratePayload(form)
       return isEdit
         ? costPricingApi.update(editing.id, data)
         // The NAME, not the id: that is what the cost ledger records for every call and therefore
@@ -831,18 +885,19 @@ function ProviderPricingModal({ instance, editing, onClose }: {
   })
 
   const canSave = model.trim().length > 0
-  const { dirty } = useFormDirty({ model, inputPrice, outputPrice, cacheReadPrice, cacheWritePrice })
+  const { dirty } = useFormDirty({ model, form })
 
-  const priceField = (label: string, value: string, set: (v: string) => void) => (
+  const numberField = (label: string, key: keyof RateForm, placeholder = '0.00', step = '0.01') => (
     <Field label={label}>
       {id => (
         <Input
           id={id}
           type="number"
-          step="0.01"
-          value={value}
-          onChange={e => set(e.target.value)}
-          placeholder="0.00"
+          min="0"
+          step={step}
+          value={form[key]}
+          onChange={e => edit(key)(e.target.value)}
+          placeholder={placeholder}
         />
       )}
     </Field>
@@ -853,15 +908,15 @@ function ProviderPricingModal({ instance, editing, onClose }: {
       onClose={onClose}
       closable={!save.isPending}
       dirty={dirty}
-      size="md"
+      size="form"
       ariaLabel={isEdit ? t('Edit rate') : t('Add model rate')}
     >
       {requestClose => (<>
         <DialogHeader title={isEdit ? t('Edit rate') : t('Add model rate')} subtitle={instance.name} />
         <DialogBody>
           <FormStack>
-            {/* Provider + model identify the row (matches the PATCH endpoint's contract, which only
-                accepts the 4 price fields), so an edit shows the model disabled. */}
+            {/* Provider + model identify the row (the PATCH endpoint takes the rates only), so an
+                edit shows the model disabled. */}
             <Field label={t('Model')}>
               {id => (
                 <Combobox
@@ -879,12 +934,50 @@ function ProviderPricingModal({ instance, editing, onClose }: {
               )}
             </Field>
 
-            <FormColumns>
-              {priceField(t('Input $/1M tokens'), inputPrice, setInputPrice)}
-              {priceField(t('Output $/1M tokens'), outputPrice, setOutputPrice)}
-              {priceField(t('Cache read $/1M tokens'), cacheReadPrice, setCacheReadPrice)}
-              {priceField(t('Cache write $/1M tokens'), cacheWritePrice, setCacheWritePrice)}
+            <FormColumns cols={3}>
+              {numberField(t('Input $/1M tokens'), 'input')}
+              {numberField(t('Output $/1M tokens'), 'output')}
+              {numberField(t('Cache read $/1M tokens'), 'cacheRead')}
+              {numberField(t('Cache write, 5 min $/1M tokens'), 'cacheWrite')}
+              {numberField(t('Cache write, 1 hour $/1M tokens'), 'cacheWriteLong', t('1.6x the 5 min rate'))}
+              <Field label={t('Time-of-day pricing')}>
+                {id => (
+                  <Select<RateForm['schedule']>
+                    id={id}
+                    value={form.schedule}
+                    onChange={schedule => { setScheduleChosen(true); setForm(f => ({ ...f, schedule })) }}
+                    options={[
+                      { value: '', label: t('Same price all day') },
+                      { value: 'DEEPSEEK_OFF_PEAK', label: t('DeepSeek off-peak (half price outside peak hours)') },
+                    ]}
+                  />
+                )}
+              </Field>
             </FormColumns>
+
+            <Disclosure summary={t('Long context pricing')} open={longOpen} onToggle={setLongOpen}>
+              <FormColumns cols={3} className="pt-3">
+                {numberField(t('Threshold (prompt tokens)'), 'threshold', '200000', '1000')}
+                {numberField(t('Input $/1M tokens'), 'longInput', t('Standard rate'))}
+                {numberField(t('Output $/1M tokens'), 'longOutput', t('Standard rate'))}
+                {numberField(t('Cache read $/1M tokens'), 'longCacheRead', t('Standard rate'))}
+                {numberField(t('Cache write, 5 min $/1M tokens'), 'longCacheWrite', t('Standard rate'))}
+                <Caption className="sm:self-end sm:pb-2">
+                  {t('Above this prompt size, these rates price the whole call. Empty means the standard rate.')}
+                </Caption>
+              </FormColumns>
+            </Disclosure>
+
+            <div className="space-y-1">
+              <Presence show={!isEdit && !typed && prefilledAsOf != null}>
+                <Caption>
+                  {t("Prefilled from the list price as of {date}. Check it against your provider's bill.", {
+                    date: prefilledAsOf ? dates.date(`${prefilledAsOf}T12:00:00`) : '',
+                  })}
+                </Caption>
+              </Presence>
+              <Caption>{t('A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.')}</Caption>
+            </div>
           </FormStack>
         </DialogBody>
         <DialogFooter>

@@ -117,7 +117,7 @@ export function guidelineBody({ repo, kit, picture }) {
 
   // -- 2. Appearance -----------------------------------------------------------------------------
   out.push(`<h2 id="appearance">Appearance</h2>`)
-  out.push(p('Four appearances, chosen in Settings or a menu. The switch at the top right of this page applies each; every swatch, specimen and logo below follows it.'))
+  out.push(p('Four appearances, chosen in Settings or a menu. This page switches between Light and Dark beside its logo, and every swatch, specimen and logo below follows it; the token tables show all three planes side by side.'))
   const ATTRS = { system: 'Light or Dark, as the operating system is (`prefers-color-scheme`)', light: '`data-mode="light"`', gray: '`data-mode="dark"`', black: '`data-mode="dark" data-shade="black"`' }
   out.push(table(['Appearance', 'Stored as', 'On <html>', 'What it is'], T.APPEARANCES.map(a => [`**${a.name}**`, `\`${a.id}\``, ATTRS[a.id], a.note])))
   out.push(ul([

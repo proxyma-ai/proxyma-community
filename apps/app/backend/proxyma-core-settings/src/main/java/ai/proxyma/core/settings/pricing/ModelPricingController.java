@@ -44,6 +44,39 @@ public class ModelPricingController {
                 : Mono.just(ResponseEntity.status(403).build()));
     }
 
+    /**
+     * The built-in list price of a model, for the form that adds a rate: 404 when the list does not
+     * know it. Every vendor is searched - the form already names the model the operator means.
+     */
+    @GetMapping("/list-price")
+    public Mono<ResponseEntity<Map<String, Object>>> listPrice(@RequestParam String model) {
+        return isAdmin().map(allowed -> {
+            if (!allowed) return ResponseEntity.status(403).<Map<String, Object>>build();
+            return modelPricingService.listPrices().findAnyVendor(model)
+                    .map(entry -> ResponseEntity.ok(listPriceMap(entry, modelPricingService.listPrices().asOf())))
+                    .orElse(ResponseEntity.notFound().build());
+        });
+    }
+
+    private static Map<String, Object> listPriceMap(ListPrices.Entry entry, String asOf) {
+        RateCard r = entry.rates();
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("vendor", entry.vendor());
+        m.put("asOf", asOf);
+        m.put("inputPricePerMillion", r.input());
+        m.put("outputPricePerMillion", r.output());
+        m.put("cacheReadPricePerMillion", r.cacheRead());
+        m.put("cacheWritePricePerMillion", r.cacheWrite());
+        m.put("cacheWriteLongPricePerMillion", r.cacheWriteLong());
+        m.put("longContextThresholdTokens", r.longContextTokens() > 0 ? r.longContextTokens() : null);
+        m.put("longInputPricePerMillion", r.longInput());
+        m.put("longOutputPricePerMillion", r.longOutput());
+        m.put("longCacheReadPricePerMillion", r.longCacheRead());
+        m.put("longCacheWritePricePerMillion", r.longCacheWrite());
+        m.put("pricingSchedule", r.schedule() == PricingSchedule.NONE ? null : r.schedule().name());
+        return m;
+    }
+
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> create(@RequestBody Map<String, Object> body,
                                                             ServerWebExchange exchange) {
@@ -51,11 +84,7 @@ public class ModelPricingController {
                 ? Mono.fromCallable(() -> {
                         String provider = name(body, "provider");
                         String model = name(body, "model");
-                        double input = numberOf(body, "inputPricePerMillion");
-                        double output = numberOf(body, "outputPricePerMillion");
-                        double cacheRead = numberOf(body, "cacheReadPricePerMillion");
-                        double cacheWrite = numberOf(body, "cacheWritePricePerMillion");
-                        ModelPricing saved = modelPricingService.create(provider, model, input, output, cacheRead, cacheWrite);
+                        ModelPricing saved = modelPricingService.save(provider, model, rates(body));
                         audit("pricing.changed", saved, uid);
                         return saved;
                     }).subscribeOn(Schedulers.boundedElastic())
@@ -68,11 +97,7 @@ public class ModelPricingController {
                                                             ServerWebExchange exchange) {
         return userId(exchange).flatMap(uid -> isSuperAdmin().flatMap(allowed -> allowed
                 ? Mono.fromCallable(() -> {
-                        double input = numberOf(body, "inputPricePerMillion");
-                        double output = numberOf(body, "outputPricePerMillion");
-                        double cacheRead = numberOf(body, "cacheReadPricePerMillion");
-                        double cacheWrite = numberOf(body, "cacheWritePricePerMillion");
-                        var updated = modelPricingService.update(id, input, output, cacheRead, cacheWrite);
+                        var updated = modelPricingService.update(id, rates(body));
                         updated.ifPresent(pricing -> audit("pricing.changed", pricing, uid));
                         return updated;
                     }).subscribeOn(Schedulers.boundedElastic())
@@ -114,6 +139,11 @@ public class ModelPricingController {
                 .detail("outputPerMillion", p.getOutputPricePerMillion())
                 .detail("cacheReadPerMillion", p.getCacheReadPricePerMillion())
                 .detail("cacheWritePerMillion", p.getCacheWritePricePerMillion())
+                .detail("cacheWriteOneHourPerMillion", p.getCacheWriteLongPricePerMillion())
+                .detail("longContextThresholdTokens", p.getLongContextThresholdTokens())
+                .detail("longInputPerMillion", p.getLongInputPricePerMillion())
+                .detail("longOutputPerMillion", p.getLongOutputPricePerMillion())
+                .detail("pricingSchedule", p.getPricingSchedule())
                 .record();
     }
 
@@ -141,6 +171,32 @@ public class ModelPricingController {
         return value;
     }
 
+    // Every rate a row carries. The four basic ones are required, as they always were; the rest are
+    // optional, so a client that does not know them (an older page, a script) leaves them unset.
+    static ModelPricingService.RateInput rates(Map<String, Object> body) {
+        Double threshold = optionalNumber(body, "longContextThresholdTokens");
+        Object schedule = body.get("pricingSchedule");
+        return new ModelPricingService.RateInput(
+                numberOf(body, "inputPricePerMillion"),
+                numberOf(body, "outputPricePerMillion"),
+                numberOf(body, "cacheReadPricePerMillion"),
+                numberOf(body, "cacheWritePricePerMillion"),
+                optionalNumber(body, "cacheWriteLongPricePerMillion"),
+                threshold == null ? null : (long) Math.floor(threshold),
+                optionalNumber(body, "longInputPricePerMillion"),
+                optionalNumber(body, "longOutputPricePerMillion"),
+                optionalNumber(body, "longCacheReadPricePerMillion"),
+                optionalNumber(body, "longCacheWritePricePerMillion"),
+                schedule == null ? null : String.valueOf(schedule));
+    }
+
+    // An optional rate: absent, null or blank is "not given"; anything else is checked as numberOf does.
+    static Double optionalNumber(Map<String, Object> body, String key) {
+        Object raw = body.get(key);
+        if (raw == null || String.valueOf(raw).isBlank()) return null;
+        return numberOf(body, key);
+    }
+
     // A provider and a model are named; String.valueOf(null) stored the word "null".
     static String name(Map<String, Object> body, String key) {
         Object raw = body.get(key);
@@ -159,6 +215,13 @@ public class ModelPricingController {
         m.put("outputPricePerMillion", p.getOutputPricePerMillion());
         m.put("cacheReadPricePerMillion", p.getCacheReadPricePerMillion());
         m.put("cacheWritePricePerMillion", p.getCacheWritePricePerMillion());
+        m.put("cacheWriteLongPricePerMillion", p.getCacheWriteLongPricePerMillion());
+        m.put("longContextThresholdTokens", p.getLongContextThresholdTokens());
+        m.put("longInputPricePerMillion", p.getLongInputPricePerMillion());
+        m.put("longOutputPricePerMillion", p.getLongOutputPricePerMillion());
+        m.put("longCacheReadPricePerMillion", p.getLongCacheReadPricePerMillion());
+        m.put("longCacheWritePricePerMillion", p.getLongCacheWritePricePerMillion());
+        m.put("pricingSchedule", p.getPricingSchedule());
         m.put("createdAt", p.getCreatedAt().toString());
         m.put("updatedAt", p.getUpdatedAt().toString());
         return m;

@@ -1203,7 +1203,29 @@ export const vi: Record<string, string> = {
   'No calls in this period match.': 'Không có lượt gọi nào trong khoảng thời gian này khớp.',
   'Search...': 'Tìm...',
   'No matches': 'Không có kết quả khớp',
-  'No rate set for this model, so it counts as $0.': 'Mô hình này chưa có đơn giá nên được tính là $0.',
+  'No rate or list price for this model, so it counts as $0.': 'Mô hình này không có đơn giá hay giá niêm yết nên được tính là $0.',
+  'Reported': 'Nhà cung cấp báo',
+  'The provider stated this cost in its response.': 'Nhà cung cấp đã nêu chi phí này trong phản hồi.',
+  'List price': 'Giá niêm yết',
+  'No rate is set for this model, so its list price was used.': 'Mô hình này chưa có đơn giá nên đã dùng giá niêm yết.',
+  'Prompt cache warm for {time}. Each message that reads it keeps it another hour.': 'Bộ nhớ đệm lời nhắc còn lưu {time}. Mỗi tin nhắn đọc nó sẽ giữ nó thêm một giờ.',
+  'Prompt cache warm for {time}. Each message that reads it keeps it another five minutes.': 'Bộ nhớ đệm lời nhắc còn lưu {time}. Mỗi tin nhắn đọc nó sẽ giữ nó thêm năm phút.',
+  'Prompt cache warm for {time}': 'Bộ nhớ đệm lời nhắc còn lưu {time}',
+  'Warm until {time}': 'Còn lưu đến {time}',
+  'The cache this call read stays until then unless something reads it again.': 'Bộ nhớ đệm mà lần gọi này đọc được giữ đến lúc đó, trừ khi có lần đọc khác gia hạn nó.',
+  'First write': 'Ghi lần đầu',
+  'Nothing was cached for this conversation yet.': 'Cuộc trò chuyện này chưa có gì trong bộ nhớ đệm.',
+  'Expired': 'Đã hết hạn',
+  'The cache had run out before this call, so it was written again.': 'Bộ nhớ đệm đã hết hạn trước lần gọi này nên được ghi lại.',
+  'Tools changed': 'Công cụ đã đổi',
+  'The tools offered differed from the call before, so the cached prompt could not be reused.': 'Các công cụ được cung cấp khác với lần gọi trước nên không dùng lại được lời nhắc đã lưu.',
+  'System prompt changed': 'Lời nhắc hệ thống đã đổi',
+  'The system prompt differed from the call before, so the cached prompt could not be reused.': 'Lời nhắc hệ thống khác với lần gọi trước nên không dùng lại được lời nhắc đã lưu.',
+  'History changed': 'Lịch sử đã đổi',
+  'The conversation no longer started with the messages of the call before - condensed or edited - so the cached prompt could not be reused.': 'Cuộc trò chuyện không còn bắt đầu bằng các tin nhắn của lần gọi trước (đã được rút gọn hoặc chỉnh sửa) nên không dùng lại được lời nhắc đã lưu.',
+  'Not kept': 'Không được giữ',
+  'The same prompt, within its cache lifetime, and the provider read nothing back: it did not keep what it wrote.': 'Cùng một lời nhắc, còn trong thời hạn lưu, nhưng nhà cung cấp không đọc lại được gì: họ đã không giữ những gì đã ghi.',
+  '5 minutes and 1 hour': '5 phút và 1 giờ',
   'Peak': 'Cao nhất',
   // Presence, shown as a tooltip on the dot beside a user.
   // -- Administration: the danger zone ----------------------------------------------------
@@ -1758,10 +1780,10 @@ export const vi: Record<string, string> = {
   'Pricing deleted': 'Đã xóa bảng giá',
   'Failed to delete pricing': 'Không thể xóa bảng giá',
   'No rates set for this provider.': 'Chưa đặt đơn giá nào cho nhà cung cấp này.',
-  'What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate counts as $0.':
-    'Mức phí nhà cung cấp này tính cho mỗi triệu token, dùng cho mọi con số chi phí và hạn mức chi tiêu. Mô hình không có đơn giá được tính là $0.',
-  'Per-model rates are set on the provider they belong to. Anything without a rate is estimated at $0 - never an error.':
-    'Đơn giá theo từng mô hình được đặt tại nhà cung cấp tương ứng. Bất cứ mô hình nào không có đơn giá đều được ước tính là $0 - đây không phải là lỗi.',
+  'What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate is priced at its list price where one is known, else at $0.':
+    'Mức phí nhà cung cấp này tính cho mỗi triệu token, dùng cho mọi con số chi phí và hạn mức chi tiêu. Mô hình không có đơn giá được tính theo giá niêm yết nếu có, nếu không thì là $0.',
+  'Per-model rates are set on the provider they belong to. Anything without a rate is priced at its list price where one is known, else at $0 - never an error.':
+    'Đơn giá theo từng mô hình được đặt tại nhà cung cấp tương ứng. Mô hình nào không có đơn giá được tính theo giá niêm yết nếu có, nếu không thì là $0 - đây không phải là lỗi.',
 
   // -- Feedback tab and admin actions ---------------------------------------------------------------------
   'Logs, the conversation and files can be attached - each is a separate opt-in on the form.':
@@ -1817,7 +1839,24 @@ export const vi: Record<string, string> = {
   'Input $/1M tokens': 'Đầu vào $/1 triệu token',
   'Output $/1M tokens': 'Đầu ra $/1 triệu token',
   'Cache read $/1M tokens': 'Đọc bộ đệm $/1 triệu token',
-  'Cache write $/1M tokens': 'Ghi bộ đệm $/1 triệu token',
+  'Cache write, 5 min $/1M tokens': 'Ghi bộ đệm, 5 phút $/1 triệu token',
+  'Cache write, 1 hour $/1M tokens': 'Ghi bộ đệm, 1 giờ $/1 triệu token',
+  '1.6x the 5 min rate': 'Gấp 1,6 lần giá 5 phút',
+  'Time-of-day pricing': 'Giá theo giờ trong ngày',
+  'Same price all day': 'Cùng một giá cả ngày',
+  'DeepSeek off-peak (half price outside peak hours)': 'DeepSeek giờ thấp điểm (nửa giá ngoài giờ cao điểm)',
+  'Long context pricing': 'Giá ngữ cảnh dài',
+  'Threshold (prompt tokens)': 'Ngưỡng (token prompt)',
+  'Standard rate': 'Đơn giá tiêu chuẩn',
+  'Above this prompt size, these rates price the whole call. Empty means the standard rate.':
+    'Khi prompt vượt quá ngưỡng này, các đơn giá này áp dụng cho toàn bộ lượt gọi. Để trống là dùng đơn giá tiêu chuẩn.',
+  "Prefilled from the list price as of {date}. Check it against your provider's bill.":
+    'Đã điền sẵn theo giá niêm yết ngày {date}. Hãy đối chiếu với hóa đơn của nhà cung cấp.',
+  'A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.':
+    'Chi phí do nhà cung cấp báo về (OpenRouter, LiteLLM) được dùng thay cho các đơn giá này.',
+  '{price} 1-hour cache write': '{price} ghi bộ đệm 1 giờ',
+  'above {tokens} tokens: {input} in, {output} out': 'trên {tokens} token: {input} đầu vào, {output} đầu ra',
+  'off-peak half price': 'nửa giá giờ thấp điểm',
   '{price} in': '{price} đầu vào',
   '{price} out': '{price} đầu ra',
   '{price} cache read': '{price} đọc bộ đệm',
@@ -1936,7 +1975,6 @@ export const vi: Record<string, string> = {
   // -- the last review findings -------------------------------------------------------------------
   // Three-way ternaries whose FIRST branch the two-way pass could not see.
   'Yes': 'Có',
-  'Expired': 'Đã hết hạn',
   'Expires {date}': 'Hết hạn {date}',
   'Downloading...': 'Đang tải xuống...',
   'Download {version}': 'Tải {version}',
@@ -1977,8 +2015,8 @@ export const vi: Record<string, string> = {
     'Mọi vai trò mô hình đang trỏ tới nhà cung cấp này sẽ ngừng hoạt động cho tới khi bạn chọn nhà cung cấp khác.',
   'No other provider is selected in its place - that stays your choice.':
     'Không có nhà cung cấp nào được chọn thay thế - đó vẫn là lựa chọn của bạn.',
-  'Calls to this model will be estimated at $0 cost going forward.':
-    'Từ nay các lượt gọi tới mô hình này sẽ được ước tính với chi phí $0.',
+  'Calls to this model will be priced at its list price where one is known, else at $0.':
+    'Các lượt gọi tới mô hình này sẽ được tính theo giá niêm yết nếu có, nếu không thì là $0.',
 
   // -- the About tab's link descriptions, and the guardrail row captions ------------------------------
   // Both arrive as JSX attributes on a shared row component, so the titles were translated and the
@@ -2225,7 +2263,7 @@ export const vi: Record<string, string> = {
   'Saving {field}...': 'Đang lưu {field}...',
   '{count} of those would have been withheld, but monitor mode let them through.': '{count} trong số đó lẽ ra đã bị chặn, nhưng chế độ giám sát đã cho qua.',
   'The classifier failed and let 1 turn through. Check that its provider is reachable.|The classifier failed and let {count} turns through. Check that its provider is reachable.': 'Bộ phân loại gặp lỗi và đã cho qua {count} lượt. Hãy kiểm tra xem có kết nối được tới nhà cung cấp của nó không.',
-  'Calculated from configured rates and counted tokens, not from provider billing. Check the provider dashboard for actual charges.': 'Tính từ đơn giá đã cấu hình và số token đã đếm, không phải từ hóa đơn của nhà cung cấp. Xem bảng điều khiển của nhà cung cấp để biết chi phí thực tế.',
+  'Calculated from counted tokens and the configured rates or list prices, unless the provider reported the cost itself - not from provider billing. Check the provider dashboard for actual charges.': 'Tính từ số token đã đếm và đơn giá đã cấu hình hoặc giá niêm yết, trừ khi nhà cung cấp tự báo chi phí - không phải từ hóa đơn của nhà cung cấp. Xem bảng điều khiển của nhà cung cấp để biết chi phí thực tế.',
   'This installation updates by downloading the new release, not in place.': 'Bản cài đặt này cập nhật bằng cách tải về bản phát hành mới, không cập nhật tại chỗ.',
 
   // -- the product tour, the What's New panel, and the last of the settings pages ------------------
@@ -2561,9 +2599,10 @@ export const vi: Record<string, string> = {
   'Help': 'Trợ giúp',
   'No matching sources': 'Không có nguồn nào phù hợp',
   // -- The composer's permission mode (PermissionModePicker.tsx) -----------------------------------
-  'Ask': 'Hỏi trước',
+  'Co-pilot': 'Phi công phụ',
   'Auto': 'Tự động',
-  'Read-only': 'Chỉ đọc',
+  'Autopilot': 'Lái tự động',
+  'Navigator': 'Hoa tiêu',
   'Asks before every change': 'Hỏi trước mỗi thay đổi',
   'Makes changes without asking': 'Thực hiện thay đổi mà không hỏi',
   'Reads only, never changes anything': 'Chỉ đọc, không bao giờ thay đổi gì',
@@ -2908,8 +2947,8 @@ export const vi: Record<string, string> = {
     'Hầu hết máy chủ tự đăng ký Proxyma. Chỉ nhập client khi máy chủ yêu cầu; URL chuyển hướng của nó là {url}.',
   'No authentication': 'Không xác thực',
   'OAuth sign-in': 'Đăng nhập OAuth',
-  "Offer this server's tools to the agent. Each call waits for your approval unless the conversation is in Auto.":
-    'Cung cấp các công cụ của máy chủ này cho agent. Mỗi lần gọi đều chờ bạn chấp thuận, trừ khi cuộc trò chuyện ở chế độ Tự động.',
+  "Offer this server's tools to the agent. Each call waits for your approval unless the conversation is in Autopilot.":
+    'Cung cấp các công cụ của máy chủ này cho agent. Mỗi lần gọi đều chờ bạn chấp thuận, trừ khi cuộc trò chuyện ở chế độ Lái tự động.',
   'One per line.': 'Mỗi dòng một giá trị.',
   'Open it again': 'Mở lại',
   'Passed to the command. A saved value is kept while its box is left empty.':
@@ -4182,6 +4221,7 @@ export const vi: Record<string, string> = {
     'HubSpot không chấp nhận token. Hãy thay thế trong Cài đặt > Kết nối.',
   'HubSpot will not let this connection read {0}. Give its key the read scope for {1}.':
     'HubSpot không cho kết nối này đọc {0}. Hãy cấp cho khóa của nó quyền đọc {1}.',
+  'Jira did not accept the email address and API token.': 'Jira không chấp nhận địa chỉ email và API token.',
   'Jira refused this account (403).': 'Jira đã từ chối tài khoản này (403).',
   'Linear did not accept the key.': 'Linear không chấp nhận khóa.',
   'Linear did not accept the key. Replace it in Settings > Connections.':
@@ -4281,4 +4321,29 @@ export const vi: Record<string, string> = {
   'The source code of each release, to read, build or change.': 'Mã nguồn của mỗi bản phát hành, để đọc, tự build hoặc sửa đổi.',
   'GNU Affero General Public License v3': 'Giấy phép Công cộng GNU Affero v3',
   'The license this edition is under, and what it lets you do.': 'Giấy phép áp dụng cho phiên bản này và những gì nó cho phép bạn làm.',
+  // Settings > About: Community's sponsor link (SponsorSection.desktop.tsx).
+  'Support Proxyma': 'Ủng hộ Proxyma',
+  'Proxyma Community is free and built by one developer.': 'Proxyma Community miễn phí và do một nhà phát triển làm ra.',
+  'Sponsor the developer on GitHub': 'Tài trợ nhà phát triển trên GitHub',
+  'Buy the developer a coffee on Ko-fi': 'Mời nhà phát triển một ly cà phê trên Ko-fi',
+  // The composer's + menu (2026-10-23): sources, MCP servers and "Remember something".
+  'Search one source for this message': 'Tìm trong một nguồn cho tin nhắn này',
+  'No sources yet.': 'Chưa có nguồn nào.',
+  'Index a website as a new source': 'Lập chỉ mục một trang web thành nguồn mới',
+  'Index a folder on this computer as a new source': 'Lập chỉ mục một thư mục trên máy này thành nguồn mới',
+  'MCP servers': 'Máy chủ MCP',
+  'Give this message an MCP server\'s tools': 'Cho tin nhắn này dùng công cụ của một máy chủ MCP',
+  'No MCP servers yet.': 'Chưa có máy chủ MCP nào.',
+  'Manage MCP servers': 'Quản lý máy chủ MCP',
+  'Add or manage MCP servers in Settings > Connections': 'Thêm hoặc quản lý máy chủ MCP trong Cài đặt > Kết nối',
+  'Remember something': 'Ghi nhớ điều gì đó',
+  'Save a fact or a preference to the agent\'s memory': 'Lưu một thông tin hoặc sở thích vào bộ nhớ của tác nhân',
+  'The agent reads its memory before it searches, in every conversation.': 'Tác nhân đọc bộ nhớ trước khi tìm kiếm, trong mọi cuộc trò chuyện.',
+  'What to remember': 'Điều cần ghi nhớ',
+  'Kind': 'Loại',
+  'Our release branch is called release/next.': 'Nhánh phát hành của chúng tôi tên là release/next.',
+  'Upload files as a new source': 'Tải tệp lên thành nguồn mới',
+  'Remember': 'Ghi nhớ',
+  'Saved to memory': 'Đã lưu vào bộ nhớ',
+  'Could not save to memory': 'Không thể lưu vào bộ nhớ',
 };

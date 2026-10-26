@@ -32,6 +32,10 @@ public class JiraConnectionPlugin implements ConnectionPlugin {
             String base = AtlassianApi.productBase(connection);
             JsonNode me = AtlassianApi.client(http, connection, "Jira", base)
                     .getJson(JiraSession.apiPath(connection) + "/myself");
+            // Cloud answers a credential it did not accept as nobody rather than always with a 401.
+            if (AtlassianApi.isCloud(connection) && me.path("accountId").asText("").isBlank()) {
+                return ConnectionTestResult.failed("Jira did not accept the email address and API token.");
+            }
             String name = me.path("displayName").asText("");
             if (name.isBlank()) name = me.path("name").asText("");
             return name.isBlank() ? ConnectionTestResult.ok("Connected") : ConnectionTestResult.ok("Signed in as {user}", "user", name);

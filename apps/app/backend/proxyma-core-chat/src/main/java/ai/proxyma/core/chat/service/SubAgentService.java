@@ -509,9 +509,11 @@ public class SubAgentService {
         // Auto is five minutes here: a sub-agent is a burst of calls seconds apart that ends when
         // the report comes back, so a one-hour lifetime would pay the dearer write for a prefix
         // nothing reads after it is done. One hour only where somebody chose it.
+        // Each run is its own prompt-cache line: it sends a prompt of its own, not the conversation's.
         LlmSession session = llmGateway.open(LlmCaller.of(LlmRole.SUB_AGENT, subject),
                 LlmGateway.SessionOptions.tuned(ChatSettings.Tone.CONCISE, settings.maxOutputTokens(chat))
-                        .cached(settings.promptCache(chat)));
+                        .cached(settings.promptCache(chat))
+                        .line(run.conversationId + "/agent/" + run.id));
         boolean streaming = session.streams();
 
         List<Message> messages = new ArrayList<>();

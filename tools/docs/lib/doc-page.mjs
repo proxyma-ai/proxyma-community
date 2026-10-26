@@ -4,7 +4,7 @@
 //
 // Colors are the product's: libs/ui-kit/tokens/proxyma-tokens.css is inlined as the first style
 // block, so the document has exactly the Light, Proxyma and Dark appearances the apps have and
-// follows any change to them on the next build.
+// follows any change to them on the next build. The page offers two of them, Light and Dark.
 
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -96,8 +96,13 @@ function tocHtml(sections) {
 
 // Runs before first paint, so a stored appearance never flashes the default one, nor a stored
 // contents width the default width. Mirrors apply() and the TOC_* bounds in doc-theme.js; change
-// both together.
-const PREPAINT = `(function(){try{var p=localStorage.getItem('proxyma-docs-appearance')||'system';}catch(e){p='system'}var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var m=p==='light'?'light':(p==='gray'||p==='black')?'dark':(d?'dark':'light');var s=(p==='black'||(p==='system'&&d))?'black':null;var r=document.documentElement;r.setAttribute('data-mode',m);if(s)r.setAttribute('data-shade',s);try{var w=parseInt(localStorage.getItem('proxyma-docs-toc-width'),10);if(w>=200&&w<=480)r.style.setProperty('--toc-width',w+'px');}catch(e){}})();`
+// both together. Light unless this reader chose Dark - the operating system is not asked
+// (maintainer, 2026-10-26: "just light and dark, default to light").
+const PREPAINT = `(function(){var r=document.documentElement;var d=false;try{d=localStorage.getItem('proxyma-docs-theme')==='dark'}catch(e){}r.setAttribute('data-mode',d?'dark':'light');if(d)r.setAttribute('data-shade','black');try{var w=parseInt(localStorage.getItem('proxyma-docs-toc-width'),10);if(w>=200&&w<=480)r.style.setProperty('--toc-width',w+'px');}catch(e){}})();`
+
+// The Light/Dark switch's thumb carries the sun or the moon of the appearance it is on.
+const SUN = '<svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>'
+const MOON = '<svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 9.6A5.4 5.4 0 0 1 6.4 2.8a5.4 5.4 0 1 0 6.8 6.8z"/></svg>'
 
 /**
  * @param {object} o
@@ -120,7 +125,7 @@ export function renderDocPage({ title, doctype, description, lede = '', body, ex
     `\n/* The app's scrollbar, from libs/ui-kit/tokens/proxyma-primitives.css (scrollbarCss) */\n${scrollbarCss()}\n`
   const behavior = readFileSync(join(HERE, 'doc-theme.js'), 'utf8')
   return `<!doctype html>
-<html lang="en" data-mode="dark">
+<html lang="en" data-mode="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -137,16 +142,13 @@ ${extraCss ? `<style>${extraCss}</style>` : ''}
 ${extraHead}
 </head>
 <body>
-<div class="appearance" role="group" aria-label="Appearance">
-  <button type="button" data-pref="system" aria-pressed="false">System</button>
-  <button type="button" data-pref="light" aria-pressed="false">Light</button>
-  <button type="button" data-pref="gray" aria-pressed="false">Proxyma</button>
-  <button type="button" data-pref="black" aria-pressed="false">Dark</button>
-</div>
 <div class="layout">
   <aside class="toc" id="toc">
     <div class="toc-head">
-      <a class="brandmark" href="#top">${logoSvg('toc-logo')}<span>Proxyma</span></a>
+      <div class="toc-brand">
+        <a class="brandmark" href="#top">${logoSvg('toc-logo')}<span>Proxyma</span></a>
+        <button class="appearance" type="button" role="switch" aria-checked="false" aria-label="Dark appearance" title="Dark appearance"><span class="thumb">${SUN}${MOON}</span></button>
+      </div>
       <p class="doctype">${esc(doctype)}</p>
       ${sections.some(s => s.children.length) ? `<div class="toc-tools" hidden><button type="button" data-toc-all="open">Expand all</button><button type="button" data-toc-all="close">Collapse all</button></div>` : ''}
     </div>

@@ -1171,7 +1171,7 @@ public class SmartChatMemory implements ChatMemory {
                 .map(c -> SpendSubject.user(c.getUserId()))
                 .orElse(SpendSubject.ANONYMOUS);
         LlmSession session = llmGateway.open(LlmCaller.of(LlmRole.CONDENSATION, owner),
-                LlmGateway.SessionOptions.plain());
+                LlmGateway.SessionOptions.plain().line(conversationId + "/condense"));
         String provider = session.provider();
         String model = session.model();
 

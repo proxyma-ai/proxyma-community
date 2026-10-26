@@ -62,6 +62,12 @@
 //   @@after-tools <text>         what to say once the tool results come back (default: a summary)
 //   @@chunks <n>                 split a streamed reply into n chunks instead of one per word
 //   @@tokens <in>/<out>          report exactly this usage instead of the counted estimate
+//   @@cached <n>                 report n of the prompt tokens as a cache hit
+//                                (prompt_tokens_details.cached_tokens, inside prompt_tokens)
+//   @@cachewrite <n>             report n of the prompt tokens as written to the cache
+//                                (prompt_tokens_details.cache_write_tokens, as OpenRouter states it)
+//   @@cost <usd>                 report what the call cost in usage.cost, as OpenRouter and a
+//                                LiteLLM gateway do - the product must use it over its own rates
 //   @@slow <ms>                  delay this reply
 //   @@pace <ms>                  wait this long between the chunks of a streamed reply, so a
 //                                browser test can act while the answer is still arriving
@@ -203,7 +209,7 @@ const estimateTokens = text => Math.max(1, Math.ceil(String(text ?? '').length /
 // The reply - "FAKE ANSWER to: (no question)" - still looked enough like an answer to read past.
 // So: rest of the line for the three that are prose, one token for the four that are scalars, and
 // nothing at all for the three that are flags.
-const DIRECTIVE = /@@(?:(text|tool|after-tools|say|reasoning-content|reasoning)(?:[ \t]+((?:(?!@@)[^\n])*))?|(chunks|tokens|slow|pace|status)(?:[ \t]+(\S+))?|(drop|empty|straddle))/g
+const DIRECTIVE = /@@(?:(text|tool|after-tools|say|reasoning-content|reasoning)(?:[ \t]+((?:(?!@@)[^\n])*))?|(chunks|tokens|slow|pace|status|cachewrite|cached|cost)(?:[ \t]+(\S+))?|(drop|empty|straddle))/g
 
 // Reads the directives out of every message in the request, last writer wins, and returns both the
 // plan and the messages with the directive text removed.
@@ -233,6 +239,9 @@ function readDirectives(messages) {
         case 'slow': plan.slow = Number(value) || 0; break
         case 'pace': plan.pace = Number(value) || 0; break
         case 'status': plan.status = Number(value) || 500; break
+        case 'cached': plan.cached = Number(value) || 0; break
+        case 'cachewrite': plan.cacheWrite = Number(value) || 0; break
+        case 'cost': if (Number.isFinite(Number(value))) plan.cost = Number(value); break
         case 'drop': plan.drop = true; break
         case 'empty': plan.empty = true; break
         case 'straddle': plan.straddle = true; break
@@ -536,13 +545,24 @@ function toolSummary(messages) {
 }
 
 function buildUsage(plan, messages, content) {
+  let usage
   if (plan.tokens) {
     const { input, output } = plan.tokens
-    return { prompt_tokens: input, completion_tokens: output, total_tokens: input + output }
+    usage = { prompt_tokens: input, completion_tokens: output, total_tokens: input + output }
+  } else {
+    const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(textOf(m.content)), 0)
+    const completionTokens = estimateTokens(content)
+    usage = { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: promptTokens + completionTokens }
   }
-  const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(textOf(m.content)), 0)
-  const completionTokens = estimateTokens(content)
-  return { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: promptTokens + completionTokens }
+  // OpenAI's shape: the cached tokens are a part of prompt_tokens, never more than it.
+  if (plan.cached > 0 || plan.cacheWrite > 0) {
+    usage.prompt_tokens_details = {
+      cached_tokens: Math.min(plan.cached || 0, usage.prompt_tokens),
+      cache_write_tokens: Math.min(plan.cacheWrite || 0, usage.prompt_tokens),
+    }
+  }
+  if (plan.cost !== undefined) usage.cost = plan.cost
+  return usage
 }
 
 // A tool call id has to be unique within a response and stable across runs. Derived from the call

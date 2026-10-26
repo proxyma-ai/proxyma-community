@@ -1,8 +1,8 @@
 /* Proxyma documentation theme - behavior. No dependencies, no network.
 
-   1. Appearance: System / Light / Proxyma / Dark, the product's own four choices and the same
-      stored words (system, light, gray, black - see libs/ui-kit/react/appearance.ts). The pre-paint
-      snippet in <head> applies it before first paint; this wires the control and follows the OS.
+   1. Appearance: a Light/Dark switch beside the logo, Light by default. Dark is the product's
+      neutral Dark (data-mode="dark" data-shade="black"). The pre-paint snippet in <head> applies
+      the stored choice before first paint; this wires the switch.
    2. Scroll spy: the table of contents marks the section being read.
    3. Per-section disclosure in the table of contents, and Expand all / Collapse all.
    4. The table of contents' width: a separator dragged or stepped by keyboard, remembered.
@@ -13,39 +13,30 @@
 (function () {
   'use strict';
 
-  var KEY = 'proxyma-docs-appearance';
-  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var KEY = 'proxyma-docs-theme';
 
   function stored() {
-    try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; }
+    try { return localStorage.getItem(KEY) === 'dark'; } catch (e) { return false; }
   }
 
-  // A dark OS means Dark (the neutral shade), as in the product; Proxyma is chosen on purpose.
-  function apply(pref) {
+  function apply(dark) {
     var el = document.documentElement;
-    var dark = media && media.matches;
-    var mode = pref === 'light' ? 'light' : pref === 'gray' || pref === 'black' ? 'dark' : (dark ? 'dark' : 'light');
-    var shade = pref === 'black' || (pref === 'system' && dark) ? 'black' : null;
-    el.setAttribute('data-mode', mode);
-    if (shade) el.setAttribute('data-shade', shade); else el.removeAttribute('data-shade');
-    var buttons = document.querySelectorAll('.appearance button');
-    Array.prototype.forEach.call(buttons, function (b) {
-      b.setAttribute('aria-pressed', String(b.getAttribute('data-pref') === pref));
-    });
+    el.setAttribute('data-mode', dark ? 'dark' : 'light');
+    if (dark) el.setAttribute('data-shade', 'black'); else el.removeAttribute('data-shade');
+    var sw = document.querySelector('.appearance');
+    if (sw) sw.setAttribute('aria-checked', String(dark));
   }
 
   function wireAppearance() {
-    var buttons = document.querySelectorAll('.appearance button');
-    Array.prototype.forEach.call(buttons, function (b) {
-      b.addEventListener('click', function () {
-        var pref = b.getAttribute('data-pref');
-        try { localStorage.setItem(KEY, pref); } catch (e) { /* storage blocked: still applies */ }
-        apply(pref);
-      });
+    var sw = document.querySelector('.appearance');
+    if (!sw) return;
+    sw.addEventListener('click', function () {
+      var dark = sw.getAttribute('aria-checked') !== 'true';
+      try {
+        if (dark) localStorage.setItem(KEY, 'dark'); else localStorage.removeItem(KEY);
+      } catch (e) { /* storage blocked: still applies, for this visit */ }
+      apply(dark);
     });
-    if (media && media.addEventListener) {
-      media.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
-    }
     apply(stored());
   }
 

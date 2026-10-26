@@ -79,6 +79,9 @@ export interface SettingsEdition {
   // AGPL-3.0-only and has to offer its source to whoever uses it over a network (section 13).
   // Enterprise Server is not open source and renders nothing. See SourceCodeSection.desktop.tsx.
   SourceCodeSection: ComponentType
+  // About's sponsor link (GitHub Sponsors) - Community only, which is free and has no other income.
+  // Enterprise Server is paid and renders nothing. See SponsorSection.desktop.tsx.
+  SponsorSection: ComponentType
   // The custom CA field on the Network tab. Server only: a desktop machine behind a TLS-inspecting
   // proxy already trusts that proxy's root through the OS trust store, so the field can only break
   // something there. See ./CaCertificateSection.desktop.tsx.

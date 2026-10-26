@@ -187,7 +187,6 @@ const GUIDE_CSS = `
   .gl-stack td + td::before{content:attr(data-label) ": "; color:rgb(var(--ink-caption)); font-size:13px; margin-right:4px}
   .gl-stack td code{white-space:normal; overflow-wrap:anywhere}
   .gl-tokens td:last-child{min-width:0}
-  .appearance{position:absolute}
 }
 @media (max-width:900px){
   .gl-specs,.gl-two,.gl-useavoid{grid-template-columns:minmax(0,1fr)}
@@ -214,7 +213,7 @@ let html = renderDocPage({
   title: 'Proxyma UI design guideline',
   doctype: 'Design - UI guideline',
   description: 'How Proxyma looks, behaves and speaks: principles, appearance, color, type, space, motion, responsive rules, icons, the logo and brand assets, words, copy and accessibility - and every component of the UI kit, drawn live.',
-  lede: `How every Proxyma surface looks and behaves, and every part of the UI kit (<code>libs/ui-kit</code>) drawn live by the kit itself - ${componentCount} components. Switch the appearance at the top right; everything below follows it.`,
+  lede: `How every Proxyma surface looks and behaves, and every part of the UI kit (<code>libs/ui-kit</code>) drawn live by the kit itself - ${componentCount} components. Switch between Light and Dark beside the logo; everything below follows it.`,
   body,
   themeLayer: 'doc',
   extraCss: GUIDE_CSS + '\n' + css,

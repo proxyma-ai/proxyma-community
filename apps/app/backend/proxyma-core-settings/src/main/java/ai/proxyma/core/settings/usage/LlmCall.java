@@ -110,9 +110,38 @@ public class LlmCall {
     @Column(nullable = false)
     private double costUsd;
 
+    /** Where costUsd came from - a CostSource name; null on a row written before 2026-10-22.
+     *  Nullable, as every column added to a table that already has rows must be. */
+    @Column(length = 16)
+    private String costSource;
+
+    /** The part of cacheWriteTokens written for one hour rather than five minutes; null on a row
+     *  written before 2026-10-22. */
+    private Long longCacheWriteTokens;
+
+    /** What the call did with the provider's cache - a PromptCacheClock outcome (HIT, EXPIRED,
+     *  CHANGED_TOOLS ...); null for no cache activity or a row written before 2026-10-22. */
+    @Column(length = 24)
+    private String cacheOutcome;
+
+    /** Until when what the call read or wrote stays in the provider's cache; null with no outcome. */
+    private Instant cacheWarmUntil;
+
     public LlmCall() {
         this.recordedAt = Instant.now();
     }
+
+    public String getCostSource() { return costSource; }
+    public void setCostSource(String costSource) { this.costSource = costSource; }
+
+    public String getCacheOutcome() { return cacheOutcome; }
+    public void setCacheOutcome(String cacheOutcome) { this.cacheOutcome = cacheOutcome; }
+
+    public Instant getCacheWarmUntil() { return cacheWarmUntil; }
+    public void setCacheWarmUntil(Instant cacheWarmUntil) { this.cacheWarmUntil = cacheWarmUntil; }
+
+    public Long getLongCacheWriteTokens() { return longCacheWriteTokens; }
+    public void setLongCacheWriteTokens(Long longCacheWriteTokens) { this.longCacheWriteTokens = longCacheWriteTokens; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }

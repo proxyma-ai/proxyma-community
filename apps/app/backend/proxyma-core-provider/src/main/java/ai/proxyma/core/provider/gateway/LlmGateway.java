@@ -84,27 +84,47 @@ public interface LlmGateway {
      * adapter; null means the adapter's default (five minutes, where the protocol caches at all).
      */
     record SessionOptions(ChatSettings.Tone tone, Integer maxTokens, ModelOverride override,
-                          ChatSettings.PromptCache cache) {
+                          ChatSettings.PromptCache cache, String cacheLine) {
 
         /** Model and nothing else: no temperature, no ceiling. */
         public static SessionOptions plain() {
-            return new SessionOptions(null, null, null, null);
+            return new SessionOptions(null, null, null, null, null);
         }
 
         /** The role's sampling settings and output ceiling, applied by the provider's adapter. */
         public static SessionOptions tuned(ChatSettings.Tone tone, int maxTokens) {
-            return new SessionOptions(tone, maxTokens, null, null);
+            return new SessionOptions(tone, maxTokens, null, null, null);
         }
 
         /** The same, against an explicitly chosen provider and model. */
         public SessionOptions on(ModelOverride override) {
-            return new SessionOptions(tone, maxTokens, override, cache);
+            return new SessionOptions(tone, maxTokens, override, cache, cacheLine);
         }
 
         /** The same, with this prompt-cache lifetime. */
         public SessionOptions cached(ChatSettings.PromptCache lifetime) {
-            return new SessionOptions(tone, maxTokens, override, lifetime);
+            return new SessionOptions(tone, maxTokens, override, lifetime, cacheLine);
         }
+
+        /**
+         * The same, with the prompt it sends followed as one line by the cache clock - a
+         * conversation, a sub-agent run - so each call can say whether it read the cache, and why
+         * not (PromptCacheClock). Without one, the caller's role and subject are the line.
+         */
+        public SessionOptions line(String key) {
+            return new SessionOptions(tone, maxTokens, override, cache, key);
+        }
+    }
+
+    /** A conversation's prompt cache as it stands: warm until when, and how long each write or read keeps it. */
+    record PromptCacheState(java.time.Instant warmUntil, java.time.Duration lifetime) {}
+
+    /**
+     * The prompt cache of a line (a conversation, as SessionOptions.line named it) while it is still
+     * warm - what the composer's cache timer counts down. Empty once it expired or never cached.
+     */
+    default java.util.Optional<PromptCacheState> promptCache(String line) {
+        return java.util.Optional.empty();
     }
 
     /** One completion, using whichever model is configured for the caller's role. */

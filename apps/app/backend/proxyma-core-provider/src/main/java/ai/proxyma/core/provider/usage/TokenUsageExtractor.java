@@ -53,6 +53,14 @@ public final class TokenUsageExtractor {
 
         if (usage instanceof GoogleGenAiUsage googleUsage) {
             cacheRead = nz(googleUsage.getCachedContentTokenCount());
+            // Spring AI's completion count is candidatesTokenCount alone. Gemini states its THINKING
+            // apart (thoughtsTokenCount) and bills it at the output rate, so a call that thought was
+            // priced without it until 2026-10-22. The prompt a tool's result added
+            // (toolUsePromptTokenCount) is outside promptTokenCount as well, and billed as input.
+            output += nz(googleUsage.getThoughtsTokenCount());
+            long toolPrompt = nz(googleUsage.getToolUsePromptTokenCount());
+            input += toolPrompt;
+            promptTokensTotal = input;
         } else {
             Object nativeUsage = usage.getNativeUsage();
             if (nativeUsage instanceof AnthropicApi.Usage anthropicUsage) {

@@ -126,13 +126,19 @@ export function SubmenuRow<K extends string>({
       setOpen(false)
     }
     const close = () => setOpen(false)
+    // A scroll inside a floating panel - this submenu or the menu it hangs from - moves nothing it
+    // is anchored to, so only a scroll elsewhere closes it (as the kit's Popover does).
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Element && e.target.closest('[data-floating-panel]')) return
+      setOpen(false)
+    }
     document.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('resize', close)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [open])
 
@@ -178,6 +184,7 @@ export function SubmenuRow<K extends string>({
           ref={submenuRef}
           role="menu"
           aria-label={title}
+          data-floating-panel=""
           {...exitingProps(exiting)}
           onPointerDown={e => e.stopPropagation()}
           onMouseDown={e => e.stopPropagation()}

@@ -10,6 +10,7 @@ import { AuditLogsPage } from './AuditLogsPage'
 import { AuditLogsLink } from './AuditLogsLink.desktop'
 import { FeedbackSection } from './FeedbackSection.desktop'
 import { SourceCodeSection } from './SourceCodeSection.desktop'
+import { SponsorSection } from './SponsorSection.desktop'
 
 // Proxyma DESKTOP settings.
 //
@@ -138,4 +139,6 @@ export const edition: SettingsEdition = {
   FeedbackSection,
   // AGPL-3.0-only: the source offer and the license.
   SourceCodeSection,
+  // Community is free: the one way to support it.
+  SponsorSection,
 }

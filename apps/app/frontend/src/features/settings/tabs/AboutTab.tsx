@@ -117,6 +117,10 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
           it describes; nothing on Enterprise Server. See SourceCodeSection.desktop.tsx. */}
       <edition.SourceCodeSection />
 
+      {/* Community's sponsor link, beside its source; nothing on Enterprise Server. See
+          SponsorSection.desktop.tsx. */}
+      <edition.SponsorSection />
+
       {/* The guides a new user asks for first, which used to be chips under the empty chat. */}
       <GuidesSection />
 

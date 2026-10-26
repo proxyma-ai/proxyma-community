@@ -12,7 +12,7 @@
 
     <groupId>ai.proxyma</groupId>
     <artifactId>proxyma-parent</artifactId>
-    <version>0.37.1</version>
+    <version>0.38.0</version>
     <packaging>pom</packaging>
     <name>proxyma-parent</name>
     <description>PROXYMA Multi-module Maven parent</description>

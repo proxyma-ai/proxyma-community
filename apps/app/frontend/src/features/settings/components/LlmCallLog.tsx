@@ -10,9 +10,10 @@ import {
   BarList, Button, Caption, cn, EmptyState, ColumnChart, ConfirmDialog, FieldLabel, FilterBar, HScroll,
   InlineNotice, LIST_PAGE_SIZE, List, ListRow, MetaList, Presence, Readout, SearchInput,
   SectionHeading, Select, Skeleton, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH,
-  TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, TR, usePagedList, usePageFor,
+  TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
   type SortState,
 } from '@/components/ui/kit'
+import { cacheOutcome, cacheVerdict, costOrigin, isAvoidableMiss, noCache } from '../utils/callCost'
 import { ListPager } from '@/components/ui/ListPager'
 import { useTranslation } from '@/i18n'
 import { withReason } from '@/services/apiError'
@@ -36,8 +37,8 @@ import { useDates } from '@/hooks/useDates'
  * <p>Restructured 2026-09-24 at the maintainer's request. The breakdowns used to be the FILTER for
  * the table below them; they are a summary now, beside a cost-over-time chart, and the one period
  * dropdown governs the chart, the breakdowns and the log alike. The log is its own "Logs" section
- * and shows cache writes and reads, and a warning on every call whose model has no rate - that
- * call's $0 is a missing rate, not a free call.
+ * and shows cache writes and reads, and a warning on every call nothing priced (no reported cost, no
+ * rate, no list price) - that call's $0 is a missing price, not a free call.
  *
  * <p>Rendered as a FRAGMENT of two sections, so the page's SettingsSections (Logs, on Settings and on
  * Administration) rules them off like any two of its own sections.
@@ -315,13 +316,9 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
                   )}
                   <td data-label={t('In')} className={cn(TD_COMPACT, 'text-right data-readout text-ink-secondary')}>{formatCompactCount(row.inputTokens)}</td>
                   <td data-label={t('Out')} className={cn(TD_COMPACT, 'text-right data-readout text-ink-secondary')}>{formatCompactCount(row.outputTokens)}</td>
-                  <td data-label={t('Cache write')} className={cn(TD_COMPACT, 'text-right data-readout text-ink-secondary')}>{formatCompactCount(row.cacheWriteTokens)}</td>
-                  <td data-label={t('Cache hit')} className={cn(TD_COMPACT, 'text-right data-readout text-ink-secondary')}>{formatCompactCount(row.cacheReadTokens)}</td>
+                  <CacheCells row={row} />
                   <td data-label={t('Cost')} className={cn(TD_COMPACT, 'text-right data-readout text-ink-primary whitespace-nowrap')}>
-                    <span className="inline-flex items-center justify-end gap-1.5">
-                      {!row.priced && <UnpricedMark />}
-                      {formatUsd(row.costUsd)}
-                    </span>
+                    <CostFigure row={row} />
                   </td>
                 </tr>
               ))}
@@ -482,16 +479,17 @@ export function useLogQuery(filters: LogFilters): Pick<LlmCallsQuery, 'service' 
   }
 }
 
-// Said once, above the figures, in both editions. Every cost here is the configured per-model rate
-// multiplied by token counts Proxyma measured itself - an estimate of what a provider will charge,
-// not a reading of what it did. Presented without saying so, it invites reconciling against an
-// invoice and concluding the product is wrong, when the two were never the same measurement.
+// Said once, above the figures, in both editions. A cost here is the one the provider's response
+// stated where it states one (OpenRouter, LiteLLM), else the configured per-model rate - or the
+// built-in list price - multiplied by the counted tokens: an estimate of what a provider will
+// charge, not a reading of its invoice. Presented without saying so, it invites reconciling against
+// an invoice and concluding the product is wrong, when the two were never the same measurement.
 export function CostEstimateNote() {
   const { t } = useTranslation()
   return (
     <Caption className="max-w-2xl">
       <span className="font-semibold text-ink-secondary">{t('These costs are estimates.')}</span>{' '}
-      {t('Calculated from configured rates and counted tokens, not from provider billing. Check the provider dashboard for actual charges.')}
+      {t('Calculated from counted tokens and the configured rates or list prices, unless the provider reported the cost itself - not from provider billing. Check the provider dashboard for actual charges.')}
     </Caption>
   )
 }
@@ -508,7 +506,90 @@ export function readerZone(): string | undefined {
 
 export function UnpricedMark() {
   const { t } = useTranslation()
-  return <StatusMark state="warning" size={14} label={t('No rate set for this model, so it counts as $0.')} />
+  return <StatusMark state="warning" size={14} label={t('No rate or list price for this model, so it counts as $0.')} />
+}
+
+/**
+ * A call's two cache cells: what it wrote, with how long that lives under the count (five minutes,
+ * an hour, or some of each - nothing for a row recorded before the hour was), and what it read
+ * back. A call that did neither has both in disabled ink, so "no cache" reads at a glance.
+ */
+function CacheCells({ row }: { row: LlmCallRow }) {
+  const { t } = useTranslation()
+  const dates = useDates()
+  const outcome = cacheOutcome(row)
+  // Under the hit count: until when a hit keeps the cache warm, or why the call missed it.
+  const verdict = cacheVerdict(row.cacheOutcome)
+  const why = verdict === null ? null : {
+    HIT: row.cacheWarmUntil
+      ? { label: t('Warm until {time}', { time: dates.time(row.cacheWarmUntil) }), detail: t('The cache this call read stays until then unless something reads it again.') }
+      : null,
+    FIRST: { label: t('First write'), detail: t('Nothing was cached for this conversation yet.') },
+    EXPIRED: { label: t('Expired'), detail: t('The cache had run out before this call, so it was written again.') },
+    CHANGED_TOOLS: { label: t('Tools changed'), detail: t('The tools offered differed from the call before, so the cached prompt could not be reused.') },
+    CHANGED_SYSTEM: { label: t('System prompt changed'), detail: t('The system prompt differed from the call before, so the cached prompt could not be reused.') },
+    CHANGED_MESSAGES: { label: t('History changed'), detail: t('The conversation no longer started with the messages of the call before - condensed or edited - so the cached prompt could not be reused.') },
+    NOT_KEPT: { label: t('Not kept'), detail: t('The same prompt, within its cache lifetime, and the provider read nothing back: it did not keep what it wrote.') },
+  }[verdict]
+  const ink = noCache(outcome) ? 'text-ink-disabled' : 'text-ink-secondary'
+  const lifetime = {
+    short: t('5 minutes'),
+    long: t('1 hour'),
+    mixed: t('5 minutes and 1 hour'),
+    none: null,
+    unknown: null,
+  }[outcome.write]
+  return (
+    <>
+      <td data-label={t('Cache write')} className={cn(TD_COMPACT, 'text-right data-readout', ink)}>
+        {/* ONE child: the stacked phone row lays a labelled cell out as label and value. */}
+        <span className="inline-flex flex-col items-end">
+          <span>{formatCompactCount(row.cacheWriteTokens)}</span>
+          {lifetime && <span className="text-ink-caption whitespace-nowrap">{lifetime}</span>}
+        </span>
+      </td>
+      <td data-label={t('Cache hit')} className={cn(TD_COMPACT, 'text-right data-readout', ink)}>
+        <span className="inline-flex flex-col items-end">
+          <span>{formatCompactCount(row.cacheReadTokens)}</span>
+          {why && (
+            <Tooltip label={why.detail}>
+              <span className={cn('whitespace-nowrap', isAvoidableMiss(verdict) ? 'text-warning' : 'text-ink-caption')}>
+                {why.label}
+              </span>
+            </Tooltip>
+          )}
+        </span>
+      </td>
+    </>
+  )
+}
+
+/**
+ * The cost, and under it where it came from when that is not the ordinary case: "Reported" (the
+ * provider's response stated it, used as it is) or "List price" (no rate entered, so the built-in
+ * list price). A rate entered in Settings says nothing extra; nothing at all is the warning mark.
+ */
+function CostFigure({ row }: { row: LlmCallRow }) {
+  const { t } = useTranslation()
+  const origin = costOrigin(row)
+  const source = origin === 'reported'
+    ? { label: t('Reported'), detail: t('The provider stated this cost in its response.') }
+    : origin === 'list'
+      ? { label: t('List price'), detail: t('No rate is set for this model, so its list price was used.') }
+      : null
+  return (
+    <span className="inline-flex flex-col items-end">
+      <span className="inline-flex items-center justify-end gap-1.5">
+        {origin === 'unpriced' && <UnpricedMark />}
+        {formatUsd(row.costUsd)}
+      </span>
+      {source && (
+        <Tooltip label={source.detail}>
+          <span className="text-ink-caption">{source.label}</span>
+        </Tooltip>
+      )}
+    </span>
+  )
 }
 
 // Cost per day (per month over a year) as the kit's ColumnChart. One series, so no legend: the

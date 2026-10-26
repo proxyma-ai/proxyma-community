@@ -216,7 +216,10 @@ public class ConfigTransferService {
         for (ModelPricing p : modelPricingService.listAll()) {
             out.add(new ConfigExport.ModelPrice(p.getProvider(), p.getModel(), p.getInputPricePerMillion(),
                     p.getOutputPricePerMillion(), p.getCacheReadPricePerMillion(),
-                    p.getCacheWritePricePerMillion()));
+                    p.getCacheWritePricePerMillion(), p.getCacheWriteLongPricePerMillion(),
+                    p.getLongContextThresholdTokens(), p.getLongInputPricePerMillion(),
+                    p.getLongOutputPricePerMillion(), p.getLongCacheReadPricePerMillion(),
+                    p.getLongCacheWritePricePerMillion(), p.getPricingSchedule()));
         }
         return out;
     }
@@ -777,7 +780,14 @@ public class ConfigTransferService {
             if (current != null && current.getInputPricePerMillion() == p.input()
                     && current.getOutputPricePerMillion() == p.output()
                     && current.getCacheReadPricePerMillion() == p.cacheRead()
-                    && current.getCacheWritePricePerMillion() == p.cacheWrite()) {
+                    && current.getCacheWritePricePerMillion() == p.cacheWrite()
+                    && Objects.equals(current.getCacheWriteLongPricePerMillion(), p.cacheWriteLong())
+                    && Objects.equals(current.getLongContextThresholdTokens(), p.longContextThresholdTokens())
+                    && Objects.equals(current.getLongInputPricePerMillion(), p.longInput())
+                    && Objects.equals(current.getLongOutputPricePerMillion(), p.longOutput())
+                    && Objects.equals(current.getLongCacheReadPricePerMillion(), p.longCacheRead())
+                    && Objects.equals(current.getLongCacheWritePricePerMillion(), p.longCacheWrite())
+                    && Objects.equals(current.getPricingSchedule(), p.schedule())) {
                 report.add(SECTION_PRICING, TransferGroups.USAGE, item, ConfigImportReport.Outcome.UNCHANGED, null);
                 continue;
             }
@@ -786,7 +796,9 @@ public class ConfigTransferService {
                 // into a second row that differs only by the case of its provider's name.
                 String provider = current != null ? current.getProvider() : p.provider();
                 String model = current != null ? current.getModel() : p.model();
-                modelPricingService.create(provider, model, p.input(), p.output(), p.cacheRead(), p.cacheWrite());
+                modelPricingService.save(provider, model, new ModelPricingService.RateInput(p.input(), p.output(),
+                        p.cacheRead(), p.cacheWrite(), p.cacheWriteLong(), p.longContextThresholdTokens(),
+                        p.longInput(), p.longOutput(), p.longCacheRead(), p.longCacheWrite(), p.schedule()));
             }
             report.add(SECTION_PRICING, TransferGroups.USAGE, item,
                     current == null ? ConfigImportReport.Outcome.CREATED : ConfigImportReport.Outcome.UPDATED, null);

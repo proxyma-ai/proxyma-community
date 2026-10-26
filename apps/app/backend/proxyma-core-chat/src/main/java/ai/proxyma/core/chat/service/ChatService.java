@@ -336,6 +336,42 @@ public class ChatService implements AgentHost {
                 .map(ChatSkillService.InjectableSkill::name).toList());
     }
 
+    /**
+     * An MCP server picked from the composer's + menu: its skill ("MCP: name", McpServerToolSource)
+     * loaded as a model's readSkill loads it - the server's own instructions and tools into the
+     * history, once - and its tools unlocked, so the message it was picked for can use them. A name
+     * no external source owns is left to applyPickedSkills, and one this person may not use is
+     * dropped without a word (readSkill answers nothing), as a stale skill chip is. A server that
+     * cannot be reached does not fail the turn: its tools are simply not there yet.
+     */
+    void applyPickedMcpServers(String conversationId, List<String> names, String userId) {
+        if (externalTools == null || names == null || names.isEmpty()) return;
+        Set<String> unlocked = unlockedSkillNames(conversationId);
+        List<String> picked = new ArrayList<>();
+        List<Message> injected = new ArrayList<>();
+        for (String name : names) {
+            if (name == null || !externalTools.owns(name)) continue;
+            boolean already = unlocked.stream().anyMatch(n -> n.equalsIgnoreCase(name));
+            if (already) {
+                injected.addAll(SmartChatMemory.skillReminderMessages(name));
+                picked.add(name);
+                continue;
+            }
+            try {
+                externalTools.readSkill(name, userId).ifPresent(body -> {
+                    injected.addAll(SmartChatMemory.skillBodyMessages(name, body));
+                    picked.add(name);
+                });
+            } catch (RuntimeException e) {
+                log.warn("[Chat] picked MCP server '{}' could not be read: {}", name, e.getMessage());
+            }
+        }
+        if (picked.isEmpty()) return;
+        chatMemory.add(conversationId, injected);
+        unlockSkillTools(conversationId, picked);
+        log.info("[Chat] loaded MCP server skill(s) {} into conversationId={}", picked, conversationId);
+    }
+
     // Unlocks a picked skill's tools directly, rather than waiting for the model to call readSkill
     // for a skill the user has already chosen. Without this a picked connector skill would leave
     // its tools invisible for the whole conversation: ToolSkillGating advertises them only for a
@@ -820,6 +856,7 @@ public class ChatService implements AgentHost {
             // in the prompt. Ordered before the user turn is built so the instructions precede the
             // message they were picked for.
             applyPickedSkills(conversationId, requestedSkillIds, userId);
+            applyPickedMcpServers(conversationId, plainSkillMentions, userId);
 
             // A workflow may declare the provider and model its steps run on (WorkflowService's
             // `provider:`/`model:` frontmatter). Applied HERE, before the options and the ChatModel
@@ -864,9 +901,11 @@ public class ChatService implements AgentHost {
                     subAgentService.hasRunning(conversationId) || subAgentService.hasUndelivered(conversationId),
                     previousTurn == null ? null : Duration.between(previousTurn, Instant.now()));
             LlmGateway.SessionOptions tunedOptions = LlmGateway.SessionOptions.tuned(tone, maxOutputTokens);
-            LlmGateway.SessionOptions sessionOptions = ownModel
+            // The conversation is the prompt-cache clock's line: each call says whether it read the
+            // cache the last one left, and why not (PromptCacheClock).
+            LlmGateway.SessionOptions sessionOptions = (ownModel
                     ? tunedOptions.on(new LlmGateway.ModelOverride(provider, model))
-                    : tunedOptions;
+                    : tunedOptions).line(conversationId);
             LlmCaller chatCaller = LlmCaller.forUser(LlmRole.CHAT, userId);
             LlmSession session = llmGateway.open(chatCaller, sessionOptions.cached(turnCache));
             // How this turn steps up to an hour, when Auto chose five minutes and a background
@@ -2456,6 +2495,19 @@ public class ChatService implements AgentHost {
     // multi-iteration turn instead of jumping once at the very end when 'done' fires.
     // Body extracted to ConversationUsageRecorder so SubAgentService accumulates delegated spend
     // onto the same conversation counters through the identical path - see that class's javadoc.
+    /**
+     * The MCP servers this person may give a message - their skills ("MCP: name") as the system
+     * prompt lists them, for the composer's + menu. Never reaches a server.
+     */
+    public List<ExternalToolSource.ExternalSkill> mcpServerSkills(String userId) {
+        return externalTools == null ? List.of() : externalTools.skillsFor(userId);
+    }
+
+    /** The conversation's prompt cache while it is warm - the composer's cache timer. */
+    public java.util.Optional<LlmGateway.PromptCacheState> promptCache(String conversationId) {
+        return llmGateway.promptCache(conversationId);
+    }
+
     private void publishUsageUpdate(String conversationId, TokenUsage iterationUsage, String provider, String model) {
         usageRecorder.record(conversationId, iterationUsage, provider, model);
     }
@@ -3168,9 +3220,9 @@ public class ChatService implements AgentHost {
     static final String ANSWER_UNREADABLE =
             "The user's answer could not be read, so nothing was written. Ask the user whether to try again.";
 
-    static final String READ_ONLY_REFUSAL = "{\"success\":false,\"error\":\"The user has set this chat to Read-only, "
+    static final String READ_ONLY_REFUSAL = "{\"success\":false,\"error\":\"The user has set this chat to Navigator, "
             + "so nothing can be created, changed or deleted. Say what you would have done, and that switching "
-            + "the permission beside the model to Ask or Auto lets you do it.\"}";
+            + "the mode beside the model to Co-pilot or Autopilot lets you do it.\"}";
 
     /**
      * Records who started this conversation's turn - see turnOwners - and where the conversation is

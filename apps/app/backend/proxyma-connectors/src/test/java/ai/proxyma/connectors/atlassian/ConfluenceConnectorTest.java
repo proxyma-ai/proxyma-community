@@ -247,7 +247,12 @@ class ConfluenceConnectorTest {
     @DisplayName("Cloud")
     class Cloud {
 
+        private void signedIn() {
+            api.on("GET", "/wiki/rest/api/user/current").json("{'type':'known','accountId':'a1','displayName':'Ana Lima'}");
+        }
+
         private void space() {
+            signedIn();
             api.on("GET", "/wiki/api/v2/spaces").query("keys", "OPS").json("{'results':[{'id':'77','key':'OPS','name':'Operations'}]}");
         }
 
@@ -276,6 +281,7 @@ class ConfluenceConnectorTest {
         @Test
         @DisplayName("an incremental pass searches with CQL on v1's search, and a comment stands for its page")
         void incremental() {
+            signedIn();
             api.on("GET", "/wiki/rest/api/search").rawJson("""
                     {"results":[
                       {"content":{"id":"10","type":"page","title":"Runbook","version":{"when":"2026-10-10T09:00:00.000Z"},
@@ -342,10 +348,40 @@ class ConfluenceConnectorTest {
         @Test
         @DisplayName("a space key the site does not have is refused at registration, as a missing space")
         void missingSpace() {
+            signedIn();
             api.on("GET", "/wiki/api/v2/spaces").json("{'results':[]}");
             try (ConnectorSession s = session(cloud())) {
                 assertThat(s.verifyAccess().detail()).isEqualTo("Space OPS was not found on " + api.baseUrl()
                         + " - check the space key, and that your Confluence account can open it.");
+            }
+        }
+
+        @Test
+        @DisplayName("a token Confluence Cloud answers as the anonymous user is refused at registration and on every pass")
+        void anonymousAnswerIsRefused() {
+            // Cloud answers a wrong, expired or revoked API token as nobody: a space anonymous visitors
+            // may open registered with any token, a private one read as "not found", and an
+            // incremental pass found nothing changed for ever (telemetry aced67d0, on Jira).
+            String refused = "Confluence at " + api.baseUrl() + " rejected the email address and API token - check "
+                    + "it in Settings > Connections > Confluence, and that it has not expired.";
+            api.on("GET", "/wiki/rest/api/user/current").json("{'type':'anonymous','displayName':'Anonymous'}");
+            api.on("GET", "/wiki/api/v2/spaces").query("keys", "OPS").json("{'results':[{'id':'77','key':'OPS','name':'Operations'}]}");
+            api.on("GET", "/wiki/rest/api/search").json("{'results':[],'_links':{}}");
+            try (ConnectorSession s = session(cloud())) {
+                assertThat(s.verifyAccess().detail()).isEqualTo(refused);
+                Listing full = s.list(ListRequest.full());
+                assertThat(drain(full)).isEmpty();
+                assertThat(full.getErrorMessage()).isEqualTo(refused);
+                Listing changes = s.list(ListRequest.changes(Instant.parse("2026-10-09T00:00:00Z"), null));
+                assertThat(drain(changes)).isEmpty();
+                assertThat(changes.getErrorMessage()).isEqualTo(refused);
+            }
+            assertThat(api.requests("/wiki/rest/api/search")).isEmpty();
+
+            api.reset();
+            api.on("GET", "/wiki/rest/api/user/current").status(401).json("{}");
+            try (ConnectorSession s = session(cloud())) {
+                assertThat(s.verifyAccess().detail()).isEqualTo(refused);
             }
         }
 

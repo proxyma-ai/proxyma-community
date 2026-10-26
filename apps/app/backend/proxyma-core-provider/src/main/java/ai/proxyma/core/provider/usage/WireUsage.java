@@ -1,5 +1,6 @@
 package ai.proxyma.core.provider.usage;
 
+import ai.proxyma.core.common.usage.CallFacts;
 import ai.proxyma.core.common.usage.TokenUsage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -70,18 +72,26 @@ public final class WireUsage {
 
     /** The response shapes a usage is read from. */
     public enum Shape {
-        ANTHROPIC(WireUsage::anthropicUsageNode, WireUsage::fromAnthropic),
+        ANTHROPIC(WireUsage::anthropicUsageNode, WireUsage::fromAnthropic, WireUsage::anthropicFacts),
         /** OpenAI's: cached tokens counted inside prompt_tokens. */
-        OPENAI(root -> root.path("usage"), WireUsage::fromOpenAi),
+        OPENAI(root -> root.path("usage"), WireUsage::fromOpenAi, WireUsage::openAiFacts),
         /** LiteLLM's OpenAI route, which counts them outside it - see {@link #fromOpenAiCacheOutside}. */
-        OPENAI_CACHE_OUTSIDE(root -> root.path("usage"), WireUsage::fromOpenAiCacheOutside);
+        OPENAI_CACHE_OUTSIDE(root -> root.path("usage"), WireUsage::fromOpenAiCacheOutside, WireUsage::openAiFacts);
 
         private final Function<JsonNode, JsonNode> locate;
         private final Function<JsonNode, TokenUsage> read;
+        private final Function<JsonNode, Facts> facts;
 
-        Shape(Function<JsonNode, JsonNode> locate, Function<JsonNode, TokenUsage> read) {
+        Shape(Function<JsonNode, JsonNode> locate, Function<JsonNode, TokenUsage> read,
+              Function<JsonNode, Facts> facts) {
             this.locate = locate;
             this.read = read;
+            this.facts = facts;
+        }
+
+        /** What one JSON document says about the call beyond its counts. */
+        public Facts factsOf(JsonNode root) {
+            return root == null ? Facts.NONE : facts.apply(root);
         }
 
         /** The usage one JSON document - a whole body, or one event of a stream - states, or EMPTY. */
@@ -93,6 +103,36 @@ public final class WireUsage {
     }
 
     private final AtomicReference<TokenUsage> stated = new AtomicReference<>(TokenUsage.EMPTY);
+    private final AtomicReference<Facts> facts = new AtomicReference<>(Facts.NONE);
+
+    /**
+     * What a response said about its call beyond the counts - the money it says the call cost
+     * (OpenRouter's usage.cost, LiteLLM's usage.cost or x-litellm-response-cost), the tier that
+     * served it, Anthropic's region and its server-side web searches. Folded across a stream: a
+     * value stated later replaces an earlier one, searches keep their largest count.
+     */
+    public record Facts(Double costUsd, String serviceTier, String inferenceGeo, long webSearchRequests) {
+        public static final Facts NONE = new Facts(null, null, null, 0);
+
+        Facts merge(Facts later) {
+            if (later == null || later.equals(NONE)) return this;
+            return new Facts(
+                    later.costUsd != null ? later.costUsd : costUsd,
+                    later.serviceTier != null ? later.serviceTier : serviceTier,
+                    later.inferenceGeo != null ? later.inferenceGeo : inferenceGeo,
+                    Math.max(webSearchRequests, later.webSearchRequests));
+        }
+    }
+
+    /** The facts read so far, as the pricing takes them. */
+    public CallFacts facts(String protocol, Instant at) {
+        Facts f = facts.get();
+        return new CallFacts(f.costUsd(), f.serviceTier(), f.inferenceGeo(), f.webSearchRequests(), protocol, at);
+    }
+
+    void absorbFacts(Facts more) {
+        if (more != null && !more.equals(Facts.NONE)) facts.updateAndGet(f -> f.merge(more));
+    }
 
     /** What the responses read so far stated, folded by maximum; EMPTY when nothing was read. */
     public TokenUsage stated() {
@@ -133,6 +173,15 @@ public final class WireUsage {
         TokenUsage own = TokenUsageExtractor.extract(chunk);
         TokenUsage merged = own.maxWith(wire);
         if (merged.equals(own)) return chunk;
+        return withUsage(chunk, merged);
+    }
+
+    /**
+     * The chunk with its usage replaced by {@code merged}, carried as a TokenUsage that
+     * TokenUsageExtractor hands back as it is. Everything else in the chunk is kept.
+     */
+    public static ChatResponse withUsage(ChatResponse chunk, TokenUsage merged) {
+        if (chunk == null) return null;
         ChatResponseMetadata md = chunk.getMetadata() != null ? chunk.getMetadata() : new ChatResponseMetadata();
         ChatResponseMetadata.Builder builder = ChatResponseMetadata.builder()
                 .id(md.getId())
@@ -208,6 +257,55 @@ public final class WireUsage {
         return new TokenUsage(prompt, completion, read, write, promptTotal, longWrites, stated);
     }
 
+    // Anthropic-shaped: in the same usage record as the counts. A LiteLLM gateway that was told to
+    // (include_cost_in_streaming_usage) adds its cost there too, in message_delta.
+    static Facts anthropicFacts(JsonNode root) {
+        JsonNode usage = anthropicUsageNode(root);
+        if (!usage.isObject()) return Facts.NONE;
+        return new Facts(money(usage.path("cost")), text(usage, "service_tier"), text(usage, "inference_geo"),
+                count(usage.path("server_tool_use"), "web_search_requests"));
+    }
+
+    /**
+     * OpenAI-shaped: the tier at the top of the response, a cost inside usage. OpenRouter states
+     * usage.cost on every call (in a stream's last chunk); with your own provider key ("BYOK") that
+     * is only OpenRouter's fee, and the provider's own charge is cost_details.upstream_inference_cost
+     * - so the call cost both. LiteLLM states usage.cost in a stream's last chunk when told to.
+     */
+    static Facts openAiFacts(JsonNode root) {
+        JsonNode usage = root.path("usage");
+        Double cost = usage.isObject() ? money(usage.path("cost")) : null;
+        if (cost != null && usage.path("is_byok").asBoolean(false)) {
+            Double upstream = money(usage.path("cost_details").path("upstream_inference_cost"));
+            if (upstream != null) cost += upstream;
+        }
+        return new Facts(cost, text(root, "service_tier"), null, 0);
+    }
+
+    private static Double money(JsonNode value) {
+        if (value.isNumber()) {
+            double v = value.asDouble();
+            return Double.isFinite(v) && v >= 0 ? v : null;
+        }
+        if (value.isTextual()) return money(value.asText());
+        return null;
+    }
+
+    static Double money(String text) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            double v = Double.parseDouble(text.trim());
+            return Double.isFinite(v) && v >= 0 ? v : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String text(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isTextual() && !value.asText().isBlank() ? value.asText() : null;
+    }
+
     private static long count(JsonNode node, String field) {
         JsonNode value = node.path(field);
         return value.isNumber() ? Math.max(0, value.asLong()) : 0;
@@ -237,6 +335,7 @@ public final class WireUsage {
                 .decode(body, ResolvableType.forClass(String.class), null, null)
                 .map(line -> {
                     tap.absorb(usageOfEvent(line, shape));
+                    tap.absorbFacts(factsOfEvent(line, shape));
                     return buffers.wrap((line + "\n").getBytes(StandardCharsets.UTF_8));
                 });
     }
@@ -250,6 +349,22 @@ public final class WireUsage {
             return TokenUsage.EMPTY;
         }
     }
+
+    /** What one line of an event stream says about the call; NONE for anything else. */
+    static Facts factsOfEvent(String line, Shape shape) {
+        if (line == null || !line.startsWith(DATA)
+                || !(line.contains("\"usage\"") || line.contains("\"service_tier\""))) {
+            return Facts.NONE;
+        }
+        try {
+            return shape.factsOf(JSON.readTree(line.substring(DATA.length())));
+        } catch (Exception notJson) {
+            return Facts.NONE;
+        }
+    }
+
+    /** LiteLLM's header with the cost of a whole (not streamed) call. */
+    static final String LITELLM_COST_HEADER = "x-litellm-response-cost";
 
     /**
      * For a RestClient: reads the usage of a whole JSON response into the tap open on this thread.
@@ -270,7 +385,11 @@ public final class WireUsage {
                 bytes = in.readAllBytes();
             }
             try {
-                tap.absorb(shape.usageOf(JSON.readTree(bytes)));
+                JsonNode root = JSON.readTree(bytes);
+                tap.absorb(shape.usageOf(root));
+                tap.absorbFacts(shape.factsOf(root));
+                Double headerCost = money(response.getHeaders().getFirst(LITELLM_COST_HEADER));
+                if (headerCost != null) tap.absorbFacts(new Facts(headerCost, null, null, 0));
             } catch (Exception notJson) {
                 // Spring AI will say what is wrong with it.
             }

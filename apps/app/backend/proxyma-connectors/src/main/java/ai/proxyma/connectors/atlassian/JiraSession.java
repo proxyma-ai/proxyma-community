@@ -68,6 +68,7 @@ final class JiraSession implements ConnectorSession {
     private final Set<String> skipCustomFields;
     private String base;
     private ApiClient api;
+    private boolean signedIn;
 
     JiraSession(SourceContext context, String skipCustomFields) {
         this.context = context;
@@ -105,18 +106,58 @@ final class JiraSession implements ConnectorSession {
      * One cheap authenticated read of the PROJECT - its issue search, capped at a single issue. A
      * server-level call would pass for a key that does not exist or that this token cannot see,
      * which is the mistake registration most needs to catch.
+     *
+     * <p>On Cloud the search alone proves nothing: Jira Cloud answers a request it could not sign in -
+     * a wrong, expired or revoked API token - as an ANONYMOUS one, and an anonymous search is a 200
+     * with no issues. Such a source was registered and then listed nothing on every sync, with no
+     * error anywhere (telemetry aced67d0). So Cloud also asks who the credential is, and an empty
+     * search asks for the project itself, which Jira answers 404 when the account cannot see it.
      */
     @Override
     public AccessCheck verifyAccess() {
         if (projectKey.isEmpty()) return AccessCheck.failed("No Jira project key was given.");
         try {
-            searchPage("project = \"" + projectKey + "\"", null, 0, 1);
+            JsonNode probe = searchPage("project = \"" + projectKey + "\"", null, 0, 1);
+            if (cloud) {
+                requireSignedIn();
+                if (Paginator.elements(probe.path("issues")).isEmpty()) {
+                    api().getJson(apiPath(connection) + "/project/" + ApiClient.segment(projectKey));
+                }
+            }
             return AccessCheck.verified();
         } catch (ConnectorHttpException e) {
-            return AccessCheck.failed(e.getMessage());
+            return AccessCheck.failed(described(e).getMessage());
         } catch (ConnectorAuthException e) {
             return AccessCheck.failed(e.getMessage());
         }
+    }
+
+    /**
+     * Cloud only: that Jira signed the credential in as an ACCOUNT. A wrong, expired or revoked API
+     * token is not a 401 on a search - Cloud answers it as an anonymous visitor, who sees no issues -
+     * so without this a source lists nothing on every pass and says nothing. Asked once a session.
+     */
+    private void requireSignedIn() {
+        if (signedIn) return;
+        JsonNode me;
+        try {
+            me = api().getJson(apiPath(connection) + "/myself");
+        } catch (ConnectorHttpException e) {
+            throw described(e);
+        }
+        if (me.path("accountId").asText("").isBlank()) {
+            throw new ConnectorHttpException(refusedCredential(), 401, apiPath(connection) + "/myself");
+        }
+        signedIn = true;
+    }
+
+    // The sentence for a credential Jira did not accept - a 401, or a Cloud request answered as nobody.
+    private String refusedCredential() {
+        return cloud
+                ? "Jira at " + base + " did not accept the email address and API token - the token may be "
+                        + "wrong, expired or revoked. Check it in Settings > Connections > Jira."
+                : "Jira at " + base + " did not accept the access token - it may be wrong, expired or"
+                        + " revoked. Check it in Settings > Connections > Jira.";
     }
 
     /**
@@ -126,11 +167,7 @@ final class JiraSession implements ConnectorSession {
      */
     private ConnectorHttpException described(ConnectorHttpException e) {
         String message = switch (e.status()) {
-            case 401 -> cloud
-                    ? "Jira at " + base + " did not accept the email address and API token - the token may be "
-                            + "wrong, expired or revoked. Check it in Settings > Connections > Jira."
-                    : "Jira at " + base + " did not accept the access token - it may be wrong, expired or"
-                            + " revoked. Check it in Settings > Connections > Jira.";
+            case 401 -> refusedCredential();
             case 403 -> "Jira accepted the access token, but its account has no permission to browse project "
                     + projectKey + " - ask a Jira administrator to grant it access.";
             // JQL naming a project the account cannot see is a 400 ("does not exist for the field").
@@ -147,6 +184,7 @@ final class JiraSession implements ConnectorSession {
     public Listing list(ListRequest request) {
         if (projectKey.isEmpty()) return Listings.failed("This Jira source has no project key.");
         Supplier<Iterator<ItemMetadata>> issues = () -> {
+            if (cloud) requireSignedIn();
             String jql;
             if (request.isFull() || request.since() == null) {
                 // BY KEY, which an edit cannot move. A listing paged by offset and ordered by update

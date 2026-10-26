@@ -423,9 +423,18 @@ public class LlmCallsController {
         m.put("cacheReadTokens", c.getCacheReadTokens());
         m.put("cacheWriteTokens", c.getCacheWriteTokens());
         m.put("costUsd", c.getCostUsd());
+        // REPORTED (the provider's own figure), RATE, LIST (the built-in list price) or NONE; null
+        // on a row written before the source was kept.
+        m.put("costSource", c.getCostSource());
+        m.put("longCacheWriteTokens", c.getLongCacheWriteTokens());
+        // HIT, FIRST, EXPIRED, CHANGED_TOOLS / CHANGED_SYSTEM / CHANGED_MESSAGES (the prompt no longer
+        // started with the one before), NOT_KEPT (same prompt, within its lifetime, nothing read);
+        // null for no cache activity or an older row.
+        m.put("cacheOutcome", c.getCacheOutcome());
+        m.put("cacheWarmUntil", c.getCacheWarmUntil() == null ? null : c.getCacheWarmUntil().toString());
         // Whether the model has a rate at all. A costUsd of 0 means either "priced at zero" or
         // "never priced", and only the second is something the reader can fix.
-        m.put("priced", priced);
+        m.put("priced", priced || "REPORTED".equals(c.getCostSource()) || "LIST".equals(c.getCostSource()));
         return m;
     }
 

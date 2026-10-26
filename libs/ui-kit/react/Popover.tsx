@@ -95,6 +95,10 @@ export function Popover({
     const openedAt = performance.now()
     const onScroll = (e: Event) => {
       if (panelRef.current?.contains(e.target as Node)) return
+      // A scroll inside ANOTHER floating panel moves nothing this one is anchored to - a submenu
+      // opened from this menu (the composer's skills list, portaled beside it) scrolled its list,
+      // and this menu took it for the page moving away and closed, taking the submenu with it.
+      if (e.target instanceof Element && e.target.closest('[data-floating-panel]')) return
       if (!closeOnScroll || performance.now() - openedAt < 300) { measure(); return }
       setOpen(false)
     }
@@ -125,6 +129,7 @@ export function Popover({
         <div
           ref={panelRef}
           role={role}
+          data-floating-panel=""
           aria-label={ariaLabel}
           {...exitingProps(exiting)}
           // Which way it opened, so it grows out of (and shrinks back into) its anchor's side.

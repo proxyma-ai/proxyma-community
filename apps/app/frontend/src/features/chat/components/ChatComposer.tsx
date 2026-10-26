@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Clock, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Workflow,
+  Brain, Clock, Database, FolderPlus, Globe, Plug, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Timer, Upload, Workflow,
   type LucideProps,
 } from 'lucide-react'
 import { AgentsGraphDialog } from './AgentsGraphDialog'
@@ -15,11 +15,21 @@ import { runningAgents } from '../utils/subAgent'
 import { compactTokens } from '../utils/agentsGraph'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { formatSessionReset } from '../utils/formatSessionReset'
+import { RememberDialog } from './RememberDialog'
+import { chatApi } from '../services/chatApi'
+import { indexingApi } from '@/features/indexing/services/indexingApi'
+import { SourceTypeMark } from '@/features/indexing/utils/sourceMarks'
+import { ConnectorConfigModal } from '@/features/indexing/components/ConnectorConfigModal'
+import { FileUploadModal } from '@/features/indexing/components/FileUploadModal'
+import { LocalFolderModal } from '@/features/indexing/components/LocalFolderModal'
+import { useFileUpload } from '@/hooks/useFileUpload'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { cacheDeadline, cacheLifetime, countdownText, nearlyCold, secondsUntil } from '../utils/cacheTimer'
 import type { ChatAttachment } from '../types/chat.types'
 import { useSettingsModalStore } from '@/store/settingsModalStore'
 import {
   Caption, Chip, ComposerShell, FadeSwap, IconButton, IconCountButton, InlineNotice, MenuEmpty, MenuGroup, MenuRow, Meter, MetaList,
-  Popover, Presence, ProgressBar, Readout, StateMark, Tooltip, UsageRing, cn, iconButton, useFilePicker, workingMotion,
+  Popover, Presence, ProgressBar, Readout, StateMark, TEXT, Tooltip, UsageRing, cn, iconButton, useFilePicker, workingMotion,
 } from '@/components/ui/kit'
 import { skillsApi } from '@/features/settings/services/skillsApi'
 import { SkillModal } from '@/features/settings/components/SkillsTab'
@@ -99,49 +109,85 @@ function HistoryButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-// Popover replacing the old single-purpose "click to open file picker" Paperclip button.
-// "Attach files" behaves exactly as before; "Skills" is a row shaped just like it (icon + title)
-// but with a trailing chevron that opens a nested submenu on hover or click, listing every skill
-// visible to this user. Picking one inserts an inline "/SkillName " mention into the message text
-// (exactly like an "@mention" - see MentionRichInput's own "/" trigger, which does the same thing
-// when typed directly). Sending that message loads the skill into the conversation for good: its
-// full instructions are put into the conversation's history as a message at the point it was
-// picked, and stay in effect from there on (see ChatService.applyPickedSkills - the system prompt
-// itself only ever advertises names). Picking the same skill again later costs a one-line pointer
-// back to those instructions, not a second copy. Nothing in the input advertises the standing set,
-// and there is no unload: a loaded skill leaves only with the conversation. Always-on skills (see
-// Settings > Skills) are preloaded into every conversation the same way, without being picked.
+// The composer's + menu, which replaced the old single-purpose "click to open file picker" Paperclip
+// button. Since 2026-10-23 (the maintainer's request) it holds, in this order:
 //
-// Both the main menu and the Skills submenu are the kit's Popover - portaled to document.body and
-// placed against the viewport, rather than `absolute` inside this component's own DOM position:
-// the input pill sits at the very bottom of the page, so an `absolute`-positioned panel routinely
-// got clipped by the page's own scroll container. Their rows are the kit's MenuRow.
-function AttachMenu({ onAttachFiles, value, onChange, skillMentions, onSkillMentionsChange }: {
+//  - Attach files - as before.
+//  - Skills > - every skill visible to this user. Picking one inserts an inline "/SkillName " mention
+//    into the message text (exactly like typing "/" - see MentionRichInput). Sending that message
+//    loads the skill into the conversation for good: its full instructions go into the history at
+//    the point it was picked (ChatService.applyPickedSkills - the system prompt only advertises
+//    names), and picking it again later costs a one-line pointer back, not a second copy. Always-on
+//    skills (Settings > Skills) are preloaded into every conversation the same way.
+//  - Sources > - the sources this person can search, picked as an "@Source " mention, exactly like
+//    typing "@"; and, under them, adding a web page or files/a folder as a new source, through the
+//    same dialogs the Sources page opens. A new source is in this list the next time it opens.
+//  - MCP servers > - each server this person may use, picked as its skill ("MCP: name"), which
+//    ChatService loads as the agent's own readSkill would: the server's tools for this message on.
+//  - Remember something - a fact or preference straight into the agent's memory (RememberDialog).
+//
+// Every menu here is the kit's Popover - portaled to document.body and placed against the viewport:
+// the input pill sits at the very bottom of the page, and an `absolute` panel was routinely clipped
+// by the page's own scroll container. A submenu opens BESIDE its row (right-start, flipping left
+// where there is no room); only one is open at a time, and hovering any other row closes it.
+type Sub = 'skills' | 'sources' | 'mcp' | null
+
+function AttachMenu({
+  onAttachFiles, value, onChange, mentions, onMentionsChange, skillMentions, onSkillMentionsChange,
+}: {
   onAttachFiles: () => void
   value: string
   onChange: (v: string) => void
+  mentions: string[]
+  onMentionsChange: (mentions: string[]) => void
   skillMentions: string[]
   onSkillMentionsChange: (names: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [skillsSubOpen, setSkillsSubOpen] = useState(false)
-  const skillsRowRef = useRef<HTMLDivElement | null>(null)
+  const [sub, setSub] = useState<Sub>(null)
   const [creatingSkill, setCreatingSkill] = useState(false)
   const [creatingWorkflow, setCreatingWorkflow] = useState(false)
+  const [remembering, setRemembering] = useState(false)
+  const [adding, setAdding] = useState<'webpage' | 'files' | null>(null)
+  const canUpload = useFileUpload()
   const { t } = useTranslation()
+  // A visitor to Enterprise Server without an account has no sources, connections or memory of
+  // their own, and a request for them would send the page to the sign-in (.claude/rules/frontend.md)
+  // - so those three entries are a signed-in reader's.
+  const { user } = useAuth()
+  const signedIn = !FEATURES.auth || !!user
   const { data: skills = [] } = useQuery({ queryKey: keys.chatSkills(), queryFn: skillsApi.list, enabled: open })
+  // Asked again each time the menu opens (no staleTime), so a source added a moment ago is there.
+  // The first fifty: typing "@" searches them all.
+  const { data: sources = [] } = useQuery({
+    queryKey: keys.chatSourcePicks(),
+    queryFn: () => indexingApi.listByType('all', 0, undefined, 50, true).then(page => page.items),
+    enabled: open && signedIn,
+  })
+  const { data: mcpServers = [] } = useQuery({
+    queryKey: keys.chatMcpServers(), queryFn: chatApi.listMcpServers, enabled: open && signedIn,
+  })
 
-  const closeAll = () => { setOpen(false); setSkillsSubOpen(false) }
+  const closeAll = () => { setOpen(false); setSub(null) }
+
+  // Appended at the end of the message, not at the caret - this menu cannot reach into
+  // MentionRichInput's own contentEditable DOM, but its external-value sync rebuilds the chips when
+  // the value changes under it (as it does for a rewind's prefill).
+  const append = (token: string) =>
+    onChange(value.length > 0 && !value.endsWith(' ') ? `${value} ${token} ` : `${value}${token} `)
 
   const pickSkill = (name: string) => {
     if (!skillMentions.includes(name)) {
-      // Inserted at the end of the message, not at an arbitrary caret position - this menu can't
-      // reach into MentionRichInput's own contentEditable DOM from outside it, but its external-
-      // value-sync effect already handles "value changed out from under me" (e.g. rewind
-      // prefill), so appending the token here and letting that effect rebuild the chip works the
-      // same way.
-      onChange(value.length > 0 && !value.endsWith(' ') ? `${value} /${name} ` : `${value}/${name} `)
+      append(`/${name}`)
       onSkillMentionsChange([...skillMentions, name])
+    }
+    closeAll()
+  }
+
+  const pickSource = (name: string) => {
+    if (!mentions.includes(name)) {
+      append(`@${name}`)
+      onMentionsChange([...mentions, name])
     }
     closeAll()
   }
@@ -150,7 +196,7 @@ function AttachMenu({ onAttachFiles, value, onChange, skillMentions, onSkillMent
     <div>
       <Popover
         open={open}
-        onOpenChange={o => { setOpen(o); if (!o) setSkillsSubOpen(false) }}
+        onOpenChange={o => { setOpen(o); if (!o) setSub(null) }}
         placement="top-start"
         widthClass="w-64"
         ariaLabel={t('Add files, select a skill, and more')}
@@ -168,93 +214,117 @@ function AttachMenu({ onAttachFiles, value, onChange, skillMentions, onSkillMent
         {() => (
           <>
             <MenuGroup>
-              <Tooltip label={t('Attach one or more files to this message')} fullWidth>
-                <MenuRow icon={<Paperclip />} title={t('Attach files')} onSelect={() => { onAttachFiles(); closeAll() }} />
-              </Tooltip>
+              <div onMouseEnter={() => setSub(null)}>
+                <Tooltip label={t('Attach one or more files to this message')} fullWidth>
+                  <MenuRow icon={<Paperclip />} title={t('Attach files')} onSelect={() => { onAttachFiles(); closeAll() }} />
+                </Tooltip>
+              </div>
             </MenuGroup>
             <MenuGroup>
-              {/* The Skills row opens its submenu on hover or click - opens only, never toggles
-                  closed: a real click always starts with the pointer entering this row, which has
-                  already opened it, and a toggle closed what the hover had just opened. The
-                  submenu is a Popover of its own, which stops its presses from reaching the
-                  document so this menu does not take them for a press outside it. It opens BESIDE
-                  its row (right-start, flipping left where there is no room): opened top-start it
-                  landed over the attach menu it came out of. */}
-              <Popover
-                open={skillsSubOpen}
-                onOpenChange={setSkillsSubOpen}
-                placement="right-start"
-                widthClass="w-64"
-                ariaLabel={t('Skills')}
-                trigger={({ ref }) => (
-                  // ArrowRight opens the submenu from the keyboard, as a desktop menu's does - the
-                  // menus' keyboard (useMenuFocus) then moves focus onto its first row.
-                  <div
-                    ref={el => { skillsRowRef.current = el; ref(el) }}
-                    onMouseEnter={() => setSkillsSubOpen(true)}
-                    onKeyDown={e => { if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); setSkillsSubOpen(true) } }}
-                  >
-                    <Tooltip label={t('Pick a skill to use for this message')} fullWidth>
-                      <MenuRow icon={<FileText />} title={t('Skills')} trailing="chevron" onSelect={() => setSkillsSubOpen(true)} />
-                    </Tooltip>
-                  </div>
-                )}
-              >
-                {() => (
-                  // ArrowLeft goes back to the Skills row, as Escape does.
-                  <div
-                    onPointerDown={e => e.stopPropagation()}
-                    onMouseLeave={() => setSkillsSubOpen(false)}
-                    onKeyDown={e => {
-                      if (e.key !== 'ArrowLeft') return
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setSkillsSubOpen(false)
-                      skillsRowRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
-                    }}
-                  >
-                    <MenuGroup>
-                      {skills.length === 0 ? (
-                        <MenuEmpty>{t('No skills yet.')}</MenuEmpty>
-                      ) : (
-                        <div className="max-h-56 overflow-y-auto animate-fade-in">
-                          {skills.map(s => (
-                            <Tooltip key={s.id} label={s.shortDescription} fullWidth>
-                              <MenuRow
-                                icon={<FileText />}
-                                title={s.name}
-                                onSelect={() => pickSkill(s.name)}
-                              />
-                            </Tooltip>
-                          ))}
-                        </div>
-                      )}
-                    </MenuGroup>
-                    <MenuGroup>
-                      <Tooltip label={t('Open skill settings')} fullWidth>
-                        <MenuRow
-                          icon={<SettingsIcon />}
-                          title={t('Manage skills')}
-                          onSelect={() => { useSettingsModalStore.getState().open('Skills'); closeAll() }}
-                        />
-                      </Tooltip>
-                      <Tooltip label={t('Create a new skill')} fullWidth>
-                        <MenuRow tone="brand" icon={<Plus />} title={t('Create new skill')} onSelect={() => { setCreatingSkill(true); closeAll() }} />
-                      </Tooltip>
-                      {/* No workflow SUB-menu beside the skills one: picking an existing workflow is
-                          already what typing "/" does, and both kinds live in that one list. What has
-                          no other route from here is creating one, so that is the only entry added.
-                          Hidden with the rest of the feature as of 0.1.1 - see FEATURES.workflows. */}
-                      {FEATURES.workflows && (
-                        <Tooltip label={t('Create a new workflow')} fullWidth>
-                          <MenuRow tone="brand" icon={<Plus />} title={t('Create new workflow')} onSelect={() => { setCreatingWorkflow(true); closeAll() }} />
+              <ComposerSubmenu id="skills" sub={sub} setSub={setSub} icon={<FileText />} title={t('Skills')}
+                tooltip={t('Pick a skill to use for this message')}>
+                <MenuGroup>
+                  {skills.length === 0 ? (
+                    <MenuEmpty>{t('No skills yet.')}</MenuEmpty>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto animate-fade-in">
+                      {skills.map(s => (
+                        <Tooltip key={s.id} label={s.shortDescription} fullWidth>
+                          <MenuRow icon={<FileText />} title={s.name} onSelect={() => pickSkill(s.name)} />
                         </Tooltip>
-                      )}
-                    </MenuGroup>
-                  </div>
-                )}
-              </Popover>
+                      ))}
+                    </div>
+                  )}
+                </MenuGroup>
+                <MenuGroup>
+                  <Tooltip label={t('Open skill settings')} fullWidth>
+                    <MenuRow
+                      icon={<SettingsIcon />}
+                      title={t('Manage skills')}
+                      onSelect={() => { useSettingsModalStore.getState().open('Skills'); closeAll() }}
+                    />
+                  </Tooltip>
+                  <Tooltip label={t('Create a new skill')} fullWidth>
+                    <MenuRow tone="brand" icon={<Plus />} title={t('Create new skill')} onSelect={() => { setCreatingSkill(true); closeAll() }} />
+                  </Tooltip>
+                  {/* No workflow SUB-menu beside the skills one: picking an existing workflow is
+                      already what typing "/" does, and both kinds live in that one list. What has
+                      no other route from here is creating one, so that is the only entry added.
+                      Hidden with the rest of the feature as of 0.1.1 - see FEATURES.workflows. */}
+                  {FEATURES.workflows && (
+                    <Tooltip label={t('Create a new workflow')} fullWidth>
+                      <MenuRow tone="brand" icon={<Plus />} title={t('Create new workflow')} onSelect={() => { setCreatingWorkflow(true); closeAll() }} />
+                    </Tooltip>
+                  )}
+                </MenuGroup>
+              </ComposerSubmenu>
+
+              {signedIn && (<>
+              <ComposerSubmenu id="sources" sub={sub} setSub={setSub} icon={<Database />} title={t('Sources')}
+                tooltip={t('Search one source for this message')}>
+                <MenuGroup>
+                  {sources.length === 0 ? (
+                    <MenuEmpty>{t('No sources yet.')}</MenuEmpty>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto animate-fade-in">
+                      {sources.map(c => (
+                        <MenuRow key={c.id} icon={<SourceTypeMark type={c.type} />} title={c.name}
+                          onSelect={() => pickSource(c.name)} />
+                      ))}
+                    </div>
+                  )}
+                </MenuGroup>
+                <MenuGroup>
+                  <Tooltip label={t('Index a website as a new source')} fullWidth>
+                    <MenuRow tone="brand" icon={<Globe />} title={t('Add a web page')}
+                      onSelect={() => { setAdding('webpage'); closeAll() }} />
+                  </Tooltip>
+                  {canUpload ? (
+                    <Tooltip label={t('Upload files as a new source')} fullWidth>
+                      <MenuRow tone="brand" icon={<Upload />} title={t('Upload files')}
+                        onSelect={() => { setAdding('files'); closeAll() }} />
+                    </Tooltip>
+                  ) : (
+                    <Tooltip label={t('Index a folder on this computer as a new source')} fullWidth>
+                      <MenuRow tone="brand" icon={<FolderPlus />} title={t('Add a local folder')}
+                        onSelect={() => { setAdding('files'); closeAll() }} />
+                    </Tooltip>
+                  )}
+                </MenuGroup>
+              </ComposerSubmenu>
+
+              <ComposerSubmenu id="mcp" sub={sub} setSub={setSub} icon={<Plug />} title={t('MCP servers')}
+                tooltip={t("Give this message an MCP server's tools")}>
+                <MenuGroup>
+                  {mcpServers.length === 0 ? (
+                    <MenuEmpty>{t('No MCP servers yet.')}</MenuEmpty>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto animate-fade-in">
+                      {mcpServers.map(s => (
+                        <MenuRow key={s.name} icon={<Plug />} title={mcpServerName(s.name)}
+                          onSelect={() => pickSkill(s.name)} />
+                      ))}
+                    </div>
+                  )}
+                </MenuGroup>
+                <MenuGroup>
+                  <Tooltip label={t('Add or manage MCP servers in Settings > Connections')} fullWidth>
+                    <MenuRow icon={<SettingsIcon />} title={t('Manage MCP servers')}
+                      onSelect={() => { useSettingsModalStore.getState().open('Connections'); closeAll() }} />
+                  </Tooltip>
+                </MenuGroup>
+              </ComposerSubmenu>
+              </>)}
             </MenuGroup>
+            {signedIn && (
+              <MenuGroup>
+                <div onMouseEnter={() => setSub(null)}>
+                  <Tooltip label={t('Save a fact or a preference to the agent\'s memory')} fullWidth>
+                    <MenuRow icon={<Brain />} title={t('Remember something')} onSelect={() => { setRemembering(true); closeAll() }} />
+                  </Tooltip>
+                </div>
+              </MenuGroup>
+            )}
           </>
         )}
       </Popover>
@@ -275,7 +345,71 @@ function AttachMenu({ onAttachFiles, value, onChange, skillMentions, onSkillMent
           onSaved={(created) => pickSkill(created.name)}
         />
       )}
+      {remembering && <RememberDialog onClose={() => setRemembering(false)} />}
+      {adding === 'webpage' && <ConnectorConfigModal type="webpage" onClose={() => setAdding(null)} />}
+      {adding === 'files' && (canUpload
+        ? <FileUploadModal onClose={() => setAdding(null)} />
+        : <LocalFolderModal onClose={() => setAdding(null)} />)}
     </div>
+  )
+}
+
+// An MCP server's skill is "MCP: <server>"; the menu shows the server's own name.
+function mcpServerName(skillName: string): string {
+  return skillName.replace(/^MCP: /, '')
+}
+
+// One row of the + menu that opens a submenu beside it, on hover or click - opens only, never
+// toggles closed: a real click always starts with the pointer entering the row, which has already
+// opened it, and a toggle closed what the hover had just opened. The submenu is a Popover of its
+// own, which stops its presses from reaching the document so the menu above does not take them for
+// a press outside it. ArrowRight opens it from the keyboard and ArrowLeft goes back to its row, as
+// a desktop menu's do (the menus' keyboard, useMenuFocus, then moves focus onto its first row).
+function ComposerSubmenu({ id, sub, setSub, icon, title, tooltip, children }: {
+  id: Exclude<Sub, null>
+  sub: Sub
+  setSub: React.Dispatch<React.SetStateAction<Sub>>
+  icon: React.ReactNode
+  title: string
+  tooltip: string
+  children: React.ReactNode
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  return (
+    <Popover
+      open={sub === id}
+      onOpenChange={o => setSub(s => (o ? id : s === id ? null : s))}
+      placement="right-start"
+      widthClass="w-64"
+      ariaLabel={title}
+      trigger={({ ref }) => (
+        <div
+          ref={el => { rowRef.current = el; ref(el) }}
+          onMouseEnter={() => setSub(id)}
+          onKeyDown={e => { if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); setSub(id) } }}
+        >
+          <Tooltip label={tooltip} fullWidth>
+            <MenuRow icon={icon} title={title} trailing="chevron" onSelect={() => setSub(id)} />
+          </Tooltip>
+        </div>
+      )}
+    >
+      {() => (
+        <div
+          onPointerDown={e => e.stopPropagation()}
+          onMouseLeave={() => setSub(s => (s === id ? null : s))}
+          onKeyDown={e => {
+            if (e.key !== 'ArrowLeft') return
+            e.preventDefault()
+            e.stopPropagation()
+            setSub(null)
+            rowRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </Popover>
   )
 }
 
@@ -366,6 +500,53 @@ function ContextWindowIndicator({ conversationId, condensing, tokensFreed, onCon
           </Tooltip>
         )}
       </FadeSwap>
+    </Presence>
+  )
+}
+
+// THE PROMPT CACHE'S TIMER (the maintainer's request, 2026-10-22): while the conversation's cached
+// prompt is warm, a clock and how long until it goes cold. The server's PromptCacheClock knows -
+// a response that wrote the cache starts it with its lifetime, every read restarts it - and the
+// usage payload carries the seconds left, live through a turn with each 'usage' event. The page
+// counts down from when that figure arrived (cacheTimer.ts), never from a timestamp. Gone when
+// cold: a message sent then pays to write the prompt again. The last minute is in the warning ink.
+function CacheTimer({ conversationId }: { conversationId?: string }) {
+  const { t } = useTranslation()
+  const { data } = useConversationUsage(conversationId)
+  const secondsLeft = data?.cacheSecondsLeft ?? null
+  // A new figure is a new deadline; the same warmUntil fetched again does not move it.
+  const deadline = useMemo(
+    () => cacheDeadline(secondsLeft, Date.now()),
+    // Keyed on the cache's own expiry alone, deliberately.
+    [data?.cacheWarmUntil],
+  )
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (deadline == null) return
+    setNow(Date.now())
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(tick)
+  }, [deadline])
+  const left = secondsUntil(deadline, now)
+  const time = countdownText(left)
+  const label = cacheLifetime(data?.cacheLifetimeSeconds) === 'hour'
+    ? t('Prompt cache warm for {time}. Each message that reads it keeps it another hour.', { time })
+    : t('Prompt cache warm for {time}. Each message that reads it keeps it another five minutes.', { time })
+  return (
+    <Presence show={!!conversationId && left > 0} collapse={false} className="flex items-center">
+      <Tooltip label={label}>
+        <span
+          role="timer"
+          tabIndex={0}
+          aria-label={t('Prompt cache warm for {time}', { time })}
+          className={cn('inline-flex items-center gap-1 rounded-md px-1.5 focus-ring whitespace-nowrap', TEXT.caption,
+            nearlyCold(left) ? 'text-warning' : 'text-ink-caption')}
+        >
+          {/* A stopwatch, not a clock: the clock beside it opens the conversation history. */}
+          <Timer size={14} aria-hidden />
+          <Readout>{time}</Readout>
+        </span>
+      </Tooltip>
     </Presence>
   )
 }
@@ -584,12 +765,15 @@ export function ChatComposer({
             onAttachFiles={picker.open}
             value={value}
             onChange={onChange}
+            mentions={mentions}
+            onMentionsChange={onMentionsChange}
             skillMentions={skillMentions}
             onSkillMentionsChange={onSkillMentionsChange}
           />
           <PermissionModePicker />
           <AgentModelLabel />
           <AgentsGraphButton conversationId={conversationId} />
+          <CacheTimer conversationId={conversationId} />
           <ContextWindowIndicator
             conversationId={conversationId}
             condensing={condensing}

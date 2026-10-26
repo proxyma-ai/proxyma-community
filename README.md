@@ -96,6 +96,11 @@ bash tools/oss/verify-community.sh .
 | `docs/ui-guideline.html` | The UI design guideline: tokens, type, motion and every kit component |
 | `CONNECTORS.md` | How to write a connector |
 
+## Sponsor
+
+Proxyma Community is free and built by one developer. If it saves you time, you can sponsor it on
+[GitHub Sponsors](https://github.com/sponsors/lesyhau) or buy me a coffee on [Ko-fi](https://ko-fi.com/lesyhau).
+
 ## Contributing
 
 Contributions are welcome under the [Contributor License Agreement](CLA.md) - see

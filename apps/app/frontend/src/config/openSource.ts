@@ -12,6 +12,14 @@
  */
 export const COMMUNITY_SOURCE_URL = 'https://github.com/proxyma-ai/proxyma-community'
 
+/**
+ * Where Proxyma Community is supported (the maintainer, 2026-10-26): GitHub Sponsors and Ko-fi, both
+ * the maintainer's personal pages - there is no company. Settings > About offers them on Community
+ * only (SponsorSection.desktop.tsx); the landing site's footer names the same two addresses.
+ */
+export const COMMUNITY_GITHUB_SPONSORS_URL = 'https://github.com/sponsors/lesyhau'
+export const COMMUNITY_KOFI_URL = 'https://ko-fi.com/lesyhau'
+
 /** The SPDX identifier of the license Proxyma Community is under. */
 export const COMMUNITY_LICENSE_SPDX = 'AGPL-3.0-only'
 

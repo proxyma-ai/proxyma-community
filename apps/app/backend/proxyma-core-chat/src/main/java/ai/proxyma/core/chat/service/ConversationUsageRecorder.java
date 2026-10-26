@@ -36,12 +36,15 @@ class ConversationUsageRecorder {
     private final ChatEventSink chatEventSink;
     private final ModelPricingService modelPricingService;
     private final ChatSpendService chatSpendService;
+    private final ai.proxyma.core.provider.gateway.LlmGateway llmGateway;
 
     ConversationUsageRecorder(SmartChatMemory chatMemory,
                               ApplicationEventPublisher eventPublisher,
                               ChatEventSink chatEventSink,
                               ModelPricingService modelPricingService,
-                              ChatSpendService chatSpendService) {
+                              ChatSpendService chatSpendService,
+                              ai.proxyma.core.provider.gateway.LlmGateway llmGateway) {
+        this.llmGateway = llmGateway;
         this.chatMemory = chatMemory;
         this.eventPublisher = eventPublisher;
         this.chatEventSink = chatEventSink;
@@ -63,6 +66,7 @@ class ConversationUsageRecorder {
         payload.put("cacheWriteTokens", conv.getCacheWriteTokens());
         payload.put("contextTokens", conv.getContextTokens());
         payload.put("contextTokenLimit", chatMemory.contextWindow());
+        PromptCacheFields.put(payload, llmGateway == null ? java.util.Optional.empty() : llmGateway.promptCache(conversationId));
         try {
             eventPublisher.publishEvent(new ChatEvent(conversationId,
                     chatEventSink.nextSequence(conversationId),

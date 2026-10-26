@@ -1,7 +1,7 @@
 /* Proxyma documentation theme - the page around generated documents (the arc42 architecture
    document, the UI design guideline). Layout and type only: every color is a token from
    libs/ui-kit/tokens/proxyma-tokens.css, which the builder inlines ahead of this file, so a
-   document has the product's own Light, Proxyma and Dark appearances and cannot drift from them.
+   document has the product's own Light and Dark appearances and cannot drift from them.
 
    A fixed left table of contents, a measured reading column, and type sized for reading: these
    documents are bullets, tables and diagrams, not essays.
@@ -20,10 +20,8 @@
    figure. */
 
 *{box-sizing:border-box}
-/* A heading reached from the contents lands below the appearance control, which is fixed at the top
-   right and over the column on a window narrower than the layout (maintainer, 2026-10-16: "the
-   section headings must not be covered"). */
-html{scroll-behavior:smooth; scroll-padding-top:64px}
+/* A heading reached from the contents lands with room above it. */
+html{scroll-behavior:smooth; scroll-padding-top:24px}
 /* THE READING FACE IS PROXYMA'S, Space Grotesk (maintainer, 2026-10-16: "use Proxyma's font") - the
    kit's --font-ui, as on every surface of the apps and the site. It was Inter for a day. */
 body{
@@ -90,7 +88,10 @@ html[data-toc-resizing] .toc{transition:none}
 /* `.toc a.brandmark`, not `.brandmark`: the contents' own `.toc a` rule (display:block, padding,
    a hover fill) outranked a bare class, and that is what STACKED the wordmark under the mark in
    both documents until 2026-10-15. */
-.toc a.brandmark{display:inline-flex; align-items:center; gap:8px; padding:0; margin:0 0 14px 10px; text-decoration:none; border-radius:6px; background:none}
+/* The logo and the Light/Dark switch share one row, the switch at its right end (maintainer,
+   2026-10-26). */
+.toc-brand{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 4px 14px 10px}
+.toc a.brandmark{display:inline-flex; align-items:center; gap:8px; padding:0; margin:0; text-decoration:none; border-radius:6px; background:none}
 .toc a.brandmark:hover{background:none}
 .brandmark svg{width:28px; height:28px; flex:0 0 auto; display:block}
 .brandmark span{font-family:var(--font-brand); font-weight:700; font-size:16px; line-height:1; letter-spacing:.05em; color:rgb(var(--brand-legible))}
@@ -277,44 +278,48 @@ figcaption strong{color:rgb(var(--ink-secondary))}
 .badge.warn{color:rgb(var(--warning)); border-color:rgb(var(--warning) / .4)}
 .badge.bad{color:rgb(var(--danger)); border-color:rgb(var(--danger) / .4)}
 
-/* ---------------------------------------------------------------- appearance control */
-/* The kit SegmentedControl, boxed, at size md: a canvas well with a line, 6px, 2px inset; each
-   option 32px high at 14/500, caption ink that turns primary under a mouse; the chosen one on the
-   pale brand chip in its legible ink. */
+/* ---------------------------------------------------------------- appearance switch */
+/* The kit ToggleSwitch at size md: a 44 by 24 pill with a 2px transparent border, the line plane
+   when off (Light) and brand-solid when on (Dark); a 20px thumb that slides 20px, here carrying the
+   sun or the moon of the appearance it is on. Its target is 44px tall on glass. */
 .appearance{
-  position:fixed; top:14px; right:18px; z-index:20; display:inline-flex; gap:2px; padding:2px;
-  background:rgb(var(--canvas)); border:1px solid rgb(var(--line)); border-radius:6px;
+  position:relative; flex:none; display:inline-flex; width:44px; height:24px; padding:0; cursor:pointer;
+  border:2px solid transparent; border-radius:999px; background:rgb(var(--line));
+  transition:background-color var(--motion-base) var(--ease-out);
 }
-.appearance button{
-  font:inherit; font-size:14px; line-height:20px; font-weight:500; height:32px; cursor:pointer; border:0; background:none;
-  color:rgb(var(--ink-caption)); padding:0 12px; border-radius:5px;
-  transition:background-color var(--motion-fast) var(--ease-in-out), color var(--motion-fast) var(--ease-in-out);
+.appearance[aria-checked="true"]{background:rgb(var(--brand-solid))}
+.appearance .thumb{
+  display:grid; place-items:center; width:20px; height:20px; border-radius:999px;
+  background:rgb(var(--thumb)); box-shadow:0 1px 2px rgb(0 0 0 / .2); color:rgb(var(--ink-caption));
+  transition:transform var(--motion-base) var(--ease-out);
 }
-.appearance button:hover{color:rgb(var(--ink-primary))}
-.appearance button[aria-pressed="true"]{background:rgb(var(--brand-pale)); color:rgb(var(--brand-legible))}
+.appearance[aria-checked="true"] .thumb{transform:translateX(20px); color:rgb(var(--brand-legible))}
+.appearance svg{grid-area:1 / 1; width:12px; height:12px; transition:opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out)}
+.appearance .moon{opacity:0; transform:rotate(-60deg)}
+.appearance[aria-checked="true"] .sun{opacity:0; transform:rotate(60deg)}
+.appearance[aria-checked="true"] .moon{opacity:1; transform:none}
 /* The kit's focus-ring: 2px of brand-solid, 2px off the box. */
-.appearance button:focus-visible,.toc a:focus-visible,.toc-caret:focus-visible,a:focus-visible{
+.appearance:focus-visible,.toc a:focus-visible,.toc-caret:focus-visible,a:focus-visible{
   outline:2px solid rgb(var(--brand-solid)); outline-offset:2px;
 }
 
 /* ---------------------------------------------------------------- responsive */
 @media (max-width:960px){
   .layout{display:block; padding:0 16px}
-  .toc{position:static; display:block; width:auto; height:auto; overflow:visible; padding:64px 0 16px; border-bottom:1px solid rgb(var(--line) / .45)}
+  .toc{position:static; display:block; width:auto; height:auto; overflow:visible; padding:20px 0 16px; border-bottom:1px solid rgb(var(--line) / .45)}
   .toc-head{border-bottom:0; padding-top:0}
   .toc-body{overflow:visible}
   .toc-resize{display:none}
   .toc nav{max-height:44vh; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none}
   .toc nav::-webkit-scrollbar{display:none}
   .content{padding:24px 0 80px}
-  .appearance{top:10px; right:10px}
   h1{font-size:25px; line-height:34px}
   h2{font-size:19px; line-height:28px; margin-top:44px}
   figure{padding:12px}
 }
 /* 44px targets on glass, as every kit control. */
 @media (pointer:coarse){
-  .appearance button{height:40px}
+  .appearance::before{content:""; position:absolute; inset:-12px -4px}
   .toc a{padding-top:8px; padding-bottom:8px}
   .toc-caret{width:44px; height:44px}
   .toc-resize{flex-basis:24px; margin:0 10px}

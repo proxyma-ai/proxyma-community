@@ -54,6 +54,8 @@ export const keys = {
   connectionProtocols: ()        => ['connection-protocols'] as const,
   mcpTokens:        ()          => ['mcp-tokens'] as const,
   modelPricing:     ()          => ['model-pricing'] as const,
+  // The built-in list price of one model id, which the Add model rate dialog prefills from.
+  modelListPrice:   (model: string) => ['model-list-price', model] as const,
   llmCalls:         (q: unknown) => ['llm-calls', q] as const,
   // The two halves of Usage & Cost, under the same root so one invalidation reaches all three.
   llmCallsSummary:  (q: unknown) => ['llm-calls', 'summary', q] as const,
@@ -68,6 +70,9 @@ export const keys = {
   // The boot-time provider sweep's verdict - see useProviderConnectivity.
   providerConnectivity: ()      => ['provider-connectivity'] as const,
   chatSkills:       ()          => ['chat-skills'] as const,
+  // The composer's + menu: the MCP servers it offers, and the sources it lists to pick from.
+  chatMcpServers:   ()          => ['chat-mcp-servers'] as const,
+  chatSourcePicks:  ()          => ['chat-source-picks'] as const,
   chatSkill:        (id: string) => ['chat-skills', id] as const,
   // Workflow DEFINITIONS - what the composer's "/" dropdown lists alongside skills.
   chatWorkflows:    ()          => ['chat-workflows'] as const,

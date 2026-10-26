@@ -211,6 +211,14 @@ export interface ConversationUsage {
   cacheWriteTokens: number
   contextTokens: number
   contextTokenLimit: number
+  /**
+   * The conversation's prompt cache while it is warm (PromptCacheFields on the server): until when,
+   * how long each write or read keeps it, and the seconds left when the server answered - which
+   * the composer's timer counts down from. All null once it went cold.
+   */
+  cacheWarmUntil?: string | null
+  cacheLifetimeSeconds?: number | null
+  cacheSecondsLeft?: number | null
 }
 
 // Server-mode-only per-user monthly + rolling 5h/weekly $ quota snapshot (see

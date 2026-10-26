@@ -85,6 +85,8 @@ class GatewaySpendMeteringTest {
                 .thenReturn(rerankSettings);
         when(factory.getAdapter(anyString())).thenReturn(adapter);
         when(pricing.costUsd(anyString(), anyString(), any())).thenReturn(0.25);
+        when(pricing.price(anyString(), anyString(), any()))
+                .thenReturn(new ModelPricingService.Priced(0.25, ai.proxyma.core.common.usage.CostSource.RATE));
 
         gateway = new DefaultLlmGateway(factory, settings,
                 attributed, callLog, pricing);
@@ -113,7 +115,7 @@ class GatewaySpendMeteringTest {
         // The DISPLAY NAME, never the instance id in settings - pricing is keyed on the name, and
         // an id here would record a row priced at $0 while looking perfectly recorded.
         verify(callLog).record(eq(USER), eq(LlmRole.RERANK.name()),
-                eq(PROVIDER_NAME), eq(MODEL), eq(reported), eq(0.25));
+                eq(PROVIDER_NAME), eq(MODEL), eq(reported), eq(0.25), any());
         verify(attributed).record(eq(USER), eq(LlmRole.RERANK.name()),
                 eq(PROVIDER_NAME), eq(MODEL), eq(reported), eq(0.25));
     }
@@ -130,7 +132,7 @@ class GatewaySpendMeteringTest {
 
         // Logged: the request was made and billed, whatever the service chose to report.
         verify(callLog).record(eq(USER), eq(LlmRole.RERANK.name()),
-                eq(PROVIDER_NAME), eq(MODEL), eq(TokenUsage.EMPTY), eq(0.25));
+                eq(PROVIDER_NAME), eq(MODEL), eq(TokenUsage.EMPTY), eq(0.25), any());
         // NOT rolled up: a zero-token row would inflate the monthly call count while teaching the
         // reader nothing, which is the rule AttributedSpendService already had.
         verify(attributed, never()).record(any(), anyString(), anyString(), anyString(), any(), org.mockito.ArgumentMatchers.anyDouble());
@@ -159,7 +161,7 @@ class GatewaySpendMeteringTest {
         // One row for the query, one for the batch of documents. Until 2026-09-22 the documents'
         // request went to a raw model and only the query's reached the ledger.
         verify(callLog, times(2)).record(eq(USER), eq(LlmRole.RERANK.name()),
-                eq(PROVIDER_NAME), eq(MODEL), any(), eq(0.25));
+                eq(PROVIDER_NAME), eq(MODEL), any(), eq(0.25), any());
     }
 
     @Test
@@ -200,6 +202,6 @@ class GatewaySpendMeteringTest {
         SpendContext.run(SpendSubject.user("someone-else"), () ->
                 gateway.chat(LlmCaller.of(LlmRole.CHAT, USER), List.of(new UserMessage("q"))));
 
-        verify(callLog).record(eq(USER), eq(LlmRole.CHAT.name()), eq("Anthropic"), eq("chat-model"), any(), anyDouble());
+        verify(callLog).record(eq(USER), eq(LlmRole.CHAT.name()), eq("Anthropic"), eq("chat-model"), any(), anyDouble(), any());
     }
 }

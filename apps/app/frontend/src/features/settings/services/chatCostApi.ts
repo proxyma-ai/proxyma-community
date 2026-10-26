@@ -1,5 +1,6 @@
 import { http } from '@/services/httpClient'
 import { saveLogExport } from '@/utils/downloadFile'
+import type { CostSource } from '../utils/callCost'
 
 // ---- the per-call ledger -------------------------------------------------------------------
 // One row per model call, and the same window grouped. Written at the gateway since 2026-09-16,
@@ -21,9 +22,23 @@ export interface LlmCallRow {
   outputTokens: number
   cacheReadTokens: number
   cacheWriteTokens: number
+  /**
+   * The part of cacheWriteTokens written with a one-hour lifetime; the rest were five-minute.
+   * Null on a row written before it was recorded.
+   */
+  longCacheWriteTokens?: number | null
   costUsd: number
-  /** Whether the model has a rate configured. False means the cost shown is $0 for want of one. */
+  /**
+   * Whether anything priced the call - the provider's reported cost, a rate or a list price. False
+   * means the cost shown is $0 for want of one.
+   */
   priced: boolean
+  /** Where the cost came from (callCost.ts); null on a row written before it was recorded. */
+  costSource?: CostSource | null
+  /** What the prompt-cache clock made of the call (callCost.ts CacheVerdict); null for none. */
+  cacheOutcome?: string | null
+  /** Until when what the call read or wrote stays cached (ISO); null with no outcome. */
+  cacheWarmUntil?: string | null
 }
 
 /** One column of the cost-over-time chart: a calendar day or month in the reader's zone. */

@@ -1,0 +1,41 @@
+{
+  "asOf": "2026-10-22",
+  "note": "List prices in USD per million tokens, from each vendor's own pricing page on asOf. cacheWrite is the five-minute (OpenAI: 30-minute) write, cacheWriteLong the one-hour one. A long block prices the WHOLE call once the prompt passes longContextTokens. schedule DEEPSEEK_OFF_PEAK: the rates are the peak price, half outside peak hours.",
+  "models": [
+    { "vendor": "anthropic", "ids": ["claude-opus-5-5"], "input": 4, "output": 20, "cacheRead": 0.2, "cacheWrite": 5, "cacheWriteLong": 8 },
+    { "vendor": "anthropic", "ids": ["claude-opus-5", "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6", "claude-opus-4-5"], "input": 5, "output": 25, "cacheRead": 0.5, "cacheWrite": 6.25, "cacheWriteLong": 10 },
+    { "vendor": "anthropic", "ids": ["claude-sonnet-5-5"], "input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5, "cacheWriteLong": 4 },
+    { "vendor": "anthropic", "ids": ["claude-sonnet-5"], "input": 2, "output": 10, "cacheRead": 0.2, "cacheWrite": 2.5, "cacheWriteLong": 4 },
+    { "vendor": "anthropic", "ids": ["claude-sonnet-4-6", "claude-sonnet-4-5"], "input": 3, "output": 15, "cacheRead": 0.3, "cacheWrite": 3.75, "cacheWriteLong": 6 },
+    { "vendor": "anthropic", "ids": ["claude-haiku-5-5"], "input": 0.1, "output": 0.5, "cacheRead": 0.01, "cacheWrite": 0.125, "cacheWriteLong": 0.2,
+      "long": { "contextTokens": 100000, "input": 0.5, "output": 2.5, "cacheRead": 0.05, "cacheWrite": 0.625 } },
+    { "vendor": "anthropic", "ids": ["claude-haiku-4-5"], "input": 1, "output": 5, "cacheRead": 0.1, "cacheWrite": 1.25, "cacheWriteLong": 2 },
+    { "vendor": "anthropic", "ids": ["claude-fable-5-1", "claude-mythos-5-1"], "input": 10, "output": 50, "cacheRead": 0.25, "cacheWrite": 12.5, "cacheWriteLong": 20 },
+
+    { "vendor": "openai", "ids": ["gpt-6-astra"], "input": 10, "output": 50, "cacheRead": 1, "cacheWrite": 12.5 },
+    { "vendor": "openai", "ids": ["gpt-6.1-sol"], "input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5 },
+    { "vendor": "openai", "ids": ["gpt-5.6-sol"], "input": 4, "output": 20, "cacheRead": 0.4, "cacheWrite": 5 },
+    { "vendor": "openai", "ids": ["gpt-5.6-terra"], "input": 2, "output": 12, "cacheRead": 0.2, "cacheWrite": 2.5 },
+    { "vendor": "openai", "ids": ["gpt-5.6-luna"], "input": 0.2, "output": 1.2, "cacheRead": 0.02, "cacheWrite": 0.25 },
+    { "vendor": "openai", "ids": ["gpt-5.5"], "input": 5, "output": 30, "cacheRead": 0.5, "priorityMultiplier": 2.5,
+      "long": { "contextTokens": 272000, "input": 10, "output": 45, "cacheRead": 1 } },
+    { "vendor": "openai", "ids": ["gpt-5.4"], "input": 2.5, "output": 15, "cacheRead": 0.25, "priorityMultiplier": 2 },
+    { "vendor": "openai", "ids": ["gpt-5.4-mini"], "input": 0.75, "output": 4.5, "cacheRead": 0.075 },
+    { "vendor": "openai", "ids": ["gpt-5", "gpt-5.1"], "input": 1.25, "output": 10, "cacheRead": 0.125 },
+    { "vendor": "openai", "ids": ["gpt-5-mini"], "input": 0.25, "output": 2, "cacheRead": 0.025 },
+    { "vendor": "openai", "ids": ["gpt-4.1"], "input": 2, "output": 8, "cacheRead": 0.5 },
+    { "vendor": "openai", "ids": ["gpt-4o"], "input": 2.5, "output": 10, "cacheRead": 1.25 },
+    { "vendor": "openai", "ids": ["gpt-4o-mini"], "input": 0.15, "output": 0.6, "cacheRead": 0.075 },
+
+    { "vendor": "google", "ids": ["gemini-3.1-pro-preview"], "input": 2, "output": 12, "cacheRead": 0.2,
+      "long": { "contextTokens": 200000, "input": 4, "output": 18, "cacheRead": 0.4 } },
+    { "vendor": "google", "ids": ["gemini-2.5-pro"], "input": 1.25, "output": 10, "cacheRead": 0.125,
+      "long": { "contextTokens": 200000, "input": 2.5, "output": 15, "cacheRead": 0.25 } },
+    { "vendor": "google", "ids": ["gemini-3.8-flash", "gemini-3.6-flash"], "input": 0.75, "output": 3.75, "cacheRead": 0.075 },
+    { "vendor": "google", "ids": ["gemini-2.5-flash"], "input": 0.3, "output": 2.5, "cacheRead": 0.03 },
+    { "vendor": "google", "ids": ["gemini-2.5-flash-lite"], "input": 0.1, "output": 0.4, "cacheRead": 0.01 },
+
+    { "vendor": "deepseek", "ids": ["deepseek-flash"], "input": 0.3, "output": 1.2, "cacheRead": 0.006, "schedule": "DEEPSEEK_OFF_PEAK" },
+    { "vendor": "deepseek", "ids": ["deepseek-v4-pro"], "input": 1.32, "output": 3.96, "cacheRead": 0.044, "schedule": "DEEPSEEK_OFF_PEAK" }
+  ]
+}

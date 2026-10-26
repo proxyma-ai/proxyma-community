@@ -283,9 +283,14 @@ class JiraConnectorTest {
     @DisplayName("Cloud")
     class Cloud {
 
+        private void signedIn() {
+            api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima','timeZone':'UTC'}");
+        }
+
         @Test
         @DisplayName("a full listing posts to /search/jql page by token, with the email and API token as Basic")
         void fullListing() {
+            signedIn();
             api.on("POST", "/rest/api/3/search/jql")
                     .json("{'issues':[" + issue("PROJ-1", "Login fails", "2026-10-01T10:00:00.000+0000") + "],'nextPageToken':'t2'}")
                     .then().json("{'issues':[" + issue("PROJ-2", "Fix login", "2026-10-02T10:00:00.000+0000") + "],'isLast':true}");
@@ -306,6 +311,7 @@ class JiraConnectorTest {
         @Test
         @DisplayName("a token that leads back to issues already listed ends the listing instead of looping")
         void repeatingTokenEnds() {
+            signedIn();
             api.on("POST", "/rest/api/3/search/jql")
                     .json("{'issues':[" + issue("PROJ-1", "A", "2026-10-01T10:00:00.000+0000") + "],'nextPageToken':'t2','isLast':false}")
                     .then().json("{'issues':[" + issue("PROJ-1", "A", "2026-10-01T10:00:00.000+0000") + "],'nextPageToken':'t3','isLast':false}");
@@ -380,6 +386,80 @@ class JiraConnectorTest {
             api.reset();
             api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima'}");
             assertThat(new JiraConnectionPlugin().test(cloud(), ConnectorHttp.direct()).message()).isEqualTo("Signed in as Ana Lima");
+        }
+
+        @Test
+        @DisplayName("a token Jira Cloud answers as nobody is refused at registration, not listed as an empty project")
+        void anonymousAnswerIsRefused() {
+            // Jira Cloud signs a wrong, expired or revoked API token in as NOBODY, and an anonymous
+            // search is a 200 with no issues: the source registered and every sync listed nothing
+            // without an error (telemetry aced67d0).
+            String refused = "Jira at " + api.baseUrl() + " did not accept the email address and API token - the "
+                    + "token may be wrong, expired or revoked. Check it in Settings > Connections > Jira.";
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").status(401).json("{'errorMessages':['Client must be authenticated']}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                assertThat(s.verifyAccess().detail()).isEqualTo(refused);
+            }
+
+            // Answered, but as no account.
+            api.reset();
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").json("{}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                assertThat(s.verifyAccess().detail()).isEqualTo(refused);
+            }
+
+            // Even a project anonymous visitors may browse: its issues come back, the token is still wrong.
+            api.reset();
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[" + issue("PROJ-1", "One", "2026-03-26T14:08:31.000+0000")
+                    + "],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").status(401).json("{}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                assertThat(s.verifyAccess().detail()).isEqualTo(refused);
+            }
+
+            // A source registered while its token worked: every pass is an error that says why, full or
+            // changes - not an empty project.
+            api.reset();
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").status(401).json("{}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                Listing full = s.list(ListRequest.full());
+                assertThat(drain(full)).isEmpty();
+                assertThat(full.getErrorMessage()).isEqualTo(refused);
+                Listing changes = s.list(ListRequest.changes(Instant.parse("2026-09-18T02:00:00Z"), null));
+                assertThat(drain(changes)).isEmpty();
+                assertThat(changes.getErrorMessage()).isEqualTo(refused);
+            }
+            assertThat(api.requests("/rest/api/3/search/jql")).isEmpty();
+
+            // And the connection's Test says so, whichever way Jira answers.
+            api.reset();
+            api.on("GET", "/rest/api/3/myself").json("{}");
+            assertThat(new JiraConnectionPlugin().test(cloud(), ConnectorHttp.direct()).message())
+                    .isEqualTo("Jira did not accept the email address and API token.");
+        }
+
+        @Test
+        @DisplayName("an empty search by a signed-in account asks for the project: one it cannot see is refused, an empty one is fine")
+        void emptySearchAsksForTheProject() {
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima'}");
+            api.on("GET", "/rest/api/3/project/PROJ").status(404)
+                    .json("{'errorMessages':['No project could be found with key \\'PROJ\\'.']}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                assertThat(s.verifyAccess().detail()).isEqualTo("Project PROJ was not found on " + api.baseUrl()
+                        + ", or this account cannot browse it.");
+            }
+
+            api.reset();
+            api.on("POST", "/rest/api/3/search/jql").json("{'issues':[],'isLast':true}");
+            api.on("GET", "/rest/api/3/myself").json("{'accountId':'a1','displayName':'Ana Lima'}");
+            api.on("GET", "/rest/api/3/project/PROJ").json("{'id':'10000','key':'PROJ'}");
+            try (ConnectorSession s = session(cloud(), null)) {
+                assertThat(s.verifyAccess()).isEqualTo(AccessCheck.verified());
+            }
         }
 
         @Test

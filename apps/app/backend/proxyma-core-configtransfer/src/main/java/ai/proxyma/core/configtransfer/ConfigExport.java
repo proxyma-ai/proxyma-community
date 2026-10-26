@@ -153,7 +153,21 @@ public record ConfigExport(
             double input,
             double output,
             double cacheRead,
-            double cacheWrite) {}
+            double cacheWrite,
+            // Since 2026-10-22, all optional: a file an older build wrote has none of them.
+            Double cacheWriteLong,
+            Long longContextThresholdTokens,
+            Double longInput,
+            Double longOutput,
+            Double longCacheRead,
+            Double longCacheWrite,
+            String schedule) {
+
+        public ModelPrice(String provider, String model, double input, double output, double cacheRead,
+                          double cacheWrite) {
+            this(provider, model, input, output, cacheRead, cacheWrite, null, null, null, null, null, null, null);
+        }
+    }
 
     /**
      * One guardrail policy document. The content travels base64-encoded, whole: a policy is a file

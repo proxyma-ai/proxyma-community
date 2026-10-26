@@ -37,6 +37,9 @@ export const chatApi = {
   // The ids alone of the transcript's last `tail` messages, in order - what a page needs after a turn.
   getMessageIds: (id: string, tail: number) =>
     http.get<(number | null)[]>(`/api/v1/chat/conversations/${id}/message-ids`, { params: { tail } }).then(r => r.data),
+  // The MCP servers this person may give a message - their skills, named "MCP: <server>".
+  listMcpServers: () =>
+    http.get<{ name: string; description: string }[]>('/api/v1/chat/mcp-servers').then(r => r.data),
   // The usage meter's six numbers, without the transcript.
   getConversationUsage: (id: string) =>
     http.get<ConversationUsage>(`/api/v1/chat/conversations/${id}/usage`).then(r => r.data),

@@ -81,6 +81,7 @@ final class ConfluenceSession implements ConnectorSession {
     private String base;
     private ApiClient api;
     private JsonNode cloudSpace;
+    private boolean signedIn;
     private final Map<String, String> people = new HashMap<>();
 
     ConfluenceSession(SourceContext context) {
@@ -117,6 +118,7 @@ final class ConfluenceSession implements ConnectorSession {
         if (spaceKey.isEmpty()) return AccessCheck.failed("No Confluence space key was given for this source.");
         try {
             if (cloud) {
+                requireSignedIn();
                 cloudSpace();
             } else {
                 api().getJson("rest/api/space/" + ApiClient.segment(spaceKey));
@@ -127,6 +129,21 @@ final class ConfluenceSession implements ConnectorSession {
         } catch (ConnectorAuthException e) {
             return AccessCheck.failed(e.getMessage());
         }
+    }
+
+    /**
+     * Cloud only: that Confluence signed the credential in as an ACCOUNT. A wrong, expired or revoked
+     * API token is not a 401 on Cloud - it is answered as the anonymous user, so a space anonymous
+     * visitors may open registered with any token, and a private one was "not found" rather than a
+     * refused token (telemetry aced67d0, on Jira). Asked once a session.
+     */
+    private void requireSignedIn() {
+        if (signedIn) return;
+        JsonNode me = getJson("wiki/rest/api/user/current", Map.of());
+        if (me.path("accountId").asText("").isBlank() || "anonymous".equalsIgnoreCase(me.path("type").asText(""))) {
+            throw described(new ConnectorHttpException("Not signed in", 401, "wiki/rest/api/user/current"));
+        }
+        signedIn = true;
     }
 
     /**
@@ -162,6 +179,7 @@ final class ConfluenceSession implements ConnectorSession {
         if (spaceKey.isEmpty()) return Listings.failed("This Confluence source has no space key, so there is nothing to list.");
         boolean full = request.isFull() || request.since() == null;
         Supplier<Iterator<ItemMetadata>> pages = () -> {
+            if (cloud) requireSignedIn();
             if (full) {
                 return cloud ? Listings.mapped(cloudPages(), this::cloudPageItem)
                         : Listings.mapped(dataCenterPages(), this::dataCenterPageItem);

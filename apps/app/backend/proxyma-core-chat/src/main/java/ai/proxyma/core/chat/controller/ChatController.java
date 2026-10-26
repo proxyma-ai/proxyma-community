@@ -405,6 +405,25 @@ public class ChatController {
         return items.subList(items.size() - tail, items.size());
     }
 
+    // The MCP servers the composer's + menu offers: the skills ("MCP: name") this person may read,
+    // their descriptions as the system prompt has them. Picking one sends its name as a skill
+    // mention, which ChatService loads as the agent's readSkill would.
+    @org.springframework.beans.factory.annotation.Value("${proxyma.multi-user:false}")
+    private boolean mcpMultiUser;
+
+    @GetMapping("/chat/mcp-servers")
+    public Mono<ResponseEntity<List<Map<String, String>>>> mcpServers(ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            // A visitor with no account on a multi-user server has no servers to be offered.
+            if (uid == null && mcpMultiUser) return ResponseEntity.ok(List.<Map<String, String>>of());
+            List<Map<String, String>> out = chatService.mcpServerSkills(uid).stream()
+                    .map(s -> Map.of("name", s.name(), "description", s.description() == null ? "" : s.description()))
+                    .toList();
+            return ResponseEntity.ok(out);
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
     // WHAT THE CONVERSATION HAS SPENT, and how full its context is - the composer's meter, which
     // refetched the WHOLE transcript after every turn to read these six numbers (2026-10-17). Same
     // ownership check as the conversation itself.
@@ -417,7 +436,9 @@ public class ChatController {
             Conversation conv = chatService.getConversation(id);
             if (!canAccessConversation(conv, uid, guestSessionId))
                 return ResponseEntity.status(404).<Map<String, Object>>build();
-            return ResponseEntity.ok(usageOf(conv, chatService.getContextTokenLimit()));
+            Map<String, Object> usage = usageOf(conv, chatService.getContextTokenLimit());
+            ai.proxyma.core.chat.service.PromptCacheFields.put(usage, chatService.promptCache(id));
+            return ResponseEntity.ok(usage);
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 

@@ -129,6 +129,19 @@ public class DefaultLlmGateway implements LlmGateway {
     // reactive chain stalls every concurrent request). Package-visible so a test can run it inline.
     private java.util.concurrent.Executor spendRecorder = BlockingWork.executor();
 
+    // When each conversation's cached prompt expires, and why a call missed it - see PromptCacheClock.
+    private final PromptCacheClock cacheClock = new PromptCacheClock();
+
+    PromptCacheClock cacheClock() {
+        return cacheClock;
+    }
+
+    @Override
+    public Optional<PromptCacheState> promptCache(String line) {
+        return cacheClock.state(line, java.time.Instant.now())
+                .map(s -> new PromptCacheState(s.warmUntil(), s.lifetime()));
+    }
+
     void setSpendRecorder(java.util.concurrent.Executor spendRecorder) {
         this.spendRecorder = spendRecorder;
     }
@@ -147,6 +160,10 @@ public class DefaultLlmGateway implements LlmGateway {
     @Override
     public boolean isAvailable(ModelOverride override) {
         return override == null ? isAvailable(LlmRole.CHAT) : explicitBinding(override) != null;
+    }
+
+    private static String defaultLine(LlmRole role, SpendSubject subject) {
+        return role.name() + ":" + (subject == null ? "-" : subject.kind() + ":" + subject.id());
     }
 
     @Override
@@ -171,8 +188,10 @@ public class DefaultLlmGateway implements LlmGateway {
                 && options.cache() == ChatSettings.PromptCache.ONE_HOUR;
         boolean streams = providerFactory.resolveProvider(binding.providerId())
                 .map(ResolvedProvider::streams).orElse(true);
+        // The cache clock's line: the conversation or run the caller names, else its role and subject.
+        String line = options.cacheLine() != null ? options.cacheLine() : defaultLine(role, caller.subject());
         return new AdapterSession(role, binding, buildOptions(binding, options), caller.subject(), longCache,
-                streams);
+                streams, line);
     }
 
     /**
@@ -230,15 +249,19 @@ public class DefaultLlmGateway implements LlmGateway {
         long start = System.nanoTime();
         ChatResponse response;
         WireUsage wire = new WireUsage();
+        java.time.Instant at = java.time.Instant.now();
         try (WireUsage.Open open = wire.bind()) {
-            response = wire.correct(binding.model().call(new Prompt(messages)));
+            response = settle(wire.correct(binding.model().call(new Prompt(messages))), binding, wire, false, at);
         } catch (RuntimeException e) {
             recordCall(role, binding, "call", start, e);
             throw e;
         }
         recordCall(role, binding, "call", start, null);
         LlmResult result = new LlmResult(response, binding.provider(), binding.modelName(), binding.dedicated());
-        recordSpend(role, binding, caller.subject(), result.usage());
+        PromptCacheClock.Observation seen = cacheClock.observe(defaultLine(role, caller.subject()),
+                binding.provider(), binding.modelName(), PromptFingerprint.of(messages, List.of()), at,
+                result.usage(), false);
+        recordSpend(role, binding, caller.subject(), result.usage(), seen);
         return result;
     }
 
@@ -335,7 +358,13 @@ public class DefaultLlmGateway implements LlmGateway {
      * stopped being read from the thread.
      */
     void recordSpend(LlmRole role, Binding binding, SpendSubject subject, TokenUsage usage) {
-        recordSpend(role, binding.provider(), binding.modelName(), subject, usage);
+        recordSpend(role, binding.provider(), binding.modelName(), subject, usage, null);
+    }
+
+    /** The same, with what the call did with the provider's cache. */
+    void recordSpend(LlmRole role, Binding binding, SpendSubject subject, TokenUsage usage,
+                     PromptCacheClock.Observation seen) {
+        recordSpend(role, binding.provider(), binding.modelName(), subject, usage, seen);
     }
 
     /**
@@ -346,12 +375,24 @@ public class DefaultLlmGateway implements LlmGateway {
      */
     void recordSpend(LlmRole role, String providerName, String modelName,
                      SpendSubject subject, TokenUsage usage) {
-        double cost = pricing.costUsd(providerName, modelName, usage);
+        recordSpend(role, providerName, modelName, subject, usage, null);
+    }
+
+    void recordSpend(LlmRole role, String providerName, String modelName,
+                     SpendSubject subject, TokenUsage usage, PromptCacheClock.Observation seen) {
+        ModelPricingService.Priced priced = pricing.price(providerName, modelName, usage);
+        if (priced == null) priced = new ModelPricingService.Priced(0, ai.proxyma.core.common.usage.CostSource.NONE);
+        double cost = priced.costUsd();
         // The per-call log takes EVERY call, including one whose provider reported no tokens - a
         // rerank endpoint that answers with scores alone still happened and still cost something.
         // The monthly rollup keeps ignoring zero-token calls, which is what makes its averages
         // mean anything.
-        callLog.record(subject, role.name(), providerName, modelName, usage, cost);
+        if (seen == null || seen.outcome() == PromptCacheClock.Outcome.NONE) {
+            callLog.record(subject, role.name(), providerName, modelName, usage, cost, priced.source());
+        } else {
+            callLog.record(subject, role.name(), providerName, modelName, usage, cost, priced.source(),
+                    seen.outcome().name(), seen.warmUntil());
+        }
         if (usage == null || usage == TokenUsage.EMPTY) return;
         attributedSpend.record(subject, role.name(), providerName, modelName, usage, cost);
     }
@@ -562,6 +603,28 @@ public class DefaultLlmGateway implements LlmGateway {
         return adapter != null ? adapter : providerFactory.getAdapter(chat.getProvider());
     }
 
+    /**
+     * The chunk with its call's cost SETTLED on its usage, where only this side knows everything a
+     * cost needs: the provider and model it was bound to, the protocol (which list prices may
+     * apply), when it ran, the cache lifetime it asked for, and what the response itself said -
+     * a cost the provider stated, which always wins, its tier, region and web searches
+     * (WireUsage.facts). The chat's own totals, the per-call log and the monthly rollup then all
+     * read the same figure from the usage they already carry. A chunk with nothing to price passes
+     * through as it came.
+     */
+    private ChatResponse settle(ChatResponse chunk, Binding binding, WireUsage wire, boolean longCache,
+                                java.time.Instant at) {
+        if (chunk == null || pricing == null) return chunk;
+        TokenUsage usage = TokenUsageExtractor.extract(chunk);
+        ai.proxyma.core.common.usage.CallFacts facts = wire.facts(binding.protocol(), at);
+        if (usage.isEmptyCounts() && facts.reportedCostUsd() == null) return chunk;
+        // One-hour writes as asked - unless this provider was seen not keeping them (PromptCacheClock).
+        TokenUsage marked = longCache && cacheClock.longWritesKept(binding.provider()) ? usage.withLongCacheWrites() : usage;
+        TokenUsage settled = pricing.settle(binding.provider(), binding.modelName(), marked, facts);
+        // A pricing service that settles nothing (a test double) leaves the chunk as it came.
+        return settled == null ? chunk : WireUsage.withUsage(chunk, settled);
+    }
+
     /** A bound model plus the options it reuses. See LlmSession for why the tools are per call. */
     private final class AdapterSession implements LlmSession {
 
@@ -576,9 +639,11 @@ public class DefaultLlmGateway implements LlmGateway {
         private final SpendSubject subject;
         private final boolean longCache;
         private final boolean streams;
+        private final String cacheLine;
 
         AdapterSession(LlmRole role, Binding binding, ToolCallingChatOptions options, SpendSubject subject,
-                       boolean longCache, boolean streams) {
+                       boolean longCache, boolean streams, String cacheLine) {
+            this.cacheLine = cacheLine;
             this.role = role;
             this.binding = binding;
             this.options = options;
@@ -591,7 +656,8 @@ public class DefaultLlmGateway implements LlmGateway {
         @Override public String model()      { return binding.modelName(); }
         @Override public boolean dedicated() { return binding.dedicated(); }
         @Override public String protocol()   { return binding.protocol(); }
-        @Override public boolean longPromptCache() { return longCache; }
+        // As asked - unless this provider was seen keeping a one-hour write for less (PromptCacheClock).
+        @Override public boolean longPromptCache() { return longCache && cacheClock.longWritesKept(binding.provider()); }
         @Override public boolean streams() { return streams; }
 
         @Override
@@ -601,15 +667,20 @@ public class DefaultLlmGateway implements LlmGateway {
             ChatResponse response;
             // The counts the response stated, where Spring AI dropped some - see WireUsage.
             WireUsage wire = new WireUsage();
+            java.time.Instant at = java.time.Instant.now();
             try (WireUsage.Open open = wire.bind()) {
-                response = wire.correct(binding.model().call(prompt(messages, tools)));
+                response = settle(wire.correct(binding.model().call(prompt(messages, tools))), binding, wire,
+                        longCache, at);
             } catch (RuntimeException e) {
                 recordCall(role, binding, "call", start, e);
                 throw e;
             }
             recordCall(role, binding, "call", start, null);
             LlmResult result = new LlmResult(response, binding.provider(), binding.modelName(), binding.dedicated());
-            recordSpend(role, binding, subject, priced(result.usage()));
+            TokenUsage spent = priced(result.usage());
+            PromptCacheClock.Observation seen = cacheClock.observe(cacheLine, binding.provider(), binding.modelName(),
+                    PromptFingerprint.of(messages, tools), at, spent, longCache);
+            recordSpend(role, binding, subject, spent, seen);
             return result;
         }
 
@@ -638,6 +709,7 @@ public class DefaultLlmGateway implements LlmGateway {
             // attempt 2's chunks. Deferred, each attempt starts from nothing and files its own row.
             checkBudget(role, subject);
             Prompt prompt = prompt(messages, tools);
+            PromptFingerprint fingerprint = PromptFingerprint.of(messages, tools);
             return Flux.defer(() -> {
                 WireUsage wire = new WireUsage();
                 java.util.concurrent.atomic.AtomicReference<TokenUsage> last =
@@ -645,36 +717,49 @@ public class DefaultLlmGateway implements LlmGateway {
                 // Timed from subscription to termination. A stop by the user is a cancel, recorded
                 // as "ok" - it is not the provider failing.
                 long start = System.nanoTime();
+                java.time.Instant at = java.time.Instant.now();
                 java.util.concurrent.atomic.AtomicReference<Throwable> failure =
                         new java.util.concurrent.atomic.AtomicReference<>();
+                java.util.concurrent.atomic.AtomicReference<PromptCacheClock.Observation> observed =
+                        new java.util.concurrent.atomic.AtomicReference<>();
                 return binding.model().stream(prompt)
-                        .map(wire::correct)
+                        .map(chunk -> settle(wire.correct(chunk), binding, wire, longCache, at))
                         .doOnNext(chunk -> {
                             TokenUsage usage = TokenUsageExtractor.extract(chunk);
                             if (usage != null && usage != TokenUsage.EMPTY) last.updateAndGet(u -> u.maxWith(usage));
                         })
                         .doOnError(failure::set)
+                        // Observed as the stream COMPLETES, before the caller sees its end: the chat
+                        // publishes the conversation's usage right after, cache timer included, and
+                        // reads the cache as this call left it. A stream cut short is observed when
+                        // it ends instead; never twice.
+                        .doOnComplete(() -> observed.compareAndSet(null, cacheClock.observe(cacheLine,
+                                binding.provider(), binding.modelName(), fingerprint, at, priced(last.get()), longCache)))
                         .doFinally(signal -> {
                             recordCall(role, binding, "stream", start, failure.get());
                             TokenUsage spent = priced(last.get());
-                            recordSpendOffLoop(role, binding, subject, spent);
+                            PromptCacheClock.Observation seen = observed.get() != null ? observed.get()
+                                    : cacheClock.observe(cacheLine, binding.provider(), binding.modelName(),
+                                            fingerprint, at, spent, longCache);
+                            recordSpendOffLoop(role, binding, subject, spent, seen);
                         })
                         .contextWrite(wire::into);
             });
         }
 
         // See spendRecorder. Never allowed to fail the stream that already ended.
-        private void recordSpendOffLoop(LlmRole role, Binding binding, SpendSubject subject, TokenUsage spent) {
+        private void recordSpendOffLoop(LlmRole role, Binding binding, SpendSubject subject, TokenUsage spent,
+                                        PromptCacheClock.Observation seen) {
             try {
                 spendRecorder.execute(() -> {
                     try {
-                        recordSpend(role, binding, subject, spent);
+                        recordSpend(role, binding, subject, spent, seen);
                     } catch (RuntimeException e) {
                         log.warn("[LlmGateway] could not record a stream's spend: {}", e.toString());
                     }
                 });
             } catch (RuntimeException rejected) {
-                recordSpend(role, binding, subject, spent);
+                recordSpend(role, binding, subject, spent, seen);
             }
         }
 
