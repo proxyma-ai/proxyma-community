@@ -330,7 +330,7 @@ export function DateTimePicker({ value, onChange, labels, locale, dateOnly, id, 
           style={floating.style}
           onPointerDownCapture={() => { pressedInside.current = true }}
           onKeyDown={onPanelKey}
-          className={cn('fixed z-float w-72 surface-float border border-line/45 rounded-lg shadow-card p-3 animate-dropdown', exiting && 'animate-pop-out')}
+          className={cn('fixed z-float w-72 surface-float border rounded-lg shadow-float p-3 animate-dropdown', exiting && 'animate-pop-out')}
         >
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={goPrevMonth} aria-label={labels.previousMonth} className={iconButton('sm')}>
@@ -382,8 +382,8 @@ export function DateTimePicker({ value, onChange, labels, locale, dateOnly, id, 
           </div>
 
           {!dateOnly && (
-            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-line/30">
-              <Clock size={16} className="shrink-0 text-ink-caption mr-0.5" aria-hidden="true" />
+            <div className="flex items-center gap-1 mt-3 pt-3 border-t border-line/30">
+              <Clock size={16} className="shrink-0 text-ink-caption mr-1" aria-hidden="true" />
               <Select className="w-16" value={String(hour12)} onChange={commitHour12} options={HOUR_OPTIONS} ariaLabel={labels.hour} />
               <span className="text-ink-caption" aria-hidden="true">:</span>
               <Select className="w-16" value={String(minute)} onChange={commitMinute} options={MINUTE_OPTIONS} ariaLabel={labels.minute} />

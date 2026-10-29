@@ -6,8 +6,8 @@ import { CopyButton } from './CopyButton'
 import { HScroll } from './HScroll'
 
 /**
- * CODE AS A BLOCK - a command, a token, a JSON document, a log. `font-mono` (never the figures
- * face: code is code), `bg-canvas` (a hole in the surface, like a field), `border-line/50`,
+ * CODE AS A BLOCK - a command, a token, a JSON document, a log. `font-mono` (the one place the
+ * code face belongs; `xs` is the type scale's code role, 13/20), `bg-surface-alt` with `shadow-well` (a sunken well, since 2026-10-29), `border-line/50`,
  * `rounded-md`. With `copyLabel` a copy button sits at the top right; a command a reader is told
  * to run always has one (the Docker commands on Updates had none).
  *
@@ -19,7 +19,7 @@ import { HScroll } from './HScroll'
  * block's own box, for content that is not code (a tool call's fields, a transcript). One class,
  * so the boxes cannot drift from the code block beside them.
  */
-export const FRAME_CLASS = 'rounded-md border border-line/50 bg-canvas'
+export const FRAME_CLASS = 'rounded-md border border-line/50 bg-surface-alt shadow-well'
 
 export function Frame({ children, padded = true, className }: { children: ReactNode; padded?: boolean; className?: string }) {
   return <div className={cn(FRAME_CLASS, padded && 'px-3 py-2', className)}>{children}</div>
@@ -53,7 +53,7 @@ export function CodeBlock({ children, text, copyLabel, copiedLabel, wrap, maxHei
     <pre className={cn(
       font === 'mono' ? 'font-mono' : 'font-ui',
       'text-ink-primary px-3 py-2',
-      size === 'xs' ? 'text-xs leading-relaxed' : 'text-sm leading-relaxed',
+      size === 'xs' ? 'text-xs leading-5' : 'text-sm',
       wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre w-max min-w-full',
       copyLabel && 'pr-10',
     )}>

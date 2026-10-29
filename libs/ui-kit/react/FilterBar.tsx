@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Chip } from './Chip'
 import { cn } from './cn'
 import { HScroll } from './HScroll'
 
@@ -16,10 +15,11 @@ export interface FilterOption<K extends string> {
  * time, each with its count. In the kit's `HScroll`, so a long row scrolls sideways with no
  * scrollbar.
  *
- * SINCE 2026-10-14 EACH FILTER IS THE KIT'S FILTER CHIP (`Chip variant="filter"`): an outline at
- * rest, the brand chip pair when chosen, `aria-pressed`, in a labelled group. There were two looks
- * for one idea - these words on a quiet fill as `role="tab"` (with no tab panel and no arrow keys),
- * and the outlined chip - side by side in the gallery. One now, and the right semantics for it.
+ * THE SHAPE OF A TAB BAR, since 2026-10-30 (the maintainer: "should be similar to the sub menu bar
+ * as the other pages"): a sunken well - a 12px track, a 4px inset - with the chosen filter a lifted
+ * pill, as SubNavTabs and SegmentedControl draw it. The semantics stay a filter's: buttons with
+ * `aria-pressed` in a labelled group, since nothing here is a tab panel. They were outlined chips
+ * from 2026-10-14.
  *
  * `wrap` lays the chips out on as many lines as they need instead: for a row in a NARROW column -
  * a list beside its detail - where the last chip would otherwise start cut off behind the fade at
@@ -34,22 +34,31 @@ export function FilterChips<K extends string>({ options, active, onChange, ariaL
   wrap?: boolean
 }) {
   const row = (
-    <div className={cn('flex items-center gap-1.5 px-1 py-0.5', wrap ? 'flex-wrap' : 'w-max')} role="group" aria-label={ariaLabel}>
-      {options.map(o => (
-        <Chip
-          key={o.key}
-          variant="filter"
-          label={o.label}
-          count={o.count}
-          pressed={o.key === active}
-          onClick={() => onChange(o.key)}
-          className="touch:min-h-tap"
-        />
-      ))}
+    <div role="group" aria-label={ariaLabel}
+      className={cn('inline-flex items-center gap-0.5 rounded-lg bg-surface-alt shadow-well p-1', wrap ? 'flex-wrap' : 'w-max')}>
+      {options.map(o => {
+        const on = o.key === active
+        return (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(o.key)}
+            className={cn(
+              'shrink-0 flex items-center gap-2 whitespace-nowrap h-8 touch:h-10 px-3 rounded-md text-sm font-medium focus-ring',
+              'transition-[background-color,color,box-shadow] duration-base ease-out',
+              on ? 'bg-surface-float text-ink-primary shadow-card' : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-surface/50',
+            )}
+          >
+            <span>{o.label}</span>
+            {o.count !== undefined && <span className="text-xs font-normal text-ink-caption data-readout">{o.count}</span>}
+          </button>
+        )
+      })}
     </div>
   )
-  if (wrap) return <div className={cn('-mx-1', className)}>{row}</div>
-  return <HScroll focusable={false} className={cn('-mx-1', className)}>{row}</HScroll>
+  if (wrap) return <div className={className}>{row}</div>
+  return <HScroll focusable={false} className={className}>{row}</HScroll>
 }
 
 /**

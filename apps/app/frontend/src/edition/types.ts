@@ -61,3 +61,4 @@ export interface EditionSignIn {
 //   useServiceSetupMissing    the sentence to show when the DEPLOYMENT is not set up for a service
 //                             (an administrator's step - Microsoft 365's app registration), else null
 //   useKeyAccountsShown, useKeyAccountsAllowed, findKeyAccountIdByName   key accounts
+//   useConstellationsShown    whether the header lists Constellations (projects of saved agents)

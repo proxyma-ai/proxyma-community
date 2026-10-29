@@ -30,26 +30,3 @@ export function useAgentModel(): AgentModel | null {
   if (!model) return null
   return { provider: instances?.find(p => p.id === chat.provider)?.name, model }
 }
-
-/**
- * The provider and model a SUB-AGENT answers with, for its panel's "Waiting for ..." row. With no
- * model of its own it runs on the agent's, and this says so by returning that one. Null under the
- * same rule as above.
- */
-export function useSubAgentModel(): AgentModel | null {
-  const agent = useAgentModel()
-  const canSee = useCanReadAgentSettings()
-  const { data: subAgent } = useSettings('sub-agent', canSee)
-  const { data: chat } = useSettings('chat', canSee)
-  const { data: instances } = useQuery({
-    queryKey: keys.providerInstances(),
-    queryFn: providersApi.list,
-    enabled: canSee,
-  })
-  if (!canSee) return null
-  const model = String(subAgent?.model ?? '').trim()
-  if (!model) return agent
-  // A model of its own on "Same as the agent" runs on the agent's provider (SubAgentSettings.provider).
-  const providerId = String(subAgent?.provider ?? '') || String(chat?.provider ?? '')
-  return { provider: instances?.find(p => p.id === providerId)?.name, model }
-}

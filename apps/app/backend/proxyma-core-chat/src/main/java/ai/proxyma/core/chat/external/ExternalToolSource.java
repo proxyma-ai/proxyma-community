@@ -48,4 +48,12 @@ public interface ExternalToolSource {
 
     /** One tool by the name it was advertised under, for this person - what a call is dispatched to. */
     Optional<ToolCallback> find(String userId, String toolName);
+
+    /**
+     * The skill a tool advertised under this name belongs to, for this person - decided from the
+     * NAME alone, never by reaching a server. Empty when it is none of this source's.
+     */
+    default Optional<String> skillOf(String userId, String toolName) {
+        return Optional.empty();
+    }
 }

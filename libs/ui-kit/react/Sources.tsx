@@ -18,18 +18,23 @@ import { Skeleton } from './Skeleton'
  * Status 15rem, truncated with the whole of it on hover. Below `sm` only the name column exists and
  * each row carries its own one-line meta.
  */
-export const SOURCE_LIST_COLUMNS = 'sm:grid sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_15rem] sm:items-center sm:gap-5'
+export const SOURCE_LIST_COLUMNS = 'sm:grid sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_15rem] sm:items-center sm:gap-4'
 
 /**
- * The list's bleed: the rows' padding hangs outside the page's edge, so their text lines up with
- * the search field above while a hovered row's fill runs past it. Equal to the page gutter.
+ * The list's box: A CARD since 2026-10-29 (the depth review) - the card plane, its line and
+ * `shadow-card` on the canvas, the rows on its text edge (`px-4 sm:px-6`) with no line between them,
+ * and a hovered row's fill reaching 12px past them inside it (`ROW_FILL`). It was no box from
+ * 2026-10-28 (the UI review: the header's rule and the columns ran 16px past the page column).
  */
-export const SOURCE_LIST_BOX = '-mx-3 sm:-mx-4'
+export const SOURCE_LIST_BOX = 'kit-card rounded-lg border surface-card shadow-card px-4 sm:px-6 pb-2'
+
+/** A row's hover fill, 12px past the column on each side - the fill only; the row's text is on the column. */
+const ROW_FILL = 'before:absolute before:inset-y-0 before:-inset-x-3 before:rounded-md before:pointer-events-none before:transition-colors before:duration-fast'
 
 /** The column headings - sentence case, hidden on a phone. */
 export function SourceListHeader({ columns }: { columns: [name: ReactNode, items: ReactNode, synced: ReactNode, status: ReactNode] }) {
   return (
-    <div className={cn('hidden px-3 sm:px-4 py-2 border-b border-line/40 text-xs font-medium text-ink-caption whitespace-nowrap', SOURCE_LIST_COLUMNS)}>
+    <div className={cn('hidden py-2 border-b border-line/40 text-xs font-medium text-ink-caption whitespace-nowrap', SOURCE_LIST_COLUMNS)}>
       <span>{columns[0]}</span>
       <span className="text-right">{columns[1]}</span>
       <span>{columns[2]}</span>
@@ -41,9 +46,9 @@ export function SourceListHeader({ columns }: { columns: [name: ReactNode, items
 /** A group's heading in a list - "Jira 4" - on the marks' edge, sentence case, the count a readout. */
 export function ListGroupHeading({ label, count, className }: { label: ReactNode; count?: number; className?: string }) {
   return (
-    <p className={cn('px-3 sm:px-4 pt-4 pb-1.5 text-xs font-medium text-ink-caption', className)}>
+    <p className={cn('pt-4 pb-2 text-xs font-medium text-ink-caption', className)}>
       {label}
-      {count !== undefined && <span className="ml-1.5 data-readout">{count}</span>}
+      {count !== undefined && <span className="ml-1 data-readout">{count}</span>}
     </p>
   )
 }
@@ -92,8 +97,8 @@ export function SourceRow({
     <div
       {...(drop?.handlers ?? {})}
       className={cn(
-        'group relative block px-3 sm:px-4 py-2.5 transition-colors',
-        onOpen && 'mouse:hover:bg-ink-caption/5',
+        'group relative block py-3 transition-colors',
+        onOpen && cn(ROW_FILL, 'mouse:hover:before:bg-ink-caption/5'),
         busy && 'opacity-60 pointer-events-none',
         drop?.active && 'dropzone-active',
         SOURCE_LIST_COLUMNS,
@@ -119,7 +124,7 @@ export function SourceRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             {drop?.active ? (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-success">
+              <span className="flex items-center gap-2 text-sm font-medium text-success">
                 <Upload size={16} aria-hidden="true" /> {dropLabel}
               </span>
             ) : nameLink ? <span className="relative z-raised min-w-0 flex">{nameLink(cn(nameCls, 'mouse:hover:text-brand-legible'))}</span> : <span className={cn(nameCls, 'pointer-events-none')}>{name}</span>}
@@ -133,12 +138,9 @@ export function SourceRow({
       <span className="hidden sm:block text-sm text-ink-secondary data-readout text-right">{items}</span>
       <span className="hidden sm:block text-xs text-ink-caption truncate">{synced}</span>
       <span className="hidden sm:flex items-center gap-2 min-w-0 text-xs text-ink-caption">
-        {status ? (
-          <>
-            {healthMark && <span className="shrink-0 flex items-center">{healthMark}</span>}
-            <span className="min-w-0 flex-1 truncate">{status}</span>
-          </>
-        ) : healthyMark && (
+        {healthMark && status && <span className="shrink-0 flex items-center">{healthMark}</span>}
+        {status && <span className="min-w-0 truncate">{status}</span>}
+        {healthyMark && (
           <span className="opacity-0 mouse:group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center">{healthyMark}</span>
         )}
       </span>
@@ -149,7 +151,7 @@ export function SourceRow({
 /** A row's skeleton, on the same columns and padding as the row. */
 export function SourceRowSkeleton() {
   return (
-    <div className={cn('px-3 sm:px-4 py-2.5', SOURCE_LIST_COLUMNS)}>
+    <div className={cn('py-3', SOURCE_LIST_COLUMNS)}>
       <div className="flex items-center gap-3"><Skeleton className="h-4 w-4 rounded-full" /><Skeleton className="h-3.5 w-40" /></div>
       <Skeleton className="hidden sm:block h-3 w-8 ml-auto" />
       <Skeleton className="hidden sm:block h-3 w-16" />
@@ -204,7 +206,7 @@ export function ItemRowSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-start gap-3 py-2', className)} aria-hidden="true">
       <Skeleton className="h-4 w-4 rounded-full mt-0.5 shrink-0" />
-      <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-3.5 w-3/5" />
         <Skeleton className="h-3 w-2/5" />
       </div>

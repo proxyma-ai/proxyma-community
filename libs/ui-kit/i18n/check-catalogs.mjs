@@ -183,12 +183,12 @@ const DYNAMIC = [
     file: 'ee/frontend/src/features/settings/pages/index.server.tsx',
     pattern: /label: '([^']+)'/g,
   },
-  // NAV_ITEMS - the header's three destinations. Topbar maps `t` over them before rendering, and
-  // before handing them to MobileMenu, so each label is a variable at both call sites. `label` is
-  // the only prose property in the file; `to` is a route and `auth` a role.
+  // NAV_ITEMS - the app's pages. useNavItems maps `t` over them for the three places that draw
+  // them (the header, the phone menu, the sidebar), so each label is a variable at every call site.
+  // `label` is the only prose property in the file; `to` is a route and `auth` a role.
   {
     app: 'apps/app',
-    file: 'apps/app/frontend/src/components/layout/Topbar.tsx',
+    file: 'apps/app/frontend/src/components/layout/navItems.ts',
     pattern: prop('label'),
   },
 
@@ -619,12 +619,18 @@ const DYNAMIC = [
     block,
     pattern: prop('label'),
   })),
-  // The frame's own nav, a single-line const array. Non-global on purpose: the shared branch pulls
-  // every quoted string out of group 1.
+  // The frame's sidebar: its pages' `label`s, and the sample recent chats, one a line.
   {
     app: 'apps/landing',
     file: 'apps/landing/src/components/ui/AppFrame.tsx',
-    pattern: /const NAV_ITEMS = \[([^\]]+)\]/,
+    block: 'NAV',
+    pattern: prop('label'),
+  },
+  {
+    app: 'apps/landing',
+    file: 'apps/landing/src/components/ui/AppFrame.tsx',
+    block: 'RECENT',
+    pattern: ARRAY_ELEMENT,
   },
 
   // QUOTA_MILESTONE_QUESTIONS - five survey rows, rendered through `t(label)` by BOTH the
@@ -709,6 +715,7 @@ const DYNAMIC = [
     ['features/settings/tabs/AgentsTab.tsx', 'TONES', prop('label')],
     ['features/settings/pages/ConfigTransferPage.tsx', 'TRANSFER_GROUPS', prop('label')],
     ['features/settings/tabs/AgentsTab.tsx', 'PROMPT_CACHE_OPTIONS', prop('label')],
+    ['features/settings/tabs/AgentsTab.tsx', 'MODEL_RULE_OPTIONS', prop('label')],
     ['features/settings/tabs/GuardrailsTab.tsx', 'GUARDRAIL_MODES', prop('label')],
     ['features/settings/tabs/GuardrailsTab.tsx', 'GUARDRAIL_ACTIONS', prop('label')],
     ['features/settings/tabs/GuardrailsTab.tsx', 'GUARDRAIL_RETRIEVAL_ACTIONS', prop('label')],

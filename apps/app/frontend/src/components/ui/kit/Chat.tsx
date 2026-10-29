@@ -33,8 +33,11 @@ import { workingMotion } from './working'
  */
 
 /** The thread's column - one width for the thread, the composer, the pinned question and the
- *  new-chat screen. It was typed out six times. */
-export const THREAD_COLUMN = 'max-w-3xl 2xl:max-w-4xl mx-auto w-full'
+ *  new-chat screen. It was typed out six times. A READING column since 2026-10-28 (the UI review
+ *  measured 99-117 characters a line at 768px): 720px, about 70 characters of the 16px body, at
+ *  every width - centered inside the page column (`PAGE_COLUMN`), so it shares the header's center
+ *  line without being as wide as it. */
+export const THREAD_COLUMN = 'max-w-[45rem] mx-auto w-full'
 
 type Glyph = ComponentType<{ size?: number | string; className?: string }>
 
@@ -60,9 +63,11 @@ export function ChatMessage({ role, children, footer, actions, queued, error, cl
     <div className={cn('flex mb-1 group', user ? 'justify-end' : 'justify-start', className)}>
       <div className={cn(
         // A queued message brightens as the agent takes it, rather than in one frame.
-        // The thread's reading size, TEXT.body's 15px (PROSE_CHAT) - a question as much as an answer.
-        'text-[15px] leading-relaxed py-2 transition-opacity duration-base',
-        user ? 'max-w-[78%]' : 'w-full',
+        // The thread's reading size, TEXT.body's 16/26 (PROSE_CHAT) - a question as much as an answer.
+        'text-base py-2 transition-opacity duration-base',
+        // A user's lines are RIGHT-ALIGNED too (the maintainer, 2026-10-30): its wrapped lines ended
+        // short of the column's edge, so the message did not read as right-aligned.
+        user ? 'max-w-[78%] text-right' : 'w-full',
         user ? cn('text-ink-primary font-medium', queued && 'opacity-60') : error ? 'text-danger' : 'text-ink-secondary',
       )}>
         {children}
@@ -117,7 +122,7 @@ export function ActivityLine({ icon, state = 'done', label, note, noteTone = 'wa
       {onToggle && <DisclosureChevron open={!!open} />}
     </>
   )
-  const cls = cn('flex items-center gap-1.5 max-w-full min-w-0 text-xs text-ink-caption', className)
+  const cls = cn('flex items-center gap-2 max-w-full min-w-0 text-xs text-ink-caption', className)
   return onToggle
     ? <button type="button" onClick={onToggle} aria-expanded={!!open} className={cn(cls, 'mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm')}>{body}</button>
     : <div className={cls}>{body}</div>
@@ -126,8 +131,9 @@ export function ActivityLine({ icon, state = 'done', label, note, noteTone = 'wa
 /**
  * ONE TOOL CALL: its mark (what it is, and by colour how it stands), its words (a button that opens
  * the call's detail, underlined under a mouse once done, a wave across them while it runs), and
- * the time. A failed call shows its error in full, wrapped - never truncated: the error is the one
- * part a reader must read to the end.
+ * the time. A failed call shows the start of its error on the same ONE line, in danger ink, and the
+ * whole of it behind the same button - the call's detail (the UI review, 2026-10-28: a guessed
+ * argument's error was four red lines inline, louder than the answer under it).
  */
 export function ToolCallRow({ icon, state, label, error, elapsed, onOpen, outcome, className }: {
   icon: Glyph
@@ -142,8 +148,8 @@ export function ToolCallRow({ icon, state, label, error, elapsed, onOpen, outcom
 }) {
   const failed = state === 'failed'
   const text = failed ? (
-    <span className="block max-w-[640px] whitespace-normal break-words">
-      <span className="font-bold text-ink-caption">{label}</span>{' '}
+    <span className="block truncate max-w-full">
+      <span className="font-semibold text-ink-caption">{label}</span>{' '}
       <span className="text-danger">{error}</span>
     </span>
   ) : (
@@ -151,13 +157,13 @@ export function ToolCallRow({ icon, state, label, error, elapsed, onOpen, outcom
     <span className={cn('block truncate max-w-[420px] text-ink-caption', workingMotion('text', state === 'running'))}>{label}</span>
   )
   return (
-    <div className={cn('flex items-start gap-1.5 text-xs', className)}>
+    <div className={cn('flex items-start gap-2 text-xs min-w-0', className)}>
       <StateMark icon={icon} state={state} blink={false} />
       {onOpen ? (
         <button
           type="button"
           onClick={onOpen}
-          className={cn('min-w-0 text-left transition-colors focus-ring rounded-sm', state !== 'running' && 'mouse:hover:underline underline-offset-2')}
+          className={cn('min-w-0 max-w-full text-left transition-colors focus-ring rounded-sm', state !== 'running' && 'mouse:hover:underline underline-offset-2')}
         >
           {text}
         </button>
@@ -224,7 +230,7 @@ export function ToolCallGroup({ rows, open, onToggle, toggleLabels }: {
     <div className="-mb-1">
       {rows.map((r, i) => (
         <Collapse key={r.key} open={r.shown} className="pb-1">
-          <div className="flex items-start gap-1.5 min-w-0">
+          <div className="flex items-start gap-2 min-w-0">
             <div className="min-w-0">{r.node}</div>
             {onToggle && i === lastShown && (
               <button
@@ -245,20 +251,23 @@ export function ToolCallGroup({ rows, open, onToggle, toggleLabels }: {
 }
 
 /**
- * A SUB-AGENT'S PANEL: the agent's mark coloured by how it stands, its name (which opens what it
- * was asked, with a wave across it while it works), "Background" as a dimmed WORD, the time, a red
- * Stop while it runs, and the chevron. The body is its steps and report, capped and scrolling inside.
+ * AN AGENT'S PANEL: the agent's mark coloured by how it stands, its name (which opens what it was
+ * asked, with a wave across it while it works), a dimmed WORD beside it ("Background", or where it
+ * stands), the time, the caller's own `actions` (the app's Open, Pause and Stop), a red Stop while
+ * it runs, and the chevron. The body is its steps or report, capped and scrolling inside.
  *
  * `highlight` lights the box up once - its border and a faint tint of the brand easing in and
  * fading out (`.animate-reveal`) - for a panel the reader was just sent to (the app's agents map).
  */
-export function SubAgentPanel({ icon, title, state, backgroundLabel, elapsed, onOpenTitle, onStop, stopLabel, stopping, open, highlight, onToggle, toggleLabels, children, bodyRef, onBodyScroll }: {
+export function SubAgentPanel({ icon, title, state, backgroundLabel, elapsed, actions, onOpenTitle, onStop, stopLabel, stopping, open, highlight, onToggle, toggleLabels, children, bodyRef, onBodyScroll }: {
   icon: Glyph
   title: ReactNode
   state: WorkState
   /** "Background", for an agent the main one did not wait for. */
   backgroundLabel?: string
   elapsed?: ReactNode
+  /** Icon buttons of the caller's, before the Stop and the chevron - each an iconButton('sm') with its Tooltip. */
+  actions?: ReactNode
   onOpenTitle?: () => void
   onStop?: () => void
   stopLabel?: string
@@ -274,17 +283,22 @@ export function SubAgentPanel({ icon, title, state, backgroundLabel, elapsed, on
 }) {
   const running = state === 'running'
   return (
-    <div className={cn('rounded-lg border border-line/40 bg-surface/40 overflow-hidden', highlight && 'animate-reveal')}>
-      <div className="flex items-center gap-2 px-3 min-h-9 text-xs">
+    // A LINE OF THE THREAD'S ACTIVITY, not a box (since 2026-10-28, the UI review: the panel was a
+    // bordered card, its report a caption line and the mail line a third style). The mark, the
+    // words and the time are a tool row's and a mail line's; only the controls are its own. Its
+    // report folds out under it on a hairline, as an answer's sources do.
+    <div className={cn('rounded-md', highlight && 'animate-reveal')}>
+      <div className="flex items-center gap-2 min-h-6 text-xs">
         <StateMark icon={icon} state={state} blink={false} />
         {onOpenTitle ? (
-          <button type="button" onClick={onOpenTitle} className={cn('min-w-0 truncate text-left font-medium text-ink-primary mouse:hover:underline underline-offset-2 focus-ring rounded-sm', workingMotion('text', running))}>
+          <button type="button" onClick={onOpenTitle} className={cn('min-w-0 truncate text-left font-medium text-ink-caption mouse:hover:text-ink-primary mouse:hover:underline underline-offset-2 transition-colors focus-ring rounded-sm', workingMotion('text', running))}>
             {title}
           </button>
-        ) : <span className={cn('min-w-0 truncate font-medium text-ink-primary', workingMotion('text', running))}>{title}</span>}
-        {backgroundLabel && <span className="shrink-0 text-ink-caption">{backgroundLabel}</span>}
-        <span className="flex-1" />
+        ) : <span className={cn('min-w-0 truncate font-medium text-ink-caption', workingMotion('text', running))}>{title}</span>}
+        {backgroundLabel && <span className="shrink-0 text-ink-disabled">{backgroundLabel}</span>}
         <Elapsed>{elapsed}</Elapsed>
+        <span className="flex-1" />
+        {actions && <span className="shrink-0 flex items-center animate-fade-in">{actions}</span>}
         {running && onStop && (
           <Tooltip label={stopLabel ?? ''}>
             <button type="button" onClick={onStop} disabled={stopping} aria-label={stopLabel} className={iconButton('sm', 'danger')}>
@@ -302,7 +316,7 @@ export function SubAgentPanel({ icon, title, state, backgroundLabel, elapsed, on
           0.29.2 feedback asked for one ceiling for both. */}
       {children && (
         <Collapse open={open}>
-          <ActivityFeed boxRef={bodyRef} onScroll={onBodyScroll} className="max-h-[7.625rem] border-t border-line/20 px-3 py-2">
+          <ActivityFeed boxRef={bodyRef} onScroll={onBodyScroll} className="max-h-[7.625rem] ml-2 mt-1 mb-2 border-l-2 border-line/40 pl-3 py-1">
             {children}
           </ActivityFeed>
         </Collapse>
@@ -333,7 +347,7 @@ export function PromptCard({ icon: Icon, tone = 'brand', eyebrow, title, onTitle
 }) {
   return (
     <div role="group" aria-label={ariaLabel} aria-busy={busy || undefined} className={cardClass({ padding: 'none', className: 'px-4 py-3 space-y-3' })}>
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-3">
         <Icon size={16} className={cn('shrink-0 mt-0.5', tone === 'warning' ? 'text-warning' : 'text-brand-legible')} aria-hidden="true" />
         <div className="min-w-0 flex-1">
           {eyebrow && <p className="text-xs text-ink-caption mb-0.5">{eyebrow}</p>}
@@ -342,13 +356,13 @@ export function PromptCard({ icon: Icon, tone = 'brand', eyebrow, title, onTitle
               {title}
             </button>
           ) : <p className="text-sm font-medium text-ink-primary break-words">{title}</p>}
-          {caption && <p className="text-xs leading-relaxed text-ink-caption mt-1 break-words">{caption}</p>}
+          {caption && <p className="text-xs text-ink-caption mt-1 break-words">{caption}</p>}
         </div>
       </div>
-      {children && <div className="pl-[26px]">{children}</div>}
+      {children && <div className="pl-7">{children}</div>}
       {(actions || status) && (
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          {status && <span className="mr-auto flex items-center gap-1.5 text-xs text-ink-caption">{status}</span>}
+          {status && <span className="mr-auto flex items-center gap-2 text-xs text-ink-caption">{status}</span>}
           {actions}
         </div>
       )}
@@ -394,13 +408,14 @@ export function ChoiceRow({ checked, multi, label, description, disabled, onTogg
   ariaLabel?: string
 }) {
   const box = cn(
-    'w-full flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-colors',
-    checked ? 'border-brand-solid bg-brand-pale/30' : 'border-line/60 mouse:hover:border-line',
+    // Chosen: the brand's border and mark on the neutral selected fill - never a teal fill.
+    'w-full flex items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors',
+    checked ? 'border-brand-solid bg-surface-alt' : 'border-line/60 mouse:hover:border-line',
     disabled && 'opacity-60 cursor-default',
   )
   if (children) {
     return (
-      <div className={cn(box, 'items-center py-1.5')}>
+      <div className={cn(box, 'items-center py-1')}>
         <button type="button" role={multi ? 'checkbox' : 'radio'} aria-checked={checked} aria-label={ariaLabel} disabled={disabled} onClick={onToggle} className="focus-ring rounded-sm">
           <ChoiceMark checked={checked} multi={multi} />
         </button>
@@ -433,7 +448,7 @@ export function NoticeCard({ icon: Icon, title, caption, children, inline }: {
 }) {
   if (inline) {
     return (
-      <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-caption">
+      <p className="mt-2 flex items-start gap-2 text-xs text-ink-caption">
         <Icon size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
         <span>{title}</span>
       </p>
@@ -441,11 +456,11 @@ export function NoticeCard({ icon: Icon, title, caption, children, inline }: {
   }
   return (
     <div className={cardClass({ padding: 'none', className: 'px-4 py-3' })}>
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-3">
         <Icon size={16} className="shrink-0 mt-0.5 text-ink-caption" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink-primary">{title}</p>
-          {caption && <p className="text-xs leading-relaxed text-ink-caption mt-1">{caption}</p>}
+          {caption && <p className="text-xs text-ink-caption mt-1">{caption}</p>}
           {children && <div className="mt-2">{children}</div>}
         </div>
       </div>
@@ -455,9 +470,9 @@ export function NoticeCard({ icon: Icon, title, caption, children, inline }: {
 
 /**
  * THE PROMPT BOX's frame: attachments over the editor, the editor, and a toolbar of controls
- * at the start and the end. `rounded-xl`, deliberately - the composer is the one surface a step
- * rounder than a panel, the maintainer's design. `lit` and `working` drive the composer's light
- * (`.composer-light`, the one glow in the product), drawn by the two layers inside.
+ * at the start and the end. `rounded-lg`, the card radius. A raised card (the float shadow,
+ * `.composer-sweep` in proxyma-primitives.css), lit by a soft teal light turning round its edge
+ * when focused, and faster while `working` - see `.composer-light`.
  */
 export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, working, lit = true, alwaysLit, className, after }: {
   attachments?: ReactNode
@@ -480,9 +495,9 @@ export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, w
     <div className={cn('relative', lit && 'composer-light', lit && working && 'is-working', lit && alwaysLit && 'is-lit', className)}>
       {lit && <span aria-hidden="true" className="composer-light-glow" />}
       {lit && <span aria-hidden="true" className="composer-light-ring" />}
-      <div className="relative flex flex-col rounded-xl border border-line/50 surface-float shadow-card transition-shadow duration-base focus-border composer-sweep">
-        {attachments && <div className="flex flex-wrap gap-1.5 px-4 pt-3">{attachments}</div>}
-        <div className="px-4 pt-3 pb-1 short:pt-1.5">{editor}</div>
+      <div className="relative flex flex-col rounded-lg border surface-float focus-border composer-sweep">
+        {attachments && <div className="flex flex-wrap gap-2 px-4 pt-3">{attachments}</div>}
+        <div className="px-4 pt-3 pb-1 short:pt-2">{editor}</div>
         <div className="flex items-center justify-between gap-2 px-2 pb-2 short:pb-1">
           <div className="flex items-center gap-1 min-w-0 flex-1">{toolbarStart}</div>
           <div className="flex items-center gap-1 shrink-0">{toolbarEnd}</div>
@@ -554,12 +569,15 @@ export function ChatStartLinks({ primary, links }: {
 }) {
   // The kit's text link (textLink), at the caption size: quiet for the fixed links, the brand's for
   // the one conditional action. They were hand-written at another weight than every other link.
-  const quiet = cn(textLink('quiet'), 'text-xs')
+  // On glass each is a 44px target (the UI review measured 18px): the line keeps its look and the
+  // box around it grows, so the rows touch rather than leaving a gap.
+  const tap = 'inline-flex items-center touch:min-h-tap'
+  const quiet = cn(textLink('quiet'), 'text-xs', tap)
   const P = primary?.icon
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-start sm:justify-center">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 touch:gap-y-0 justify-start sm:justify-center">
       {primary && primary.render(
-        cn(textLink('brand'), 'text-xs'),
+        cn(textLink('brand'), 'text-xs', tap),
         <>{P && <P size={14} aria-hidden="true" />}{primary.label}</>,
       )}
       {links.map(l => <span key={l.key}>{l.render(quiet)}</span>)}
@@ -570,8 +588,8 @@ export function ChatStartLinks({ primary, links }: {
 /** The fold under an answer that lists where it came from: "4 sources >" over a hairline. */
 export function CitationsFold({ label, open, onToggle, children }: { label: ReactNode; open: boolean; onToggle: () => void; children?: ReactNode }) {
   return (
-    <div className="mt-3 pt-2.5 border-t border-line/40">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex items-center gap-1.5 text-xs text-ink-caption mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm">
+    <div className="mt-3 pt-3 border-t border-line/40">
+      <button type="button" onClick={onToggle} aria-expanded={open} className="flex items-center gap-2 text-xs text-ink-caption mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm">
         <span>{label}</span>
         <DisclosureChevron open={open} />
       </button>
@@ -582,7 +600,7 @@ export function CitationsFold({ label, open, onToggle, children }: { label: Reac
 
 /** The list of an answer's sources inside `CitationsFold`, hung off a hairline at the left. */
 export function CitationList({ children }: { children: ReactNode }) {
-  return <ul className="space-y-1.5 border-l-2 border-line/40 pl-3">{children}</ul>
+  return <ul className="space-y-2 border-l-2 border-line/40 pl-3">{children}</ul>
 }
 
 /**

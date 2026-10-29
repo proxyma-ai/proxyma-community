@@ -211,37 +211,21 @@ class TranscriptTest {
         return m;
     }
 
-    private ChatMessage reported(String agentId, String title, String status) {
-        return row(MessageRole.USER, SubAgentService.reportMessage(List.of(
-                new SubAgentService.Settled(agentId, title, status, "The report.", 12)), List.of()));
+    private ChatMessage reported(String agentId, String title) {
+        return row(MessageRole.USER, ai.proxyma.core.chat.agents.AgentInbox.render(List.of(
+                new ai.proxyma.core.chat.agents.AgentInbox.Taken(null, ai.proxyma.core.chat.agents.AgentInbox.Kind.REPORT,
+                        java.util.UUID.fromString(agentId), title, "The report.", java.time.Instant.now()),
+                new ai.proxyma.core.chat.agents.AgentInbox.Taken(null, ai.proxyma.core.chat.agents.AgentInbox.Kind.ALARM,
+                        null, null, "Check the build.", java.time.Instant.now()))));
     }
 
     private static final String AGENT = "11111111-2222-3333-4444-555555555555";
 
     @Test
-    @DisplayName("a delegate call carries the sub-agent it started")
-    void aDelegateCallCarriesItsSubAgent() {
-        var view = new ai.proxyma.core.chat.dto.SubAgentView(AGENT, "async", "completed", "Read the page",
-                1_000L, 9_000L, "The report.", List.of(), null, null);
-        List<ChatMessage> rows = List.of(user("q"), delegated("d1"), delegateResult("d1", AGENT),
-                assistant("It is running."));
-
-        var transcript = ChatService.transcript(rows, Map.of(), null,
-                (callId, result) -> result != null && result.contains(AGENT) ? view : null);
-
-        ToolCallResponse call = transcript.get(1).toolCalls().get(0);
-        assertThat(call.agent()).isSameAs(view);
-        // Only a delegate call is ever looked up.
-        var plain = ChatService.transcript(List.of(user("q"), assistant("", "a"), results("a"), assistant("done")),
-                Map.of(), null, (callId, result) -> view);
-        assertThat(plain.get(1).toolCalls().get(0).agent()).isNull();
-    }
-
-    @Test
-    @DisplayName("a report handed to the main agent is not something the user said")
+    @DisplayName("an agent's mail - a report, an alarm - is not something the user said")
     void aReportIsNotAUserMessage() {
         List<ChatMessage> rows = List.of(user("q"), delegated("d1"), delegateResult("d1", AGENT),
-                assistant("It is running."), reported(AGENT, "Read the page", "COMPLETED"),
+                assistant("It is running."), reported(AGENT, "Read the page"),
                 assistant("It found the price."));
 
         var transcript = transcript(rows);
@@ -250,11 +234,13 @@ class TranscriptTest {
                 "USER:q", "ASSISTANT:It is running.[d1]", "ASSISTANT:", "ASSISTANT:It found the price.");
         var notice = transcript.get(2);
         assertThat(notice.id()).as("nothing on it can be rated, shared or rewound").isNull();
-        assertThat(notice.subAgentReports()).singleElement().satisfies(r -> {
+        assertThat(notice.agentMail()).hasSize(2);
+        assertThat(notice.agentMail().get(0)).satisfies(r -> {
             assertThat(r.agentId()).isEqualTo(AGENT);
             assertThat(r.title()).isEqualTo("Read the page");
-            assertThat(r.status()).isEqualTo("completed");
+            assertThat(r.kind()).isEqualTo("report");
         });
+        assertThat(notice.agentMail().get(1).kind()).isEqualTo("alarm");
     }
 
     @Test
@@ -264,9 +250,9 @@ class TranscriptTest {
         ChatMessage running = assistant("It is running.");
         long floor = running.getId();
         List<ChatMessage> rows = List.of(question, running,
-                reported(AGENT, "Read the page", "COMPLETED"), assistant("partial reaction"));
+                reported(AGENT, "Read the page"), assistant("partial reaction"));
 
-        // The stream replays that turn from its start - its 'sub-agent-reported' included.
+        // The stream replays that turn from its start - its 'agent-mail' included.
         assertThat(shape(ChatService.transcript(rows, Map.of(), floor)))
                 .containsExactly("USER:q", "ASSISTANT:It is running.");
     }

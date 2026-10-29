@@ -6,12 +6,12 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Where the "you lead, sub-agents do the work" section goes. It was appended at the end of the
+ * Where the "you lead, the agents you deploy do the work" section goes. It was appended at the end of the
  * prompt, behind the sections telling the agent to search and read for itself - and the agent did.
  */
 class SystemPromptDelegationTest {
 
-    private static final String HEADING = "HOW YOU WORK - you lead, sub-agents do the work.";
+    private static final String HEADING = "HOW YOU WORK - you lead, the agents you deploy do the work.";
 
     @Test
     @DisplayName("an agent that can delegate reads how it works before the sections describing the work")
@@ -52,15 +52,18 @@ class SystemPromptDelegationTest {
     @DisplayName("the section names the first call of a job, and what the agent keeps for itself")
     void theSectionSaysWhatItMeans() {
         assertThat(SystemPromptService.DELEGATION)
-                .contains("DELEGATE BY DEFAULT")
-                .contains("ONE CALL OF YOUR OWN, THEN DELEGATE")
+                .contains("DEPLOY BY DEFAULT")
+                .contains("ONE CALL OF YOUR OWN, THEN DEPLOY")
                 .contains("'readSkill', 'useServer', 'askUser', 'recall' and 'searchConversations' are always yours")
-                .contains("ASYNC BY DEFAULT");
-        assertThat(SystemPromptService.DELEGATION_REMINDER).contains("sub-agents do the work");
+                .contains("An agent works ON ITS OWN")
+                .contains("'tellAgent'").contains("'controlAgent'").contains("'awaitAgents'")
+                .contains("'alarm'").contains("'background'")
+                .doesNotContain("sub-agent").doesNotContain("'delegate'");
+        assertThat(SystemPromptService.DELEGATION_REMINDER).contains("the agents you deploy do the work");
     }
 
     @Test
-    @DisplayName("memory is checked before any source is searched or any sub-agent started")
+    @DisplayName("memory is checked before any source is searched or any agent deployed")
     void memoryComesFirst() {
         String prompt = SystemPromptService.resolve(SystemPromptService.DEFAULT, true);
 

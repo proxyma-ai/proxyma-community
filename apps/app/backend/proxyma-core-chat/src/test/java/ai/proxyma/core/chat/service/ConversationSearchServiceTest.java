@@ -83,7 +83,7 @@ class ConversationSearchServiceTest {
         when(conversations.findById("c1")).thenReturn(Optional.of(c1));
         when(messages.findDisplayMessagesByConversationId("c1")).thenReturn(List.of(
                 row(1, "What did we decide?"),
-                row(2, SubAgentService.REPORT_MARKER + " \"Search\" (agent a1) - COMPLETED after 3s\n\nthe report"),
+                row(2, "[Report from Search (agent 11111111-2222-3333-4444-555555555555)]\nthe report"),
                 row(3, SmartChatMemory.skillBodyMessages("Jira", "use JQL").get(0).getText()),
                 row(4, "Seven days.")));
         ConversationSearchService service = new ConversationSearchService(messages, conversations, false);

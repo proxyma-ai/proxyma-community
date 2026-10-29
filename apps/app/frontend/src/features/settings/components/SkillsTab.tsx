@@ -64,7 +64,7 @@ export function SkillsTab() {
 
   return (
     // The introduction is SettingsSections' intro, as on every tab that opens with one.
-    <SettingsSections intro={t('Skills are named instructions the agent loads only when relevant, instead of always consuming context.')}>
+    <SettingsSections intro={t('Named instructions the agent loads only when a question needs them.')}>
       <TitleAction>
         <Presence show={!isLoading && !noSkills} collapse={false}>
           <Button onClick={() => setModalTarget('new')}>
@@ -468,7 +468,7 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
                   </PickBox>
                 </Presence>
                 <Presence show={connectorNames.length > 0}>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {connectorNames.map(name => (
                       <Chip
                         key={name}

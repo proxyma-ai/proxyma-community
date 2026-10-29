@@ -71,7 +71,7 @@ function AccessCodeScreen() {
   return (
     <div className="h-[var(--app-height,100dvh)]">
       <AuthLayout
-        logo={<Logo />}
+        logo={<Logo size={22} />}
         title={t('Enter the access code')}
         description={t('Proxyma prints it in its log when it starts. On the computer Proxyma runs on, its window and tray icon open it without one.')}
       >

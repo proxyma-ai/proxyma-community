@@ -107,7 +107,7 @@ function GuardrailStageAction({ stage, trackChange, pending }: TabProps & { stag
         : t('When something the agent read matches')}
       // Kept, shortened, because both halves change what an operator would choose: neither
       // option ends the turn, and the injection exception is not configurable.
-      hint={stage === 'retrieval' ? t('Neither ends the conversation. Prompt injection always withholds the whole source.') : undefined}
+      hint={stage === 'retrieval' ? t('Neither ends the conversation; prompt injection withholds the source.') : undefined}
       value={action}
       onChange={v => trackChange('guardrail', spec.actionField, v)}
       options={stage === 'retrieval' ? GUARDRAIL_RETRIEVAL_ACTIONS : GUARDRAIL_ACTIONS}
@@ -168,7 +168,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           enforcing, rather than discovering it after the first refused message. */}
       <SettingsSection title={t('Mode')}>
         <ChoiceField
-          hint={t('Monitor runs every check and applies none of them. Results appear under Logs.')}
+          hint={t('Monitor runs every check but applies none; results appear in Logs.')}
           value={mode}
           onChange={v => trackChange('guardrail', 'mode', v)}
           options={GUARDRAIL_MODES}
@@ -385,12 +385,12 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           the person who needs to weigh that is standing here, about to decide. */}
       <SettingsSection
         title={t('Keep the matched text')}
-        caption={t('Also records the characters each rule matched, to tell a real finding from a false one.')}
+        caption={t('Also records the text each rule matched, to check its findings.')}
         toggle={toggle('capture-matched-text', captureMatchedText)}
       >
         <Presence show={!!captureMatchedText}>
           <Caption tone="warning">
-            {t('A rule that finds a credential now records it. It stays in memory only (200 decisions, 120 characters), and any administrator can read it.')}
+            {t('A credential a rule finds is now recorded, in memory only, where any administrator can read it.')}
           </Caption>
         </Presence>
       </SettingsSection>
@@ -399,7 +399,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           period, rather than the last 200 since the app started. The heading stays as the way there. */}
       <SignpostSection
         title={t('Logs')}
-        caption={t('Every check - what it decided, which rules fired and what it cost in time - is recorded in Logs.')}
+        caption={t('Every check, its decision and the rules that fired are recorded in Logs.')}
         action={<edition.AuditLogsLink log="guardrails" onOpenTab={onOpenTab}>{t('Open Logs')}</edition.AuditLogsLink>}
       />
     </SettingsSections>
@@ -466,8 +466,23 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <FieldLabel as="p" className="mb-0">{t('Policy documents')}</FieldLabel>
+      {/* The block's description sits under its name, before the list and the button it explains
+          (the field rule of 2026-10-29) - it was two captions after the Add button. The action
+          stays beside the name, as a SectionHeading's does. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <FieldLabel as="p" className="mb-0">{t('Policy documents')}</FieldLabel>
+          {/* One key, with the emphasised word as a slot a translation can move (Rich). */}
+          <Caption className="mt-1 max-w-[60ch]">
+            <Rich
+              text={t('Similarity only decides which clauses are {relevant}, and the model decides whether the message actually breaks one.')}
+              parts={{ relevant: <em>{t('relevant')}</em> }}
+            />
+          </Caption>
+          <Caption className="mt-1 max-w-[60ch]">
+            {t('Up to {size} MB each; rebuild the index after changing the embedding model.', { size: maxMb })}
+          </Caption>
+        </div>
         <Presence show={documents.length > 0} collapse={false}>
           <Button variant="quiet" onClick={() => reindex.mutate()} disabled={reindex.isPending}>
             {reindex.isPending ? t('Rebuilding...') : t('Rebuild index')}
@@ -524,17 +539,6 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
       </div>
 
       <Presence show={!!error}><InlineNotice tone="danger">{error}</InlineNotice></Presence>
-
-      {/* One key, with the emphasised word as a slot a translation can move (Rich). */}
-      <Caption>
-        <Rich
-          text={t('Similarity only decides which clauses are {relevant}, and the model decides whether the message actually breaks one.')}
-          parts={{ relevant: <em>{t('relevant')}</em> }}
-        />
-      </Caption>
-      <Caption>
-        {t('Up to {size} MB each; rebuild the index after changing the embedding model.', { size: maxMb })}
-      </Caption>
 
       {removing && (
         <RemoveConfirm

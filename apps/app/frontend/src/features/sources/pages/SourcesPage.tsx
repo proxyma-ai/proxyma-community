@@ -332,7 +332,7 @@ export function SourcesPage() {
         {byTypeItems.map(row)}
       </div>
       <ListPager
-        className="px-3 sm:px-4 border-t border-line/20"
+        className="border-t border-line/20"
         page={listPage}
         pages={listPages}
         onPage={setListPage}
@@ -476,7 +476,7 @@ export function SourcesPage() {
                     {group.preview.map(row)}
                   </div>
                   <Presence show={remaining > 0}>
-                    <div className="px-3 sm:px-4 py-2">
+                    <div className="py-2">
                       <Button variant="quiet" onClick={() => setFilterType(groupType)}>
                         {t('View {count} more', { count: remaining })}
                         <ChevronRight size={14} aria-hidden="true" />

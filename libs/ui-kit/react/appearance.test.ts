@@ -12,52 +12,47 @@ import {
 // shipped by sync.mjs - it belongs beside its source, like translate.test.ts.
 
 test('every current preference reads back as itself', () => {
-  for (const p of APPEARANCE_PREFERENCES) assert.equal(parseAppearance(p, 'gray'), p)
+  for (const p of APPEARANCE_PREFERENCES) assert.equal(parseAppearance(p, 'light'), p)
 })
 
-test('the old two-way values migrate: dark is Gray, light stays Light', () => {
-  assert.equal(parseAppearance('dark', 'system'), 'gray')
+test('every word an older build stored for a dark page is Dark', () => {
+  // `dark` the two-way flip's, `black` Dark's 0.13.0 name, `gray` the removed Proxyma appearance.
+  for (const old of ['dark', 'black', 'gray']) assert.equal(parseAppearance(old, 'system'), 'dark')
   assert.equal(parseAppearance('light', 'system'), 'light')
 })
 
 test('nothing stored, or something unreadable, is the fallback', () => {
-  assert.equal(parseAppearance(null, 'gray'), 'gray')
+  assert.equal(parseAppearance(null, 'dark'), 'dark')
   assert.equal(parseAppearance(undefined, 'system'), 'system')
-  assert.equal(parseAppearance('', 'gray'), 'gray')
-  assert.equal(parseAppearance('Dark', 'gray'), 'gray')
+  assert.equal(parseAppearance('', 'light'), 'light')
+  assert.equal(parseAppearance('Dark', 'system'), 'system')
   assert.equal(parseAppearance('sepia', 'light'), 'light')
 })
 
 test('explicit choices ignore the OS', () => {
   for (const dark of [true, false]) {
-    assert.deepEqual(resolveAppearance('light', dark), { mode: 'light', shade: null })
-    assert.deepEqual(resolveAppearance('gray', dark), { mode: 'dark', shade: null })
-    assert.deepEqual(resolveAppearance('black', dark), { mode: 'dark', shade: 'black' })
+    assert.deepEqual(resolveAppearance('light', dark), { mode: 'light' })
+    assert.deepEqual(resolveAppearance('dark', dark), { mode: 'dark' })
   }
 })
 
-test('System follows the OS: light to Light, dark to Dark (black) and never Proxyma', () => {
-  assert.deepEqual(resolveAppearance('system', false), { mode: 'light', shade: null })
-  assert.deepEqual(resolveAppearance('system', true), { mode: 'dark', shade: 'black' })
+test('System follows the OS', () => {
+  assert.deepEqual(resolveAppearance('system', false), { mode: 'light' })
+  assert.deepEqual(resolveAppearance('system', true), { mode: 'dark' })
 })
 
-test('the menu order is System, Light, Dark, Proxyma', () => {
-  assert.deepEqual([...APPEARANCE_PREFERENCES], ['system', 'light', 'black', 'gray'])
+test('the menu order is System, Light, Dark - three choices', () => {
+  assert.deepEqual([...APPEARANCE_PREFERENCES], ['system', 'light', 'dark'])
 })
 
-test('applying stamps data-mode and adds or removes data-shade', () => {
-  const attrs = new Map<string, string>()
+test('applying stamps data-mode and clears the data-shade an older build left', () => {
+  const attrs = new Map<string, string>([['data-shade', 'black']])
   const el = {
     setAttribute: (n: string, v: string) => { attrs.set(n, v) },
     removeAttribute: (n: string) => { attrs.delete(n) },
   }
 
-  applyAppearance(el, resolveAppearance('black', false))
-  assert.equal(attrs.get('data-mode'), 'dark')
-  assert.equal(attrs.get('data-shade'), 'black')
-
-  // Leaving Black must clear the shade, or Gray would keep painting black.
-  applyAppearance(el, resolveAppearance('gray', false))
+  applyAppearance(el, resolveAppearance('dark', false))
   assert.equal(attrs.get('data-mode'), 'dark')
   assert.equal(attrs.has('data-shade'), false)
 
@@ -69,6 +64,5 @@ test('applying stamps data-mode and adds or removes data-shade', () => {
 test('the chrome colour of each appearance is its canvas, as the pre-paint script writes it', async () => {
   const { THEME_COLOR } = await import('./appearanceScript.ts')
   assert.equal(themeColor(resolveAppearance('light', true)), THEME_COLOR.light)
-  assert.equal(themeColor(resolveAppearance('gray', false)), THEME_COLOR.gray)
-  assert.equal(themeColor(resolveAppearance('black', false)), THEME_COLOR.black)
+  assert.equal(themeColor(resolveAppearance('dark', false)), THEME_COLOR.dark)
 })

@@ -34,9 +34,9 @@
       name="description"
       content="A live, hosted instance of Proxyma - the self-hosted AI assistant that searches your own Jira, Confluence, Bitbucket and documents. Try it without installing anything."
     />
-    <!-- Pre-paint appearance stamp - see the file. Synchronous and in <head> so it runs before the
-         body exists; a file rather than inline so the Content-Security-Policy can allow this origin's
-         scripts and nothing else. -->
+    <!-- Pre-paint appearance stamp - the kit's appearanceInitScript, emitted as a file by
+         vite.config.ts. Synchronous and in <head> so it runs before the body exists; a file rather
+         than inline so the Content-Security-Policy can allow this origin's scripts and nothing else. -->
     <script src="/appearance-init.js"></script>
   </head>
   <body>

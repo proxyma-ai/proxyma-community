@@ -101,7 +101,11 @@ export function brandMarkTerms(repo) {
   return out
 }
 
-/** proxyma-tokens.css as { gray, light, black }: every variable's raw value in each appearance. */
+/**
+ * proxyma-tokens.css as { light, dark, overridden }: every variable's raw value in each appearance.
+ * Light is the bare :root block; Dark is :root[data-mode="dark"] over it; `overridden` names what
+ * Dark re-points (since 2026-10-28 - there were three blocks while the Proxyma appearance existed).
+ */
 export function tokenBlocks(repo) {
   const css = readFileSync(join(repo, 'libs', 'ui-kit', 'tokens', 'proxyma-tokens.css'), 'utf8')
   const block = selector => {
@@ -113,10 +117,9 @@ export function tokenBlocks(repo) {
     for (const v of css.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/--([\w-]+):\s*([^;]+);/g)) out[v[1]] = v[2].trim()
     return out
   }
-  const gray = block(/^:root \{/m)
-  const light = block(/^:root\[data-mode="light"\] \{/m)
-  const black = block(/^:root\[data-mode="dark"\]\[data-shade="black"\] \{/m)
-  return { gray, light: { ...gray, ...light }, black: { ...gray, ...black }, overridden: [...new Set([...Object.keys(light), ...Object.keys(black)])] }
+  const light = block(/^:root \{/m)
+  const dark = block(/^:root\[data-mode="dark"\] \{/m)
+  return { light, dark: { ...light, ...dark }, overridden: Object.keys(dark) }
 }
 
 /** A token's value with var() references resolved in the same appearance; "R G B" stays as is. */
@@ -126,7 +129,7 @@ export function resolveToken(values, name, depth = 0) {
   return v.replace(/var\(--([\w-]+)\)/g, (_, ref) => resolveToken(values, ref, depth + 1) ?? '')
 }
 
-/** "17 24 26" -> "#11181a"; anything else unchanged. */
+/** "22 22 23" -> "#161617"; anything else unchanged. */
 export function hex(value) {
   const m = /^(\d+)\s+(\d+)\s+(\d+)$/.exec(value || '')
   if (!m) return value || ''

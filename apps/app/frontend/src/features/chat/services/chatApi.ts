@@ -5,7 +5,8 @@ import type {
   ConversationUsage,
   Conversation, ConversationSnapshot, ChatSseEvent, PermissionMode, SharedConversation, WorkflowRunSnapshot,
 } from '../types/chat.types'
-import type { ConversationAgents } from '../utils/agentsGraph'
+import type { AgentTreeData } from '../utils/agentTree'
+import type { PendingAlarm } from '../utils/alarms'
 import { nextReconnectDelay } from '../utils/reconnect'
 
 export interface ConversationsPage {
@@ -59,12 +60,20 @@ export const chatApi = {
     http.get<SharedConversation>(`/api/v1/chat/shared/${token}`).then(r => r.data),
   stopChat: (conversationId: string) =>
     http.post(`/api/v1/chat/conversations/${conversationId}/stop`),
-  // Stops ONE sub-agent - the Stop on its panel. 404 when it is not running there any more.
-  stopSubAgent: (conversationId: string, agentId: string) =>
-    http.post(`/api/v1/chat/conversations/${conversationId}/sub-agents/${agentId}/stop`),
-  // The conversation's agents and what each spent - the agents graph (utils/agentsGraph.ts).
-  getAgents: (conversationId: string) =>
-    http.get<ConversationAgents>(`/api/v1/chat/conversations/${conversationId}/agents`).then(r => r.data),
+  // The whole tree of agents this conversation belongs to - its root, every deployed agent at every
+  // depth, where each stands and what it spent (utils/agentTree.ts). Asked of any conversation of
+  // the tree; `self` is set when that conversation is a deployed agent's own.
+  getAgentTree: (conversationId: string) =>
+    http.get<AgentTreeData>(`/api/v1/chat/conversations/${conversationId}/agent-tree`).then(r => r.data),
+  // The person's control over any agent of the tree. 400 with `error` when it is refused (an agent
+  // already ended, a resume of one not paused).
+  controlAgent: (conversationId: string, agentId: string, action: 'pause' | 'resume' | 'stop' | 'dismiss') =>
+    http.post(`/api/v1/chat/conversations/${conversationId}/agent-tree/${agentId}/${action}`),
+  // The alarms the conversation's agent set, still to go off.
+  getAlarms: (conversationId: string) =>
+    http.get<PendingAlarm[]>(`/api/v1/chat/conversations/${conversationId}/alarms`).then(r => r.data),
+  cancelAlarm: (conversationId: string, alarmId: string) =>
+    http.delete(`/api/v1/chat/conversations/${conversationId}/alarms/${alarmId}`),
   resolveToolApproval: (conversationId: string, callId: string, decision: 'accept_once' | 'accept_all' | 'deny') =>
     http.post(`/api/v1/chat/conversations/${conversationId}/tool-approval`, { callId, decision }),
   resolveToolEnableDecision: (conversationId: string, callId: string, decision: 'enabled' | 'keep_disabled') =>
@@ -119,8 +128,8 @@ export const chatApi = {
   getActiveConversations: (surface?: string): Promise<string[]> =>
     http.get<{ ids?: string[] }>('/api/v1/chat/conversations/active', { params: { surface } }).then(r => r.data.ids ?? []),
 
-  // `background`: sub-agents are working there, or a report is on its way to the main agent -
-  // not a turn, but a reason to follow the conversation's event stream.
+  // `background`: agents it deployed are working, a report is on its way to its agent, or a
+  // background job runs - not a turn, but a reason to follow the conversation's event stream.
   getConversationStatus: (conversationId: string): Promise<{ active: boolean; condensing: boolean; background: boolean }> =>
     http.get<{ active?: boolean; condensing?: boolean; background?: boolean }>(`/api/v1/chat/conversations/${conversationId}/status`)
       .then(r => ({
@@ -146,8 +155,8 @@ export const chatApi = {
   subscribeChatEvents: (
     conversationId: string,
     onEvent: (event: ChatSseEvent) => void,
-    // `more`: the turn is over and the conversation is not - sub-agents are still working in the
-    // background, or a report is on its way. The stream stays open, and stays the caller's to
+    // `more`: the turn is over and the conversation is not - agents it deployed are still working,
+    // or a report is on its way. The stream stays open, and stays the caller's to
     // close (the function this returns).
     onDone: (more: boolean) => void,
     // `connectionLost`: the stream itself could not be kept, as opposed to the turn failing.

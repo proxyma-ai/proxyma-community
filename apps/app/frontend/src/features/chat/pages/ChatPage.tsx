@@ -6,6 +6,8 @@ import { ChatWindow } from '../components/ChatWindow'
 import { ChatHistoryModal } from '../components/ChatHistoryModal'
 import { ChatComposer } from '../components/ChatComposer'
 import { ChatStartLinks } from '../components/ChatStartLinks'
+import { AgentStrip } from '../components/AgentStrip'
+import { ToastDock } from '@/components/ui/ToastDock'
 import { QuotaMilestoneFeedbackModal } from '@/features/feedback/components/QuotaMilestoneFeedbackModal'
 import { useChat } from '../hooks/useChat'
 import { useAttachmentUploader } from '../hooks/useAttachmentUploader'
@@ -382,6 +384,8 @@ export function ChatPage() {
       <FadeSwap swapKey={view} className="flex-1 min-h-0 flex flex-col">
         {view === 'conversation' ? (
           <div key="conversation" className="flex flex-col flex-1 min-h-0">
+            {/* Over a deployed agent's own conversation: which agent this is, and the way back. */}
+            <AgentStrip conversationId={conversationId} className="px-3 sm:px-6 pt-2" />
             <ChatWindow
               messages={messages}
               streaming={streaming}
@@ -398,7 +402,11 @@ export function ChatPage() {
               attachedToolCallCount={attachedToolCallCount}
               workflowRuns={workflowRuns}
             />
-            <div className="flex-shrink-0 px-2 sm:px-6 py-2 sm:py-4 short:py-1.5">
+            <div className="flex-shrink-0 px-3 sm:px-6 py-2 sm:py-4 short:py-1">
+              {/* THE TOAST DOCK: in a conversation a toast sits here, in the flow above the
+                  composer, rather than on the layer under the header - which lies over the thread
+                  and the pinned question (the UI review, 2026-10-28). */}
+              <ToastDock className={THREAD_COLUMN} />
               {/* No shared-element animation between the hero and conversation views - the
                   composer is placed directly in each view's own layout, and the view fades in. */}
               <div className={THREAD_COLUMN}>
@@ -429,7 +437,7 @@ export function ChatPage() {
               {/* Hidden on a short screen (a phone on its side), where the conversation above has
                   a few lines and this sentence would take one of them. The kit Caption at its own
                   13px - it was 10px on a phone, below the type scale. */}
-              <Caption className="text-center mt-1.5 sm:mt-2 short:hidden">
+              <Caption className="text-center mt-2 short:hidden">
                 {t('AI can make mistakes. Always verify important information.')}
               </Caption>
             </div>
@@ -452,7 +460,7 @@ export function ChatPage() {
                 // the hero pushed it under the browser's toolbar. Neither holds now - the shell is
                 // one box pinned to the visible viewport (data-app-shell) and the composer is a
                 // footer outside the scroller, exactly as it is in a conversation.
-                'flex-1 min-h-0 flex flex-col px-2 sm:px-6 pb-2 sm:py-6 short:py-2',
+                'flex-1 min-h-0 flex flex-col px-3 sm:px-6 pb-2 sm:py-6 short:py-2',
                 'sm:items-center sm:justify-center sm:overflow-y-auto',
               )}
           >
@@ -480,7 +488,7 @@ export function ChatPage() {
                   greeting={FEATURES.auth ? (
                     // NOT "What are you looking for?" (until 2026-10-02): the agent searches, and it
                     // also carries a long job through - a report, a set of changes, work handed to
-                    // sub-agents. The question is about the job, whatever kind it is.
+                    // agents it deploys. The question is about the job, whatever kind it is.
                     greetingName ? t('Hi, {name}', { name: greetingName }) : t('What do you need done?')
                   ) : undefined}
                   fact={spaceFact ? (

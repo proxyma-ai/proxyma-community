@@ -379,7 +379,7 @@ export function ConnectionModal({ connection, presetProtocol, onClose, onSaved }
               <div>
                 <SwitchRow
                   title={t('Allow agent to use')}
-                  caption={t("Offer this server's tools to the agent. Each call waits for your approval unless the conversation is in Autopilot.")}
+                  caption={t("Offer this server's tools to the agent. Each call waits for your approval unless the conversation is in Auto.")}
                   checked={allowRead}
                   onChange={setAllowRead}
                 />

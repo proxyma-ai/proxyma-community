@@ -36,7 +36,7 @@ export interface Picture {
 
 const noop = () => undefined
 const DISCARD = { title: 'Discard unsaved changes?', body: 'Your changes have not been saved.', keep: 'Keep editing', discard: 'Discard' }
-const NAMES = { system: 'System', light: 'Light', gray: 'Proxyma', black: 'Dark' } as const
+const NAMES = { system: 'System', light: 'Light', dark: 'Dark' } as const
 
 /** Something for a scrim to darken and blur: a page header and a few rows. */
 function PageBehind() {
@@ -49,7 +49,7 @@ function PageBehind() {
 }
 
 const SPACE_BAR: Record<string, string> = {
-  '1': 'w-1', '1.5': 'w-1.5', '2': 'w-2', '3': 'w-3', '4': 'w-4', '5': 'w-5', '6': 'w-6', '8': 'w-8', 'tap-sm': 'w-tap-sm', tap: 'w-tap',
+  '1': 'w-1', '2': 'w-2', '3': 'w-3', '4': 'w-4', '6': 'w-6', '8': 'w-8', '12': 'w-12', '16': 'w-16', 'h-8': 'w-8', 'tap-sm': 'w-tap-sm', tap: 'w-tap',
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -61,9 +61,9 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function Lockup({ appearance }: { appearance: 'light' | 'gray' | 'black' }) {
+function Lockup({ appearance }: { appearance: 'light' | 'dark' }) {
   // gl-ap-* re-declares the tokens of one appearance on this box (the build writes those classes
-  // from proxyma-tokens.css), so the three sit side by side whatever the page shows.
+  // from proxyma-tokens.css), so the two sit side by side whatever the page shows.
   return (
     <div className={cn(`gl-ap-${appearance}`, 'bg-canvas border border-line/45 rounded-lg p-6 flex flex-col items-start gap-5 min-w-0')}>
       <Eyebrow>{NAMES[appearance]}</Eyebrow>
@@ -265,8 +265,8 @@ export const PICTURES: Record<string, Picture> = {
     render: () => <div className="flex flex-wrap items-end gap-4"><ProxymaIcon size={16} /><ProxymaIcon size={24} /><ProxymaIcon size={32} /><ProxymaIcon size={48} /><ProxymaIcon size={64} /><ProxymaIcon size={128} /></div>,
   },
   'logo-appearances': {
-    title: 'On each appearance (the three side by side, whatever this page shows)',
-    render: () => <div className="grid sm:grid-cols-3 gap-4 w-full"><Lockup appearance="light" /><Lockup appearance="gray" /><Lockup appearance="black" /></div>,
+    title: 'On each appearance (the two side by side, whatever this page shows)',
+    render: () => <div className="grid sm:grid-cols-2 gap-4 w-full"><Lockup appearance="light" /><Lockup appearance="dark" /></div>,
     wide: true,
   },
   'logo-clearspace': {
@@ -308,7 +308,7 @@ export const PICTURES: Record<string, Picture> = {
         <div className="space-y-2 min-w-0"><span className="inline-flex items-center gap-2"><ProxymaIcon size={28} /><span className="font-brand font-bold text-brand-legible text-base tracking-wider">PROXYMA</span></span><Caption tone="danger">Upper case.</Caption></div>
         <div className="space-y-2 min-w-0"><span className="inline-flex items-center gap-2"><ProxymaIcon size={28} /><span className="font-ui font-bold text-brand-legible text-base">Proxyma</span></span><Caption tone="danger">Another face.</Caption></div>
         <div className="space-y-2 min-w-0"><span className="inline-flex items-center gap-2"><span className="inline-flex" style={{ transform: 'scaleX(1.4)' }}><ProxymaIcon size={28} /></span><span className="font-brand font-bold text-success text-base tracking-wider">Proxyma</span></span><Caption tone="danger">Stretched, or recolored.</Caption></div>
-        <div className="space-y-2 min-w-0"><span className="inline-flex items-center gap-2 rounded-lg p-1 shadow-card ring-4 ring-brand-accent/40"><ProxymaIcon size={28} /></span><Caption tone="danger">A glow, a tile or a frame.</Caption></div>
+        <div className="space-y-2 min-w-0"><span className="inline-flex items-center gap-2 rounded-lg p-1 shadow-float ring-4 ring-brand-accent/40"><ProxymaIcon size={28} /></span><Caption tone="danger">A glow, a tile or a frame.</Caption></div>
       </div>
     ),
     wide: true,

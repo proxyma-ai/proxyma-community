@@ -121,7 +121,7 @@ function MatchedTextSection() {
                   boxed
                   open={open === id}
                   onToggle={o => setOpen(o ? id : null)}
-                  summaryClassName="px-3 py-1.5 touch:min-h-tap text-xs"
+                  summaryClassName="px-3 py-2 touch:min-h-tap text-xs"
                   meta={<Readout>{r.millis} ms</Readout>}
                   summary={
                     <span className="flex items-center gap-3 min-w-0">
@@ -139,11 +139,11 @@ function MatchedTextSection() {
                   <div className="space-y-3 border-t border-line/40 pt-3">
                     <div>
                       <Eyebrow className="mb-1">{t('Rules that fired')}</Eyebrow>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {r.rules.map(rule => <Chip key={rule} label={rule} />)}
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {r.evidence.map((e, j) => (
                         // A matched span is frequently one long unbroken token, so it wraps.
                         <div key={`${e.rule}-${j}`}>

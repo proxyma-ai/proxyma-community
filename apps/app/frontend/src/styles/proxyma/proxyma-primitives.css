@@ -38,11 +38,11 @@
     font-family: var(--font-ui);
     color: rgb(var(--ink-secondary));
     background: rgb(var(--canvas));
-    /* Tracks the `sm` step in the Tailwind preset (both came down 1px together). This is
-       the default for anything that never names a size of its own, so letting it drift
-       from the scale would leave unstyled text a pixel larger than everything around it. */
+    /* The preset's `sm` step, 14/20 - UI text. This is the default for anything that never names
+       a size of its own, so letting it drift from the scale would leave unstyled text a pixel
+       off everything around it. */
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.25rem;
     margin: 0;
     -webkit-font-smoothing: antialiased;
   }
@@ -175,34 +175,177 @@ html[data-app-shell] #root {
      dark mode, a pale blue) and a focus ring is an affordance, not decoration - it has to
      read as the same emphasis as the button's own fill. The landing site used
      ring-brand-accent, which is why its focus rings did not match the product's. */
+  /* A 44px TOUCH TARGET WITHOUT MOVING ANYTHING: on a coarse pointer an invisible box at least 44px
+     each way is centered on the element, so a text link, a back link or a segmented option is easy to
+     hit on glass while the layout stays the mouse layout. For what cannot grow (a link in a row of
+     words); a control that can is `min-h-tap` instead. Not for a link INSIDE a sentence - its box
+     would span the lines it wraps across, and WCAG 2.5.8 exempts it anyway. */
+  @media (pointer: coarse) {
+    .tap-area { position: relative; }
+    .tap-area::after {
+      content: ''; position: absolute; left: 50%; top: 50%;
+      width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%);
+    }
+  }
+
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2;
-    --tw-ring-offset-color: rgb(var(--canvas));
+    /* The card plane: most controls sit on a card, a bar or a dialog, not on the page itself. */
+    --tw-ring-offset-color: rgb(var(--surface));
   }
 
-  /* EVERY SURFACE THAT FLOATS over other content - modals, dropdowns and menus, popovers,
-     tooltips, toasts, the chat composer - is SOLID. No glassmorphism, since 2026-09-26
-     (maintainer's decision): no translucency, no backdrop blur, no sheen. A floating panel is
-     told apart from the page by its border and its shadow, which each call site supplies.
-     This was .glass, a frosted pane at 72% under a 20px blur, from 2026-09-25 until then.
+  /* =====================================================================================
+     THE GLASS (the maintainer's request, 2026-10-29: "I want to have the glass effect ... applied
+     correctly and completely across elements"). It reverses 2026-09-26's "no glassmorphism, every
+     floating surface solid". Inside an APP SHELL (`data-app-shell` on <html>: the app and both
+     consoles) every surface is a pane over the FIELD; the values, and the contrast measured on
+     each plane composited over the field, are in proxyma-tokens.css. A surface drawn without the
+     field - the landing site - gets the solid planes from the same classes, which is why every
+     glass rule below is scoped to the shell. The classes, bottom up:
 
-     --float-fill IS --canvas in every appearance - the Dark shade lifted its panels to the card
-     plane until 2026-10-01; see proxyma-tokens.css. */
-  .surface-float {
-    background-color: rgb(var(--float-fill));
-  }
+       .app-field      the field: one flat cool color, fixed behind the app (the body of
+                       an app shell; ProxymaBackground in one)
+       .app-glass      the frame from `lg`, holding the sidebar (GlassFrame)
+       .app-sheet      the PAGE: a translucent pane, blurred, with a teal light in its
+                       bottom-right corner (GlassFrame's sheet; the page below `lg`; a console's)
+       .surface-card   a card on the sheet: translucent, a light edge, a highlight along its top
+                       (in --shadow-card) - and NO blur, which on dozens of cards is a GPU cost and
+                       reads muddy. A card in a card is a well (.kit-card .kit-card)
+       .surface-float  what floats - a menu, popover, list, tooltip, toast, dialog, the composer:
+                       the most opaque glass and the strongest blur, so its text stays crisp
+       .header-bar     the header bar below `lg`
+       .modal-scrim    under a dialog: darkened and blurred
 
-  /* A fixed page HEADER: the page's own plane, solid, so content scrolling underneath it is
-     hidden rather than shown through. Was .glass-header. */
-  .header-bar {
-    position: relative;
+     ONLY the frame, the sheet, the bar, the scrim and what floats blur, at most 24px, and no row
+     of a scrolling list carries a blur of its own. The blur is turned off - and every plane drawn
+     solid - for a reader who asks for less transparency and in a browser without backdrop-filter.
+
+     A BACKDROP-FILTER MAKES ITS ELEMENT THE CONTAINING BLOCK of a `position: fixed` descendant.
+     Everything fixed that can open inside a sheet or a floating panel is portaled to the body
+     (dialogs, Select, Combobox, the date picker, tooltips, submenus) or absolute in its anchor
+     (menus); keep it that way for anything new.
+     ===================================================================================== */
+
+  /* The field. A wash of radial lights over a base, with no `filter: blur` - a gradient is soft
+     already, and a blurred full-window layer was a GPU cost for nothing. */
+  .proxyma-background {
     background-color: rgb(var(--canvas));
   }
+  .app-field,
+  html[data-app-shell] body,
+  :where(html[data-app-shell]) .proxyma-background {
+    /* ONE flat color (the maintainer, 2026-10-30: the gradient belongs to the content area, not the
+       whole app) - the only light is the sheet's, in its bottom-right corner. */
+    background: rgb(var(--field-base));
+  }
 
-  /* Numeric readouts: counts, sizes, percentages, dates, IDs. Their FIGURES are monospace so
-     digits do not jitter as values change and a column of them aligns; any word beside them is in
-     the UI face (--font-readout, since 2026-10-05). tabular-nums keeps the alignment where the
-     figures fall back to a face whose default digits are proportional. */
+  .app-glass {
+    background-color: rgb(var(--glass) / var(--glass-alpha));
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--shadow-frame);
+    -webkit-backdrop-filter: blur(var(--blur-frame));
+    backdrop-filter: blur(var(--blur-frame));
+  }
+
+  /* The page. Outside an app shell it is the canvas. */
+  .app-sheet {
+    background-color: rgb(var(--canvas));
+  }
+  :where(html[data-app-shell]) .app-sheet {
+    /* ONE light, in the bottom-right corner, over a third of the page (the maintainer, 2026-10-30:
+       "leave the gradient only at the bottom right, reduce the area as well"). */
+    background:
+      radial-gradient(35% 40% at 100% 100%, rgb(var(--sheet-accent) / var(--sheet-accent-alpha)), transparent 70%),
+      rgb(var(--sheet) / var(--sheet-alpha));
+    border-color: var(--glass-edge);
+    -webkit-backdrop-filter: blur(var(--blur-sheet));
+    backdrop-filter: blur(var(--blur-sheet));
+  }
+
+  /* A PICTURE OF THE SHELL (the landing site's product scenes: `data-scene-glass` on the field a
+     scene draws). The site is no app shell, so each pane is its SOLID plane - the color the glass
+     composites to - and the page keeps its one faint teal light in the bottom-right corner, as the
+     app's sheet draws it. A picture has nothing behind it worth blurring, so nothing here blurs. */
+  :where([data-scene-glass]) .app-sheet {
+    background:
+      radial-gradient(35% 40% at 100% 100%, rgb(var(--sheet-accent) / var(--sheet-accent-alpha)), transparent 70%),
+      rgb(var(--canvas));
+    border-color: rgb(var(--line));
+  }
+  /* ...and a dialog drawn in one has the shell's scrim: a neutral shade in Light, not black. */
+  :where([data-scene-glass]) .modal-scrim {
+    background-color: rgb(var(--scrim) / var(--scrim-alpha));
+  }
+
+  /* A card. Outside an app shell the card plane and its line. The caller adds `border`, a radius
+     and `shadow-card`; a tone (danger, a brand line, a state) is a border utility, which wins. */
+  .surface-card {
+    background-color: rgb(var(--surface));
+    border-color: rgb(var(--line));
+  }
+  :where(html[data-app-shell]) .surface-card {
+    background-color: rgb(var(--card) / var(--card-alpha));
+    border-color: var(--card-edge);
+  }
+
+  /* What floats. Its fill was --surface-float, solid, from 2026-09-26 until the glass; the caller
+     adds `border`, `rounded-lg` and `shadow-float` - never a border color, which this decides.
+     NO saturate() on any pane's backdrop, since 2026-10-30 (the maintainer: no teal in any
+     background but the page's corner light): a 1.3-1.5x saturation pulled whatever teal sat
+     behind a pane - the corner light, a brand button - into its tint. A pane is its own neutral
+     color, blurred, and nothing else. */
+  .surface-float {
+    background-color: rgb(var(--surface-float));
+    border-color: rgb(var(--line) / 0.45);
+  }
+  :where(html[data-app-shell]) .surface-float {
+    background-color: rgb(var(--float) / var(--float-alpha));
+    border-color: var(--float-edge);
+    -webkit-backdrop-filter: blur(var(--blur-float));
+    backdrop-filter: blur(var(--blur-float));
+  }
+
+  /* A fixed page HEADER: solid outside an app shell (the landing site's bar, content scrolling
+     under it hidden); a glass bar in one. */
+  .header-bar {
+    position: relative;
+    background-color: rgb(var(--surface));
+  }
+  :where(html[data-app-shell]) .header-bar {
+    background-color: rgb(var(--bar) / var(--bar-alpha));
+    border-color: var(--glass-edge);
+    -webkit-backdrop-filter: blur(var(--blur-bar));
+    backdrop-filter: blur(var(--blur-bar));
+  }
+
+  /* Under a dialog: what is behind it darkened and blurred (MODAL_SCRIM, since 2026-09-27). In an
+     app shell's Light a cool shade rather than black, so a glass dialog over it stays light. */
+  .modal-scrim {
+    background-color: rgb(0 0 0 / 0.5);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  :where(html[data-app-shell]) .modal-scrim {
+    background-color: rgb(var(--scrim) / var(--scrim-alpha));
+    -webkit-backdrop-filter: blur(var(--blur-scrim));
+    backdrop-filter: blur(var(--blur-scrim));
+  }
+  .modal-scrim.modal-scrim-deep { background-color: rgb(0 0 0 / 0.75); }
+
+  /* LESS TRANSPARENCY, OR NO BACKDROP BLUR: no blur anywhere but the scrim's, and every plane its
+     solid equivalent (the tokens swap the colors). */
+  @media (prefers-reduced-transparency: reduce) {
+    .app-glass, .app-sheet, .surface-float, .header-bar {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+  }
+
+  /* Numeric readouts: counts, sizes, percentages, dates, IDs. The UI face with TABULAR figures
+     (since 2026-10-28), so digits do not jitter as values change and a column of them aligns,
+     while a figure and the word beside it stay one face. It drew its digits in Consolas (the
+     `Proxyma Figures` face) from 2026-10-05 until then, and a caption mixed two digit faces. Space
+     Grotesk carries a `tnum` feature, so the figures really are fixed-width. */
   .data-readout {
     font-family: var(--font-readout);
     font-variant-numeric: tabular-nums;
@@ -245,7 +388,7 @@ html[data-app-shell] #root {
    durations and curves are the --motion-* and --ease-* tokens, and every keyframe and transition
    below takes them. Overlays arrive with a fade and a small scale or rise and leave with a quicker
    fade; content that swaps fades in; colors that answer the pointer ease. Nothing bounces, nothing
-   glows, and nothing blurs but the modal scrim.
+   glows, and nothing animates a blur.
 
    WHEN is decided in react/motion.ts: usePresence (a panel kept while it leaves), useExitGhost (a
    dialog its caller unmounts at once), useFadeOnChange / FadeSwap, installMotion and
@@ -544,17 +687,51 @@ html:not([data-motion-ready]) *::after {
 }
 .animate-slide-out-right { animation: proxyma-slide-out-right var(--motion-fast) var(--ease-in) both; pointer-events: none; }
 
-/* PAGE SECTIONS (SettingsSections): a hairline with 3rem either side - the gap between two
-   sections must read as clearly larger than the gap between two fields (maintainer, 2026-09-24;
-   widened from 2rem on 2026-10-14); 1.75rem on a phone. A subsection keeps the tighter 2rem
-   (1.25rem on a phone) so it still reads as part of its section. A lead paragraph or link as the
-   FIRST child is the page's introduction, with nothing drawn under it. UNLAYERED and late on
-   purpose: the selectors tie with Tailwind's space-y-* on specificity, so source order hands them
-   the margin. */
+/* PAGE SECTIONS (SettingsSections): EACH SECTION IS A CARD since 2026-10-29 (the depth review) -
+   the card plane with its line and `--shadow-card`, on the canvas the page or the Settings window's
+   column is drawn on, 1.5rem apart (1rem on a phone). It was a hairline with 3rem either side until
+   then. A subsection keeps the hairline, 2rem either side (1.25rem on a phone), so it still reads as
+   part of its card. A lead paragraph or link as the FIRST child is the page's introduction: no card.
+   A SECTION THAT HOLDS CARDS OF ITS OWN IS NO CARD (the maintainer's review, 2026-10-29: "instead
+   of putting cards inside cards, get rid of the outer cards - small cards sitting by groups"): its
+   heading and its cards sit on the page, the cards with their own line and shadow.
+   UNLAYERED and late on purpose: the selectors tie with Tailwind's space-y-* on specificity, so
+   source order hands them the margin. */
+.settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)) {
+  background-color: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+}
+/* ...and in an app shell the card is GLASS, as .surface-card is (since 2026-10-29). */
+:where(html[data-app-shell]) .settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)) {
+  background-color: rgb(var(--card) / var(--card-alpha));
+  border-color: var(--card-edge);
+}
 .settings-sections > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 3rem;
-  padding-top: 3rem;
-  border-top: 1px solid rgb(var(--line) / 0.45);
+  margin-top: 1.5rem;
+}
+/* A CARD INSIDE A CARD (cardClass marks its cards `kit-card`) - rare now that a section holding
+   cards is no card - is a WELL: sunk into the card that holds it, the well's fill, no line, no
+   shadow. A `TableCard flush` inside a card is that card's own content - no fill, line, shadow or
+   padding of its own, its columns on the card's text edge. */
+.kit-card .kit-card {
+  box-shadow: none;
+  background-color: rgb(var(--surface-alt));
+  border-color: transparent;
+}
+/* In an app shell the well is a translucent SHADE of the glass card it is sunk into (--well), so the
+   card's glass still shows through it. */
+:where(html[data-app-shell]) .kit-card .kit-card {
+  background-color: rgb(var(--well) / var(--well-alpha));
+}
+.kit-card .kit-card-flush {
+  background-color: transparent;
+  border-width: 0;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 :not([hidden]) ~ .settings-subsection:not([hidden]) {
   margin-top: 2rem;
@@ -562,9 +739,11 @@ html:not([data-motion-ready]) *::after {
   border-top: 1px solid rgb(var(--line) / 0.45);
 }
 @media (max-width: 639.98px) {
+  .settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)) {
+    padding: 1rem;
+  }
   .settings-sections > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 1.75rem;
-    padding-top: 1.75rem;
+    margin-top: 1rem;
   }
   :not([hidden]) ~ .settings-subsection:not([hidden]) {
     margin-top: 1.25rem;
@@ -573,24 +752,49 @@ html:not([data-motion-ready]) *::after {
 }
 .settings-sections > :is(p, a):first-child + :not([hidden]) {
   margin-top: 1.5rem;
-  padding-top: 0;
-  border-top: 0;
+}
+
+/* SIDE-BY-SIDE FIELDS LINE UP THEIR CONTROLS (FormColumns, since 2026-10-29). A field's hint sits
+   under its label, so a field with one beside a field without stood their controls at two heights.
+   When every child of the columns is a labelled kit field (`.field-stack`: a head - the label and
+   its hint - and a body - the control and its error), each becomes a two-row SUBGRID of the columns,
+   so the heads of one row share the tallest head's height. A row holding anything else keeps the
+   plain layout, as does a browser without :has() or subgrid. The subgrid's row gap is 0: the head
+   spaces itself (label, 4px, hint, 8px), and the columns' own gap stays between rows of fields.
+   UNLAYERED, so it wins over the field's `flex` utility. */
+.form-columns:not(:has(> :not(.field-stack))) > .field-stack {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: 0;
 }
 
 /* The pinned question (and the hero's copy of it): no background; the answer scrolls under it
-   into the canvas colour, nearly opaque under the question and fading to nothing below it. */
+   into the plane the thread is drawn on, nearly opaque under the question and fading to nothing
+   below it. That plane is the canvas unless a thread on another one says so with `--pin-plane`
+   (a chat panel on the card plane, since 2026-10-29). */
 .pin-fade {
   background: linear-gradient(to bottom,
-    rgb(var(--canvas) / 0.96) 0,
-    rgb(var(--canvas) / 0.85) 2.5rem,
-    rgb(var(--canvas) / 0) 4rem);
+    rgb(var(--pin-plane, var(--canvas)) / 0.96) 0,
+    rgb(var(--pin-plane, var(--canvas)) / 0.85) 2.5rem,
+    rgb(var(--pin-plane, var(--canvas)) / 0) 4rem);
 }
 
+/* ICONS AT 1.75, since 2026-10-29 (the maintainer's review: text and icons "not sharp, not pixel
+   perfect"). lucide draws a 2px stroke, which at the 14-16px the interface uses lands between pixels
+   and smears; 1.75 holds its line. Only icons left at lucide's default - a deliberate strokeWidth
+   (a check mark's 3.5) is kept. */
+svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
+
 /* THE COMPOSER'S LIGHT (ComposerShell) - after Gemini's prompt box, in the brand's one colour: a
-   conic gradient turning round the composer as a 1.5px ring over its border, and the same gradient
-   blurred behind it. THE ONE GLOW IN THE PRODUCT (maintainer, 2026-09-27); the rule against glow
-   holds everywhere else. The angle is a registered property so the gradient itself turns; PAUSED,
-   not removed, when idle, so a fading light holds its angle. Reduced motion stills it. */
+   conic gradient turning round the composer as a thin ring over its border, and the same gradient
+   blurred softly behind it. THE ONE GLOW IN THE PRODUCT (maintainer, 2026-09-27); the rule against
+   glow holds everywhere else. Since 2026-10-30 (the maintainer: "I like the old light effect, but
+   less strong") the 2026-09-27 light is back, quieter: a 1px ring at about half its brightness, the
+   glow at about a third, a slower turn. At rest the composer is a raised card (the float shadow)
+   and unlit; it lights on focus, and turns faster while the agent works. The angle is a registered
+   property so the gradient itself turns; PAUSED, not removed, when idle, so a fading light holds its
+   angle. Reduced motion stills it. */
 @property --composer-light-angle {
   syntax: '<angle>';
   inherits: false;
@@ -602,23 +806,23 @@ html:not([data-motion-ready]) *::after {
 .composer-light-glow {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   pointer-events: none;
   opacity: 0;
   background: conic-gradient(from var(--composer-light-angle),
-    rgb(var(--brand-accent) / 0.25) 0deg,
-    rgb(var(--brand-accent) / 0.9) 70deg,
-    rgb(var(--brand-legible)) 110deg,
-    rgb(var(--brand-accent) / 0.9) 150deg,
-    rgb(var(--brand-accent) / 0.25) 220deg,
-    rgb(var(--brand-accent) / 0.55) 290deg,
-    rgb(var(--brand-accent) / 0.25) 360deg);
-  animation: composer-light-turn 5s linear infinite paused;
+    rgb(var(--brand-accent) / 0.12) 0deg,
+    rgb(var(--brand-accent) / 0.5) 70deg,
+    rgb(var(--brand-accent) / 0.7) 110deg,
+    rgb(var(--brand-accent) / 0.5) 150deg,
+    rgb(var(--brand-accent) / 0.12) 220deg,
+    rgb(var(--brand-accent) / 0.3) 290deg,
+    rgb(var(--brand-accent) / 0.12) 360deg);
+  animation: composer-light-turn 8s linear infinite paused;
   transition: opacity var(--motion-slow) var(--ease-out);
 }
 .composer-light-ring {
   z-index: 2;
-  padding: 1.5px;
+  padding: 1px;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
@@ -626,27 +830,32 @@ html:not([data-motion-ready]) *::after {
 .composer-light-glow {
   z-index: -1;
   inset: -2px;
-  filter: blur(14px);
+  filter: blur(18px);
   transform: scale(0.97);
   transition: opacity var(--motion-slow) var(--ease-out), transform var(--motion-slow) var(--ease-out);
 }
 .composer-light:focus-within .composer-light-ring,
-.composer-light.is-working .composer-light-ring { opacity: 1; animation-play-state: running; }
-.composer-light:focus-within .composer-light-glow,
-.composer-light.is-working .composer-light-glow { opacity: 0.45; transform: scale(1); animation-play-state: running; }
 .composer-light.is-working .composer-light-ring,
-.composer-light.is-working .composer-light-glow { animation-duration: 2.2s; }
-.composer-light.is-working .composer-light-glow { opacity: 0.6; }
-:root:not([data-mode="dark"]) .composer-light:focus-within .composer-light-glow { opacity: 0.3; }
-:root:not([data-mode="dark"]) .composer-light.is-working .composer-light-glow { opacity: 0.4; }
-.composer-sweep.focus-border:focus-within,
-.composer-light.is-working .composer-sweep.focus-border { border-color: rgb(var(--brand-accent) / 0.3); }
-/* Lit without focus - a PICTURE of the composer (the site's scenes), which has no focus to light it.
-   ComposerShell's `alwaysLit`. It was the site's own rule in globals.css. */
 .composer-light.is-lit .composer-light-ring { opacity: 1; animation-play-state: running; }
-.composer-light.is-lit .composer-light-glow { opacity: 0.45; transform: scale(1); animation-play-state: running; }
-:root:not([data-mode="dark"]) .composer-light.is-lit .composer-light-glow { opacity: 0.3; }
+.composer-light:focus-within .composer-light-glow,
+.composer-light.is-lit .composer-light-glow { opacity: 0.16; transform: scale(1); animation-play-state: running; }
+.composer-light.is-working .composer-light-glow { opacity: 0.22; transform: scale(1); animation-play-state: running; }
+.composer-light.is-working .composer-light-ring,
+.composer-light.is-working .composer-light-glow { animation-duration: 3.5s; }
+:root:not([data-mode="dark"]) .composer-light:focus-within .composer-light-glow,
+:root:not([data-mode="dark"]) .composer-light.is-lit .composer-light-glow { opacity: 0.1; }
+:root:not([data-mode="dark"]) .composer-light.is-working .composer-light-glow { opacity: 0.14; }
+@media (prefers-reduced-motion: reduce) {
+  .composer-light-ring, .composer-light-glow { animation: none; }
+}
+.composer-sweep.focus-border {
+  box-shadow: var(--shadow-float);
+  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+}
 .composer-sweep.focus-border:hover:not(:focus-within) { border-color: rgb(var(--line) / 0.9); }
+.composer-sweep.focus-border:focus-within,
+.composer-light.is-working .composer-sweep.focus-border,
+.composer-light.is-lit .composer-sweep.focus-border { border-color: rgb(var(--brand-accent) / 0.2); }
 
 /* ONE MINIMUM SIZE FOR EVERY DIALOG (maintainer, 2026-09-29), phone-safe: DialogShell marks its
    panel `data-dialog-panel`, keyed on `surface-float` too so a bare tour wrapper is left alone. The
@@ -697,55 +906,66 @@ html:not([data-motion-ready]) *::after {
     color: rgb(var(--ink-caption));
   }
   table.table-stack > tbody > tr > td:not([data-label]):first-child { padding-bottom: 0.375rem; }
+  /* A cell with nothing in it is no line at all - a label over a blank read as a value missing
+     (the UI review's phone pass, 2026-10-28). */
+  table.table-stack > tbody > tr > td:empty { display: none; }
 }
 
 /* =====================================================================================
    PROSE - `.prose-doc`, the type of anything authored as HTML or markdown rather than as
-   components: the customer manuals, the release notes and the legal pages on the site. One scale
-   with the rest of the kit: h1 29/700, h2 21/700, h3 16/600, h4 15/600 (the server manual uses six
-   and none was styled), body 15 secondary (`TEXT.body`, since the 2026-10-15 readability pass - a
-   manual is read at length, and it was 14), the lede `TEXT.lead`, `rounded-md` code (it was 4px),
-   tables ruled between rows with sentence-case caption headers (one legal table drew a full grid).
-   `.note` and `.warn` are the kit `Callout`, its body at 14. `.prose-doc-sm` is the same at 13px -
-   a sub-agent's report in its panel.
+   components: the customer manuals, the release notes and the legal pages on the site. The kit's
+   one scale (typeScale.ts, since 2026-10-28): h1 24/32 600 (a page's title), h2 18/26 600, h3 16/24
+   600, h4 16/24 500, body 16/26 secondary (`TEXT.body` - read at length), the lede `TEXT.lead`
+   18/28, `rounded-md` code, tables ruled between rows with sentence-case caption headers. No 700
+   anywhere. `.note` and `.warn` are the kit `Callout`, its body at 14. `.prose-doc-sm` is the same
+   at 13px - an agent's report in its panel.
+
+   A LINE IS AT MOST ABOUT 70 CHARACTERS (since 2026-10-28; the review measured legal pages at
+   137-142 and chat answers at 99-113): every text block is capped at 70ch of its own size, while a
+   table, a code block and a note keep the column's full width.
    ===================================================================================== */
-.prose-doc h1 { @apply text-3xl font-bold text-ink-primary mb-2; }
-.prose-doc h2 { @apply text-xl font-bold text-ink-primary mt-10 mb-3; }
-.prose-doc h3 { @apply text-base font-semibold text-ink-primary mt-6 mb-2; }
-.prose-doc h4 { @apply text-[15px] font-semibold text-ink-primary mt-5 mb-1.5; }
-.prose-doc p  { @apply text-ink-secondary text-[15px] leading-relaxed mb-4; }
-.prose-doc ul, .prose-doc ol { @apply pl-5 text-ink-secondary text-[15px] leading-relaxed mb-4 space-y-1.5; }
+.prose-doc h1 { @apply text-2xl font-semibold text-ink-primary mb-2; }
+.prose-doc h2 { @apply text-lg font-semibold text-ink-primary mt-12 mb-3; }
+.prose-doc h3 { @apply text-base leading-6 font-semibold text-ink-primary mt-8 mb-2; }
+.prose-doc h4 { @apply text-base leading-6 font-medium text-ink-primary mt-6 mb-2; }
+.prose-doc p  { @apply text-ink-secondary text-base mb-4; }
+.prose-doc ul, .prose-doc ol { @apply pl-6 text-ink-secondary text-base mb-4 space-y-2; }
 .prose-doc ul { @apply list-disc; }
 .prose-doc ol { @apply list-decimal; }
-.prose-doc li > ul, .prose-doc li > ol { @apply mt-1.5 mb-0; }
+.prose-doc li > ul, .prose-doc li > ol { @apply mt-2 mb-0; }
+.prose-doc :is(h1, h2, h3, h4, p, ul, ol, blockquote, .lede, .legal-meta) { max-width: 70ch; }
+.prose-doc :is(.note, .warn, .table-wrap, li) :is(p, ul, ol) { max-width: none; }
 .prose-doc a  { @apply text-brand-legible underline-offset-[3px]; }
 @media (hover: hover) and (pointer: fine) { .prose-doc a:hover { text-decoration: underline; } }
 .prose-doc strong { @apply text-ink-primary font-semibold; }
 .prose-doc blockquote { @apply border-l-2 border-line pl-4 text-ink-caption mb-4; }
 .prose-doc hr { @apply border-0 border-t border-line/40 my-8; }
-.prose-doc .lede { @apply text-[17px] leading-relaxed text-ink-secondary mb-10; }
-.prose-doc .legal-meta { @apply text-sm text-ink-caption mb-10; }
+.prose-doc .lede { @apply text-lg leading-7 text-ink-secondary mb-8; }
+.prose-doc .legal-meta { @apply text-sm text-ink-caption mb-8; }
 .prose-doc .note,
 .prose-doc .warn { @apply rounded-lg border px-4 py-3 mb-6; }
-.prose-doc .note { @apply border-brand-solid/30 bg-brand-solid/[0.07]; }
-.prose-doc .warn { @apply border-warning/35 bg-warning/[0.07]; }
-.prose-doc .note p, .prose-doc .warn p { @apply text-sm leading-relaxed mb-2; }
+.prose-doc .note { @apply border-brand-solid/40 bg-surface; }
+.prose-doc .warn { @apply border-warning/40 bg-warning/[0.06]; }
+.prose-doc .note p, .prose-doc .warn p { @apply text-sm mb-2; }
 .prose-doc .note :is(ul, ol), .prose-doc .warn :is(ul, ol) { @apply text-sm mb-2; }
 .prose-doc .note p:last-child, .prose-doc .warn p:last-child { @apply mb-0; }
 .prose-doc .note .label,
-.prose-doc .warn .label { @apply block text-sm leading-5 font-semibold text-ink-primary mb-0.5; }
-/* A table in its `.table-wrap` is the kit's TableCard (since 2026-10-15): a subtle card, cells 16 by 12
-   - the look of every table in the apps. A bare table stays ruled on the page. */
-.prose-doc .table-wrap { @apply overflow-x-auto mb-6 rounded-lg border border-line/40 bg-surface/40; }
+.prose-doc .warn .label { @apply block text-sm font-semibold text-ink-primary mb-1; }
+/* A table in its `.table-wrap` is the kit's TableCard (since 2026-10-15): a bordered box, cells 16 by
+   12 - the look of every table in the apps. A bare table stays ruled on the page. */
+.prose-doc .table-wrap { @apply overflow-x-auto mb-6 rounded-lg border border-line bg-surface shadow-card; }
 .prose-doc table { @apply w-full text-sm border-collapse mb-6; }
 .prose-doc .table-wrap table { @apply mb-0; }
 .prose-doc th { @apply text-left text-xs font-medium text-ink-caption border-b border-line/40 px-3 py-2 whitespace-nowrap; }
 .prose-doc td { @apply text-ink-secondary border-b border-line/20 px-3 py-2 align-top; }
-/* Inline code at 0.9em and never under 12px: Consolas's x-height is Space Grotesk's own (both 0.49 of
-   the em, measured in Edge), so a smaller step only made code read smaller than the words around it -
-   0.85em of a 14px table cell was 11.9px. */
-.prose-doc code { @apply font-mono bg-surface border border-line/60 rounded-md px-1.5 py-0.5 text-ink-primary; font-size: max(12px, 0.9em); }
-.prose-doc pre { @apply font-mono bg-canvas border border-line/50 rounded-md px-3 py-2 mb-6 overflow-x-auto text-xs leading-relaxed; }
+/* Inline code is 0.9em of its sentence ROUNDED TO A WHOLE PIXEL, never under 12px: Consolas's x-height
+   is Space Grotesk's own (both 0.49 of the em, measured in Edge), so a smaller step only made code read
+   smaller than the words around it, and the unrounded 0.9em was 12.6 and 14.4px - off the scale. Rounded,
+   it lands on a step for every text size: 16 -> 14, 14 -> 13, 13 -> 12. The first declaration is for a
+   browser without CSS round(). InlineCode uses the same class. */
+.code-inline-size { font-size: max(12px, 0.9em); font-size: max(12px, round(nearest, 0.9em, 1px)); }
+.prose-doc code { @apply font-mono bg-surface-alt border border-line/60 rounded-md px-1 py-0.5 text-ink-primary; font-size: max(12px, 0.9em); font-size: max(12px, round(nearest, 0.9em, 1px)); }
+.prose-doc pre { @apply font-mono bg-surface-alt shadow-well border border-line/50 rounded-md px-3 py-2 mb-6 overflow-x-auto text-xs leading-5; }
 .prose-doc pre code { @apply bg-transparent border-0 p-0 text-[1em]; }
 .prose-doc .table-wrap :is(th, td) { @apply px-4 py-3; }
 .prose-doc .table-wrap tbody tr:last-child td { @apply border-b-0; }
@@ -775,13 +995,11 @@ html:not([data-motion-ready]) *::after {
   .prose-doc pre::-webkit-scrollbar,
   .prose-doc .table-wrap::-webkit-scrollbar { display: none; }
 }
-/* The words of a sub-agent's text and report, at its panel's 13px. Element-qualified, so (0,1,1)
-   beats the thread's own `text-[15px] leading-relaxed` (PROSE_CHAT, 0,1,0) whichever comes later in
-   the sheet: the bare `*` lost to them once the 2026-10-15 readability pass wrote them on every
-   paragraph and list, and a sub-agent's text read at 15px between its 13px steps (0.36.0
-   feedback). Code keeps the CodeBlock's own size. */
+/* The words of an agent's text and report, at its panel's caption size, 13/18. Element-qualified,
+   so (0,1,1) beats the thread's own reading size (PROSE_CHAT, 0,1,0) whichever comes later in the
+   sheet. Code keeps the CodeBlock's own size. */
 .prose-doc-sm,
 .prose-doc-sm :is(p, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, div, span, a, strong, em, table, th, td) {
   font-size: 0.8125rem;
-  line-height: 1.5;
+  line-height: 1.125rem;
 }

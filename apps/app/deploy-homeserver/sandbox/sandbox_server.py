@@ -2,6 +2,8 @@
 
     POST /run    {"code": str, "timeoutSeconds": int, "files": {"attachments/x.docx": base64, ...}}
               -> {"exitCode": int, "stdout": str, "stderr": str, "timedOut": bool, "files": {...outputs...}}
+    POST /shell  {"command": str, ...the same...} -> the same: runCommand, run by /bin/sh in the
+                 same fresh directory, as the same user, with the same lack of a network
     GET  /health -> 200
 
 Each run gets a fresh directory on the /work tmpfs, holding only the files the request carried, and
@@ -40,9 +42,10 @@ def tail(text):
     return text if len(text) <= MAX_STREAM else '...(truncated)\n' + text[-MAX_STREAM:]
 
 
-def run(request):
-    code = request.get('code') or ''
-    timeout = max(1, min(int(request.get('timeoutSeconds') or 50), 120))
+def run(request, shell=False):
+    code = request.get('command' if shell else 'code') or ''
+    # A command may run longer than a program: it is usually started in the background (runCommand).
+    timeout = max(1, min(int(request.get('timeoutSeconds') or 50), 600 if shell else 120))
     root = tempfile.mkdtemp(prefix='run-', dir=WORK)
     try:
         for folder in ('attachments', 'outputs', '.run'):
@@ -55,16 +58,17 @@ def run(request):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, 'wb') as f:
                 f.write(base64.b64decode(data))
-        with open(os.path.join(root, '.run', 'main.py'), 'w', encoding='utf-8') as f:
-            f.write(code)
+        if not shell:
+            with open(os.path.join(root, '.run', 'main.py'), 'w', encoding='utf-8') as f:
+                f.write(code)
 
         env = {'PATH': os.environ.get('PATH', ''), 'PYTHONIOENCODING': 'utf-8',
                'PYTHONDONTWRITEBYTECODE': '1', 'HOME': root}
         if 'SYSTEMROOT' in os.environ:  # Windows: Python does not start without it
             env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
         try:
-            p = subprocess.run([sys.executable, '-I', RUNNER, root], cwd=root, env=env,
-                               capture_output=True, text=True, timeout=timeout)
+            argv = ['/bin/sh', '-c', code] if shell else [sys.executable, '-I', RUNNER, root]
+            p = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True, timeout=timeout)
             exit_code, stdout, stderr, timed_out = p.returncode, p.stdout, p.stderr, False
         except subprocess.TimeoutExpired as e:
             exit_code, timed_out = -1, True
@@ -107,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(404, {'error': 'not found'})
 
     def do_POST(self):
-        if self.path != '/run':
+        if self.path not in ('/run', '/shell'):
             return self._reply(404, {'error': 'not found'})
         auth = self.headers.get('Authorization', '')
         if not TOKEN or not hmac.compare_digest(auth, 'Bearer ' + TOKEN):
@@ -121,7 +125,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(400, {'error': 'not JSON'})
         with SLOTS:
             try:
-                self._reply(200, run(request))
+                self._reply(200, run(request, shell=self.path == '/shell'))
             except ValueError as e:
                 self._reply(400, {'error': str(e)})
 

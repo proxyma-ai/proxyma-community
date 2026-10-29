@@ -28,20 +28,24 @@ public final class Features {
     // orgModeAllowed: "may this deployment manage users" and "may it run account reviews" are
     // different questions, and the day one moves the other must not move with it.
     private final boolean keyAccountsAllowed;
+    // Constellations - saved agents working in projects (agent teams). Its own capability for the
+    // reason key accounts has one: it is a feature to sell, not a reading of another switch.
+    private final boolean constellationsAllowed;
     // Enterprise deployments never ship diagnostic or rating data off their own infrastructure;
     // proxyma-core-telemetryclient's gates read this beside the edition.
     private final boolean externalTelemetryAllowed;
 
     private Features(boolean orgModeAllowed, boolean microsoft365Allowed, boolean keyAccountsAllowed,
-                     boolean externalTelemetryAllowed) {
+                     boolean constellationsAllowed, boolean externalTelemetryAllowed) {
         this.orgModeAllowed = orgModeAllowed;
         this.microsoft365Allowed = microsoft365Allowed;
         this.keyAccountsAllowed = keyAccountsAllowed;
+        this.constellationsAllowed = constellationsAllowed;
         this.externalTelemetryAllowed = externalTelemetryAllowed;
     }
 
-    private static final Features ENTERPRISE = new Features(true, true, true, false);
-    private static final Features COMMUNITY = new Features(false, false, false, true);
+    private static final Features ENTERPRISE = new Features(true, true, true, true, false);
+    private static final Features COMMUNITY = new Features(false, false, false, false, true);
 
     public static Features forTier(LicenseTier tier) {
         return tier == LicenseTier.ENTERPRISE ? ENTERPRISE : COMMUNITY;
@@ -50,6 +54,7 @@ public final class Features {
     public boolean isOrgModeAllowed()           { return orgModeAllowed; }
     public boolean isMicrosoft365Allowed()      { return microsoft365Allowed; }
     public boolean isKeyAccountsAllowed()       { return keyAccountsAllowed; }
+    public boolean isConstellationsAllowed()    { return constellationsAllowed; }
     public boolean isExternalTelemetryAllowed() { return externalTelemetryAllowed; }
 
     /**

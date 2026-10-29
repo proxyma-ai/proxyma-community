@@ -32,10 +32,10 @@ test('nothing set and nothing stated: the assumed window is named, and no output
   assert.deepEqual(unsetLimit('output', 0), { words: 'provider' })
 })
 
-test('a sub-agent takes the agent\'s setting where the agent has one, else its own model\'s', () => {
-  // The agent set 32k: that is the sub-agents' too, whatever their model states.
+test('a deployed agent takes the agent\'s setting where the agent has one, else its own model\'s', () => {
+  // The agent set 32k: that is the deployed agents' too, whatever their model states.
   assert.deepEqual(unsetLimit('output', 8192, '32768'), { words: 'same', amount: '32k' })
-  // The agent follows its model, so each sub-agent follows ITS model.
+  // The agent follows its model, so each deployed agent follows ITS model.
   assert.deepEqual(unsetLimit('output', 8192, ''), { words: 'model', amount: '8k' })
   assert.deepEqual(unsetLimit('context', null, ''), { words: 'default', amount: '200k' })
   // A stored value that is not a number is not a setting.

@@ -14,7 +14,7 @@ export function SpendSection({ onOpenTab }: { onOpenTab: OpenTab }) {
   return (
     <SignpostSection
       title={t('Spending')}
-      caption={t('What has been spent, by provider, model and service, and every model call, is in Logs.')}
+      caption={t('Spending by provider, model and service, and every call, is in Logs.')}
       action={<AuditLogsLink log="llm" onOpenTab={onOpenTab}>{t('Open Logs')}</AuditLogsLink>}
     />
   )

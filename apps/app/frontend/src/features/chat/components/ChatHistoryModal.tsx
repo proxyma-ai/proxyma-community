@@ -29,9 +29,9 @@ export function ChatHistoryModal({ activeId, onSelect, onClose, source, onDelete
         {/* The retention rule sits under the title, where it is read before the list rather than
             under the last row (maintainer's feedback, 2026-10-03 - it was a footer, and covered the
             row it sat on). The per-row pin tooltip repeats it at the control that changes it. */}
-        {/* `px-5` at every width, the documented exception: it lines up with the rows under it. */}
+        {/* Every dialog's padding (the UI review, 2026-10-28, ended the 20px exception): the rows
+            under it are inset to the same line (ChatSessionList). */}
         <DialogHeader
-          className="px-5 sm:px-5"
           title={t('Conversation history')}
           subtitle={t('Conversations are kept for 7 days after their last activity. Pin one to keep it indefinitely.')}
         />

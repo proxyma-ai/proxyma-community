@@ -47,7 +47,9 @@ export function SplashScreen({ turning, status, detail, productName = 'Proxyma',
   className?: string
 }) {
   return (
-    <div className={cn('relative w-[440px] max-w-full h-[260px] rounded-3xl border border-line bg-canvas text-center animate-slide-up', className)}>
+    // 14px corners, off the radius scale on purpose: the native launcher's window draws them
+    // (SplashWindow.java RADIUS = 14), and this screen has to be that window.
+    <div className={cn('relative w-[440px] max-w-full h-[260px] rounded-[14px] border border-line surface-float shadow-float text-center animate-slide-up', className)}>
       <div className="absolute inset-x-0 top-[46px] flex justify-center">
         {turning ? <TurningMark /> : <ProxymaIcon size={MARK_SIZE} />}
       </div>

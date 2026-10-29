@@ -96,7 +96,7 @@ interface ViewTransitionDocument {
  */
 export function applyAppearanceSmoothly(resolved: ResolvedAppearance): void {
   const root = document.documentElement
-  const same = root.getAttribute('data-mode') === resolved.mode && root.getAttribute('data-shade') === resolved.shade
+  const same = root.getAttribute('data-mode') === resolved.mode
   const apply = () => withoutTransitions(() => applyAppearance(root, resolved))
   const doc = document as unknown as ViewTransitionDocument
   if (same || !motionAllowed() || typeof doc.startViewTransition !== 'function') { apply(); return }

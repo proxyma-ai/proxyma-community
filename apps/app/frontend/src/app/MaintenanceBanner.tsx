@@ -17,8 +17,7 @@ interface MaintenanceAnnouncement {
 // about upcoming maintenance reaches every visitor - logged in or not - ahead of the actual
 // blocking gate flipping on. Renders in normal document flow (not fixed/absolute) so it pushes
 // whatever sits below it down rather than overlapping it; mounted in Providers.tsx above the
-// Router so it covers every route, including the standalone /login and /setup pages that render
-// outside AppShell/Topbar and therefore have no header of their own to sit above.
+// Router so it covers every route, the /login and /setup pages included.
 export function MaintenanceBanner() {
   const { t } = useTranslation()
   const { data } = useQuery({

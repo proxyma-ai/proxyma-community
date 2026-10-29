@@ -1,19 +1,23 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Brain, Clock, Database, FolderPlus, Globe, Plug, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Timer, Upload, Workflow,
+  AlarmClock, Brain, Clock, Database, X, FolderPlus, Globe, Plug, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Timer, Upload, Workflow,
   type LucideProps,
 } from 'lucide-react'
 import { AgentsGraphDialog } from './AgentsGraphDialog'
+import { AgentSettingsLink } from './AgentSettingsLink'
 import { MentionRichInput } from './MentionRichInput'
 import { PermissionModePicker } from './PermissionModePicker'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { useAgentModel } from '../hooks/useAgentModel'
 import { useConversationUsage } from '../hooks/useConversationUsage'
 import { useUserQuota } from '../hooks/useUserQuota'
-import { runningAgents } from '../utils/subAgent'
-import { compactTokens } from '../utils/agentsGraph'
-import { useChatStore } from '../instance/ChatInstanceContext'
+import { compactTokens, workingCount } from '../utils/agentTree'
+import { dueIn } from '../utils/alarms'
+import { useAgentTree } from '../hooks/useAgentTree'
+import { useAlarms } from '../hooks/useAlarms'
+import { useToastStore } from '@/store/toastStore'
+import { withReason } from '@/services/apiError'
 import { formatSessionReset } from '../utils/formatSessionReset'
 import { RememberDialog } from './RememberDialog'
 import { chatApi } from '../services/chatApi'
@@ -37,6 +41,8 @@ import { WorkflowModal } from '@/features/settings/components/WorkflowsTab'
 import type { SkillDetail } from '@/features/settings/services/skillsApi'
 import { keys } from '@/services/queryKeys'
 import { FEATURES } from '@/config/features'
+import { useFramedLayout } from '@/hooks/useWideLayout'
+import { useDesktopWindow } from '@/hooks/useDesktopWindow'
 import { useTranslation } from '@/i18n'
 
 // Every icon-only control in the chat input's toolbar (attach, send, stop, condense, new
@@ -75,7 +81,7 @@ function AttachmentChip({ attachment, onRemove }: { attachment: ChatAttachment; 
         removeLabel={t('Remove {name}', { name: file.name })}
       />
       <Presence show={status === 'uploading'}>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <ProgressBar value={progress} size="xs" className="flex-1" />
           <Readout tone="caption" className="text-xs shrink-0">{progress}%</Readout>
         </div>
@@ -539,7 +545,7 @@ function CacheTimer({ conversationId }: { conversationId?: string }) {
           role="timer"
           tabIndex={0}
           aria-label={t('Prompt cache warm for {time}', { time })}
-          className={cn('inline-flex items-center gap-1 rounded-md px-1.5 focus-ring whitespace-nowrap', TEXT.caption,
+          className={cn('inline-flex items-center gap-1 rounded-md px-2 focus-ring whitespace-nowrap', TEXT.caption,
             nearlyCold(left) ? 'text-warning' : 'text-ink-caption')}
         >
           {/* A stopwatch, not a clock: the clock beside it opens the conversation history. */}
@@ -631,11 +637,16 @@ function QuotaIndicator() {
 // administrators on a server. Everyone else sees nothing - on a server the agent's own system
 // prompt keeps the model vendor out of its answers, and a label under the input would say it
 // anyway. A workflow that runs on its own model is not reflected; the label names the agent's.
+//
+// A click opens Settings > Agents, where the provider and model are chosen (the user's request,
+// feedback 499724c9) - the reader can already read those settings, or the label would not show.
 function AgentModelLabel() {
   const agent = useAgentModel()
   if (!agent) return null
   return (
-    <MetaList items={[agent.provider, agent.model]} className="text-xs text-ink-caption truncate min-w-0 px-1 select-none" />
+    <AgentSettingsLink className="px-1">
+      <MetaList items={[agent.provider, agent.model]} className="text-xs truncate min-w-0 select-none" />
+    </AgentSettingsLink>
   )
 }
 
@@ -643,21 +654,21 @@ function AgentModelLabel() {
 // same rule as the label, since the map names each agent's provider and model; and only once there
 // is a conversation to show.
 //
-// ALWAYS THE MAP'S ICON, however many sub-agents there are (maintainer's request, 2026-10-14). It
-// was one robot per working sub-agent, up to three, each going to its panel, and a "+N" past three
-// that opened the map - so with fewer than four at work the map could not be opened at all. Now
-// the icon BLINKS while any sub-agent works, in its own ink rather than the brand's, and the map's
-// agent names are what go to a panel in the thread (AgentsGraphDialog). How many work is in its
-// name and tooltip. Working sub-agents are read from the chat store, as the thread's panels are.
+// ALWAYS THE MAP'S ICON, however many agents there are (maintainer's request, 2026-10-14). It
+// was one robot per working agent, up to three, each going to its panel, and a "+N" past three
+// that opened the map - so with fewer than four at work the map could not be opened at all. The
+// icon BLINKS while any agent of the conversation's tree works, in its own ink rather than the
+// brand's, and the map's agent names open each agent's conversation (AgentsGraphDialog). How many
+// work is in its name and tooltip. Read from the agent tree, with the stream's 'agent-status'
+// events over it, as every agent panel is (useAgentTree).
 function AgentsGraphButton({ conversationId }: { conversationId?: string }) {
   const { t } = useTranslation()
   const agent = useAgentModel()
   const [open, setOpen] = useState(false)
-  const messages = useChatStore(st => st.messages)
-  const liveCalls = useChatStore(st => st.toolCalls)
-  const working = runningAgents(messages, liveCalls).length
+  const { agents } = useAgentTree(conversationId)
+  const working = workingCount(agents)
   const label = working > 0
-    ? t('Agents - {count} sub-agent working|Agents - {count} sub-agents working', { count: working })
+    ? t('Agents - {count} agent working|Agents - {count} agents working', { count: working })
     : t('Agents')
   // Fades in once there is a conversation to map, rather than appearing in one frame.
   return (
@@ -667,6 +678,89 @@ function AgentsGraphButton({ conversationId }: { conversationId?: string }) {
       </Presence>
       {open && conversationId && <AgentsGraphDialog conversationId={conversationId} onClose={() => setOpen(false)} />}
     </>
+  )
+}
+
+// THE CONVERSATION'S ALARMS (the agent's `alarm` tool), beside the agents button: an alarm clock
+// with how many are set, shown only while any is, opening a list of each one's time - how long
+// until it goes off, the exact time a tooltip away - its note, and a Cancel. An alarm that goes off
+// wakes the agent, and the list is read again then (useChat).
+function AlarmsChip({ conversationId }: { conversationId?: string }) {
+  const { t, locale } = useTranslation()
+  const qc = useQueryClient()
+  const { alarms } = useAlarms(conversationId)
+  const [canceling, setCanceling] = useState<string | null>(null)
+  const label = t('{count} alarm set|{count} alarms set', { count: alarms.length })
+  const cancel = async (alarmId: string) => {
+    if (!conversationId || canceling) return
+    setCanceling(alarmId)
+    try {
+      await chatApi.cancelAlarm(conversationId, alarmId)
+    } catch (e) {
+      useToastStore.getState().addToast(withReason(t('Could not cancel the alarm'), e), 'danger')
+    } finally {
+      setCanceling(null)
+      qc.invalidateQueries({ queryKey: keys.alarms(conversationId) })
+    }
+  }
+  return (
+    // Eases in when the first alarm is set and out when the last one goes.
+    <Presence show={!!conversationId && alarms.length > 0} collapse={false} className="flex">
+      <Popover
+        placement="top-start"
+        widthClass="w-72"
+        role="dialog"
+        panelClassName="p-3 space-y-2"
+        ariaLabel={label}
+        trigger={({ toggle, ref }) => (
+          <Tooltip label={label}>
+            <button
+              ref={ref}
+              type="button"
+              onClick={toggle}
+              aria-label={label}
+              className={cn(iconButton('md'), 'w-auto touch:w-auto px-2 gap-1')}
+            >
+              <AlarmClock size={16} aria-hidden="true" className="shrink-0" />
+              <span className="text-xs data-readout">{alarms.length}</span>
+            </button>
+          </Tooltip>
+        )}
+      >
+        {() => (
+          <ul className="space-y-2">
+            {alarms.map(alarm => {
+              const left = dueIn(alarm.dueAt, Date.now())
+              const exact = new Date(alarm.dueAt).toLocaleString(locale)
+              return (
+                <li key={alarm.alarmId} className="flex items-start gap-2 animate-fade-in">
+                  <AlarmClock size={14} aria-hidden="true" className="shrink-0 mt-0.5 text-ink-caption" />
+                  <div className="min-w-0 flex-1">
+                    <Tooltip label={exact}>
+                      <span className={cn(TEXT.label, 'data-readout text-ink-primary')}>
+                        {left ? t('In {time}', { time: left }) : t('Due now')}
+                      </span>
+                    </Tooltip>
+                    {alarm.note && <Caption className="block whitespace-normal break-words">{alarm.note}</Caption>}
+                  </div>
+                  <Tooltip label={t('Cancel this alarm')}>
+                    <button
+                      type="button"
+                      onClick={() => cancel(alarm.alarmId)}
+                      disabled={canceling === alarm.alarmId}
+                      aria-label={t('Cancel this alarm')}
+                      className={iconButton('sm', 'danger')}
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </Tooltip>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Popover>
+    </Presence>
   )
 }
 
@@ -727,6 +821,9 @@ export function ChatComposer({
   // normal conditions and longer under load, so this is purely local, optimistic UI feedback.
   const [stopRequested, setStopRequested] = useState(false)
   const { t } = useTranslation()
+  // Where the sidebar is drawn (AppShell's frame), its recent chats replace the history button.
+  const desktopWindow = useDesktopWindow()
+  const framed = useFramedLayout() || !!desktopWindow
 
   // Streaming flipping false is the real confirmation the turn ended (Stopped, or it simply
   // finished on its own) - clear the optimistic flag then, not on a timer.
@@ -773,6 +870,7 @@ export function ChatComposer({
           <PermissionModePicker />
           <AgentModelLabel />
           <AgentsGraphButton conversationId={conversationId} />
+          <AlarmsChip conversationId={conversationId} />
           <CacheTimer conversationId={conversationId} />
           <ContextWindowIndicator
             conversationId={conversationId}
@@ -785,7 +883,9 @@ export function ChatComposer({
       )}
       toolbarEnd={(
         <>
-          {onHistoryClick && <HistoryButton onClick={onHistoryClick} />}
+          {/* Not where the sidebar is drawn: its recent chats and their history are there (the
+              maintainer, 2026-10-30). A phone keeps it - it has no sidebar. */}
+          {onHistoryClick && !framed && <HistoryButton onClick={onHistoryClick} />}
           <NewConversationButton
             show={hasMessages && !!onNewConversation}
             onClick={() => onNewConversation?.()}

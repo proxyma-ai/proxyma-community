@@ -129,7 +129,8 @@ export function LlmUsage({ showSubjects = false, intro }: {
           caption={t('Each model call in the period, newest first. A column heading sorts by that column.')}
           action={data?.canClear ? <ClearLogButton /> : undefined}
         >
-          {t('Logs')}
+          {/* Not "Logs": that is the page's own title, right above (the UI review, 2026-10-28). */}
+          {t('Calls')}
         </SectionHeading>
         <LlmCallLogTable
           summary={data}
@@ -489,7 +490,7 @@ export function CostEstimateNote() {
   return (
     <Caption className="max-w-2xl">
       <span className="font-semibold text-ink-secondary">{t('These costs are estimates.')}</span>{' '}
-      {t('Calculated from counted tokens and the configured rates or list prices, unless the provider reported the cost itself - not from provider billing. Check the provider dashboard for actual charges.')}
+      {t("From counted tokens and rates, unless the provider states the cost; the provider's bill is the actual charge.")}
     </Caption>
   )
 }
@@ -579,7 +580,7 @@ function CostFigure({ row }: { row: LlmCallRow }) {
       : null
   return (
     <span className="inline-flex flex-col items-end">
-      <span className="inline-flex items-center justify-end gap-1.5">
+      <span className="inline-flex items-center justify-end gap-2">
         {origin === 'unpriced' && <UnpricedMark />}
         {formatUsd(row.costUsd)}
       </span>
@@ -690,7 +691,7 @@ export function Breakdown({ title, rows, label = k => k }: {
           label: label(r.key),
           value: r.costUsd,
           figures: (
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-2">
               {r.priced === false && <UnpricedMark />}
               {formatUsd(r.costUsd)}
             </span>
@@ -718,7 +719,7 @@ function SubjectList({ rows, days }: { rows: LlmCallSubjectGroup[]; days: number
         {pageItems.map(s => (
           <ListRow
             key={`${s.subjectKind}:${s.subjectId}`}
-            className="py-1.5"
+            className="py-2"
             title={<span className="font-normal text-ink-secondary">{s.label ?? subjectLabel(s.subjectKind, s.subjectId, t)}</span>}
             trailing={(
               <Readout className={cn(TEXT.option, 'text-ink-primary')}>

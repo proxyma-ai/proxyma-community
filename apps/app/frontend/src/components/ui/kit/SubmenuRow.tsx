@@ -180,7 +180,7 @@ export function SubmenuRow<K extends string>({
         aria-label={`${title}: ${valueText}`}
         className={cn(className ?? menuRow(), 'justify-between')}
       >
-        <span className="flex items-center gap-2.5">
+        <span className="flex items-center gap-2">
           {icon}
           <span lang={valueLang}>{value}</span>
         </span>
@@ -201,7 +201,7 @@ export function SubmenuRow<K extends string>({
           className={cn(
             // No vertical padding: the panel is rounded and clips, so the first and last rows take
             // its corners instead of floating square inside them. Same rule as MenuGroup.
-            'fixed z-float surface-float border border-line/45 rounded-lg shadow-card overflow-hidden animate-dropdown',
+            'fixed z-float surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown',
             !position && 'invisible',
             exiting && 'animate-pop-out',
           )}
@@ -211,7 +211,7 @@ export function SubmenuRow<K extends string>({
             const rowClass = menuRow(isCurrent ? 'active' : 'default', 'justify-between')
             const content = (
               <>
-                <span className="flex items-center gap-2.5">
+                <span className="flex items-center gap-2">
                   {o.icon}
                   {o.label}
                 </span>

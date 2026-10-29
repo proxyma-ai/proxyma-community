@@ -1,4 +1,3 @@
-import { agentDone } from './subAgent.ts'
 import type { ToolCallInfo } from '../types/chat.types'
 
 /**
@@ -45,9 +44,6 @@ export function settleUnfinishedToolCalls(toolCalls?: ToolCallInfo[]): ToolCallI
       ? tc
       : {
           ...tc,
-          // The sub-agent the call was waiting for ended with it. (One working in the BACKGROUND
-          // is never here: its call returned the moment it started.)
-          agent: tc.agent?.status === 'running' ? agentDone(tc.agent, 'stopped', INTERRUPTED) : tc.agent,
           done: true,
           // Only when nothing was recorded. A call that stored a result and was never flagged done
           // keeps the result it has, which is more informative than this placeholder.

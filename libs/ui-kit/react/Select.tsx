@@ -238,7 +238,7 @@ export function Select<T extends string = string>({
           style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom }}
           {...exitingProps(exiting)}
           data-side={pos.bottom !== undefined ? 'top' : 'bottom'}
-          className={cn('fixed z-float surface-float border border-line/45 rounded-lg shadow-card overflow-hidden animate-dropdown', exiting && 'animate-pop-out')}
+          className={cn('fixed z-float surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown', exiting && 'animate-pop-out')}
         >
           {searchable && (
             <input
@@ -252,18 +252,18 @@ export function Select<T extends string = string>({
               aria-autocomplete="list"
               aria-label={searchPlaceholder}
               {...list.fieldProps}
-              className="block w-full px-3 py-1.5 text-xs font-ui text-ink-primary bg-transparent placeholder:text-ink-caption outline-none border-b border-line/40"
+              className="block w-full px-3 py-2 text-sm font-ui text-ink-primary bg-transparent placeholder:text-ink-caption outline-none border-b border-line/40"
             />
           )}
           <div
             id={list.listId}
             role="listbox"
             aria-label={ariaLabel}
-            className="overflow-y-auto"
+            className="overflow-y-auto py-1"
             style={{ maxHeight: pos.listMaxHeight }}
           >
             {visibleOptions.length === 0 && (
-              <div className="px-3 py-1.5 text-xs text-ink-caption">{emptyLabel}</div>
+              <div className="px-3 py-2 text-sm text-ink-caption">{emptyLabel}</div>
             )}
             {visibleOptions.map((o, i) => (
               <div
@@ -275,7 +275,9 @@ export function Select<T extends string = string>({
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => choose(o.value)}
                 className={cn(
-                  'flex items-center justify-between gap-2 w-full text-left px-3 py-1.5 touch:min-h-tap text-xs cursor-pointer transition-colors',
+                  // 14/20 on `py-2`: a 36px option, the field's own size and text (44px on glass).
+                  // Rounded and inset 4px, as a menu's rows (2026-10-30); the text stays 12px in.
+                  'flex items-center justify-between gap-2 w-[calc(100%-0.5rem)] mx-1 rounded-md text-left px-2 py-2 touch:min-h-tap text-sm cursor-pointer transition-colors',
                   'data-[active]:bg-ink-caption/10',
                   o.value === value ? 'text-brand-legible font-medium' : 'text-ink-secondary data-[active]:text-ink-primary',
                 )}

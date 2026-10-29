@@ -83,12 +83,14 @@ export function Router() {
       <ConnectionSignInNotice />
       <SetupGate>
         <Routes>
-          <Route path="/login" element={<RequireServerMode><LoginPage /></RequireServerMode>} />
-          <Route path="/setup" element={<RequireServerMode><SetupPage /></RequireServerMode>} />
-          <Route path="/forgot-password" element={<LazyRoute fallback={<AuthPageSkeleton />}><ForgotPasswordPage /></LazyRoute>} />
-          <Route path="/reset-password" element={<LazyRoute fallback={<AuthPageSkeleton />}><ResetPasswordPage /></LazyRoute>} />
           {KitGallery && <Route path="/__kit" element={<LazyRoute><KitGallery /></LazyRoute>} />}
           <Route element={<AppShell />}>
+            {/* The sign-in, setup and password pages are in the app's frame too, beside the sidebar
+                (the maintainer, 2026-10-29: "every page, every thing"). */}
+            <Route path="/login" element={<RequireServerMode><LoginPage /></RequireServerMode>} />
+            <Route path="/setup" element={<RequireServerMode><SetupPage /></RequireServerMode>} />
+            <Route path="/forgot-password" element={<LazyRoute fallback={<AuthPageSkeleton />}><ForgotPasswordPage /></LazyRoute>} />
+            <Route path="/reset-password" element={<LazyRoute fallback={<AuthPageSkeleton />}><ResetPasswordPage /></LazyRoute>} />
             <Route index element={<LazyRoute fallback={<ChatPageSkeleton />}><ChatPage /></LazyRoute>} />
             <Route path="/chat" element={<LazyRoute fallback={<ChatPageSkeleton />}><ChatPage /></LazyRoute>} />
             <Route path="/chat/:conversationId" element={<LazyRoute fallback={<ChatPageSkeleton />}><ChatPage /></LazyRoute>} />

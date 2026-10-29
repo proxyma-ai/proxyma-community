@@ -32,7 +32,7 @@ export function KeyValueList({ children, layout = 'stacked', columns = 2, classN
     <dl className={cn(
       layout === 'stacked'
         ? cn('grid grid-cols-2 gap-x-4 gap-y-4', columns === 3 && 'sm:grid-cols-3')
-        : 'grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1.5',
+        : 'grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-2',
       className,
     )}>
       {children}
@@ -70,7 +70,7 @@ export function KeyValue({ label, children, wide, figures, block, clamp, layout 
   return (
     <div className={cn('min-w-0', wide && 'col-span-full')}>
       <dt className={cn(TEXT.eyebrow, 'mb-1')}>{label}</dt>
-      <dd className={cn(TEXT.body, 'text-ink-primary break-words', figures && 'data-readout')}>{children}</dd>
+      <dd className={cn('text-sm text-ink-primary break-words', figures && 'data-readout')}>{children}</dd>
     </div>
   )
 }
@@ -89,7 +89,7 @@ export function KeyValueGroup({ label, children }: { label: ReactNode; children:
   return (
     <div className="col-span-2 min-w-0">
       <dt className="text-xs text-ink-caption">{label}</dt>
-      <dd className="mt-1.5 ml-1 pl-3 border-l border-line/40">{children}</dd>
+      <dd className="mt-2 ml-1 pl-3 border-l border-line/40">{children}</dd>
     </div>
   )
 }

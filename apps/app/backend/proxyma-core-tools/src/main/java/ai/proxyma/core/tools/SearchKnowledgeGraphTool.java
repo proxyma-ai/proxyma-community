@@ -107,6 +107,14 @@ public class SearchKnowledgeGraphTool {
         this.searchService = searchService;
     }
 
+    // Set by Spring; absent in a test that builds the tool by hand, which then searches as before.
+    private ai.proxyma.core.chat.module.AgentProfiles agentProfiles;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentProfiles(ai.proxyma.core.chat.module.AgentProfiles agentProfiles) {
+        this.agentProfiles = agentProfiles;
+    }
+
     @Tool(name = "searchKnowledgeGraph", description = "How named things in the indexed corpus connect: "
             + "dependencies, ownership, membership, assignment, incl. multi-hop ('what depends on X, and who owns "
             + "those'). Returns entities, relationships (from the text, or exact from source metadata), paths "
@@ -409,7 +417,11 @@ public class SearchKnowledgeGraphTool {
             visible = connectorService.listVisibleTo(userId);
         }
         Map<UUID, RegisteredConnector> connectors = new LinkedHashMap<>();
-        visible.stream().filter(c -> !c.isDeleting()).forEach(c -> connectors.put(c.getId(), c));
+        // A saved agent walks only the sources it was given (AgentProfile.sourceIds).
+        java.util.Optional<ai.proxyma.core.chat.module.AgentProfile> profile = ToolUserContext.agentProfile(agentProfiles);
+        visible.stream().filter(c -> !c.isDeleting())
+                .filter(c -> profile.isEmpty() || profile.get().reads(c.getId()))
+                .forEach(c -> connectors.put(c.getId(), c));
         if (connectors.isEmpty()) {
             return new Scope(Map.of(), List.of(), "No connectors are visible to you, so the graph has nothing to report.");
         }

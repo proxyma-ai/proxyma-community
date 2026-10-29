@@ -25,7 +25,7 @@ export type { Placement } from './floating'
 export const FLOATING_Z = 'z-float'
 
 /** The panel of every popover and menu - `MENU_PANEL`'s surface, `border-line/45`, `rounded-lg`. */
-export const POPOVER_PANEL = 'surface-float border border-line/45 rounded-lg shadow-card overflow-hidden animate-dropdown'
+export const POPOVER_PANEL = 'surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown'
 
 export interface PopoverProps {
   /** The anchor. Give it `aria-expanded={open}` and `aria-haspopup` as fits. */
@@ -192,7 +192,7 @@ export function MenuRow({ icon, title, description, trailing, tone = 'default', 
       {icon && <span className={cn('shrink-0 flex items-center text-ink-caption [&>svg]:w-4 [&>svg]:h-4', description && 'mt-0.5', tone === 'brand' && 'text-brand-legible')}>{icon}</span>}
       <span className="flex-1 min-w-0">
         <span className="block truncate">{title}</span>
-        {description && <span className="block text-xs text-ink-caption whitespace-normal leading-relaxed">{description}</span>}
+        {description && <span className="block text-xs text-ink-caption whitespace-normal">{description}</span>}
       </span>
       {trailing === 'check' ? <Check size={14} className="shrink-0 text-brand-legible" aria-hidden="true" />
         : trailing === 'chevron' ? <ChevronRight size={14} className="shrink-0 text-ink-caption" aria-hidden="true" />
@@ -204,7 +204,7 @@ export function MenuRow({ icon, title, description, trailing, tone = 'default', 
 
 /** The line a menu shows when it has no rows ("No skills yet"). */
 export function MenuEmpty({ children }: { children: ReactNode }) {
-  return <p className="px-4 py-2.5 text-xs text-ink-caption">{children}</p>
+  return <p className="px-4 py-2 text-xs text-ink-caption">{children}</p>
 }
 
 export interface ActionMenuItem {

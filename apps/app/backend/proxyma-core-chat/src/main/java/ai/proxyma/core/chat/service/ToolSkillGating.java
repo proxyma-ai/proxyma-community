@@ -1,5 +1,7 @@
 package ai.proxyma.core.chat.service;
 
+import ai.proxyma.core.chat.module.AgentProfile;
+import ai.proxyma.core.chat.module.AgentProfiles;
 import ai.proxyma.core.chat.module.ChatModule;
 import ai.proxyma.core.graph.service.KnowledgeGraphService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -106,7 +108,7 @@ class ToolSkillGating {
             Map.entry("Documents & Files", Set.of("convertDocument")),
             // Registered or not per edition (McpToolConfig), so a group naming a tool this build
             // lacks simply unlocks nothing for it.
-            Map.entry("Office Files", Set.of("runPython", "openLocalFile", "saveLocalFile", "convertDocument")),
+            Map.entry("Office Files", Set.of("runPython", "runCommand", "openLocalFile", "saveLocalFile", "convertDocument")),
             Map.entry("Platform Info & Documentation", Set.of("getPlatformInfo", "getConnectorStatus"))
     );
 
@@ -124,26 +126,25 @@ class ToolSkillGating {
 
     private final Map<String, Set<String>> groupToolNames;
     private final ChatSkillService chatSkillService;
-    private final SubAgentService subAgentService;
     private final KnowledgeGraphService knowledgeGraphService;
     private final LicenseToolScope licenseScope;
     // The product modules built into this deployable (ChatModule) - none on Desktop and Home Server.
     private final List<ChatModule> modules;
 
-    ToolSkillGating(ChatSkillService chatSkillService, SubAgentService subAgentService,
+    ToolSkillGating(ChatSkillService chatSkillService,
                     KnowledgeGraphService knowledgeGraphService, LicenseToolScope licenseScope) {
-        this(chatSkillService, subAgentService, knowledgeGraphService, licenseScope, List.of());
+        this(chatSkillService, knowledgeGraphService, licenseScope, List.of());
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    ToolSkillGating(ChatSkillService chatSkillService, SubAgentService subAgentService,
+    ToolSkillGating(ChatSkillService chatSkillService,
                     KnowledgeGraphService knowledgeGraphService, LicenseToolScope licenseScope,
                     org.springframework.beans.factory.ObjectProvider<ChatModule> modules) {
-        this(chatSkillService, subAgentService, knowledgeGraphService, licenseScope,
+        this(chatSkillService, knowledgeGraphService, licenseScope,
                 modules.orderedStream().toList());
     }
 
-    ToolSkillGating(ChatSkillService chatSkillService, SubAgentService subAgentService,
+    ToolSkillGating(ChatSkillService chatSkillService,
                     KnowledgeGraphService knowledgeGraphService, LicenseToolScope licenseScope,
                     List<ChatModule> modules) {
         // A module's skill joins the code-owned groups. Unioned rather than replaced, so a module
@@ -155,7 +156,6 @@ class ToolSkillGating {
         }
         this.groupToolNames = Map.copyOf(groups);
         this.chatSkillService = chatSkillService;
-        this.subAgentService = subAgentService;
         this.knowledgeGraphService = knowledgeGraphService;
         this.licenseScope = licenseScope;
         this.modules = List.copyOf(modules);
@@ -192,14 +192,27 @@ class ToolSkillGating {
         return groupToolNames.getOrDefault(skillName, Set.of());
     }
 
+    // The skills whose groups hold this tool - empty for a core tool. What a saved agent's withheld
+    // skills are checked against at the call (ChatService.refusedToAgent).
+    Set<String> skillsUnlocking(String toolName) {
+        if (toolName == null) return Set.of();
+        return groupToolNames.entrySet().stream().filter(e -> e.getValue().contains(toolName))
+                .map(Map.Entry::getKey).collect(Collectors.toUnmodifiableSet());
+    }
+
+    // The product's own skill groups - not a module's - by name, sorted: what a saved agent's Access
+    // tab can switch off (ToolGroups.productGroups).
+    java.util.SortedSet<String> productGroupNames() {
+        return new java.util.TreeSet<>(BASE_GROUP_TOOL_NAMES.keySet());
+    }
+
     // `delegate` is a core tool, so it would otherwise be advertised on every call even where no
     // sub-agent can run (no model to run one on) - the model would spend an iteration calling it
     // just to be told it is unavailable. Filtered here rather than at registration because
     // resolveAdvertised() re-runs every iteration: a model configured for sub-agents takes effect
     // on the very next LLM call, with no restart, which is exactly the property McpToolConfig's
     // "always register, gate live" rule exists to protect.
-    // Same reasoning as withDelegateIfAvailable below, for the same reason: knowledge-graph
-    // extraction is OFF by default and most deployments will never turn it on, so advertising a
+    // Knowledge-graph extraction is OFF by default and most deployments will never turn it on, so advertising a
     // traversal tool over an empty graph spends an iteration on every conversation to be told
     // there is nothing there. Gated on DATA, not on the setting - a deployment that enabled
     // extraction five minutes ago has nothing extracted yet, and the honest answer for that
@@ -250,21 +263,6 @@ class ToolSkillGating {
         this.connectorService = connectorService;
     }
 
-    private List<ToolCallback> withDelegateIfAvailable(List<ToolCallback> callbacks) {
-        // A sub-agent's line to its main agent is never the main agent's own - SubAgentService.toolsFor
-        // adds it back for a background sub-agent.
-        callbacks = callbacks.stream()
-                .filter(cb -> !SubAgentService.DelegateToolNames.MESSAGE_MAIN.equals(cb.getToolDefinition().name()))
-                .toList();
-        if (subAgentService.isAvailable()) {
-            return callbacks;
-        }
-        return callbacks.stream()
-                .filter(cb -> !SubAgentService.DelegateToolNames.DELEGATE.equals(cb.getToolDefinition().name())
-                        && !SubAgentService.DelegateToolNames.STEER.equals(cb.getToolDefinition().name()))
-                .toList();
-    }
-
     // Returns coreToolCallbacks plus every connector-group's tools whose matching skill has been
     // read (readSkill call, regardless of outcome - see class javadoc) in this conversation.
     //
@@ -277,7 +275,7 @@ class ToolSkillGating {
                                           List<ToolCallback> coreToolCallbacks,
                                           Set<String> unlockedGroups) {
         if (unlockedGroups.isEmpty()) {
-            return withinLicense(withGraphIfPopulated(withDelegateIfAvailable(coreToolCallbacks)));
+            return withinLicense(withGraphIfPopulated(coreToolCallbacks));
         }
 
         Set<String> unlockedToolNames = new HashSet<>();
@@ -299,7 +297,7 @@ class ToolSkillGating {
                 advertised.add(cb);
             }
         }
-        return withinLicense(withGraphIfPopulated(withDelegateIfAvailable(advertised)));
+        return withinLicense(withGraphIfPopulated(advertised));
     }
 
     /**
@@ -316,20 +314,27 @@ class ToolSkillGating {
         List<ToolCallback> advertised = withGraphVisibleTo(
                 resolveAdvertised(allToolCallbacks, coreToolCallbacks, unlockedGroups), userId);
         if (modules.isEmpty()) return advertised;
+        // A saved agent's conversation offers only what its agent is given (AgentProfile): the
+        // list above, less the tools it withholds. Taken away here and refused again at the call
+        // (ChatService.refusedToAgent), since a model can call a tool it was not offered.
+        java.util.Optional<AgentProfile> profile = AgentProfiles.of(modules, conversationId, userId);
+        if (profile.isPresent() && (profile.get().withheldTools() != null || profile.get().locked())) {
+            advertised = advertised.stream().filter(cb -> profile.get().allows(cb.getToolDefinition().name())).toList();
+        }
         Set<String> withheld = new HashSet<>();
         Set<String> names = advertised.stream().map(cb -> cb.getToolDefinition().name())
                 .collect(Collectors.toSet());
         for (ChatModule module : modules) {
             Set<String> own = module.ownToolNames();
             if (own.stream().noneMatch(names::contains)) continue;
-            boolean offered;
+            Set<String> offered;
             try {
-                offered = module.offersToolsIn(conversationId, userId);
+                offered = module.toolsOfferedIn(conversationId, userId);
             } catch (RuntimeException e) {
                 log.warn("[ToolSkillGating] a chat module could not say whether its tools are offered: {}", e.getMessage());
-                offered = false;
+                offered = Set.of();
             }
-            if (!offered) withheld.addAll(own);
+            for (String name : own) if (offered == null || !offered.contains(name)) withheld.add(name);
         }
         if (withheld.isEmpty()) return advertised;
         return advertised.stream().filter(cb -> !withheld.contains(cb.getToolDefinition().name())).toList();

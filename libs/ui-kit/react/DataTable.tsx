@@ -36,15 +36,33 @@ export const TABLE_FLUSH = 'sm:[&_th:first-child]:pl-0 sm:[&_td:first-child]:pl-
  * table in the four apps assembled these three by hand; this file's own note named TableCard for
  * months before it existed.
  */
-export function TableCard({ children, footer, ariaLabel, className }: {
+export function TableCard({ children, footer, ariaLabel, flush, className }: {
   /** The `<table className={TABLE_CLASS}>`. */
   children: ReactNode
   /** Under the table, inside the card: a pager, a total, a "showing 20 of 312". */
   footer?: ReactNode
   /** Names the scrolling region, where the table has no caption of its own. */
   ariaLabel?: string
+  /**
+   * THE TABLE'S TEXT ON THE CARD'S TEXT EDGE: its first and last columns lose their outer padding and
+   * the card pads the table instead (`px-4 sm:px-6`, a card's own), so the words in the cells line
+   * up with a heading above them. Since 2026-10-29 (the depth review) a flush table on the page is
+   * still a card - the page is the canvas and a table of records stands on it as a sheet; it was no
+   * card at all from 2026-10-28. INSIDE a card or a settings section's card it is that card's
+   * content: no second card, only its rules (`.kit-card-flush` in proxyma-primitives.css). The app's,
+   * the Enterprise pages' and the consoles' tables take it; the site's pages draw the plain card.
+   */
+  flush?: boolean
   className?: string
 }) {
+  if (flush) {
+    return (
+      <Card padding="none" className={cn('kit-card-flush overflow-hidden px-4 sm:px-6', TABLE_FLUSH, className)}>
+        <HScroll aria-label={ariaLabel}>{children}</HScroll>
+        {footer && <div className="border-t border-line/30">{footer}</div>}
+      </Card>
+    )
+  }
   return (
     <Card padding="none" className={cn('overflow-hidden', className)}>
       <HScroll aria-label={ariaLabel}>{children}</HScroll>
@@ -103,7 +121,11 @@ export function SortTh<K extends string>({ label, sortKey, sort, onSort, align =
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      className={cn('inline-flex items-center gap-1 mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm', active && 'text-ink-primary')}
+      // A right-aligned column's arrow goes BEFORE its words, so the words end on the column's right
+      // edge with the figures under them (the maintainer's review, 2026-10-29: the label sat an
+      // arrow's width left of its numbers).
+      className={cn('inline-flex items-center gap-1 mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm',
+        align === 'right' && 'flex-row-reverse', active && 'text-ink-primary')}
     >
       <span>{label}</span>
       {active
@@ -176,7 +198,7 @@ export function TableEmptyRow({ colSpan, children, action }: { colSpan: number; 
  */
 export function IdentityCell({ name, sub, leading }: { name: ReactNode; sub?: ReactNode; leading?: ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex items-center gap-3 min-w-0">
       {leading}
       <div className="min-w-0">
         <div className="text-sm font-medium text-ink-primary truncate">{name}</div>

@@ -36,7 +36,7 @@ export function QuotaSection({ trackChange, pending }: TabProps) {
     <SettingsSection
       title={t('Spending limit')}
       caption={<Rich
-        text={t('Monthly ceiling on everything this installation spends. A {hardStop}: chat, search and indexing are refused until it resets, and 0 disables it.')}
+        text={t('A monthly {hardStop}: chat, search and indexing stop until the reset day.')}
         parts={{ hardStop: <strong className="text-ink-secondary">{t('hard stop')}</strong> }}
       />}
     >

@@ -38,7 +38,7 @@ import { useMenuFocus } from './useMenuFocus'
  */
 export const MENU_PANEL =
   'absolute right-0 top-full mt-2 w-56 z-float ' +
-  'surface-float border border-line/45 rounded-lg shadow-card overflow-hidden animate-dropdown ' +
+  'surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown ' +
   // A phone on its side has about 300px of usable height under the bar, and these menus can carry
   // a dozen rows. Scroll rather than run off the bottom of the screen - but ONLY then.
   //
@@ -65,9 +65,11 @@ const VIEWPORT_MARGIN = 8
  * and shifted by `animate-dropdown`, so its own rectangle is off by several pixels. The anchor's
  * bottom plus the panel's top margin is where the panel will settle.
  */
-function fitMenuPanel(anchor: HTMLElement, panel: HTMLElement) {
-  const top = anchor.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(panel).marginTop) || 0)
-  const available = window.innerHeight - top - VIEWPORT_MARGIN
+function fitMenuPanel(anchor: HTMLElement, panel: HTMLElement, side: 'bottom' | 'top' = 'bottom') {
+  // Opened upward (a menu at the foot of the sidebar), the room is what is ABOVE the anchor.
+  const available = side === 'top'
+    ? anchor.getBoundingClientRect().top - (parseFloat(getComputedStyle(panel).marginBottom) || 0) - VIEWPORT_MARGIN
+    : window.innerHeight - (anchor.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(panel).marginTop) || 0)) - VIEWPORT_MARGIN
   // A floor, so a phone on its side still gets a usable scrolling panel rather than a sliver.
   panel.style.maxHeight = `${Math.max(160, Math.floor(available))}px`
   // And inside the window sideways: the panel hangs right-aligned from its trigger, which runs it
@@ -85,8 +87,11 @@ export type MenuTone = 'default' | 'active' | 'danger'
 
 // THE KEYBOARD'S ROW IS THE POINTER'S ROW: a focused row takes the hover fill, not an offset ring -
 // the panel clips (rounded, overflow hidden), so a ring round a full-width row showed as two lines.
+// A ROUNDED ROW, INSET 4px FROM THE PANEL'S SIDES (the maintainer, 2026-10-30: a hovered row was a
+// square block in a rounded panel) - as the sidebar's rows are; its text stays 16px in, where a
+// group's caption is.
 const ROW_BASE =
-  'w-full flex items-center gap-2.5 px-4 py-2 touch:min-h-tap ' +
+  'w-[calc(100%-0.5rem)] mx-1 rounded-md flex items-center gap-2 px-3 py-2 touch:min-h-tap ' +
   'text-sm text-left no-underline transition-colors focus-visible:outline-none'
 
 /**
@@ -102,13 +107,16 @@ const ROW_BASE =
  * tap and then STICKS until you tap elsewhere - the row you just left goes on looking like the row
  * you are on.
  *
+ * <p>`active` is the NEUTRAL selected fill with the label in the brand's ink (since 2026-10-28; it
+ * was a teal-tinted fill) - the brand marks the row, it does not fill it.
+ *
  * @param tone `active` marks the row you are already on; `danger` is sign-out and quit.
  */
 export function menuRow(tone: MenuTone = 'default', className?: string) {
   return cn(
     ROW_BASE,
-    tone === 'active' && 'text-ink-primary font-semibold bg-brand-chip-bg/40',
-    tone === 'active' && 'focus-visible:bg-brand-chip-bg/70',
+    tone === 'active' && 'text-brand-legible font-semibold bg-surface-alt',
+    tone === 'active' && 'focus-visible:bg-ink-caption/15',
     tone === 'danger' && 'text-danger mouse:hover:bg-danger/10 focus-visible:bg-danger/10',
     tone === 'default' && 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-ink-caption/10 focus-visible:text-ink-primary focus-visible:bg-ink-caption/10',
     className,
@@ -126,18 +134,18 @@ export function menuRow(tone: MenuTone = 'default', className?: string) {
  * divider. A `py-1` on the panel alone gives the ends breathing room and presses the rows flat
  * against each rule. Rows therefore belong in a group, not loose in the panel.
  *
- * <p>AND NOT AT THE TWO ENDS - `first:pt-0 last:pb-0`, at the maintainer's request on 2026-09-16.
- * The panel is `rounded-lg overflow-hidden`, so a row that reaches the edge is clipped INTO that
- * radius and the first and last rows read as part of the container. Four pixels of padding there
- * instead left the top row's hover a square block floating inside a rounded box, which is the one
- * place the seam shows.
+ * <p>AT THE TWO ENDS TOO, since 2026-10-30: the rows are rounded and inset from the panel's sides,
+ * so 4px above the first and below the last keeps their corners off the panel's (it was
+ * `first:pt-0 last:pb-0` while rows ran edge to edge, so the first and last took the panel's corner).
  */
 export function MenuGroup({ children, className, label }: { children: ReactNode; className?: string; label?: ReactNode }) {
   return (
     <div
       role={label ? 'group' : undefined}
       aria-label={typeof label === 'string' ? label : undefined}
-      className={cn('border-b border-line/45 last:border-b-0 py-1 first:pt-0 last:pb-0', className)}
+      // 4px at every end since the rows are rounded and inset (2026-10-30): flush against the panel's
+      // top or bottom, a rounded row would show its corners against the panel's.
+      className={cn('border-b border-line/45 last:border-b-0 py-1', className)}
     >
       {/* A quiet caption over the rows - the Connect menu's categories. It is never a row and takes
           no hover, and it keeps its own top padding, since a first group's pt-0 is there for a ROW
@@ -155,17 +163,17 @@ export function MenuGroup({ children, className, label }: { children: ReactNode;
  * and the panel is a fixed width by design. The full text is the row's tooltip, since the
  * truncated end of an email is the part that tells two accounts apart.
  *
- * <p>THE PADDING IS ON THE LINE, NOT THE GROUP. It was `px-4 py-2.5` on the MenuGroup until
- * 2026-09-30, and MenuGroup's own `first:pt-0` - there so a first ROW takes the panel's rounded
- * corner - beat the `py-2.5` for the one group that is always first. The address sat flush
- * against the top edge of the panel and read as clipped. On the line it is the same 36px as a
- * menu row, whatever the group does at the ends.
+ * <p>THE PADDING IS ON THE LINE, NOT THE GROUP. It was on the MenuGroup until 2026-09-30, and
+ * MenuGroup's own `first:pt-0` - there so a first ROW takes the panel's rounded corner - beat it
+ * for the one group that is always first. The address sat flush against the top edge of the panel
+ * and read as clipped. On the line (`py-2` round a 13/18 caption) it keeps its room whatever the
+ * group does at the ends.
  */
 export function MenuIdentity({ children, title }: { children: ReactNode; title?: string }) {
   return (
     <MenuGroup>
       <p
-        className="px-4 py-2.5 text-xs text-ink-disabled truncate"
+        className="px-4 py-2 text-xs text-ink-caption truncate"
         title={title ?? (typeof children === 'string' ? children : undefined)}
       >
         {children}
@@ -188,6 +196,11 @@ export interface MenuSurfaceProps {
   role?: 'menu'
   /** Names the panel when it has a role. */
   ariaLabel?: string
+  /**
+   * Where the panel opens: under its trigger (a header's menus), or above it with its left edge on
+   * the trigger's (`top` - the account menu at the foot of the app's sidebar, 2026-10-29).
+   */
+  side?: 'bottom' | 'top'
 }
 
 /**
@@ -196,7 +209,7 @@ export interface MenuSurfaceProps {
  * the first row; arrows, Home/End and typing move between rows; Escape and Tab close it and give
  * focus back to the trigger.
  */
-export function MenuSurface({ trigger, children, className, panelClassName, role, ariaLabel }: MenuSurfaceProps) {
+export function MenuSurface({ trigger, children, className, panelClassName, role, ariaLabel, side = 'bottom' }: MenuSurfaceProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -243,18 +256,18 @@ export function MenuSurface({ trigger, children, className, panelClassName, role
     const root = rootRef.current
     const panel = panelRef.current
     if (!root || !panel) return
-    const fit = () => fitMenuPanel(root, panel)
+    const fit = () => fitMenuPanel(root, panel, side)
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
-  }, [open])
+  }, [open, side])
 
   return (
     <div className={cn('relative', className)} ref={rootRef}>
       {trigger({ open, toggle: () => setOpen(o => !o), controls: panelId })}
 
       {mounted && (
-        <div id={panelId} ref={panelRef} role={role} aria-label={role ? ariaLabel : undefined} {...exitingProps(exiting)} onKeyDown={onMenuKeyDown} className={cn(MENU_PANEL, panelClassName, exiting && 'animate-pop-out')}>
+        <div id={panelId} ref={panelRef} role={role} aria-label={role ? ariaLabel : undefined} {...exitingProps(exiting)} onKeyDown={onMenuKeyDown} className={cn(MENU_PANEL, side === 'top' && 'top-auto bottom-full mt-0 mb-2 right-auto left-0', panelClassName, exiting && 'animate-pop-out')}>
           {children(() => setOpen(false))}
         </div>
       )}

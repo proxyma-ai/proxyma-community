@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Brain, SatelliteDish } from 'lucide-react'
 import { ActivityLine, Caption } from '@/components/ui/kit'
 import { useAgentModel } from '../hooks/useAgentModel'
+import { AgentSettingsLink } from './AgentSettingsLink'
 import { useEscalatingMessage } from '../hooks/useEscalatingMessage'
 import { useScrambleText } from '../hooks/useScrambleText'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { useTranslation } from '@/i18n'
 import type { WaitFace } from '../utils/waitState'
-import { compactTokens } from '../utils/agentsGraph'
+import { compactTokens } from '../utils/agentTree'
 
 /**
  * Which wait the row under the conversation is showing - decided by ChatWindow's waitState, which
@@ -67,14 +68,16 @@ function WaitingForModel() {
     // second, and a screen reader was told each one (CHAT-06). The thread says when an answer is
     // ready (ChatWindow's status line).
     <div>
-      <ActivityLine
-        icon={SatelliteDish}
-        state="running"
-        label={label}
-        maxWidth="max-w-full"
-        note={retryAttempt !== null ? t('retry {n}', { n: retryAttempt }) : undefined}
-        elapsed={seconds > 0 ? t('{seconds}s', { seconds }) : undefined}
-      />
+      <NamesModel named={!!agent}>
+        <ActivityLine
+          icon={SatelliteDish}
+          state="running"
+          label={label}
+          maxWidth="max-w-full"
+          note={retryAttempt !== null ? t('retry {n}', { n: retryAttempt }) : undefined}
+          elapsed={seconds > 0 ? t('{seconds}s', { seconds }) : undefined}
+        />
+      </NamesModel>
     </div>
   )
 }
@@ -93,6 +96,7 @@ function ThinkingTokens({ count }: { count: number }) {
     // The kit's ActivityLine: the mark and the words are one line, one color, a wave across the words.
     // Not a live region, for the reason above.
     <div>
+      <NamesModel named={!!agent}>
       <ActivityLine
         icon={Brain}
         state="running"
@@ -103,8 +107,15 @@ function ThinkingTokens({ count }: { count: number }) {
           ? t('{count} tokens', { count: compactTokens(count) })
           : seconds > 0 ? t('{seconds}s', { seconds }) : undefined}
       />
+      </NamesModel>
     </div>
   )
+}
+
+// A row that names the model opens Settings > Agents on a click (AgentSettingsLink); one that does
+// not - the reader may not see those settings - is the row alone.
+function NamesModel({ named, children }: { named: boolean; children: ReactNode }) {
+  return named ? <AgentSettingsLink>{children}</AgentSettingsLink> : <>{children}</>
 }
 
 function WaitingMessage() {

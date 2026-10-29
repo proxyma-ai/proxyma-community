@@ -14,9 +14,9 @@ import { useState } from 'react'
 // here so the query and the banner can never disagree about who is a guest.
 //
 // IN NORMAL FLOW, NOT FIXED OR ABSOLUTE, mounted inside AppShell above <main>. Same reasoning as
-// MaintenanceBanner: it pushes the page down instead of covering the top of it, and AppShell is
-// the right host precisely because /login and /setup render outside it - a banner urging someone
-// to sign in has nothing to say on the sign-in page.
+// MaintenanceBanner: it pushes the page down instead of covering the top of it. AppShell leaves it
+// out on /login, /setup and the password pages - a banner urging someone to sign in has nothing to
+// say on the sign-in page.
 //
 // Dismissible, and the dismissal sticks for the session. It is a nudge, not a warning: a visitor
 // who has decided not to sign in should not be asked again on every navigation. The remaining

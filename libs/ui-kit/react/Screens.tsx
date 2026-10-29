@@ -2,7 +2,6 @@
 
 import { useId, useRef, type ComponentType, type ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { cardClass } from './Card'
 import { cn } from './cn'
 import { PAGE_COLUMN, PAGE_GUTTER } from './layout'
 import { MODAL_SCRIM_DARK } from './Dialog'
@@ -69,10 +68,12 @@ export function BackLink({ children, href, render }: {
 }
 
 /**
- * THE SIGN-IN CARD and the canvas it sits on - sign in, set up, forgot and reset in the app, and
- * the two consoles' sign-in. One card: `max-w-[420px]`, `p-6 sm:px-10 sm:py-8`; the mark, then the
- * one heading (the product's name is in the mark - showing it again as a word under it was removed
- * from the app in its F11 fix and survived in the consoles), then the form. `background` takes the
+ * THE SIGN-IN CARD and what it sits on - sign in, set up, forgot and reset in the app, and the
+ * two consoles' sign-in. One card: `max-w-[420px]`, `p-6 sm:p-8`, a pane of glass (`surface-float`,
+ * since 2026-10-29 - the most opaque glass): on the app's sheet, in its frame, or straight on a
+ * console's field; it paints nothing around itself; the lockup small at its top left (the maintainer,
+ * 2026-10-30 - it took the place of the app's "Back to home", which the sidebar makes redundant),
+ * then the one heading, then the form. `background` takes the
  * kit's `ProxymaBackground` where a surface wants it.
  */
 export function AuthLayout({ logo, title, subtitle, description, back, children, footer, background }: {
@@ -89,18 +90,18 @@ export function AuthLayout({ logo, title, subtitle, description, back, children,
   background?: ReactNode
 }) {
   return (
-    <div className="relative h-full overflow-y-auto bg-canvas">
+    <div className="relative h-full overflow-y-auto">
       {background}
       <div className="relative z-10 min-h-full flex items-center justify-center px-3 sm:px-4 py-6">
         <div className="w-full max-w-[420px]">
-          <div className={cn(cardClass({ variant: 'solid', padding: 'none' }), 'shadow-card p-6 sm:px-10 sm:py-8')}>
+          <div className="surface-float border rounded-lg shadow-float p-6 sm:p-8">
             {back && <div className="mb-4">{back}</div>}
-            <div className="flex items-center justify-center gap-2 mb-4">{logo}</div>
+            <div className="flex items-center gap-2 mb-6">{logo}</div>
             <h1 className={cn(TEXT.title, 'text-center')}>{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-ink-caption text-center">{subtitle}</p>}
-            {description && <p className="mt-2 text-xs leading-relaxed text-ink-caption text-center">{description}</p>}
-            <div className="mt-5">{children}</div>
-            {footer && <div className="mt-5 text-left sm:text-center text-sm text-ink-caption">{footer}</div>}
+            {description && <p className="mt-2 text-xs text-ink-caption text-center">{description}</p>}
+            <div className="mt-6">{children}</div>
+            {footer && <div className="mt-6 text-left sm:text-center text-sm text-ink-caption">{footer}</div>}
           </div>
         </div>
       </div>
@@ -109,7 +110,8 @@ export function AuthLayout({ logo, title, subtitle, description, back, children,
 }
 
 /**
- * A form's verdict above it - a failed sign-in, a sent reset mail: a tinted block, centred, 14px.
+ * A form's verdict above it - a failed sign-in, a sent reset mail: a block, centred, 14/20 - tinted
+ * for a status, the neutral fill with the brand's ink for `info` (no teal fill).
  * Seven of these were written in two styles.
  */
 export function FormAlert({ tone = 'danger', children }: { tone?: 'danger' | 'success' | 'info'; children: ReactNode }) {
@@ -117,10 +119,10 @@ export function FormAlert({ tone = 'danger', children }: { tone?: 'danger' | 'su
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
       className={cn(
-        'rounded-lg px-3.5 py-2.5 mb-5 text-sm leading-snug text-center animate-fade-in',
+        'rounded-lg px-4 py-3 mb-6 text-sm text-center animate-fade-in',
         tone === 'danger' && 'bg-danger/10 text-danger',
         tone === 'success' && 'bg-success/10 text-success',
-        tone === 'info' && 'bg-brand-solid/10 text-brand-legible',
+        tone === 'info' && 'bg-surface-alt text-brand-legible',
       )}
     >
       {children}
@@ -157,10 +159,10 @@ export function BootScreen({ logo, label, message, action }: {
     <div
       role={message ? 'alert' : 'status'}
       aria-label={message ? undefined : label}
-      className="h-full w-full flex flex-col items-center justify-center gap-4 px-6 text-center bg-canvas"
+      className="h-full w-full flex flex-col items-center justify-center gap-4 px-6 text-center"
     >
       {logo}
-      {message ? <p className="max-w-sm text-sm text-ink-secondary leading-relaxed">{message}</p> : <Spinner size="md" />}
+      {message ? <p className="max-w-sm text-sm text-ink-secondary">{message}</p> : <Spinner size="md" />}
       {action}
     </div>
   )
@@ -193,10 +195,10 @@ export function StatusScreen({ icon: Icon, busy, title, children, action, scrim 
       {/* The two parts an exit moves, when its dialog layer goes (useExitGhost). */}
       {scrim && <div data-scrim="" className={MODAL_SCRIM_DARK} />}
       {layer && <StatusLayerGuard panelRef={panelRef} />}
-      <div ref={panelRef} tabIndex={-1} data-motion-panel="" className="relative surface-float border border-line/45 rounded-lg shadow-card w-full max-w-sm px-6 py-6 flex flex-col items-center text-center gap-3 animate-slide-up outline-none">
+      <div ref={panelRef} tabIndex={-1} data-motion-panel="" className="relative surface-float border rounded-lg shadow-float w-full max-w-sm px-6 py-6 flex flex-col items-center text-center gap-3 animate-slide-up outline-none">
         {busy ? <Spinner size={22} /> : Icon && <Icon size={28} className="text-brand-legible" aria-hidden="true" />}
         <h2 id={titleId} className={TEXT.title}>{title}</h2>
-        {children && <div className="text-sm text-ink-secondary leading-relaxed">{children}</div>}
+        {children && <div className="text-sm text-ink-secondary">{children}</div>}
         {action && <div className="mt-2">{action}</div>}
       </div>
     </div>

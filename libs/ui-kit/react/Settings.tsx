@@ -27,9 +27,11 @@ import { useWheelScrollX } from './useWheelScrollX'
  * dialog has a close X.
  */
 export const SETTINGS_PANEL =
-  'relative surface-float border border-line/45 rounded-lg shadow-card w-full sm:max-w-5xl 2xl:max-w-6xl ' +
+  'relative surface-float border rounded-lg shadow-float w-full sm:max-w-5xl 2xl:max-w-6xl ' +
   'h-[calc(100dvh-1.5rem)] sm:h-[min(760px,calc(100dvh-3rem))] 2xl:h-[min(880px,88dvh)] short:h-[calc(100dvh-1rem)] ' +
-  'sm:tall:h-[min(1000px,85dvh)] animate-slide-up flex flex-col'
+  // CLIPPED to its corners (not hidden: a hidden box is a scroll container a focused field can
+  // move), so the rail's well and the save bar keep the panel's radius. Its lists are portalled.
+  'sm:tall:h-[min(1000px,85dvh)] animate-slide-up flex flex-col overflow-clip'
 
 /**
  * The overlay does NOT scroll (maintainer, 2026-10-03: the wheel over the rail moved the whole
@@ -94,13 +96,28 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
         type="button"
         onClick={() => onChange(item.key)}
         aria-current={on}
-        className={cn(
-          'flex items-center gap-2.5 rounded-md text-xs transition-colors focus-ring',
-          layout === 'row' ? 'shrink-0 whitespace-nowrap px-3 py-2 touch:min-h-tap' : 'w-full px-2.5 py-1 touch:py-2 text-left',
-          on ? 'bg-surface text-ink-primary font-medium' : 'text-ink-caption mouse:hover:bg-surface/50 mouse:hover:text-ink-secondary',
-        )}
+        // The rail's rows stay 13px on `py-1` - the rail has to fit 1280x720 without scrolling (six
+        // pixels to spare on desktop, frontend.md), and a 14/20 row is 36px taller over eighteen.
+        // The current tab is LIFTED out of the rail's well (since 2026-10-29, the depth review): the
+        // floating plane with `shadow-card`, its glyph in the brand's ink - never a teal fill.
+        // THE ROW (a phone, a short window) IS SubNavTabs' underlined words since 2026-10-28 (the UI
+        // review: filled pills there, underlined tabs everywhere else - one idea, two components):
+        // the words, the current one in primary ink over a brand rule, which eases with them.
+        className={layout === 'row'
+          ? cn(
+            'relative shrink-0 flex items-center gap-2 h-9 touch:h-11 whitespace-nowrap text-sm font-medium transition-colors focus-ring',
+            'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors after:duration-base',
+            on ? 'text-ink-primary after:bg-brand-solid' : 'text-ink-caption after:bg-transparent mouse:hover:text-ink-primary',
+          )
+          : cn(
+            // ROOMIER WHERE THERE IS HEIGHT (the maintainer, 2026-10-30: "too tight?"): from a 900px
+            // tall window, 14px rows on 6px - the 720px fit is kept below that.
+            'flex items-center gap-2 rounded-md text-xs whitespace-nowrap transition-colors focus-ring w-full px-3 py-1 touch:py-2 text-left',
+            '[@media(min-height:900px)]:text-sm [@media(min-height:900px)]:py-1.5',
+            on ? 'bg-surface-float shadow-card text-ink-primary font-medium' : 'text-ink-caption mouse:hover:bg-surface-float/60 mouse:hover:text-ink-secondary',
+          )}
       >
-        {Icon && <Icon size={14} className="shrink-0" />}
+        {Icon && <Icon size={14} className={cn('shrink-0', layout === 'column' && '[@media(min-height:900px)]:w-4 [@media(min-height:900px)]:h-4', on && layout === 'column' && 'text-brand-legible')} />}
         {item.label}
       </button>
     )
@@ -111,18 +128,23 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
       ref={navRef}
       aria-label={ariaLabel}
       className={cn(
-        'shrink-0 md:w-56 short:w-auto min-h-0 border-b md:border-b-0 md:border-r short:border-r-0 short:border-b border-line/30',
+        // 16rem from a 900px tall window, where its rows are 14px: a name never wraps (2026-10-30).
+        'shrink-0 md:w-56 [@media(min-height:900px)]:md:w-64 short:w-auto min-h-0 border-b md:border-b-0 md:border-r short:border-r-0 short:border-b border-line/60',
+        // THE COLUMN IS A WELL from `md` (since 2026-10-29): the sunken plane, the current entry lifted
+        // out of it. The row (a phone, a short window) is underlined words on the window's own plane.
+        'md:bg-surface-alt md:shadow-well short:bg-transparent short:shadow-none',
         'overflow-x-auto md:overflow-x-visible md:overflow-y-auto short:overflow-x-auto short:overflow-y-visible scrollbar-hide',
-        'mx-4 md:mx-0 md:px-4 short:mx-4 short:px-0 py-2 md:py-4 short:py-1',
+        // The row's underline sits on the nav's own hairline, so no padding under it.
+        'mx-4 md:mx-0 md:px-4 short:mx-4 short:px-0 pt-1 md:py-4 short:pt-0 short:pb-0',
       )}
     >
-      <div className="flex md:hidden short:flex items-center gap-1 w-max">
+      <div className="flex md:hidden short:flex items-center gap-6 w-max">
         {groups.flatMap(g => g.items).map(i => entry(i, 'row'))}
       </div>
-      <div className="hidden md:block short:hidden space-y-4">
+      <div className="hidden md:block short:hidden space-y-4 [@media(min-height:900px)]:space-y-6">
         {groups.map((g, gi) => (
           <div key={g.label ?? gi}>
-            {g.label && <p className="px-2.5 mb-1.5 text-xs font-semibold text-ink-caption">{g.label}</p>}
+            {g.label && <p className="px-3 mb-2 text-xs font-semibold text-ink-caption">{g.label}</p>}
             <div>{g.items.map(i => entry(i, 'column'))}</div>
           </div>
         ))}
@@ -136,6 +158,9 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
  * content column - which scrolls itself, opens with the page's own TITLE every time (a tab opening
  * on a caption left nothing saying where the rail had gone), and re-fades when `contentKey`
  * changes. `footer` is the save bar. A single-section window (`hideRail`) shows no rail.
+ *
+ * THE COLUMN IS THE PAGE (since 2026-10-29, the depth review): the canvas plane, so each section
+ * of a tab (`SettingsSections`) stands on it as a card, as the app's own pages do.
  */
 export function SettingsLayout({ rail, title, titleActions, titleActionsRef, notice, banner, footer, contentKey, children, hideRail }: {
   rail?: ReactNode
@@ -159,8 +184,10 @@ export function SettingsLayout({ rail, title, titleActions, titleActionsRef, not
           rule would otherwise take for the body (the last child) and grow. */}
       <div data-dialog-body="" className="flex-1 min-h-0 flex flex-col md:flex-row short:flex-col">
         {!hideRail && rail}
-        <div key={contentKey} className="flex-1 min-w-0 min-h-0 overflow-y-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 short:pt-3 short:pb-4 animate-fade-in">
-          <PageTitle as="h2" actions={titleActions} actionsRef={titleActionsRef} className="mb-6 short:mb-3">{title}</PageTitle>
+        {/* The window's PAGE: a shade of the canvas over the window's glass, so its cards stand on
+            something (since 2026-10-29) - the canvas itself until then. */}
+        <div key={contentKey} className="flex-1 min-w-0 min-h-0 overflow-y-auto bg-canvas/60 px-4 sm:px-6 pt-6 sm:pt-8 pb-8 short:pt-3 short:pb-4 animate-fade-in">
+          <PageTitle as="h2" level="tab" actions={titleActions} actionsRef={titleActionsRef} className="mb-6 short:mb-3">{title}</PageTitle>
           <Presence show={!!notice}><div className="mb-6">{notice}</div></Presence>
           {children}
         </div>
@@ -188,7 +215,7 @@ export function SaveBar({ dirty, saving, status, progressText, onCancel, onSave,
   // back down after; its parts fade in and out inside it.
   return (
     <Presence show={dirty || !!status} className="shrink-0">
-      <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2.5 border-t border-line/45">
+      <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2 border-t border-line">
         <Presence show={!!status} collapse={false} className="mr-auto">
           {status && <span role="status" className={cn('text-xs', status.tone === 'success' ? 'text-brand-legible' : 'text-danger')}>{status.text}</span>}
         </Presence>
@@ -205,14 +232,16 @@ export function SaveBar({ dirty, saving, status, progressText, onCancel, onSave,
 }
 
 /**
- * A page's sections, separated by a hairline with 2rem either side (1.25rem on a phone) - the
- * `.settings-sections` rule, in the kit's CSS now so the consoles have it. An `intro` paragraph
- * opens the page with no rule under it.
+ * A page's sections, EACH A CARD on the page since 2026-10-29 (the depth review) - the card plane, its
+ * line and `shadow-card`, 1.5rem apart; a hairline between them until then. The `.settings-sections`
+ * rule, in the kit's CSS so the consoles have it. An `intro` paragraph opens the page, on the page.
  */
 export function SettingsSections({ intro, children, className }: { intro?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <div className={cn('settings-sections', className)}>
-      {intro && <p className={cn(TEXT.caption, 'max-w-3xl')}>{intro}</p>}
+      {/* About 70 characters a line at most (the UI review measured 114-120 at `max-w-3xl`). A
+          `ch` is a zero's width, wider than the average letter, so 60 of them hold about 70. */}
+      {intro && <p className={cn(TEXT.caption, 'max-w-[60ch]')}>{intro}</p>}
       {children}
     </div>
   )

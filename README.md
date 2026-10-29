@@ -18,11 +18,11 @@ Proxyma Community is free software under the GNU Affero General Public License v
 | Connectors | All but Microsoft 365 | All |
 | Agent, MCP, guardrails, knowledge graph | Yes | Yes |
 | Accounts, roles, SSO, per-user quotas, administration | - | Yes |
-| Microsoft 365 sources, key accounts | - | Yes |
+| Microsoft 365 sources, key accounts, Constellations (teams of saved agents) | - | Yes |
 | License | AGPL-3.0-only, free | Commercial, with a 30-day trial |
 
 Enterprise is not open source, and its own modules - accounts and sign-in, administration, key
-accounts, Microsoft 365, the license and trial client, the multi-user server - are not in this
+accounts, Constellations, Microsoft 365, the license and trial client, the multi-user server - are not in this
 repository. See
 [proxyma.ai](https://proxyma.ai).
 

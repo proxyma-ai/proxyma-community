@@ -684,7 +684,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
                   </PickBox>
                 )}
                 {connectorNames.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 animate-fade-in">
+                  <div className="flex flex-wrap gap-2 animate-fade-in">
                     {connectorNames.map(n => (
                       <Chip
                         key={n}

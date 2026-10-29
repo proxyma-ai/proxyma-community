@@ -32,7 +32,7 @@ export function RuleChecklist({ items, labels, className }: {
   return (
     <ul className={cn('flex flex-col gap-1', className)}>
       {items.map(item => (
-        <li key={item.key} className={cn('flex items-center gap-1.5 text-xs transition-colors', item.pass ? 'text-success' : 'text-ink-disabled')}>
+        <li key={item.key} className={cn('flex items-center gap-2 text-xs transition-colors', item.pass ? 'text-success' : 'text-ink-disabled')}>
           {item.pass
             ? <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
             : <Circle size={16} className="shrink-0" aria-hidden="true" />}

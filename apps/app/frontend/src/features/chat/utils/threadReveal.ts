@@ -3,7 +3,7 @@
  * agent names (maintainer's request, 2026-10-14: "click on the agent title to go to the agent
  * section in the main chat interface instead of expand it").
  *
- * A sub-agent goes to its panel in the thread, which opens and lights up briefly
+ * A deployed agent goes to its panel in the thread, which opens and lights up briefly
  * (SubAgentPanel); the main agent goes to the latest turn - its question, which is where the main
  * agent's latest work starts.
  *
@@ -21,7 +21,7 @@ export interface RevealRequest {
  *
  * - The latest turn lands at the top, `clearTop` below the scroller's edge - under the pinned
  *   question's bar and its fade, which would hide the question's first line.
- * - A sub-agent's panel is CENTERED, as the composer's robots put it before the map took over -
+ * - A deployed agent's panel is CENTERED, as the composer's robots put it before the map took over -
  *   but never so high that its header is under that bar, which a panel taller than the window
  *   would be.
  *
@@ -46,7 +46,7 @@ export function revealScrollTop({ kind, top, height, scrollTop, viewHeight, endT
   return Math.round(Math.max(0, Math.min(wanted, endTop)))
 }
 
-/** Whether a reveal names this sub-agent. */
+/** Whether a reveal names this deployed agent. */
 export function revealsAgent(request: RevealRequest | null | undefined, agentId: string | undefined): boolean {
   return !!request && !!agentId && request.target.kind === 'agent' && request.target.agentId === agentId
 }

@@ -1,19 +1,18 @@
 import type { LucideIcon } from 'lucide-react'
-import { Compass, Hand, Plane } from 'lucide-react'
+import { Hand, Search, Zap } from 'lucide-react'
 import { MenuGroup, MenuRow, MenuTrigger, Popover, Tooltip } from '@/components/ui/kit'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import type { PermissionMode } from '../types/chat.types'
 import { useTranslation } from '@/i18n'
 
-const ICONS: Record<PermissionMode, LucideIcon> = { ASK: Hand, AUTO: Plane, READ_ONLY: Compass }
+const ICONS: Record<PermissionMode, LucideIcon> = { ASK: Hand, AUTO: Zap, READ_ONLY: Search }
 const ORDER: PermissionMode[] = ['ASK', 'AUTO', 'READ_ONLY']
 
 /**
- * Co-pilot, Autopilot or Navigator - how much the agent may change without asking - beside the model
- * in the composer (the maintainer's request, 2026-09-28; named after flying on 2026-10-23, when they
- * were Ask, Auto and Read-only). Co-pilot asks before each change, Autopilot makes them, Navigator
- * reads and changes nothing; a hand, a plane and a compass. The stored values are still ASK, AUTO and
- * READ_ONLY, so a conversation saved before the rename keeps its mode. It skips
+ * Ask, Auto or Read-only - how much the agent may change without asking - beside the model in the
+ * composer (the maintainer's request, 2026-09-28; hand, zap and search are their icons). They were
+ * named Ask, Auto and Read-only from 0.38.0 until the maintainer asked for these names back
+ * on 2026-10-29; the stored values were ASK, AUTO and READ_ONLY throughout. It skips
  * or tightens the approval pause only: a connection's Write switch still decides what a change may
  * reach, in every mode.
  *
@@ -27,7 +26,7 @@ export function PermissionModePicker() {
   const mode = useChatStore(s => s.permissionMode)
   const setMode = useChatStore(s => s.setPermissionMode)
 
-  const names: Record<PermissionMode, string> = { ASK: t('Co-pilot'), AUTO: t('Autopilot'), READ_ONLY: t('Navigator') }
+  const names: Record<PermissionMode, string> = { ASK: t('Ask'), AUTO: t('Auto'), READ_ONLY: t('Read-only') }
   const hints: Record<PermissionMode, string> = {
     ASK: t('Asks before every change'),
     AUTO: t('Makes changes without asking'),
@@ -41,7 +40,9 @@ export function PermissionModePicker() {
       widthClass="w-64"
       ariaLabel={t('Permission: {mode}', { mode: names[mode] })}
       trigger={({ open, toggle, ref }) => (
-        <Tooltip label={hints[mode]}>
+        // SHRINK-0 ON THE WRAPPER: the Tooltip's box is the flex item, not the button, and on a
+        // phone it shrank under the button's width - the chevron overlapped the model's name.
+        <Tooltip label={hints[mode]} className="inline-flex shrink-0">
           <MenuTrigger
             triggerRef={ref}
             icon={Icon}

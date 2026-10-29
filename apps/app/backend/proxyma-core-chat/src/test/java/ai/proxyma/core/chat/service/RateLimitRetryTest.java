@@ -249,18 +249,18 @@ class RateLimitRetryTest {
                 text -> {}, Duration.ofMillis(300)));
 
         assertThat(ModelCall.isRateLimited(thrown)).as("thrown: %s", thrown).isTrue();
-        assertThat(SubAgentService.failureReport(thrown)).startsWith("RATE LIMITED");
+        assertThat(ChatService.failureText(thrown)).startsWith("RATE LIMITED");
     }
 
-    // -- What a sub-agent that gave up says -------------------------------------------------------
+    // -- What an agent that gave up tells the agent that deployed it -----------------------------
 
     @Test
-    @DisplayName("a sub-agent that gave up on a rate limit says so, in words the main agent can act on")
-    void subAgentReportNamesTheRateLimit() {
-        String report = SubAgentService.failureReport(new RuntimeException(
+    @DisplayName("an agent that gave up on a rate limit says so, in words the agent that deployed it can act on")
+    void failureNamesTheRateLimit() {
+        String report = ChatService.failureText(new RuntimeException(
                 "Response exception, Status: [429 TOO_MANY_REQUESTS], Body:[{\"type\":\"rate_limit_error\"}]"));
 
-        assertThat(report).startsWith("RATE LIMITED").contains("fewer sub-agents").contains("429");
-        assertThat(SubAgentService.failureReport(status(400))).doesNotContain("RATE LIMITED");
+        assertThat(report).startsWith("RATE LIMITED").contains("fewer agents").contains("429");
+        assertThat(ChatService.failureText(status(400))).doesNotContain("RATE LIMITED");
     }
 }

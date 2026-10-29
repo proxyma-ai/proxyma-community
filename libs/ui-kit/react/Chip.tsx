@@ -8,7 +8,7 @@ export type ChipVariant = 'outline' | 'file' | 'solid' | 'filter'
  * The classes of a chip, for a chip that cannot be a React element - the composer builds its
  * mention chips as DOM nodes inside a contentEditable, where React does not render.
  *
- * ONE SHAPE for every chip since the 2026-10 kit rebuild: `rounded-md px-1.5 py-0.5 text-xs`. The
+ * ONE SHAPE for every chip since the 2026-10 kit rebuild: `rounded-md px-2 py-0.5 text-xs`. The
  * app had four - a full pill (`rounded-control`, 9999px, whose own comments said "not a pill"), and
  * three `rounded-md` boxes at three paddings - and the same file was a pill before it was sent and
  * a box after. `rounded-md` is the radius the token rules give badges; a pill around a word reads
@@ -16,15 +16,15 @@ export type ChipVariant = 'outline' | 'file' | 'solid' | 'filter'
  */
 export function chipClass(variant: ChipVariant = 'outline', opts: { pressed?: boolean; interactive?: boolean; fillClass?: string } = {}): string {
   return cn(
-    'inline-flex items-center gap-1 max-w-full rounded-md px-1.5 py-0.5 text-xs leading-4 align-baseline whitespace-nowrap',
+    'inline-flex items-center gap-1 max-w-full rounded-md px-2 py-0.5 text-xs align-baseline whitespace-nowrap',
     variant === 'outline' && 'border border-line text-ink-secondary',
-    variant === 'file' && 'border border-line/40 bg-canvas/50 text-ink-secondary',
+    variant === 'file' && 'border border-line/60 bg-surface-alt text-ink-secondary',
     // A source type's or a skill's own fill, chosen by the caller (`fillClass`), with white on it.
     variant === 'solid' && cn('font-medium text-on-status', opts.fillClass ?? 'bg-brand-solid'),
-    // A filter: the preset's brand-chip pair when pressed - "the flat pale chip pairing ... a
-    // selected filter chip" - and an outline at rest.
+    // A filter: LIFTED when pressed (since 2026-10-29, the depth review) - the card plane with
+    // `shadow-card`, the brand's ink and border - and an outline at rest.
     variant === 'filter' && (opts.pressed
-      ? 'border border-brand-solid/40 bg-brand-chip-bg text-brand-chip-text font-medium'
+      ? 'border border-brand-solid/40 surface-card shadow-card text-brand-chip-text font-medium'
       : 'border border-line text-ink-secondary'),
     opts.interactive && 'cursor-pointer transition-colors focus-ring',
     opts.interactive && variant !== 'solid' && !opts.pressed && 'mouse:hover:border-ink-disabled mouse:hover:text-ink-primary',
@@ -68,7 +68,7 @@ export function Chip({ label, variant = 'outline', icon, fillClass, pressed, cou
     <>
       {icon && <span className="shrink-0 flex items-center [&>svg]:w-3.5 [&>svg]:h-3.5" aria-hidden="true">{icon}</span>}
       <span className="truncate">{label}</span>
-      {/* The count in the chip's own ink, set apart by its figures face - it was faded to 80%, which
+      {/* The count in the chip's own ink, in tabular figures - it was faded to 80%, which
           took the chosen filter's count under 4.5:1 on its pale fill (2026-10-15). */}
       {count !== undefined && <span className="data-readout">{count}</span>}
     </>

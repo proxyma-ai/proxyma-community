@@ -12,6 +12,11 @@ export function useKeyAccountsShown(): boolean {
   return false
 }
 
+/** Whether the header lists Constellations. Never, here. */
+export function useConstellationsShown(): boolean {
+  return false
+}
+
 /** Whether this deployment offers key accounts. Never, here. */
 export function useKeyAccountsAllowed(): boolean | undefined {
   return false

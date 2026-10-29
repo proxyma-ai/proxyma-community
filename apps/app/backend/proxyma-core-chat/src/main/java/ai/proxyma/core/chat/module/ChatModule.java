@@ -51,6 +51,18 @@ public interface ChatModule {
     boolean offersToolsIn(String conversationId, String userId);
 
     /**
+     * Which of this module's own tools may be offered in this conversation right now - for a module
+     * whose tools are not all-or-nothing (the key-account tools that OPEN an account are offered while
+     * none is open, the ones that work on it only once one is; a Constellations project's board is
+     * offered to the agents a saved agent deployed, its team tools only to the saved agent). The
+     * default is every own tool when {@link #offersToolsIn} says yes, else none. Same contract: cheap,
+     * never throws.
+     */
+    default Set<String> toolsOfferedIn(String conversationId, String userId) {
+        return offersToolsIn(conversationId, userId) ? ownToolNames() : Set.of();
+    }
+
+    /**
      * Lines for this conversation's system prompt, identity only, or empty. The system prompt is
      * compared whole on every turn (ChatService.refreshSystemPrompt) and rewritten when it differs,
      * so this must not carry anything that moves between turns - a date, a count, a status - or the
@@ -58,8 +70,98 @@ public interface ChatModule {
      */
     Optional<String> systemContext(String conversationId, String userId);
 
+    /**
+     * What this conversation's agent keeps between conversations - a saved agent's long-term memory,
+     * read from its workspace - as the text it reads before it works, or empty. It is NOT part of the
+     * system prompt, which must not move between turns ({@link #systemContext}): the chat writes it
+     * into the conversation as a message of its own (AgentInbox.Kind.MEMORY) at the first model call
+     * that has no copy in view - a conversation's first step, and the first after a condensation took
+     * the earlier copy into its summary. So it is asked before a model call only while no copy is in
+     * view, and the answer for a conversation that is nobody's agent must stay one primary-key lookup.
+     * {@code userId} as for {@link #offersToolsIn}. Never throws.
+     */
+    default Optional<String> memoryContext(String conversationId, String userId) {
+        return Optional.empty();
+    }
+
     /** Whether this module's skills are within this installation's license (LicenseToolScope). */
     boolean licensed();
+
+    /**
+     * How this conversation runs differently from an ordinary chat, when it is one this module
+     * holds for a saved agent - its model, step limit, withheld tools, sources and memory - or
+     * empty. Every field only narrows or redirects (see {@link AgentProfile}); none can widen what
+     * the turn's user may do, and none replaces the product's own system prompt. {@code userId} as
+     * for {@link #offersToolsIn}: a module answers only the user the conversation is bound for.
+     * Read through {@link AgentProfiles}, which keeps a failure to the one call.
+     */
+    default Optional<AgentProfile> profileFor(String conversationId, String userId) {
+        return Optional.empty();
+    }
+
+    /**
+     * Whether this module holds something for this conversation's agent that has not reached it yet -
+     * a teammate's message, a reply. Asked whenever a turn could take it (between steps, at a turn's
+     * end) and when {@code ChatService.pendingInputArrived} is called; it must be CHEAP - a map lookup,
+     * never a query - since an ordinary conversation is asked too.
+     */
+    default boolean hasPendingInput(String conversationId) {
+        return false;
+    }
+
+    /**
+     * Takes what {@link #hasPendingInput} said was owed, once: the text the agent reads as the next
+     * user-role message, or empty when something else took it first. What is taken is the module's
+     * to mark delivered; the chat puts it in the conversation and runs a step on it, starting a turn
+     * when none runs - the way an agent's report reaches the agent that deployed it.
+     */
+    default Optional<String> takePendingInput(String conversationId) {
+        return Optional.empty();
+    }
+
+    /**
+     * A turn of this conversation has ended after {@code durationMs} of wall clock - ordinary,
+     * continued or unattended alike. For a module that keeps how long its agents work. Called on the
+     * turn's own thread after everything is written; it must not throw and must not be slow.
+     */
+    default void turnEnded(String conversationId, long durationMs) {
+    }
+
+    /**
+     * The same, with the turn's final answer (null when it failed) - for a module that sends the
+     * answer on, as Constellations sends a saved agent's reply to the teammate that asked.
+     */
+    default void turnEnded(String conversationId, long durationMs, String answer) {
+        turnEnded(conversationId, durationMs);
+    }
+
+    /**
+     * Whether nobody watches this conversation, so a write it asks to make is KEPT in the approvals
+     * inbox (ApprovalInbox) rather than held as a prompt in the turn - a run its module started on a
+     * schedule or for another agent. A question for the person is answered at once, saying so, and a
+     * turn at its step limit ends rather than asking. Cheap, never throws.
+     */
+    default boolean parksApprovals(String conversationId) {
+        return false;
+    }
+
+    /**
+     * Why this conversation may take no further step - a budget spent, a deadline passed - or empty.
+     * Asked before every model call, so it must be cheap (cached where it adds anything up). A module
+     * that answers is also the one that stops what else must stop and tells whom it must; the chat only
+     * ends the turn, with this sentence as its answer.
+     */
+    default Optional<String> stopReason(String conversationId) {
+        return Optional.empty();
+    }
+
+    /**
+     * A person has just written in this conversation - opened a turn, or typed into a running one. For
+     * a module that bounds what agents do on their own between two things a person says. Cheap, never
+     * throws.
+     */
+    default void personSpoke(String conversationId) {
+    }
 
     /** The names of the skills this module contributes. */
     default Set<String> skillNames() {

@@ -447,8 +447,8 @@ export function TourOverlay() {
             // Beside its control, or centred when it has none. A title, two or three sentences and
             // at most three points - never the old 640px deck that sat on top of what it described.
             // Raised inside the tour's own layer, over its scrim halves.
-            'fixed z-raised max-w-[calc(100vw-32px)] surface-float border border-line/45 rounded-lg shadow-card',
-            welcome ? 'w-[420px] px-6 py-6' : 'w-[380px] px-5 py-4',
+            'fixed z-raised max-w-[calc(100vw-32px)] surface-float border rounded-lg shadow-float',
+            welcome ? 'w-[420px] px-6 py-6' : 'w-[380px] px-6 py-4',
             pos ? 'animate-slide-up' : 'opacity-0 pointer-events-none',
           )}
           style={{ top: pos?.top ?? 0, left: pos?.left ?? 0 }}
@@ -460,14 +460,14 @@ export function TourOverlay() {
             ) : (
               // A count rather than the kit Stepper: a card 380px wide cannot carry a mark per stop
               // of a tour that runs to ten, and the count is the one fact the reader needs.
-              <p className={cn(TEXT.caption, 'mb-1.5 data-readout')}>
+              <p className={cn(TEXT.caption, 'mb-2 data-readout')}>
                 {t('{current} of {total}', { current: Math.max(stopIndex, 0) + 1, total: stops.length })}
               </p>
             )}
             <h2 className={welcome ? TEXT.title : TEXT.section}>{label}</h2>
             <p className={cn(TEXT.body, 'mt-2')}>{t(step.text)}</p>
             {step.points && step.points.length > 0 && (
-              <ul className="mt-3 space-y-1.5">
+              <ul className="mt-3 space-y-2">
                 {step.points.map(point => (
                   <li key={point} className={cn(TEXT.caption, 'flex items-start gap-2 leading-relaxed text-ink-secondary')}>
                     <Check size={14} className="shrink-0 mt-0.5 text-brand-legible" aria-hidden="true" />
@@ -478,7 +478,7 @@ export function TourOverlay() {
             )}
             {isSandbox && step.sandboxNote && <Caption className="mt-3">{t(step.sandboxNote)}</Caption>}
           </FadeSwap>
-          <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="mt-6 flex items-center justify-between gap-3">
             <Button variant="quiet" onClick={handleSkip}>{welcome ? t('Not now') : t('Skip tour')}</Button>
             <div className="flex items-center gap-3">
               {isSandbox && step.sandboxAction && (

@@ -129,7 +129,7 @@ if (failures.length) {
 // -- CSS ----------------------------------------------------------------------------------------
 
 const tokens = tokenBlocks(REPO)
-const appearanceBoxes = ['light', 'gray', 'black'].map(ap =>
+const appearanceBoxes = ['light', 'dark'].map(ap =>
   `.gl-ap-${ap}{${tokens.overridden.map(v => `--${v}:${tokens[ap][v]}`).join(';')}}`).join('\n')
 
 const GUIDE_CSS = `

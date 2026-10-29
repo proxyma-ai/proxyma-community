@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import license, { type Dependency } from 'rollup-plugin-license'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import path from 'path'
+import { appearanceInitScript } from './src/components/ui/kit/appearanceScript'
 
 // THE WEB HALF OF THIRD-PARTY-NOTICES.txt (apps/app/third-party/notices.xml). Every npm package that
 // ends up in the bundle - not every package in package.json, and not the build tools - with its
@@ -73,6 +74,31 @@ function webNotices(dependencies: Dependency[]): string {
     blocks.join('\n\n----------------------------------------------------------------------\n\n'),
     '',
   ].join('\n')
+}
+
+// THE PRE-PAINT APPEARANCE SCRIPT, from the kit (appearanceScript.ts, tested against the resolution
+// the theme store runs) for the store's key - src/store/themeStore.ts's MODE_STORAGE_KEY. It stamps
+// data-mode on <html> (and the theme-color meta) before the body exists, so the first frame is in
+// the chosen appearance rather than the bare :root's Light.
+//
+// SERVED AS A FILE, /appearance-init.js, rather than inlined: the app's Content-Security-Policy
+// allows scripts from its own origin only (SecurityHeadersConfig, swx-06), and an inline one would
+// need a hash kept in step with every edit. It was a hand-written copy in public/ until 2026-10-28;
+// the two consoles' prepaint plugin is the same shape.
+function appearanceInit(storageKey: string): Plugin {
+  const source = appearanceInitScript(storageKey) + '\n'
+  return {
+    name: 'proxyma-appearance-init',
+    configureServer(server) {
+      server.middlewares.use('/appearance-init.js', (_req, res) => {
+        res.setHeader('Content-Type', 'text/javascript; charset=utf-8')
+        res.end(source)
+      })
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'appearance-init.js', source })
+    },
+  }
 }
 
 // PROXYMA ENTERPRISE'S PAGES live outside this directory, in ee/frontend/src at the repository root -
@@ -148,7 +174,9 @@ export default defineConfig(({ mode }) => {
         '@edition': path.resolve(__dirname, './src/edition/community.tsx'),
       }
   return {
-    plugins: enterprise ? [enterpriseBareImports(), react()] : [react()],
+    plugins: enterprise
+      ? [enterpriseBareImports(), react(), appearanceInit('proxyma-theme-mode')]
+      : [react(), appearanceInit('proxyma-theme-mode')],
     build: {
       rollupOptions: {
         plugins: [

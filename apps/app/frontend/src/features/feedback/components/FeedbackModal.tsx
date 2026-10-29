@@ -233,7 +233,7 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
 
                 {/* Each attached file is the kit's file chip, its size a readout. */}
                 <Presence show={attachments.length > 0}>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {attachments.map((file, i) => (
                       <Chip
                         key={`${file.name}-${i}`}

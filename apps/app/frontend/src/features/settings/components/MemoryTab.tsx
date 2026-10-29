@@ -104,7 +104,7 @@ export function MemoryTab() {
   return (
     // The introduction is SettingsSections' intro, as on every tab that opens with one, and it is
     // there while the list loads under it.
-    <SettingsSections intro={t('What the agent has saved to use in later conversations. It checks this before searching your sources, so correct or delete anything that is wrong or out of date.')}>
+    <SettingsSections intro={t('What the agent saved for later; correct or delete anything out of date.')}>
       <FadeSwap swapKey={isLoading ? 'loading' : entries.length > 0}>
       {isLoading ? (
         <ListSkeleton count={5} />

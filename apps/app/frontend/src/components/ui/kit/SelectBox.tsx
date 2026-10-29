@@ -50,7 +50,7 @@ export function SelectBox({ checked, indeterminate = false, label, disabled, onT
         if (e.shiftKey) e.preventDefault()
       }}
       className={cn(
-        'inline-flex items-center justify-center p-1 -m-1 group',
+        'relative inline-flex items-center justify-center p-1 -m-1 group',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
       )}
     >

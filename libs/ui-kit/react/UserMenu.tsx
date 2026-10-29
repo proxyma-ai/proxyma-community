@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Menu } from 'lucide-react'
+import { ChevronUp, Menu } from 'lucide-react'
 import { cn } from './cn'
 import { MenuSurface } from './menu'
 import { TAP_TEXT } from './tap'
@@ -26,6 +26,11 @@ import { TAP_TEXT } from './tap'
  * <p>NO AVATAR, in any of the three. There is no real profile picture behind an SSO account, a
  * local account or an admin bearer token, so a generated-initial circle would be decoration
  * occupying header space. The name is the control.
+ *
+ * <p>THE SIDEBAR IS THE EXCEPTION, since 2026-10-29 (the maintainer's glass shell, which has no
+ * header): at the foot of the sidebar the menu is a row - the person's initials in a circle, their
+ * name and, under it, `caption` (an email) - and it opens UPWARD. The circle marks the row as the
+ * account at a glance in a column of page names; folded to icons it is all that is left.
  */
 export interface UserMenuProps {
   /** Accessible name for the trigger - below `sm` it can be a glyph with no text at all. */
@@ -45,11 +50,63 @@ export interface UserMenuProps {
   children: (close: () => void) => ReactNode
   className?: string
   panelClassName?: string
+  /** `sidebar`: the row at the foot of the app's sidebar, opening upward (see above). */
+  variant?: 'bar' | 'sidebar'
+  /** Under the name in the sidebar row - an email. */
+  caption?: ReactNode
+  /** The circle's letters in the sidebar row - or a glyph, for a visitor with no name. */
+  initials?: ReactNode
+  /** The sidebar folded to its icons: the circle alone. */
+  folded?: boolean
+}
+
+/** Up to two letters for a name or an email: "Avery Admin" is AA, "avery@x.test" is A. */
+export function initialsOf(name: string): string {
+  const words = name.replace(/@.*$/, '').split(/[\s._-]+/).filter(Boolean)
+  return (words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? '?').slice(0, 1)).toUpperCase()
 }
 
 export function UserMenu({
-  label, name, withMenuIcon, children, className, panelClassName,
+  label, name, withMenuIcon, children, className, panelClassName, variant = 'bar', caption, initials, folded,
 }: UserMenuProps) {
+  if (variant === 'sidebar') {
+    return (
+      <MenuSurface
+        className={cn('w-full', className)}
+        panelClassName={panelClassName}
+        side="top"
+        trigger={({ open, toggle, controls }) => (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={label}
+            aria-expanded={open}
+            aria-haspopup="menu"
+            aria-controls={controls}
+            className={cn('w-full flex items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors focus-ring',
+              'mouse:hover:bg-surface/70', open && 'bg-surface/70', folded && 'justify-center')}
+          >
+            <span aria-hidden="true"
+              className="shrink-0 w-8 h-8 rounded-full grid place-items-center bg-brand-solid text-brand-on-solid text-xs font-semibold">
+              {initials}
+            </span>
+            {!folded && (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink-primary">{name}</span>
+                  {caption && <span className="block truncate text-xs text-ink-caption">{caption}</span>}
+                </span>
+                {/* Up: the menu opens above the row (the maintainer, 2026-10-30). */}
+                <ChevronUp size={14} aria-hidden="true" className="shrink-0 text-ink-caption" />
+              </>
+            )}
+          </button>
+        )}
+      >
+        {children}
+      </MenuSurface>
+    )
+  }
   return (
     <MenuSurface
       className={className}

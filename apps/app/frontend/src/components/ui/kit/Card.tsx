@@ -17,15 +17,23 @@ type CardVariant = 'subtle' | 'outline' | 'solid'
 /**
  * The classes of a card, for an element that is not a `div` (a link card, a button card).
  *
- * THE SPACING TABLE'S CARD since the 2026-10 kit rebuild: `bg-surface/40 border border-line/40
- * rounded-lg`, padding `px-4 sm:px-5 py-4`, no shadow. The kit Card was `bg-surface shadow-card
- * px-6` and nothing in the app used it - the app wrote its own (`CARD` in Administration, ~25 class
- * strings with six fills and four borders) and the landing site wrote two more because the kit one
- * had a shadow. Now:
+ * THE SPACING TABLE'S CARD since the 2026-10 kit rebuild, padding `px-4 sm:px-6 py-4`. Since
+ * 2026-10-29 (the depth review) a card is a SHEET on the page: the card plane (`bg-surface`, white
+ * in Light), a full-strength `line` border and `shadow-card` - and since the glass, the same day, in
+ * an app shell a pane of glass on the glass page (`.surface-card`: translucent, a light edge, no
+ * blur of its own). It was `bg-surface/40` with no shadow,
+ * which on the white page of the time read as a faint hole rather than as something on it. The kit
+ * Card had been `bg-surface`, a shadow and `px-6` once before, and nothing in the app used it - the
+ * app wrote its own (`CARD` in Administration, ~25 class strings with six fills and four borders).
  *
  * - `subtle` (default) - the app's card and panel.
  * - `outline` - border only, for the marketing site's feature and plan cards on the canvas.
- * - `solid` - an opaque `bg-surface`, for a card that floats over a picture (a scene, a canvas).
+ * - `solid` - the same sheet as `subtle`; kept for a card that floats over a picture (a scene, a
+ *   canvas), where it says so.
+ *
+ * `kit-card` marks it for the kit's CSS: a card inside a card (or inside a settings section's card)
+ * keeps its line and drops its shadow - a sheet on a sheet needs no height - and a `TableCard flush`
+ * inside one is the card's own content, not a second card (proxyma-primitives.css).
  *
  * `tone="danger"` is a danger zone; `highlighted` promotes one card in a row with a brand BORDER
  * (never a second fill, never a glow). `interactive` gives a card that opens something the
@@ -40,7 +48,7 @@ export function cardClass({ variant = 'subtle', tone = 'default', highlighted, i
   /**
    * WHERE A RECORD STANDS, for a card that holds one someone has to look at (a key account's
    * rating, move or report): `proposed` a dashed line - not confirmed yet; `agent` a dashed brand
-   * line and a faint brand tint - the agent proposed it; `confirmed` a line in the success ink. Five
+   * line, no tint - the agent proposed it; `confirmed` a line in the success ink. Five
    * key-account tabs drew these three by hand, five ways.
    */
   state?: CardState
@@ -49,19 +57,20 @@ export function cardClass({ variant = 'subtle', tone = 'default', highlighted, i
   className?: string
 } = {}): string {
   return cn(
-    'rounded-lg border min-w-0',
-    variant === 'subtle' && 'bg-surface/40',
-    variant === 'solid' && 'bg-surface',
-    variant === 'outline' && 'bg-transparent',
-    tone === 'danger' ? 'border-danger/30 bg-danger/5' : highlighted ? 'border-brand-solid/60' : 'border-line/40',
-    variant === 'outline' && tone !== 'danger' && !highlighted && 'border-line',
+    'kit-card rounded-lg border min-w-0',
+    // GLASS in an app shell (`surface-card`, since 2026-10-29): a translucent fill, a light edge and
+    // the card shadow's top highlight; the card plane and its line elsewhere. The class decides the
+    // edge's color, so the default tone names none.
+    (variant === 'subtle' || variant === 'solid') && 'surface-card shadow-card',
+    variant === 'outline' && 'bg-transparent border-line',
+    tone === 'danger' ? 'border-danger/30 bg-danger/5' : highlighted && 'border-brand-solid/60',
     state === 'proposed' && 'border-dashed border-line',
-    state === 'agent' && 'border-dashed border-brand-solid/50 bg-brand-solid/[0.04]',
+    state === 'agent' && 'border-dashed border-brand-solid/50',
     state === 'confirmed' && 'border-success/40',
     interactive && 'focus-border cursor-pointer transition-colors',
-    padding === 'sm' && 'px-3 py-2.5',
-    padding === 'md' && 'px-4 sm:px-5 py-4',
-    padding === 'lg' && 'p-5 sm:p-6',
+    padding === 'sm' && 'px-3 py-3',
+    padding === 'md' && 'px-4 sm:px-6 py-4',
+    padding === 'lg' && 'p-6 sm:p-8',
     className,
   )
 }
@@ -89,16 +98,22 @@ export function Card({ children, className, variant, tone, highlighted, interact
  * The line at the top of a card: what it shows (an eyebrow, sentence case), a readout at the right
  * of it (a total, a period), and actions. `divided` draws a rule under it and pads it like a
  * dialog header - for a card whose body is a table.
+ *
+ * `caption` is what the card shows, in a sentence: directly under the title, 4px below it, before
+ * the content - never a line after the content (the maintainer's review, 2026-10-29: "Description
+ * should be placed below the section title"; the telemetry console's cards closed on theirs).
  */
-export function CardHeader({ title, readout, actions, divided, className }: {
+export function CardHeader({ title, readout, actions, caption, divided, className }: {
   title: ReactNode
   readout?: ReactNode
   actions?: ReactNode
+  /** The card's description, under the title. */
+  caption?: ReactNode
   divided?: boolean
   className?: string
 }) {
-  return (
-    <div className={cn('flex items-center justify-between gap-3 min-h-5', divided ? 'px-4 sm:px-5 py-3 border-b border-line/40' : 'mb-3', className)}>
+  const row = (
+    <div className={cn('flex items-center justify-between gap-3 min-h-5', !caption && (divided ? 'px-4 sm:px-6 py-3 border-b border-line/40' : 'mb-3'), !caption && className)}>
       <p className={cn(divided ? TEXT.label : TEXT.eyebrow, 'min-w-0 truncate')}>{title}</p>
       {(readout || actions) && (
         <div className="shrink-0 flex items-center gap-3">
@@ -108,11 +123,18 @@ export function CardHeader({ title, readout, actions, divided, className }: {
       )}
     </div>
   )
+  if (!caption) return row
+  return (
+    <div className={cn(divided ? 'px-4 sm:px-6 py-3 border-b border-line/40' : 'mb-3', className)}>
+      {row}
+      <p className={cn(TEXT.caption, 'mt-1 max-w-[60ch]')}>{caption}</p>
+    </div>
+  )
 }
 
 /** A card's padded body, for a card with `padding="none"` and a divided header. */
 export function CardBody({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('px-4 sm:px-5 py-4', className)}>{children}</div>
+  return <div className={cn('px-4 sm:px-6 py-4', className)}>{children}</div>
 }
 
 /**

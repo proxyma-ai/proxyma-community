@@ -102,6 +102,7 @@ public class McpToolConfig {
             @org.springframework.beans.factory.annotation.Value("${proxyma.sandbox.local-enabled:true}") boolean sandboxLocal,
             @org.springframework.beans.factory.annotation.Value("${proxyma.home-server:false}") boolean homeServer,
             RunPythonTool runPythonTool,
+            ai.proxyma.core.tools.office.RunCommandTool runCommandTool,
             UseServerTool useServerTool,
             LocalFileTools localFileTools,
             // Always-on tools
@@ -119,9 +120,7 @@ public class McpToolConfig {
             RememberTool rememberTool,
             RecallTool recallTool,
             SearchConversationsTool searchConversationsTool,
-            DelegateTool delegateTool,
-            SteerSubAgentTool steerSubAgentTool,
-            MessageMainAgentTool messageMainAgentTool,
+            AgentTools agentTools,
             SearchJiraIssuesTool searchJiraIssuesTool,
             GetJiraIssueTool getJiraIssueTool,
             ListJiraProjectsTool listJiraProjectsTool,
@@ -211,9 +210,7 @@ public class McpToolConfig {
         tools.add(rememberTool);
         tools.add(recallTool);
         tools.add(searchConversationsTool);
-        tools.add(delegateTool);
-        tools.add(steerSubAgentTool);
-        tools.add(messageMainAgentTool);
+        tools.add(agentTools);
         tools.add(searchJiraIssuesTool);
         tools.add(getJiraIssueTool);
         tools.add(listJiraProjectsTool);
@@ -291,6 +288,8 @@ public class McpToolConfig {
         // Office files: model-written Python in a sandbox (see RunPythonTool). Over MCP it refuses
         // without a conversation, which is where its workspace lives.
         tools.add(runPythonTool);
+        // A shell command: on the user's machine on Desktop, in the sandbox container on a server.
+        tools.add(runCommandTool);
         // Which of the user's servers a Jira/Confluence/Bitbucket tool reaches (see ActiveServers).
         tools.add(useServerTool);
         // Desktop alone, by edition and not only by the sandbox properties: a Home Server image

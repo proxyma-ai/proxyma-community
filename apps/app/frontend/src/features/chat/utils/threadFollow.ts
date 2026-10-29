@@ -1,9 +1,9 @@
 // When the thread follows its newest line, and when it leaves the reader where they are - and the
-// same for every box inside it that scrolls on its own: a tool list past five calls, a sub-agent's
+// same for every box inside it that scrolls on its own: a tool list past five calls, a deployed agent's
 // panel (useFollowingBox).
 //
-// It followed always: every streamed word, every tool row and every sub-agent event scrolled the
-// thread to its end, so nobody could read an earlier answer while the agent - or a sub-agent in
+// It followed always: every streamed word, every tool row and every deployed agent event scrolled the
+// thread to its end, so nobody could read an earlier answer while the agent - or a deployed agent in
 // the background - was still working (maintainer's feedback, 2026-10-02). The rule now, the
 // maintainer's own: following is the default, a scroll UP switches it off for a while, every
 // scroll after that starts the while again, and going back to the end switches it on at once.

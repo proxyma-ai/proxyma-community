@@ -10,7 +10,7 @@ import {
   CitationRow, CitationsFold, CodeBlock, Collapse, ColumnChart, Combobox, CompareTable, ComposerShell, ConfirmDialog, CopyButton, CopyField,
   DateTimePicker, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogNotice, DialogShell, DialogTitle, Disclosure,
   DisclosureButton, DisclosureChevron, DisplayHeading, Divider, DownloadRow, DropArea, DropOverlay, Elapsed, EmptyState, EmptyValue,
-  ErrorBoundary, ErrorState, ExternalLink, ExternalMark, Eyebrow, FadeSwap, FaqItem, FeatureRow, Field, FieldLabel, FieldNote, FieldSkeleton,
+  ErrorBoundary, ErrorState, ExternalLink, ExternalMark, Eyebrow, FadeSwap, FaqItem, FeatureRow, Field, FieldHint, FieldLabel, FieldNote, FieldSkeleton,
   FilePickerButton, FilterBar, FilterChips, FilterTiles, FormAlert, FormColumns, FormStack, Frame, HScroll, HoverActions, IconButton, IconCountButton,
   IconMenu, IconToggleButton, IdentityCell, IncludedList, InlineCode, InlineConfirm, InlineNotice, Input, ItemRow, ItemRowSkeleton,
   KeyValue, KeyValueGroup, KeyValueList, LanguageMenu, LanguageMenuRow, LegendSwatch, Lightbox, LinkCard, LinkColumn, LinkRow, List,
@@ -24,7 +24,9 @@ import {
   StateMark, StatGrid, StatTile, StaticValue, StatusDot, StatusMark, StatusScreen, StepCard, StepItem, StepList, Stepper, SubAgentPanel,
   SubNavTabs, SubmenuRow, SwitchRow, SwitchRowSkeleton, TABLE_CLASS, TD, TD_COMPACT, THEAD_TR, TR, TR_INTERACTIVE, TableCard,
   TableEmptyRow, TableFooter, TableSkeletonRows, Textarea, Th, TierBadge, Timeline, Title, Toast, ToggleSwitch, ToolCallGroup, ToolCallRow,
-  Toolbar, Tooltip, UsageRing, UserMenu, WorkingBadge, buttonClass, iconButton, menuRow, textLink, useFileDrop, MARK_PATHS, isMarkId,
+  Toolbar, Tooltip, PointerTooltip, UsageRing, UserMenu, WorkingBadge, buttonClass, iconButton, menuRow, textLink, useFileDrop, MARK_PATHS, isMarkId,
+  FIELD_BASE, fieldBorder, GlassFrame, AppSidebar, SidebarSection, sidebarRow, WindowControls, MODAL_SCRIM_DARK,
+  SidebarChoiceRow, SidebarAppearanceRow, SidebarLanguageRow,
   type AppearancePreference, type BarListRow, type SortState,
 } from '@/components/ui/kit'
 
@@ -43,7 +45,7 @@ export interface KitSpecimen {
 
 const noop = () => undefined
 const DISCARD = { title: 'Discard unsaved changes?', body: 'Your changes have not been saved.', keep: 'Keep editing', discard: 'Discard' }
-const NAMES: Record<AppearancePreference, string> = { system: 'System', light: 'Light', gray: 'Proxyma', black: 'Dark' }
+const NAMES: Record<AppearancePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 
 // -- small stateful demos --------------------------------------------------------------------
 
@@ -311,7 +313,7 @@ function SplashDemo() {
       </div>
       {state && (
         <div className="fixed inset-0 z-status flex flex-col items-center justify-center gap-4 p-4">
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm animate-fade-in" />
+          <div className={MODAL_SCRIM_DARK} />
           <SplashScreen className="relative" turning={state !== 'stopped'} status={state === 'stopped' ? 'Proxyma has stopped' : 'Starting'}
             detail={state === 'slow' ? 'This is taking a little longer than usual. Please wait.' : state === 'stopped' ? 'You can close this page.' : null} />
           <Button variant="secondary" className="relative" onClick={() => setState(null)}>Close (gallery only)</Button>
@@ -485,7 +487,7 @@ function SubAgentDemo() {
   const [open, setOpen] = useState(true)
   return (
     <SubAgentPanel icon={Bot} title="Check SBOMs for the drive line" state="running" backgroundLabel="Background" elapsed="1m 12s" open={open} onToggle={() => setOpen(o => !o)}
-      toggleLabels={{ show: 'Show steps', hide: 'Hide steps' }} onStop={noop} stopLabel="Stop this sub-agent">
+      toggleLabels={{ show: 'Show steps', hide: 'Hide steps' }} onStop={noop} stopLabel="Stop this agent">
       <ToolCallRow icon={Search} state="running" label="Searching SBOMs for libfoo" />
     </SubAgentPanel>
   )
@@ -497,7 +499,7 @@ function ChoiceDemo() {
   return (
     <PromptCard icon={MessageCircleQuestion} title="Which product lines are in scope?" ariaLabel="Question" actions={<><Button variant="secondary">Skip</Button><Button>Send answer</Button></>}>
       <div className="space-y-4">
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <ChoiceRow checked={picked.includes('drives')} multi label="Drives" description="DX-400, DX-600" onToggle={() => toggle('drives')} />
           <ChoiceRow checked={picked.includes('controllers')} multi label="Controllers" onToggle={() => toggle('controllers')} />
         </div>
@@ -543,6 +545,21 @@ function MenuSurfaceDemo() {
         </>
       )}
     </MenuSurface>
+  )
+}
+
+/** The sidebar's preference rows, at the foot of a sidebar-wide column on the glass. */
+function SidebarFootDemo() {
+  const [p, setP] = useState<AppearancePreference>('system')
+  const [l, setL] = useState<'en' | 'vi'>('en')
+  const [d, setD] = useState<'comfortable' | 'compact'>('comfortable')
+  return (
+    <div className="w-60 pt-32 flex flex-col gap-1">
+      <SidebarChoiceRow icon={Settings} title="Density" choices={['comfortable', 'compact'] as const} current={d}
+        nameOf={c => (c === 'compact' ? 'Compact' : 'Comfortable')} onChoose={setD} closeOnChoose folded={false} />
+      <SidebarAppearanceRow title="Appearance" names={NAMES} current={p} onChoose={setP} folded={false} />
+      <SidebarLanguageRow title="Language" locales={['en', 'vi'] as const} current={l} nameOf={x => (x === 'en' ? 'English' : 'Tiếng Việt')} onPick={setL} folded={false} />
+    </div>
   )
 }
 
@@ -599,6 +616,22 @@ const box = 'rounded-lg border border-line overflow-hidden w-full'
 
 // -- the specimens ---------------------------------------------------------------------------
 
+/** A line in SVG whose label follows the pointer, as the Constellations canvas's lines do. */
+function PointerTooltipDemo() {
+  const [at, setAt] = useState<{ label: string | null; x: number; y: number }>({ label: null, x: 0, y: 0 })
+  return (
+    <>
+      <svg width={220} height={60} className="overflow-visible" aria-hidden="true">
+        <line x1={10} y1={30} x2={210} y2={30} className="stroke-ink-caption" strokeWidth={2} />
+        <line x1={10} y1={30} x2={210} y2={30} stroke="transparent" strokeWidth={16} pointerEvents="stroke"
+          onMouseMove={e => setAt({ label: 'A line between two agents', x: e.clientX, y: e.clientY })}
+          onMouseLeave={() => setAt(a => ({ ...a, label: null }))} />
+      </svg>
+      <PointerTooltip label={at.label} x={at.x} y={at.y} />
+    </>
+  )
+}
+
 export const SPECIMENS: Record<string, KitSpecimen[]> = {
   // Foundations and motion
   FadeSwap: [{ title: 'New content fades in on a key', render: () => <FadeSwapDemo /> }],
@@ -632,7 +665,8 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   ExternalMark: [{ title: 'The outbound glyph', render: () => <span className="flex items-center gap-1 text-sm text-ink-secondary">A card that leaves <ExternalMark /></span> }],
   Input: [{ title: 'Label, hint, error, disabled', render: () => <InputDemo /> }],
   Textarea: [{ title: 'Multi-line, mono', render: () => <div className="w-72 space-y-4"><Textarea label="Instructions" defaultValue="Answer in short paragraphs." hint="The agent reads this first." /><Textarea label="Certificate" mono defaultValue="-----BEGIN CERTIFICATE-----" /></div> }],
-  FieldNote: [{ title: 'The line under a field', render: () => <div className="w-72"><FieldNote hint="A hint under the field." /><FieldNote error="An error replaces the hint." /></div> }],
+  FieldNote: [{ title: 'The line under a field', render: () => <div className="w-72"><FieldNote hint="A label-less field's hint, under it." /><FieldNote error="An error, under the field." /></div> }],
+  FieldHint: [{ title: 'The hint under a label', render: () => <div className="w-72"><FieldLabel htmlFor="spec-field-hint" className="mb-1">Name</FieldLabel><FieldHint id="spec-field-hint-hint">What the name is used for.</FieldHint><input id="spec-field-hint" aria-describedby="spec-field-hint-hint" className={`${FIELD_BASE} px-3 ${fieldBorder()}`} /></div> }],
   PasswordInput: [{ title: 'A fresh secret with a reveal', render: () => <div className="w-72"><PasswordInput label="Passphrase" hint="At least 12 characters." labels={{ show: 'Show password', hide: 'Hide password' }} defaultValue="correct horse" /></div> }],
   SearchInput: [{ title: 'With a clear button', render: () => <SearchDemo /> }],
   SecretInput: [{ title: 'Stored and empty', render: () => <SecretDemo /> }],
@@ -652,7 +686,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   OneTimeSecret: [{ title: 'A token shown once', wide: true, render: () => <OneTimeSecret className="w-full max-w-xl" title="Copy this token now" value="pxm_9f2c4e1a7b3d5e8f0a1c2b3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f" label="Ingestion token" copyLabel="Copy token" copiedLabel="Copied">It is shown once. Store it where your pipeline reads its secrets - it cannot be shown again.</OneTimeSecret> }],
   IconButton: [{ title: 'Sizes, danger, busy', render: () => <div className="flex items-center gap-2"><IconButton icon={Search} label="Search" size="sm" /><IconButton icon={Search} label="Search" /><IconButton icon={Settings} label="Settings" size="lg" /><IconButton icon={Trash2} label="Delete" tone="danger" /><IconButton icon={RefreshCw} label="Sync now" busy /></div> }],
   IconToggleButton: [{ title: 'On, off, filled', render: () => <ToggleDemo /> }],
-  IconCountButton: [{ title: 'The agents button', render: () => <div className="flex items-center gap-2"><IconCountButton icon={Workflow} label="Agents" onClick={noop} /><IconCountButton icon={Workflow} label="Agents - 2 sub-agents working" count="2 agents" working onClick={noop} /></div> }],
+  IconCountButton: [{ title: 'The agents button', render: () => <div className="flex items-center gap-2"><IconCountButton icon={Workflow} label="Agents" onClick={noop} /><IconCountButton icon={Workflow} label="Agents - 2 agents working" count="2 agents" working onClick={noop} /></div> }],
   MenuTrigger: [{ title: 'A toolbar choice', render: () => <div className="flex gap-3"><MenuTrigger icon={ShieldCheck} value="Ask" ariaLabel="Permission: Ask" open={false} onClick={noop} /><MenuTrigger icon={ShieldAlert} value="Auto" tone="warning" ariaLabel="Permission: Auto" open={false} onClick={noop} /></div> }],
   FilePickerButton: [{ title: 'Opens the file picker', render: () => <FilePickerDemo /> }],
 
@@ -693,6 +727,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   UsageRing: [{ title: 'A percent ring', render: () => <div className="flex gap-3 text-ink-caption"><UsageRing value={24} /><span className="text-warning"><UsageRing value={84} /></span><span className="text-danger"><UsageRing value={97} size={24} /></span></div> }],
   ColumnChart: [{ title: 'Cost per day (arrows move it)', wide: true, render: () => <ColumnDemo /> }],
   Tooltip: [{ title: 'Hover or keyboard focus', render: () => <div className="flex gap-3"><Tooltip label="A hint in words"><button type="button" className={iconButton('md')} aria-label="Settings"><Settings size={16} aria-hidden="true" /></button></Tooltip><Tooltip label="Below the trigger" side="bottom"><Button variant="secondary">Bottom</Button></Tooltip></div> }],
+  PointerTooltip: [{ title: 'Over a drawn line', render: () => <PointerTooltipDemo /> }],
   Collapse: [{ title: 'The animated body', render: () => <DisclosureDemo /> }],
   Disclosure: [{ title: 'Plain and boxed', render: () => <DisclosureDemo /> }],
   DisclosureChevron: [{ title: 'Closed and open', render: () => <div className="flex gap-3 text-ink-caption"><DisclosureChevron open={false} /><DisclosureChevron open /></div> }],
@@ -713,7 +748,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
       ))}
     </div>
   ) }],
-  ProxymaBackground: [{ title: 'The canvas behind a page', render: () => <div className="relative h-24 w-72 rounded-lg border border-line overflow-hidden"><ProxymaBackground className="absolute inset-0 z-0" /><span className="relative p-3 block text-xs text-ink-caption">Content over the canvas.</span></div> }],
+  ProxymaBackground: [{ title: 'The field behind an app shell', render: () => <div className="relative h-24 w-72 rounded-lg border border-line overflow-hidden"><ProxymaBackground className="absolute inset-0 z-0" /><span className="relative m-3 px-2 py-1 inline-block rounded-md surface-float text-xs text-ink-caption">Glass over the field.</span></div> }],
 
   // Surfaces and states
   Card: [
@@ -738,7 +773,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   ListPager: [{ title: 'Shown past one page only', wide: true, render: () => <PagerDemo /> }],
   CodeBlock: [{ title: 'A command, JSON, a transcript', wide: true, render: () => <div className="w-full space-y-3"><CodeBlock text="docker compose pull && docker compose up -d" copyLabel="Copy command" copiedLabel="Copied" /><CodeBlock wrap maxHeight="max-h-32" text={JSON.stringify({ query: 'release notes', limit: 8, sources: ['jira', 'confluence'] }, null, 2)} /><CodeBlock wrap font="ui" text={'User: Which drives run 4.2?\nAssistant: Three customers do.'} /></div> }],
   HScroll: [{ title: 'A command wider than its box', render: () => <HScroll className="w-64 rounded-md border border-line/45 bg-canvas"><p className="px-3 py-2 font-mono text-xs text-ink-primary whitespace-nowrap">docker run -d --name proxyma -p 4246:4246 -v proxyma-data:/data ghcr.io/proxyma-ai/proxyma-server:latest</p></HScroll> }],
-  Frame: [{ title: 'A hole in the surface', render: () => <Frame className="w-72"><Caption>Content framed like a field.</Caption></Frame> }],
+  Frame: [{ title: 'A sunken well', render: () => <Frame className="w-72"><Caption>Content framed like a code block.</Caption></Frame> }],
   KeyValueList: [
     { title: 'Stacked', render: () => <KeyValueList className="w-80"><KeyValue label="Plan">Enterprise</KeyValue><KeyValue label="Seats" figures>25</KeyValue><KeyValue label="Renews" figures>Mar 1, 2027</KeyValue><KeyValue label="Owner"><EmptyValue /></KeyValue></KeyValueList> },
     { title: 'Rows, with a group', render: () => <Frame className="w-80"><KeyValueList layout="rows"><KeyValue label="query">release notes for 4.2</KeyValue><KeyValue label="limit" figures>8</KeyValue><KeyValueGroup label="filter"><KeyValueList layout="rows"><KeyValue label="source">Jira</KeyValue><KeyValue label="body" block>{'line one\nline two'}</KeyValue></KeyValueList></KeyValueGroup></KeyValueList></Frame> },
@@ -834,18 +869,18 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
       )}
     </Popover>
   ) }],
-  MenuRow: [{ title: 'Rows in a static panel', render: () => <div className="w-64 surface-float border border-line/45 rounded-lg shadow-card overflow-hidden" role="menu" aria-label="Rows"><MenuGroup><MenuRow icon={<KeyRound />} title="Ask" description="Asks before each change" trailing="check" role="menuitemradio" onSelect={noop} /><MenuRow icon={<ShieldAlert />} title="Auto" onSelect={noop} /><MenuRow title="Delete" tone="danger" onSelect={noop} /></MenuGroup></div> }],
-  MenuEmpty: [{ title: 'A menu with no rows', render: () => <div className="w-64 surface-float border border-line/45 rounded-lg shadow-card overflow-hidden"><MenuEmpty>No skills yet.</MenuEmpty></div> }],
+  MenuRow: [{ title: 'Rows in a static panel', render: () => <div className="w-64 surface-float border rounded-lg shadow-float overflow-hidden" role="menu" aria-label="Rows"><MenuGroup><MenuRow icon={<KeyRound />} title="Ask" description="Asks before each change" trailing="check" role="menuitemradio" onSelect={noop} /><MenuRow icon={<ShieldAlert />} title="Auto" onSelect={noop} /><MenuRow title="Delete" tone="danger" onSelect={noop} /></MenuGroup></div> }],
+  MenuEmpty: [{ title: 'A menu with no rows', render: () => <div className="w-64 surface-float border rounded-lg shadow-float overflow-hidden"><MenuEmpty>No skills yet.</MenuEmpty></div> }],
   ActionMenu: [{ title: 'The "more" menu', render: () => <ActionMenu label="More actions" groups={[[{ label: 'Sync now', icon: <RefreshCw size={15} />, onSelect: noop }, { label: 'Configure', onSelect: noop }], [{ label: 'Delete', danger: true, onSelect: noop }]]} /> }],
   MenuSurface: [{ title: 'An account menu', render: () => <MenuSurfaceDemo /> }],
-  MenuGroup: [{ title: 'Groups with a caption', render: () => <div className="w-64 surface-float border border-line/45 rounded-lg shadow-card overflow-hidden"><MenuGroup label="Files"><button type="button" className={menuRow()}>Upload</button></MenuGroup><MenuGroup label="Web"><button type="button" className={menuRow()}>Web page</button></MenuGroup></div> }],
-  MenuIdentity: [{ title: 'Who is signed in', render: () => <div className="w-64 surface-float border border-line/45 rounded-lg shadow-card overflow-hidden"><MenuIdentity>anna.weber@northwind.example</MenuIdentity></div> }],
+  MenuGroup: [{ title: 'Groups with a caption', render: () => <div className="w-64 surface-float border rounded-lg shadow-float overflow-hidden"><MenuGroup label="Files"><button type="button" className={menuRow()}>Upload</button></MenuGroup><MenuGroup label="Web"><button type="button" className={menuRow()}>Web page</button></MenuGroup></div> }],
+  MenuIdentity: [{ title: 'Who is signed in', render: () => <div className="w-64 surface-float border rounded-lg shadow-float overflow-hidden"><MenuIdentity>anna.weber@northwind.example</MenuIdentity></div> }],
   SubmenuRow: [{ title: 'A row that opens choices', render: () => <SubmenuDemo /> }],
   SubNavTabs: [{ title: 'Sub-page tabs (arrows move)', wide: true, render: () => <TabsDemo /> }],
 
   // Chat
   ChatMessage: [{ title: 'A turn', wide: true, render: () => <ChatDemo /> }],
-  Elapsed: [{ title: 'Time after words', render: () => <span className="text-xs text-ink-caption flex gap-1.5">Searched 3 sources <Elapsed>12s</Elapsed></span> }],
+  Elapsed: [{ title: 'Time after words', render: () => <span className="text-xs text-ink-caption flex gap-2">Searched 3 sources <Elapsed>12s</Elapsed></span> }],
   ActivityLine: [{ title: 'Running, done, waiting', wide: true, render: () => <div className="space-y-1"><ActivityLine icon={Brain} state="running" label="Thinking" elapsed="4s" /><ActivityLine icon={FileSearch} state="done" label="Searched 3 sources" elapsed="12s" open={false} onToggle={noop} /><ActivityLine icon={Brain} state="running" label="Waiting for the model" note="retry 2" noteTone="warning" elapsed="18s" /></div> }],
   ActivityFeed: [{ title: 'A scrolling box of lines', render: () => <ActivityFeed className="w-80">{['Read release-notes.md', 'Searched tickets', 'Read advisory.md', 'Searched SBOMs', 'Read sbom.json', 'Searched install base', 'Wrote the report'].map((l, i) => <ActivityLine key={i} icon={FileSearch} state="done" label={l} />)}</ActivityFeed> }],
   ToolCallRow: [{ title: 'A tool call', wide: true, render: () => <div className="space-y-1"><ToolCallRow icon={Search} state="running" label="Searching install base for DX-400" /><ToolCallRow icon={Search} state="done" label="Searched install base" elapsed="2s" onOpen={noop} /><ToolCallRow icon={FileText} state="failed" label="Read sbom-dx400.json" error="File not found in the index" onOpen={noop} /></div> }],
@@ -910,12 +945,38 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
       renderRow={({ locale, className, children, close }) => <button type="button" lang={locale} className={className} onClick={close}>{children}</button>} />
   ) }],
   IconMenu: [{ title: 'An icon and its choices', render: () => <IconMenu icon={<Settings size={16} aria-hidden="true" />} label="Options">{close => <><button type="button" className={menuRow()} onClick={close}>First</button><button type="button" className={menuRow()} onClick={close}>Second</button></>}</IconMenu> }],
-  AppearanceMenu: [{ title: 'Four appearances', render: () => <AppearanceMenu label="Appearance" current="system" names={NAMES} onChoose={noop} /> }],
-  AppearanceIcon: [{ title: 'A glyph per preference', render: () => <div className="flex gap-3 text-ink-caption">{(['system', 'light', 'black', 'gray'] as const).map(p => <AppearanceIcon key={p} preference={p} />)}</div> }],
+  AppearanceMenu: [{ title: 'Three appearances', render: () => <AppearanceMenu label="Appearance" current="system" names={NAMES} onChoose={noop} /> }],
+  AppearanceIcon: [{ title: 'A glyph per preference', render: () => <div className="flex gap-3 text-ink-caption">{(['system', 'light', 'dark'] as const).map(p => <AppearanceIcon key={p} preference={p} />)}</div> }],
   AppearanceMenuRow: [{ title: 'Inside an account menu', render: () => <MenuSurfaceDemo /> }],
   LanguageMenuRow: [{ title: 'Inside an account menu', render: () => <MenuSurfaceDemo /> }],
+  SidebarChoiceRow: [{ title: 'In a sidebar foot', render: () => <SidebarFootDemo /> }],
+  SidebarAppearanceRow: [{ title: 'In a sidebar foot', render: () => <SidebarFootDemo /> }],
+  SidebarLanguageRow: [{ title: 'In a sidebar foot', render: () => <SidebarFootDemo /> }],
   MobileMenu: [{ title: 'The hamburger', render: () => <MobileMenu label="Menu">{close => <MenuGroup><button type="button" className={menuRow()} onClick={close}>Chat</button><button type="button" className={menuRow()} onClick={close}>Sources</button></MenuGroup>}</MobileMenu> }],
   UserMenu: [{ title: 'The account menu', render: () => <UserMenu label="Account" name="Anna Weber" withMenuIcon>{close => <><MenuIdentity>anna.weber@northwind.example</MenuIdentity><MenuGroup><button type="button" className={menuRow()} onClick={close}>Settings</button><button type="button" className={menuRow('danger')} onClick={close}>Sign out</button></MenuGroup></>}</UserMenu> }],
+
+  GlassFrame: [{ title: 'The glass shell', wide: true, render: () => (
+    <div className={`${box} h-[320px] relative overflow-hidden isolate app-field`}>
+      <GlassFrame sidebar={<AppSidebar ariaLabel="Main" folded={false} head={<div className="px-2.5 h-11 flex items-center font-semibold">Proxyma</div>} foot={<button type="button" className={sidebarRow()}>Settings</button>}><button type="button" className={sidebarRow({ active: true })}>Chat</button><button type="button" className={sidebarRow()}>Sources</button></AppSidebar>}>
+        <div className="p-6 space-y-3"><Caption>The page: a glass sheet inside the frame, teal light in two corners.</Caption><Card className="max-w-sm"><Caption>A card: glass on the glass, no blur of its own.</Caption></Card></div>
+      </GlassFrame>
+    </div>
+  ) }],
+  WindowControls: [{ title: 'The window buttons', render: () => (
+    <WindowControls maximized={false} onMinimize={() => {}} onToggleMaximize={() => {}} onClose={() => {}}
+      labels={{ minimize: 'Minimize', maximize: 'Maximize', restore: 'Restore', close: 'Close' }} />
+  ) }],
+  AppSidebar: [{ title: 'The sidebar', render: () => (
+    <div className={`${box} h-[280px] flex app-glass rounded-[22px] p-2`}>
+      <AppSidebar ariaLabel="Main" folded={false} head={<div className="px-2.5 h-11 flex items-center font-semibold">Proxyma</div>} foot={<button type="button" className={sidebarRow()}>Settings</button>}>
+        <button type="button" className={sidebarRow()}>New chat</button>
+        <button type="button" className={sidebarRow({ active: true })}>Constellations</button>
+        <SidebarSection title="Recent chats" />
+        <button type="button" className={sidebarRow()}>Quarterly revenue by region</button>
+      </AppSidebar>
+    </div>
+  ) }],
+  SidebarSection: [{ title: 'A sidebar heading', render: () => <div className="w-60"><SidebarSection title="Recent chats" /></div> }],
 
   // Screens and settings
   Page: [{ title: 'The page column', wide: true, render: () => <div className={box}><Page><PageHeader title="Sources" meta="42 sources" /><Caption>A page's content in the header's width, with the page rhythm.</Caption></Page></div> }],
@@ -952,8 +1013,8 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   IncludedList: [{ title: 'What is included', render: () => <IncludedList items={['Every connector', 'No limits', 'Updates']} /> }],
   PlanCard: [{ title: 'Plans', wide: true, render: () => (
     <div className="grid md:grid-cols-2 gap-4 w-full">
-      <PlanCard name="Community" tagline="For you, on your own computer or server." price="Free" features={['Every connector', 'No limits']} action={<Button variant="secondary" size="md" className="w-full">Download</Button>} />
-      <PlanCard featured name="Enterprise" badge={<Badge label="30-day trial" variant="brand" />} tagline="For a team on one server." price="Contact us" features={['Accounts and SSO', 'Microsoft 365', 'Key accounts']} action={<Button size="md" className="w-full">Start a trial</Button>} />
+      <PlanCard name="Community" tagline="For you, on your own computer or server." price="Free" priceSize="words" features={['Every connector', 'No limits']} action={<Button variant="secondary" size="md" className="w-full">Download</Button>} />
+      <PlanCard featured name="Enterprise" badge={<Badge label="30-day trial" variant="brand" />} tagline="For a team on one server." price="Contact us" priceSize="words" features={['Accounts and SSO', 'Microsoft 365', 'Key accounts']} action={<Button size="md" className="w-full">Start a trial</Button>} />
     </div>
   ) }],
   PlanBand: [{ title: 'The Enterprise band', wide: true, render: () => <PlanBand className="w-full" name="Enterprise" tagline="Run it for your whole organization" actions={<><Button size="md">Look around the demo</Button><Button size="md" variant="secondary">Contact us</Button></>}><Caption>SSO, roles, quotas and an audit trail.</Caption></PlanBand> }],

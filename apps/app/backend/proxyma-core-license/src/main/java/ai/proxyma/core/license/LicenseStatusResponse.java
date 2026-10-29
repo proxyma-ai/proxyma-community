@@ -41,36 +41,38 @@ public record LicenseStatusResponse(
          * A license or trial was in force here and has ended: the deployment keeps working and stops
          * growing, and the pages word their notices for that rather than for "not licensed yet".
          */
-        boolean lapsed) {
+        boolean lapsed,
+        /** Constellations' projects and agents may be changed: Enterprise only (Features#isConstellationsAllowed). */
+        boolean constellationsAllowed) {
 
     public static LicenseStatusResponse of(LicenseTier tier, Instant expiresAt, boolean valid) {
         Features f = Features.forTier(tier);
         return new LicenseStatusResponse(tier, expiresAt, valid,
                 f.isOrgModeAllowed(), f.isMicrosoft365Allowed(), f.isKeyAccountsAllowed(),
-                null, false, null, "NONE", false);
+                null, false, null, "NONE", false, f.isConstellationsAllowed());
     }
 
     /** Same status, carrying the re-check snapshot the controller just read. */
     public LicenseStatusResponse withRecheck(RecheckSnapshot snapshot) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, snapshot, trial, trialEndedAt, trialState, lapsed);
+                keyAccountsAllowed, snapshot, trial, trialEndedAt, trialState, lapsed, constellationsAllowed);
     }
 
     /** Same status, marked as a trial or not. */
     public LicenseStatusResponse withTrial(boolean isTrial) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, isTrial, trialEndedAt, trialState, lapsed);
+                keyAccountsAllowed, recheck, isTrial, trialEndedAt, trialState, lapsed, constellationsAllowed);
     }
 
     /** Same status, saying when this deployment's trial ended. */
     public LicenseStatusResponse withTrialEndedAt(Instant endedAt) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, trial, endedAt, trialState, lapsed);
+                keyAccountsAllowed, recheck, trial, endedAt, trialState, lapsed, constellationsAllowed);
     }
 
     /** Same status, with the trial's state and whether a license has lapsed. */
     public LicenseStatusResponse withTrialState(String state, boolean hasLapsed) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, trial, trialEndedAt, state, hasLapsed);
+                keyAccountsAllowed, recheck, trial, trialEndedAt, state, hasLapsed, constellationsAllowed);
     }
 }

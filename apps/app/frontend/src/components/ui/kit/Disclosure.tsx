@@ -124,7 +124,7 @@ export function Disclosure({ summary, meta, open: controlled, defaultOpen = fals
     onToggle?.(next)
   }
   return (
-    <div className={cn(boxed && 'rounded-lg border border-line/40 bg-surface/40', className)}>
+    <div className={cn(boxed && 'rounded-lg border surface-card shadow-card', className)}>
       <button
         type="button"
         aria-expanded={open}

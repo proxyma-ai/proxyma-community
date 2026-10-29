@@ -43,7 +43,7 @@ export function NetworkTab({ trackChange, pending }: TabProps) {
       {/* One sub-section: the mode and whatever it reveals belong together. */}
       <SettingsSection
         title={t('Proxy mode')}
-        caption={t('Configure how external HTTP traffic (AI providers, Jira, Confluence, etc.) is routed. Changes require a restart.')}
+        caption={t('How outgoing traffic is routed. Changes need a restart.')}
       >
         <ChoiceField
           value={mode}
@@ -143,7 +143,7 @@ function NetworkShareServers({ trackChange, pending }: TabProps) {
   return (
     <SettingsSection
       title={t('Allowed file servers')}
-      caption={t('Optional. When any are listed, Network share connections may only name these servers. Leave empty to allow any server.')}
+      caption={t('Optional; Network share connections may only name the servers listed.')}
     >
       {/* One row per server, the kit's ListEditor as a provider's custom headers are: the field,
           then a remove X behind a tooltip, and the text action that adds a row under them. Each

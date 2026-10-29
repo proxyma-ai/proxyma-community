@@ -1,20 +1,20 @@
 // How a tool's backend name is rendered anywhere the user sees it: the tool row in the thread,
 // the detail modal's title, the enable/consent prompt. Extracted here because the identical
 // toPascalCase helper was copy-pasted into all three - which meant a display override added to
-// one of them would silently disagree with the other two (the row saying "Agent" while the modal
-// it opens still said "Delegate").
+// one of them would silently disagree with the other two (a row saying one thing while the modal
+// it opens said another).
 
 // Names whose camelCase form is not what we want the user to read. Keyed by the exact backend
 // tool name. Everything absent from this map falls through to the derived form below, so adding
 // a tool needs no entry here unless its name reads badly.
 const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
-  // "Delegate" names the mechanism (the main agent handing work off); "Agent" names what the user
-  // actually sees happen - a second agent doing a piece of the task, with its own tool calls
-  // nested under this row.
+  // The tree of agents. "Await" is the mechanism; waiting is what the reader sees.
+  awaitAgents: 'Wait for agents',
+  deployAgents: 'Agents over a list',
+  deliberate: 'Panel',
+  // Tools that no longer exist, in conversations stored before 2026-10-28.
   delegate: 'Agent',
-  // The main agent directing one it started - a message, or a stop.
   steerSubAgent: 'Direct agent',
-  // A sub-agent talking back to the agent that started it.
   messageMainAgent: 'Message main agent',
   // The REST passthroughs. "Call Bitbucket Api" names the mechanism; the modal it titles shows the
   // method and path underneath, so the title only has to say whose API it was.

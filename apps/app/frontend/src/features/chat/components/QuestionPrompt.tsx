@@ -28,7 +28,7 @@ import type { AskUserQuestion, PendingQuestion } from '../types/chat.types'
 export function QuestionPrompt({ pending, conversationId, from }: {
   pending: PendingQuestion
   conversationId: string
-  // "From sub-agent: X", for a question a sub-agent asked (AgentPrompts) - the card's eyebrow.
+  // Who asks, when it is not the agent itself - the card's eyebrow.
   from?: ReactNode
 }) {
   const { t } = useTranslation()
@@ -169,7 +169,7 @@ function Choices({ q, picked, other, disabled, onToggle, onOther }: {
   const multi = !!q.multiSelect
   return (
     // Named by its question, so a screen reader says what the choices answer (CHAT-13).
-    <div className="space-y-1.5" role={multi ? 'group' : 'radiogroup'} aria-label={q.question}>
+    <div className="space-y-2" role={multi ? 'group' : 'radiogroup'} aria-label={q.question}>
       {q.options.map(o => (
         <ChoiceRow
           key={o.label}

@@ -66,8 +66,8 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
     // size; it was a 14px paragraph here alone. Then two sections: where the assistants connect,
     // and how each one is set up.
     <SettingsSections intro={<>
-      {t('Claude, ChatGPT and Gemini can search your sources through Proxyma. They answer with their own model and subscription, so no API key is needed.')}{' '}
-      {t("The assistant's provider receives what it reads from your sources, as it would from any cloud model.")}
+      {t('Claude, ChatGPT and Gemini can search your sources through Proxyma, on their own subscription.')}{' '}
+      {t('What they read from your sources goes to their provider.')}
     </>}>
       <div className="space-y-4">
       {/* A value to copy, shown as a field - the kit's CopyField. */}
@@ -76,7 +76,6 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
         value={url}
         copyLabel={t('Copy')}
         copiedLabel={t('Copied')}
-        className="max-w-xl"
       />
 
       <Presence show={FEATURES.auth}>

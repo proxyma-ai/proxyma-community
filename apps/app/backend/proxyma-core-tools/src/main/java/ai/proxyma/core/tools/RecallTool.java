@@ -37,6 +37,14 @@ public class RecallTool {
         this.agentMemoryService = agentMemoryService;
     }
 
+    // Set by Spring; absent in a test that builds the tool by hand, which then searches as before.
+    private ai.proxyma.core.chat.module.AgentProfiles agentProfiles;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentProfiles(ai.proxyma.core.chat.module.AgentProfiles agentProfiles) {
+        this.agentProfiles = agentProfiles;
+    }
+
     @Tool(description = "Read saved memory (knowledge and user facts). With id: that entry in full. With query: "
             + "the best matches. With neither: the newest entries, previews only. Empty is normal, not an error.")
     @ToolResult({
@@ -48,7 +56,8 @@ public class RecallTool {
             @ToolParam(required = false, description = "An entry id from an earlier recall, to read it in full") String id,
             @ToolParam(required = false, description = "\"user\" or \"knowledge\", to list one kind") String category,
             @ToolParam(required = false, description = "Max entries (default 5 for a query, 20 for a list; at most 50)") Integer topK) {
-        String userId = ToolUserContext.resolveUserId(multiUser);
+        // The user's own memory, or the saved agent's when this conversation is one of its.
+        String userId = ToolUserContext.resolveMemoryOwner(multiUser, agentProfiles);
         if (userId == null) {
             return Map.of("success", true, "entries", List.of());
         }

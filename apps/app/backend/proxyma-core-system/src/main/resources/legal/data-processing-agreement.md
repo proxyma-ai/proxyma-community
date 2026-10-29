@@ -1,8 +1,8 @@
 # Proxyma Data Processing Agreement
 
-**Document version:** 2026-10-15
+**Document version:** 2026-10-29
 **Effective date:** 2026-08-04
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-29
 
 ---
 
@@ -172,8 +172,9 @@ Taking into account the nature of the processing and the information available t
 - **(a)** assist you in responding to data subject requests. Most can be handled directly in the
   Service: a user can delete their own account and data, and an administrator can delete a user
   or deregister a source, which also removes its derived index entries and embeddings. What a
-  user recorded in a shared key account (activity log entries naming them, their comments and
-  their edits) is kept when their user account is deleted, as that key account's audit trail. A
+  user recorded in a shared key account or Constellations project (activity log entries naming
+  them, their comments and their edits) is kept when their user account is deleted, as that key
+  account's or project's audit trail. A
   copy of a user's data, and any other request that cannot be satisfied through the product, is provided
   on request to contact@proxyma.ai.
 - **(b)** notify you **without undue delay, and in any event within 48 hours**, after becoming

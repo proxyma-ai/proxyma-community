@@ -48,14 +48,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // the bar.
 class SplashWindow extends JFrame implements Splash {
 
-    // -- tokens, mirrored from the DARK shade in proxyma-tokens.css --------------
-    // (data-shade="black", the neutral gray) rather than the teal-tinted Proxyma shade - the
-    // maintainer's call, 2026-09-26. Brand and status colors are the same in both shades.
-    private static final Color CANVAS       = new Color(0x18, 0x18, 0x18); // --canvas       #181818
-    private static final Color LINE         = new Color(0x3C, 0x3C, 0x3C); // --line         #3c3c3c
+    // -- tokens, mirroring the Dark appearance of proxyma-tokens.css (re-stepped 2026-10-29) ------
+    // The window floats on the desktop, so its fill is --surface-float, as the SplashScreen card's is.
+    private static final Color FILL         = new Color(0x1F, 0x22, 0x26); // --surface-float #1f2226
+    private static final Color LINE         = new Color(0x2A, 0x2E, 0x33); // --line         #2a2e33
     private static final Color INK_PRIMARY  = new Color(0xFF, 0xFF, 0xFF); // --ink-primary
-    private static final Color INK_CAPTION  = new Color(0x9D, 0x9D, 0x9D); // --ink-caption  #9d9d9d
-    private static final Color INK_DISABLED = new Color(0x85, 0x85, 0x85); // --ink-disabled #858585
+    private static final Color INK_CAPTION  = new Color(0x9B, 0xA2, 0xAC); // --ink-caption  #9ba2ac
+    private static final Color INK_DISABLED = new Color(0x6B, 0x72, 0x7B); // --ink-disabled #6b727b
     private static final Color BRAND_LEGIBLE= new Color(0xA6, 0xD6, 0xE7); // --brand-legible p300
     private static final Color BRAND_ACCENT = new Color(0x78, 0xBE, 0xD9); // --brand-accent   p400
     private static final Color DANGER       = new Color(0xF8, 0x71, 0x71); // --danger
@@ -217,7 +216,7 @@ class SplashWindow extends JFrame implements Splash {
         // without a compositor (a stock VirtualBox Ubuntu guest on llvmpipe is exactly one) have
         // nothing to blend it with, so every frame cleared the window to transparent and repainted,
         // which is what the splash was doing 60 times a second: it FLICKERED. The alpha bought
-        // nothing anyway - paintComponent fills the whole surface with CANVAS, and the corners are
+        // nothing anyway - paintComponent fills the whole surface with FILL, and the corners are
         // the shape's job. PERPIXEL_TRANSPARENT is the X11 shape extension, which needs no
         // compositor and is why this one is kept. Unsupported means square corners, not a fault.
         if (shapedWindowsSupported()) {
@@ -368,11 +367,11 @@ class SplashWindow extends JFrame implements Splash {
             this.minimizeAction = minimizeAction;
             // Opaque, so Swing's repaint is a plain blit into this panel's own double buffer rather
             // than a clear-and-recomposite of a transparent hierarchy against the window behind it.
-            // paintComponent covers every pixel with CANVAS regardless; matching the panel
+            // paintComponent covers every pixel with FILL regardless; matching the panel
             // background to it means the pre-fill and the paint are the same colour, so a partial
             // repaint can never show a seam.
             setOpaque(true);
-            setBackground(CANVAS);
+            setBackground(FILL);
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) {
                     if (minBtn.contains(e.getPoint())) minimizeAction.run();
@@ -396,7 +395,7 @@ class SplashWindow extends JFrame implements Splash {
             g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,    RenderingHints.VALUE_STROKE_PURE);
 
             int arc = RADIUS * 2;
-            g2.setColor(CANVAS);
+            g2.setColor(FILL);
             g2.fillRoundRect(0, 0, W, H, arc, arc);
 
             // No brand glow behind the logo any more - there is no glow anywhere in the product

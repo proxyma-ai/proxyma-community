@@ -422,17 +422,21 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                 of monospaced counts; it is a bar now, with one line of figures under it. */}
             <FormStack className="md:col-start-2">
               <Divider />
-              <div className="space-y-1.5">
-                <SwitchRow
-                  className="py-0"
-                  title={t('Build a knowledge graph')}
-                  checked={graphEnabled}
-                  onChange={setGraphEnabled}
-                  disabled={busy}
-                />
-                <Caption>
-                  {t('Maps people, systems and how they connect. One AI call per passage, so indexing costs two to three times as much.')}
-                </Caption>
+              <div className="space-y-2">
+                {/* The description directly under its title (the field rule of 2026-10-29): the row
+                    is the switch's 24px, so the caption needs no margin to sit 4px under the title. */}
+                <div>
+                  <SwitchRow
+                    className="py-0"
+                    title={t('Build a knowledge graph')}
+                    checked={graphEnabled}
+                    onChange={setGraphEnabled}
+                    disabled={busy}
+                  />
+                  <Caption className="max-w-[60ch]">
+                    {t('Maps people, systems and how they connect. One AI call per passage, so indexing costs two to three times as much.')}
+                  </Caption>
+                </div>
                 {/* Said "re-index this source to extract from what it already holds" until
                     2026-09-15, because extraction only ran inside indexing. It now runs on its own
                     over what is already indexed, so switching it on is enough - and since that

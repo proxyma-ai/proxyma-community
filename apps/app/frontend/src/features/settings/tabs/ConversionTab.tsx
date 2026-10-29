@@ -56,7 +56,7 @@ function ConversionMethodField({ trackChange, pending }: TabProps) {
   return (
     <ChoiceField
       label={t('Method for indexing')}
-      hint={t("Used for every connector's documents, where OCR's per-page cost adds up. Auto pays it only for documents with no text layer.")}
+      hint={t('Used for every source; Auto runs OCR only where a document has no text.')}
       value={indexingMethod}
       onChange={v => trackChange('doc-conversion', 'indexing-method', v)}
       options={CONVERSION_METHOD_OPTIONS}
@@ -74,8 +74,8 @@ function OcrEngineFields({ trackChange, pending }: TabProps) {
       <ChoiceField
         label={t('OCR engine')}
         hint={engine === 'tesseract'
-          ? t('Free and offline, but flat text only. Needs tesseract, its language data and pytesseract installed on the server.')
-          : t('Reads layout, tables and handwriting far better, but costs one model call per page. Requires a vision model.')}
+          ? t('Free and offline, plain text only; needs tesseract and pytesseract.')
+          : t('Reads layout, tables and handwriting far better; one model call per page.')}
         value={engine}
         onChange={v => trackChange('ocr', 'engine', v)}
         options={OCR_ENGINE_OPTIONS}
@@ -125,12 +125,12 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
   if (conversionLoading || ocrLoading) return <DocumentsTabSkeleton />
 
   return (
-    <SettingsSections intro={t('How documents are turned into text. Scanned pages only become searchable through OCR.')}>
+    <SettingsSections intro={t('How documents are turned into text. Scanned pages need OCR.')}>
       <SettingsSection title={t('Method')}>
         <ConversionMethodField trackChange={trackChange} pending={pending} />
         <ChoiceField
           label={t('Method for chat attachments')}
-          hint={t('Used for chat attachments and documents the agent fetches from a URL, where fidelity usually matters more than cost.')}
+          hint={t('Used for chat attachments and documents the agent fetches from a URL.')}
           value={attachmentMethod}
           onChange={v => trackChange('doc-conversion', 'attachment-method', v)}
           options={CONVERSION_METHOD_OPTIONS}
@@ -141,7 +141,7 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
         <OcrEngineFields trackChange={trackChange} pending={pending} />
         <ChoiceField
           label={t('Page resolution (DPI)')}
-          hint={t('Resolution pages are rendered at before recognition. 200 suits body text; higher is sharper but costs more tokens with a vision model.')}
+          hint={t('200 suits body text; higher is sharper but costs more with a vision model.')}
           value={dpi}
           onChange={v => trackChange('ocr', 'dpi', v)}
           options={OCR_DPI_OPTIONS}
@@ -150,7 +150,7 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
         />
         <ChoiceField
           label={t('Max pages per document')}
-          hint={t('A hard cap, so one large scan cannot exhaust the budget. Pages past it are noted in the text, not silently dropped.')}
+          hint={t('A hard cap per document; pages past it are noted in the text.')}
           value={maxPages}
           onChange={v => trackChange('ocr', 'max-pages', v)}
           options={OCR_MAX_PAGES_OPTIONS}

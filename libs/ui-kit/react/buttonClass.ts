@@ -16,7 +16,7 @@ const TEXT_VARIANTS: ButtonVariant[] = ['hyperlink', 'quiet', 'danger-quiet']
  * router link that has to look like one (the kit cannot import a router, so a react-router or
  * Next.js `Link` takes `className={buttonClass(...)}`).
  */
-export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'sm', className?: string): string {
+export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', className?: string): string {
   // The three TEXT variants are links in a button's clothing: no padding, no floor width, no fill.
   // They are the kit's one text-link recipe (`textLink` in typeScale.ts), so a `hyperlink` Button
   // and a hand-written anchor with `textLink()` are the same thing.
@@ -31,15 +31,19 @@ export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize
     )
   }
   return cn(
-    'inline-flex items-center justify-center font-bold font-ui rounded-md no-underline',
+    // 14/20 600 at every size but the site's `lg` (since 2026-10-28 - it was 13/700, and a bold
+    // label beside a semibold heading read as the heading). HEIGHTS, not paddings, so a button lines
+    // up with the 36px field beside it: `md` (the default) 36px, `sm` 32px, `lg` 44px - and the
+    // touch target grows on glass (`touch:`), the label does not.
+    'inline-flex items-center justify-center font-semibold font-ui rounded-md no-underline',
     'transition-all duration-fast cursor-pointer whitespace-nowrap leading-none',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
     'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
     'aria-disabled:opacity-40 aria-disabled:cursor-not-allowed',
     'active:scale-[0.98] min-w-[100px]',
-    size === 'sm' && 'px-3 py-1.5 text-xs gap-1.5',
-    size === 'md' && 'px-5 py-2.5 text-sm gap-2',
-    size === 'lg' && 'px-6 py-3 text-base gap-2.5',
+    size === 'sm' && 'h-8 touch:h-tap-sm px-3 text-sm gap-2',
+    size === 'md' && 'h-9 touch:h-tap px-4 text-sm gap-2',
+    size === 'lg' && 'h-11 px-6 text-base gap-2',
     // No lift-on-hover and no coloured drop shadow. A colored shadow under a solid button reads as
     // a halo in light mode, because it has nowhere to fade to. `text-brand-on-solid` rather than
     // `text-white` so the pairing stays correct if --brand-solid is ever given a light value.

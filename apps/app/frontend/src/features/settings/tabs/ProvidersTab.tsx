@@ -5,7 +5,7 @@ import {
   BrandMark, Button, Callout, Caption, Checkbox, RuleChecklist, Combobox, DialogBody, DialogFooter,
   DialogHeader, Disclosure, EmptyState, Field, FormColumns, FormStack, InlineNotice, Input, List, ListRow,
   MetaList, Presence, Readout, RowActions, SecretInput, Select, SettingsSections, FadeSwap,
-  IconButton,
+  IconButton, Tooltip,
 } from '@/components/ui/kit'
 import { providerMarkId } from '@/features/indexing/utils/sourceMarks'
 import { costPricingApi, type ModelPricing } from '../services/costPricingApi'
@@ -315,19 +315,24 @@ function ProviderInstanceRow({ instance, onEdit }: {
   return (
     <>
       <ListRow
-        // Stacked below sm: the three buttons took the whole width of a phone and squeezed the name
-        // out of the row, leaving only the protocol label overlapping the first button.
-        className="flex-col sm:flex-row"
+        // Stacked below lg: the three buttons took the width of a phone, and beside the rail at
+        // 768 they left the facts 130px, where the address broke inside its port.
+        className="flex-col items-stretch lg:flex-row lg:items-start"
         leading={<BrandMark id={providerMarkId(instance.protocol)} size={16} className="text-brand-legible" />}
         title={instance.name}
         meta={<Caption as="span">{instance.protocolLabel}</Caption>}
         caption={<>
-          <MetaList items={[
-            <span key="url" className="break-all whitespace-normal">{instance.baseUrl || t('Default address')}</span>,
-            instance.apiKeyConfigured
-              ? t('key {masked}', { masked: instance.apiKeyMasked ?? '' })
-              : t('no key'),
-          ]} />
+          {/* ONE LINE: the address is cut at its end, never broken inside it, and shown whole on
+              hover; the key keeps its place after it. */}
+          <span className="flex items-baseline min-w-0">
+            <Tooltip label={instance.baseUrl || t('Default address')} className="flex min-w-0">
+              <span className="truncate">{instance.baseUrl || t('Default address')}</span>
+            </Tooltip>
+            <span className="shrink-0 whitespace-nowrap">
+              <span className="text-ink-disabled" aria-hidden="true">&nbsp;&middot;&nbsp;</span>
+              {instance.apiKeyConfigured ? t('key {masked}', { masked: instance.apiKeyMasked ?? '' }) : t('no key')}
+            </span>
+          </span>
           <Presence show={!!test.isSuccess}>
             {test.isSuccess && (
               <InlineNotice tone="success" className="mt-1">
@@ -429,7 +434,7 @@ function ProviderNextSteps({ instances, onOpenTab, onOpenRates, pending }: {
         <Callout tone="info" title={t('Next steps')} role="status">
           {/* A done step is a ticked line; one still to do is the link that goes to it. */}
           <RuleChecklist
-            className="mt-1.5"
+            className="mt-2"
             items={steps.map(s => ({
               key: s.key,
               pass: s.done,
@@ -469,7 +474,7 @@ export function ProvidersTab({ pending, onOpenTab, canEdit }: TabProps & { onOpe
             title={t('No providers configured yet.')}
             action={<Button onClick={() => setEditing(undefined)}><Plus size={14} />{t('Add provider')}</Button>}
           >
-            {t('A provider runs the AI models: the one that answers in chat and the one that indexes your sources. Add the service you have an API key for, or a local one such as Ollama.')}
+            {t('Add the service you have an API key for, or a local one such as Ollama.')}
           </EmptyState>
         ) : (
           <>
@@ -934,6 +939,18 @@ function ProviderPricingModal({ instance, editing, onClose }: {
               )}
             </Field>
 
+            {/* What the rates below are, BEFORE them (the field rule of 2026-10-29 - these closed
+                the form, after every box they explain). */}
+            <div className="space-y-1">
+              <Presence show={!isEdit && !typed && prefilledAsOf != null}>
+                <Caption>
+                  {t("Prefilled from the list price as of {date}. Check it against your provider's bill.", {
+                    date: prefilledAsOf ? dates.date(`${prefilledAsOf}T12:00:00`) : '',
+                  })}
+                </Caption>
+              </Presence>
+              <Caption>{t('A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.')}</Caption>
+            </div>
             <FormColumns cols={3}>
               {numberField(t('Input $/1M tokens'), 'input')}
               {numberField(t('Output $/1M tokens'), 'output')}
@@ -956,28 +973,19 @@ function ProviderPricingModal({ instance, editing, onClose }: {
             </FormColumns>
 
             <Disclosure summary={t('Long context pricing')} open={longOpen} onToggle={setLongOpen}>
+              {/* The tier's description opens it, before its boxes - it was the grid's last cell. */}
+              <Caption className="pt-3 max-w-[60ch]">
+                {t('Above this prompt size, these rates price the whole call. Empty means the standard rate.')}
+              </Caption>
               <FormColumns cols={3} className="pt-3">
                 {numberField(t('Threshold (prompt tokens)'), 'threshold', '200000', '1000')}
                 {numberField(t('Input $/1M tokens'), 'longInput', t('Standard rate'))}
                 {numberField(t('Output $/1M tokens'), 'longOutput', t('Standard rate'))}
                 {numberField(t('Cache read $/1M tokens'), 'longCacheRead', t('Standard rate'))}
                 {numberField(t('Cache write, 5 min $/1M tokens'), 'longCacheWrite', t('Standard rate'))}
-                <Caption className="sm:self-end sm:pb-2">
-                  {t('Above this prompt size, these rates price the whole call. Empty means the standard rate.')}
-                </Caption>
               </FormColumns>
             </Disclosure>
 
-            <div className="space-y-1">
-              <Presence show={!isEdit && !typed && prefilledAsOf != null}>
-                <Caption>
-                  {t("Prefilled from the list price as of {date}. Check it against your provider's bill.", {
-                    date: prefilledAsOf ? dates.date(`${prefilledAsOf}T12:00:00`) : '',
-                  })}
-                </Caption>
-              </Presence>
-              <Caption>{t('A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.')}</Caption>
-            </div>
           </FormStack>
         </DialogBody>
         <DialogFooter>

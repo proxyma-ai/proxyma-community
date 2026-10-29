@@ -4,7 +4,7 @@ import { PAGE_COLUMN } from './layout'
 import { TAP_TEXT, TAP_TEXT_FROM_SM } from './tap'
 
 /** The link home round the mark: the mark and wordmark, dimmed a step under a mouse. */
-export const BRAND_LINK = 'flex items-center gap-2 no-underline mouse:hover:opacity-80 transition-opacity shrink-0 focus-ring rounded-md'
+export const BRAND_LINK = 'flex items-center gap-2 no-underline mouse:hover:opacity-80 transition-opacity shrink-0 focus-ring rounded-md tap-area'
 
 /**
  * A NAVIGATION WORD ON THE BAR: primary ink for the page you are on, caption ink otherwise, primary

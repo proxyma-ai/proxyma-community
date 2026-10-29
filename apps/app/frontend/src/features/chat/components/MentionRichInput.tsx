@@ -332,7 +332,7 @@ export function MentionRichInput({
 
   // FOCUS ON MOUNT, and back to the editor when a turn starts or ends - ONLY when focus is nowhere
   // else (CHAT-02). It re-focused on every flip of `streaming`, unconditionally, and a turn a
-  // background sub-agent's report starts by itself flips it too: with a dialog open (the feedback
+  // background deployed agent's report starts by itself flips it too: with a dialog open (the feedback
   // form, the agents map, a tool call's detail, a preview), focus jumped behind the scrim, typing
   // went into the hidden composer and the dialog's Tab trap stopped holding. Not on a touch screen
   // either, where a focus raises the on-screen keyboard at the end of every turn.

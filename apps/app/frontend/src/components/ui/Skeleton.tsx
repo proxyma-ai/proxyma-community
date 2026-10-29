@@ -20,7 +20,7 @@ import { useTranslation } from '@/i18n'
 export function ChatThreadSkeleton() {
   const { t } = useTranslation()
   return (
-    <div role="status" aria-busy="true" className={cn(THREAD_COLUMN, 'space-y-5')}>
+    <div role="status" aria-busy="true" className={cn(THREAD_COLUMN, 'space-y-6')}>
       <span className="sr-only">{t('Loading conversation')}</span>
       <ChatMessageSkeleton role="user" />
       <ChatMessageSkeleton role="assistant" />
@@ -34,7 +34,7 @@ export function ChatThreadSkeleton() {
 // which turned into something else entirely on arrival.
 export function SharedConversationSkeleton() {
   return (
-    <div className="flex flex-col h-full overflow-hidden py-5 short:py-3 px-2 sm:px-6">
+    <div className="flex flex-col h-full overflow-hidden py-6 short:py-3 px-2 sm:px-6">
       <ChatThreadSkeleton />
     </div>
   )
@@ -65,7 +65,7 @@ export function BackupScheduleSkeleton() {
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-28" />
       </div>
-      <div className="pt-3 border-t border-line/30 space-y-1.5">
+      <div className="pt-3 border-t border-line/30 space-y-2">
         <Skeleton className="h-2.5 w-24" />
         <Skeleton className="h-3.5 w-56" />
       </div>
@@ -82,16 +82,16 @@ export function AnnouncementBannerSkeleton() {
         <Skeleton className="h-6 w-11 rounded-full" />
         <Skeleton className="h-3.5 w-32" />
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-9 w-full rounded-md" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-9 w-full rounded-md" />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-9 w-full rounded-md" />
         </div>
@@ -110,11 +110,11 @@ export function HardMaintenanceStatusSkeleton() {
         <Skeleton className="h-3.5 w-16" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-9 w-full rounded-md" />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-9 w-full rounded-md" />
         </div>
@@ -163,7 +163,7 @@ export function ChatPageSkeleton() {
           <Skeleton className="h-14 w-14 rounded-full" />
           <Skeleton className="h-8 w-44" />
         </div>
-        <div className="w-full rounded-xl border border-line/50 px-4 pt-3 pb-2 mb-8 space-y-4">
+        <div className="w-full rounded-lg border border-line/50 px-4 pt-3 pb-2 mb-8 space-y-4">
           <Skeleton className="h-4 w-1/2" />
           <div className="flex items-center justify-between">
             <Skeleton className="h-6 w-6 rounded-md" />
@@ -184,7 +184,8 @@ export function ChatPageSkeleton() {
 // under it does not jump. The page draws it too, so the route's skeleton and the page's agree.
 export function FilterChipsSkeleton() {
   return (
-    <div className="flex items-center gap-2 h-8 animate-fade-in" aria-hidden="true">
+    // The filters' well: 40px, a 12px track (FilterChips).
+    <div className="inline-flex items-center gap-3 h-10 px-3 rounded-lg bg-surface-alt shadow-well animate-fade-in" aria-hidden="true">
       {Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-3.5 w-16" />)}
     </div>
   )
@@ -252,7 +253,7 @@ export function KeyAccountsPageSkeleton() {
         <Skeleton className="h-7 w-28 rounded-md" />
       </div>
       <div className="space-y-3">
-        <div className="flex items-center gap-1.5 h-8">
+        <div className="flex items-center gap-2 h-8">
           {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-6 w-20 rounded-md" />)}
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -263,7 +264,7 @@ export function KeyAccountsPageSkeleton() {
           </div>
         </div>
       </div>
-      <TableCard>
+      <TableCard flush>
         <table className={TABLE_CLASS} aria-hidden="true">
           <tbody><TableSkeletonRows rows={4} columns={KEY_ACCOUNT_COLUMNS} /></tbody>
         </table>

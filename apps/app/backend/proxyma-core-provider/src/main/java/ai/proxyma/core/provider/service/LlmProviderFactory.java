@@ -412,6 +412,18 @@ public class LlmProviderFactory {
     }
 
     /**
+     * What {@link #modelLimits} has already learned of this model, without asking its provider:
+     * {@link ModelLimits#UNKNOWN} until a call has. For a page that must never wait on a provider -
+     * a project's agents, listed with their context windows - and that can ask
+     * {@link #modelLimits} off its own thread to have the answer the next time.
+     */
+    public ModelLimits knownLimits(String providerId, String model) {
+        if (providerId == null || model == null) return ModelLimits.UNKNOWN;
+        Remembered held = rememberedLimits.get(providerId + '\n' + model);
+        return held != null && held.until() > System.currentTimeMillis() ? held.limits() : ModelLimits.UNKNOWN;
+    }
+
+    /**
      * The output ceiling a call goes out with: the one asked for, else the model's own as the
      * provider states it, else zero - which an adapter reads as "send none" (LlmProviderAdapter
      * .ceiling), leaving it to the provider.

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, X } from 'lucide-react'
 import {
   Button, Caption, CodeBlock, ExternalLink, FadeSwap, Field, MetaList, Presence, ProgressRow, Readout,
-  RefreshIcon, Select, SettingsSections, StatusMark, SwitchRow, TEXT,
+  RefreshIcon, Select, SettingsSection, SettingsSections, StatusMark, SwitchRow, TEXT,
 } from '@/components/ui/kit'
 import { useToastStore } from '@/store/toastStore'
 import { useRestartStore } from '@/store/restartStore'
@@ -95,7 +95,7 @@ function DownloadProgress({ status, onCancel, cancelling, t }: {
 function DockerUpgrade({ version, t }: { version: string; t: Translate }) {
   const tag = version.replace(/^v/i, '')
   return (
-    <div className="mt-3 max-w-xl">
+    <div className="mt-3">
       <Caption>
         {t('In the install directory, set this line in .env, then run the two commands:')}
       </Caption>
@@ -278,12 +278,13 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
         </Presence>
       </div>
 
-      <div className="space-y-6">
+      {/* Headed like every other section of the tab - it was the one section with no heading. */}
+      <SettingsSection title={t('Automatic updates')}>
         {/* The Field's render function ties the Select to its label - it was a plain child, so the
             label pointed at nothing and the Select had no name. */}
         <Field
           label={t('Check for updates')}
-          hint={t('Checking only asks whether a newer version exists and downloads nothing. "Never" stops the schedule but keeps the button above working.')}
+          hint={t('How often to look for a newer version; checking downloads nothing.')}
         >
           {id => (
             <Select
@@ -298,7 +299,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
         <SwitchRow
           className="py-0"
           title={t('Download updates automatically')}
-          caption={t('Download a new version as soon as it is found. A downloaded version is installed the next time Proxyma starts, or at once with "Restart and install".')}
+          caption={t('Download new versions when found; each installs the next time Proxyma starts.')}
           checked={autoUpdate}
           onChange={v => trackChange('updates', 'auto-update', String(v))}
         />
@@ -306,18 +307,18 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
         <SwitchRow
           className="py-0"
           title={t('Development builds')}
-          caption={t('Also offer development builds, which may be broken. Turning this off keeps you on the dev build until a newer release.')}
+          caption={t('Also offer development builds, which may be broken.')}
           checked={devBuilds}
           onChange={v => trackChange('updates', 'dev-builds', String(v))}
         />
-      </div>
+      </SettingsSection>
 
       {/* THE HISTORY MOVED TO LOGS on 2026-10-12, under Activity > Updates, with every other
           log this installation keeps. A section that silently vanished would read as a regression,
           so its heading stays as the way there. */}
       <SignpostSection
         title={t('History')}
-        caption={t('Every update found, downloaded, installed or failed is recorded in Logs, under Activity.')}
+        caption={t('Every update found, installed or failed is in Logs, under Activity.')}
         action={(
           <Button variant="hyperlink" onClick={() => onOpenTab('Logs', 'activity')}>
             {t('Open Logs')}

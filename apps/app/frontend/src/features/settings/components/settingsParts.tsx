@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import {
-  Caption, Combobox, ConfirmDialog, Field, FormColumns, RadioGroup, Select,
+  Combobox, ConfirmDialog, Field, FormColumns, RadioGroup, Select,
   type ComboboxLabels, type SecretInputLabels,
 } from '@/components/ui/kit'
 import { providersApi } from '../services/providersApi'
@@ -95,7 +95,7 @@ export function RemoveConfirm({ name, title, verb, confirmLabel, pendingLabel, c
 }
 
 // A provider and its model, side by side. The ONE shape for both, everywhere the pair appears -
-// agent, sub-agent, OCR, query expansion, reranking and embedding, six places that had six
+// agent, deployed agent, OCR, query expansion, reranking and embedding, six places that had six
 // near-identical copies of the same twenty lines.
 //
 // A DROPDOWN, not a row of radios. There are nine providers: as radio pills they wrapped onto
@@ -114,15 +114,17 @@ export function ProviderModelRow({
   modelLabel: string
   modelPlaceholder: string
   // What the empty provider choice says, already translated, for a role where empty is a real
-  // answer rather than "nothing chosen yet": the sub-agent, which then runs on the agent's.
+  // answer rather than "nothing chosen yet": the deployed agent, which then runs on the agent's.
   unsetProviderLabel?: string
   // The provider that empty choice stands for, whose models the model list offers meanwhile. A
-  // sub-agent on "Same as the agent" picks from the agent's provider: it asked an empty provider
+  // deployed agent on "Same as the agent" picks from the agent's provider: it asked an empty provider
   // for its models until 2026-10-03, and "Failed to load models" was all it could say.
   fallbackProvider?: string
-  // Rendered under the pair, full width, ALREADY TRANSLATED. Two roles need one: the sub-agent
-  // (pick something cheaper, that is the point) and OCR (must be vision-capable). It was looked up
-  // a second time here, so a Vietnamese hint was used as a key - right only by luck.
+  // The model field's hint, under its label (the field rule of 2026-10-29 - it was a caption under
+  // the pair, after both controls), ALREADY TRANSLATED. The roles that need one: the deployed agent
+  // (pick something cheaper, that is the point), OCR (must be vision-capable) and the guardrail. It
+  // was looked up a second time here, so a Vietnamese hint was used as a key - right only by luck.
+  // FormColumns keeps the two controls level whichever of them has words over it.
   modelHint?: ReactNode
 } & TabProps) {
   const { t } = useTranslation()
@@ -181,7 +183,7 @@ export function ProviderModelRow({
             ]}
           />}
         </Field>
-        <Field label={t(modelLabel)}>
+        <Field label={t(modelLabel)} hint={modelHint}>
           {id => (
             <Combobox
               id={id}
@@ -197,7 +199,6 @@ export function ProviderModelRow({
           )}
         </Field>
       </FormColumns>
-      {modelHint && <Caption as="div">{modelHint}</Caption>}
     </div>
   )
 }

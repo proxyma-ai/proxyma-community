@@ -101,7 +101,9 @@ function FieldControl({ field: f, value, onChange, error, disabled, storedSecret
       )
     case 'SECRET':
       return (
-        <Field label={label} hint={help} error={error}>
+        // The error is the SecretInput's (its border and the line under it), not the Field's too -
+        // both drew it, so a refused secret said so twice.
+        <Field label={label} hint={help}>
           {id => (
             <SecretInput
               id={id}
@@ -139,7 +141,7 @@ function FieldControl({ field: f, value, onChange, error, disabled, storedSecret
       }
       return (
         <Field label={label} hint={help} error={error}>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {f.options.map(o => (
               <Checkbox key={o.value} checked={picked.includes(o.value)} onChange={on => toggle(o.value, on)} disabled={disabled}>
                 {t(o.label)}

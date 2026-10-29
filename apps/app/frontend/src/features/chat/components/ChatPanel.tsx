@@ -188,13 +188,14 @@ function ChatPanelBody({
   const serverKnows = !!openId && (toolCalls.length > 0 || messages.some(m => m.role === 'assistant'))
 
   return (
-    <div className={cn('relative flex flex-col h-full min-h-0 min-w-0 bg-canvas', className)} {...drop.handlers}>
+    // No plane of its own: the thread is on the glass sheet it sits in (or the panel's, `className`).
+    <div className={cn('relative flex flex-col h-full min-h-0 min-w-0', className)} {...drop.handlers}>
       <DropOverlay active={drop.active} label={t('Drop files to attach')} portal={false} />
       {header && <div className="shrink-0 px-3 py-2 border-b border-line/45 animate-fade-in">{header}</div>}
       {/* The empty state and the thread swap by a fade (FadeSwap) as the first message goes. */}
       <FadeSwap swapKey={empty} className="flex-1 min-h-0 flex flex-col">
       {empty ? (
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-6">
           <Title>{emptyTitle}</Title>
           {emptyDescription && <Caption className="mt-1">{emptyDescription}</Caption>}
           {suggestions.length > 0 && (

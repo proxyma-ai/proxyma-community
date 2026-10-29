@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useToastStore } from '@/store/toastStore'
 import { useTourStore } from '@/store/tourStore'
-import { ExternalLink, MOTION_MS, TOAST_STACK, Toast, cn, prefersReducedMotion, textLink } from '@/components/ui/kit'
+import { ExternalLink, MOTION_MS, Presence, TOAST_DOCK, TOAST_LAYER, TOAST_STACK, Toast, cn, prefersReducedMotion, textLink } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 
 // THE STACK, NOT THE TOAST, IS THIS APP'S. The card itself is the kit's `Toast` and the column the
@@ -45,7 +45,7 @@ function useLeaving<T extends { id: string }>(items: T[]): Array<{ item: T; leav
     previous.current = items
     if (removed.length === 0 || prefersReducedMotion()) return
     setGone(g => [...g, ...removed])
-    setTimeout(() => setGone(g => g.filter(x => !removed.some(r => r.item.id === x.item.id))), MOTION_MS.fast)
+    setTimeout(() => setGone(g => g.filter(x => !removed.some(r => r.item.id === x.item.id))), MOTION_MS.base)
   }, [items])
   const out = items.map(item => ({ item, leaving: false }))
   for (const { item, index } of gone) {
@@ -69,8 +69,27 @@ export function ToastContainer() {
   const tourActive = useTourStore(s => s.active)
   const hidden = menuOpen || tourActive
   const shown = useLeaving(toasts)
+  // Every toast is in the window's top right corner since 2026-10-29 (the maintainer's review); the
+  // chat page's dock above its composer is no longer used.
+  const dock: HTMLElement | null = null
 
   if (shown.length === 0) return null
+
+  const cards = shown.map(({ item: toast, leaving }) => {
+    const card = renderToast(toast, leaving)
+    // Docked, a toast is in the flow: its height eases in and out (Presence), so the thread above
+    // it moves rather than jumping by a card's height.
+    return dock ? <Presence key={toast.id} show={!leaving}><div className="pb-2">{card}</div></Presence> : card
+  })
+
+  if (dock) {
+    return createPortal(
+      <div aria-hidden={hidden || undefined} className={cn(TOAST_DOCK, 'transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')}>
+        {cards}
+      </div>,
+      dock,
+    )
+  }
 
   return createPortal(
     // AT THE TOP, just under the header - never bottom-right, where it was until 2026-09-26. The
@@ -80,13 +99,17 @@ export function ToastContainer() {
     // from `sm` up. That is the kit's TOAST_STACK.
     // Stepping aside fades: `visibility` is transitioned with the opacity, so it turns hidden at
     // the END of the fade out and visible at the START of the fade in.
-    <div aria-hidden={hidden || undefined} className={cn(TOAST_STACK, 'pointer-events-auto transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')}>
-      {/* The parameter is `toast`, NOT `t`. It was `t`, and this component now has a translation
-          function of that name in the enclosing scope - so the Dismiss button's `t('Dismiss')`
-          resolved to the Toast object and failed to compile. Third instance of this shadow in
-          the SPA; the other two were silent, and this one only spoke up because the shadowed
-          value happened not to be callable. */}
-      {shown.map(({ item: toast, leaving }) => (
+    <div aria-hidden={hidden || undefined} className={cn(TOAST_LAYER, 'transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')}>
+      <div className={TOAST_STACK}>{cards}</div>
+    </div>,
+    document.body,
+  )
+
+  // The parameter is `toast`, NOT `t`. It was `t`, and this component has a translation function
+  // of that name in the enclosing scope - so the Dismiss button's `t('Dismiss')` resolved to the
+  // Toast object and failed to compile. Third instance of this shadow in the SPA.
+  function renderToast(toast: (typeof toasts)[number], leaving: boolean) {
+    return (
         // The message, and UNDER it whatever the toast offers - the kit Toast's `actions`. The link
         // used to follow the message inline, so on a message long enough to wrap it started a
         // line of its own - three left edges in one card (maintainer's feedback, 2026-10-02). One
@@ -139,8 +162,6 @@ export function ToastContainer() {
         >
           {toast.message}
         </Toast>
-      ))}
-    </div>,
-    document.body,
-  )
+    )
+  }
 }

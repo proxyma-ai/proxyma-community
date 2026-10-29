@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, Suspense, lazy } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Topbar } from './Topbar'
-import { AutoHideHeader, ProxymaBackground } from '@/components/ui/kit'
+import { Sidebar } from './Sidebar'
+import { AutoHideHeader, GlassFrame, ProxymaBackground, WindowControls } from '@/components/ui/kit'
+import { useFramedLayout, useWideLayout } from '@/hooks/useWideLayout'
+import { useDesktopWindow } from '@/hooks/useDesktopWindow'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AccountDeletionModal } from '@/features/auth/components/AccountDeletionModal'
 import { ReConsentModal } from '@/features/auth/components/ReConsentModal'
@@ -38,6 +41,9 @@ const SettingsModal = lazy(() => import('@/features/settings/components/Settings
 
 export function AppShell() {
   const { user } = useAuth()
+  const wide = useWideLayout()
+  const framedWidth = useFramedLayout()
+  const desktopWindow = useDesktopWindow()
   // Source lists stay current whichever page is open - see the hook for why it lives here.
   useConnectorListSync()
   // The connector catalog, asked for as the app starts: every mark, mention chip and source name
@@ -210,30 +216,34 @@ export function AppShell() {
   const showGate = dialogs.deletionGate
   const showReConsent = dialogs.reConsent
 
-  return (
+  // THE GLASS SHELL (the maintainer's request, 2026-10-29: "no header at all + glass effect", then
+  // "every page, every thing" - the browser identical to the desktop app): the sidebar on a frosted
+  // frame, the page a glass sheet inside it (the kit's GlassFrame), signed in or not, the sign-in,
+  // setup and password pages included. From `md` in a browser, the sidebar folded to its icons below
+  // `lg`; on a phone, a glass header bar and the phone menu over the same field and sheet.
+  // The desktop app's borderless window is ALWAYS the frame, whatever its width: it has no title bar
+  // of its own, and the frame's strip carries its buttons and is what it is dragged by.
+  const framed = framedWidth || !!desktopWindow
+  // The sign-in, setup and password pages: no banner urging the visitor to sign in over them.
+  const authPage = ['/login', '/setup', '/forgot-password', '/reset-password'].includes(location.pathname)
+  const page = (
     <>
-      {/* Static glow backdrop is Proxyma's own default-tenant visual identity - any other
-          tenant uses a plain themed canvas background instead (set on <body> via index.css). */}
-      <ProxymaBackground />
-      <div className="relative z-10 flex flex-col h-full overflow-hidden">
-        {/* On a phone the bar steps aside while the reader swipes on down a page, and comes back
-            when they turn round - see the kit's AutoHideHeader. Every page starts with it. */}
-        <AutoHideHeader resetKey={location.pathname}>
-          <Topbar />
-        </AutoHideHeader>
         {/* Above the scroll container, so a license problem cannot be scrolled away from. Enterprise
             Server only (its license re-check and trial banners) - Desktop and the single-user
             server have no license, and their edition renders nothing here. Renders nothing at all
             unless the server reported one. */}
         <EditionBanners />
-        {/* Server mode, signed out only - see GuestBanner, which gates itself. Mounted here
-            rather than beside MaintenanceBanner in Providers.tsx precisely because /login and
-            /setup render outside AppShell: a banner urging someone to sign in has nothing to say
-            on the sign-in page. */}
-        <GuestBanner />
+        {/* Server mode, signed out only - see GuestBanner, which gates itself. Not on the sign-in,
+            setup and password pages, which render in this shell too: a banner urging someone to
+            sign in has nothing to say there. */}
+        {!authPage && <GuestBanner />}
         {/* The global thin scrollbar, like every other scroller in four apps - it was the one page
             scroller that hid its bar (X12), so a long page gave no sign of how long it was. */}
-        <main className="flex-1 overflow-auto">
+        {/* The scrollbar's room is ALWAYS kept (the maintainer, 2026-10-30): a page whose skeleton or
+            entrance ran a little taller than the window showed the bar for a moment, shifting the
+            page left and back. On the right only - kept on both sides, it left a strip beside a
+            full-height page's left panel (Constellations). */}
+        <main className="flex-1 overflow-auto [scrollbar-gutter:stable]">
           {/* Keyed by pathname so a top-level nav change (Chat/Connectors/Docs/...) remounts this
               wrapper and replays the fade-up entrance - Suspense's own fallback (PageSkeleton)
               already covers the lazy-chunk loading gap, this is purely the settled-content
@@ -242,7 +252,45 @@ export function AppShell() {
             <Outlet />
           </div>
         </main>
-      </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* The field behind the glass, at every width (an app shell's ProxymaBackground). */}
+      <ProxymaBackground />
+      {framed ? (
+        <div className="relative z-10 h-full overflow-hidden">
+          {/* In the desktop app's own borderless window the frame floats on the field with the
+              window's buttons over the page; in a browser it is the page, edge to edge. */}
+          <GlassFrame
+            sidebar={<Sidebar compact={!wide} />}
+            mode={desktopWindow ? 'window' : 'page'}
+            onToggleMaximize={desktopWindow?.controls.toggleMaximize}
+            windowBar={desktopWindow && (
+              <WindowControls
+                maximized={desktopWindow.maximized}
+                onMinimize={desktopWindow.controls.minimize}
+                onToggleMaximize={desktopWindow.controls.toggleMaximize}
+                onClose={desktopWindow.controls.close}
+                labels={{ minimize: t('Minimize'), maximize: t('Maximize'), restore: t('Restore'), close: t('Close') }}
+              />
+            )}
+          >
+            {page}
+          </GlassFrame>
+        </div>
+      ) : (
+        <div className="relative z-10 flex flex-col h-full overflow-hidden">
+          {/* On a phone the bar steps aside while the reader swipes on down a page, and comes back
+              when they turn round - see the kit's AutoHideHeader. Every page starts with it. */}
+          <AutoHideHeader resetKey={location.pathname}>
+            <Topbar />
+          </AutoHideHeader>
+          {/* The page is the same glass sheet as in the frame, full bleed (the kit's .app-sheet). */}
+          <div className="app-sheet flex-1 min-h-0 flex flex-col">{page}</div>
+        </div>
+      )}
       {showGate && (
         <AccountDeletionModal
           mode="gate"

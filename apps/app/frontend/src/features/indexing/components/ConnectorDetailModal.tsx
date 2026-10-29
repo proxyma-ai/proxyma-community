@@ -177,7 +177,7 @@ function SyncNote({ note }: { note: string }) {
   return (
     // The kit's one callout box, padding included.
     <Callout tone="neutral" icon={null} className="mt-2">
-      <div className="flex items-start gap-1.5">
+      <div className="flex items-start gap-2">
         <p className="flex-1 min-w-0 break-words select-text">
           {parts.map((part, i) => i % 2 === 1
             ? <ExternalLink key={i} href={part} iconSize={11}>{part}</ExternalLink>
@@ -265,7 +265,7 @@ function ItemRowContent({ item, connector, active, graphReading, className }: {
       // LINE since 2026-10-01 (maintainer's feedback) - it was an entry in the row's menu, one
       // click further from the one thing you do with an error.
       error={failure ? (
-        <span className="flex items-center gap-1.5 min-w-0 animate-fade-in">
+        <span className="flex items-center gap-2 min-w-0 animate-fade-in">
           <span className="min-w-0 flex-1">
             <Tooltip label={clip(failure)} fullWidth>
               <span className="block truncate">{failure}</span>
@@ -682,7 +682,9 @@ export function ConnectorDetailModal({ connector, onClose }: Props) {
 
   return (
     <>
-        <ModalShell onClose={onClose} size="xl" fill ariaLabel={displayName}>
+        {/* CAPPED, not fixed (the UI review, 2026-10-28: four files under a 760px panel left 420px
+            of blank): as tall as the list up to the window, then the list alone scrolls. */}
+        <ModalShell onClose={onClose} size="xl" cap ariaLabel={displayName}>
             <DialogHeader
               icon={getTypeIcon(connector.type, 20)}
               title={title}
@@ -716,7 +718,7 @@ export function ConnectorDetailModal({ connector, onClose }: Props) {
                   {/* The gutter is reserved here AND on the list below, so a pinned row and a settled
                       one end at the same right edge whether or not the list scrolls. */}
                   <Presence show={!!activeItems && activeItems.length > 0} className="flex-shrink-0">
-                    <div className="divide-y divide-line/20 border-b border-line/30 bg-brand-solid/5 overflow-y-hidden sm:[scrollbar-gutter:stable]">
+                    <div className="divide-y divide-line/20 border-b border-line/30 bg-surface-alt/50 overflow-y-hidden sm:[scrollbar-gutter:stable]">
                       {(activeItems ?? []).map(item => (
                         <ActiveItemRow key={item.id} item={item} connector={connector}
                                        graphReading={graphReading.get(item.id)} />

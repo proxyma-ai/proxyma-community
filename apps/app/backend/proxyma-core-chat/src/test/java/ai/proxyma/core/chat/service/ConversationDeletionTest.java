@@ -67,7 +67,7 @@ class ConversationDeletionTest {
     }
 
     private record Wired(ChatService chat, SmartChatMemory memory, ApplicationEventPublisher events,
-                         SubAgentService subAgents, WorkflowRunService workflowRuns) {}
+                         WorkflowRunService workflowRuns) {}
 
     private Wired wire(boolean multiUser) {
         jpa = new ChatJpa(data, multiUser);
@@ -75,7 +75,6 @@ class ConversationDeletionTest {
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         ToolCallbackProvider tools = mock(ToolCallbackProvider.class);
         when(tools.getToolCallbacks()).thenReturn(new ToolCallback[0]);
-        SubAgentService subAgents = mock(SubAgentService.class);
         WorkflowRunService workflowRuns = mock(WorkflowRunService.class);
         ChatService chat = new ChatService(mock(LlmGateway.class), mock(SettingsService.class),
                 mock(GlobalQuotaGate.class), mock(McpGuardService.class), memory, events,
@@ -83,9 +82,9 @@ class ConversationDeletionTest {
                 mock(ChatSkillService.class), mock(ToolSkillGating.class), mock(SystemPromptService.class),
                 jpa.get(FeedbackRepository.class), jpa.get(ConversationShareRepository.class),
                 mock(ChatEventSink.class), mock(ConversationTitleService.class), mock(ModelPricingService.class),
-                subAgents, workflowRuns, mock(WorkflowService.class), mock(WorkflowRunner.class),
+                workflowRuns, mock(WorkflowService.class), mock(WorkflowRunner.class),
                 mock(GuardrailService.class));
-        return new Wired(chat, memory, events, subAgents, workflowRuns);
+        return new Wired(chat, memory, events, workflowRuns);
     }
 
     // A conversation as a turn leaves it: a row, two messages, a folder with an upload in it.
@@ -143,7 +142,6 @@ class ConversationDeletionTest {
         assertThat(folder).doesNotExist();
         assertThat(other).exists();
         verify(w.workflowRuns()).deleteForConversation("conv-1");
-        verify(w.subAgents()).forget("conv-1");
         verify(w.events()).publishEvent(new ConversationsDeletedEvent(List.of("conv-1")));
     }
 
@@ -156,7 +154,6 @@ class ConversationDeletionTest {
 
         w.chat().deleteConversation("conv-1");
 
-        verify(w.subAgents()).forget("conv-1");
         verify(w.events()).publishEvent(new ConversationsDeletedEvent(List.of("conv-1")));
     }
 

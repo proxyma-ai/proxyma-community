@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import type {
-  ChatMessage, ToolCallInfo, PendingApproval, PendingEnableRequest, PendingQuestion, PermissionMode, QueuedMessage,
+  AgentStatusUpdate, ChatMessage, ToolCallInfo, PendingApproval, PendingEnableRequest, PendingQuestion, PermissionMode, QueuedMessage,
   WorkflowRunSnapshot,
 } from '@/features/chat/types/chat.types'
 import type { RevealRequest, RevealTarget } from '@/features/chat/utils/threadReveal'
@@ -105,10 +105,16 @@ export interface ChatState {
   permissionMode: PermissionMode
   setPermissionMode: (mode: PermissionMode) => void
   // The last request to show a place in this chat's thread - an agent's name clicked in the agents
-  // map (threadReveal.ts). The thread scrolls to it and a sub-agent's panel opens and lights up.
+  // map (threadReveal.ts). The thread scrolls to it and a deployed agent's panel lights up.
   // A new object per request; a component mounted after it was made treats it as already seen.
   reveal: RevealRequest | null
   revealInThread: (target: RevealTarget) => void
+  // What this conversation's stream last said of each agent it deployed ('agent-status'), by agent
+  // id. Laid over the agent tree as it was read (agentTree.ts's withLive), so a panel and the agents
+  // map move the moment an agent does, not at the next read.
+  agentStatus: Record<string, AgentStatusUpdate>
+  putAgentStatus: (u: AgentStatusUpdate) => void
+  clearAgentStatus: () => void
   setConversationId: (id: string | undefined) => void
   setMessages: (msgs: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void
   setStreaming: (s: boolean) => void
@@ -166,6 +172,9 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
   setPermissionMode: (mode) => set({ permissionMode: mode }),
   reveal: null,
   revealInThread: (target) => set({ reveal: { target } }),
+  agentStatus: {},
+  putAgentStatus: (u) => set(state => ({ agentStatus: { ...state.agentStatus, [u.agentId]: u } })),
+  clearAgentStatus: () => set({ agentStatus: {} }),
   setConversationId: (id) => set({ conversationId: id }),
   setMessages: (msgs) => set({ messages: typeof msgs === 'function' ? msgs(get().messages) : msgs }),
   setStreaming: (s) => set({ streaming: s }),
@@ -226,5 +235,5 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
   },
   removeQueued: (clientId) => set(state => ({ messageQueue: state.messageQueue.filter(m => m.clientId !== clientId) })),
   clearQueue: () => set({ messageQueue: [] }),
-  reset: () => set({ conversationId: undefined, messages: [], streaming: false, toolCalls: [], messageQueue: [], loadingHistory: false, pendingApprovals: [], pendingEnableRequests: [], pendingQuestions: [], condensing: false, condenseTokensFreed: null, attachedToolCallCount: 0, thinkingTokens: null, awaitingModel: false, retryAttempt: null, lastEventAt: 0, lastSend: null, workflowRuns: {}, reveal: null }),
+  reset: () => set({ conversationId: undefined, messages: [], streaming: false, toolCalls: [], messageQueue: [], loadingHistory: false, pendingApprovals: [], pendingEnableRequests: [], pendingQuestions: [], condensing: false, condenseTokensFreed: null, attachedToolCallCount: 0, thinkingTokens: null, awaitingModel: false, retryAttempt: null, lastEventAt: 0, lastSend: null, workflowRuns: {}, reveal: null, agentStatus: {} }),
 }))

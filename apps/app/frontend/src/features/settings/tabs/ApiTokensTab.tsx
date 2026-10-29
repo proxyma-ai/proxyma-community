@@ -61,7 +61,7 @@ export function ApiTokensTab() {
   })
 
   return (
-    <SettingsSections intro={t('Personal access tokens for MCP clients or direct API calls. A token acts as you and sees only what you can see.')}>
+    <SettingsSections intro={t('Tokens for MCP clients and API calls; each one acts as you.')}>
       <div className="space-y-6">
         {/* On the title's row once there is a list; under the empty state's sentence while there is
             none - one Generate on screen either way, and it eases in and out of its place. */}

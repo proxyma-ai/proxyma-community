@@ -302,7 +302,7 @@ function ConnectorManagementRow({ pending, trackChange, onRequestEnable, focused
         <SwitchRow
           className="py-0"
           title={t('Add and remove sources')}
-          caption={t('Let the agent register and remove sources of any type on your behalf. Removing a source deletes its index.')}
+          caption={t('Let the agent add and remove sources for you; removing one deletes its index.')}
           checked={checked}
           onChange={v => {
             if (v) {
@@ -373,7 +373,7 @@ export function ConnectorsTab({ trackChange, pending, focusKey }: {
   }
 
   return (
-    <SettingsSections intro={t('The servers your sources and the agent reach, each with your own credential. Choose what the agent and MCP clients may do through each.')}>
+    <SettingsSections intro={t('The servers your sources and the agent reach, each with your credential.')}>
       {/* Tour anchor on the CONNECTION LIST, not on the paragraph above it. The walkthrough step
           is called "Connect your tools" and talks about tokens and permissions; highlighting the
           sentence that introduces them left the reader looking at a caption while the card beside

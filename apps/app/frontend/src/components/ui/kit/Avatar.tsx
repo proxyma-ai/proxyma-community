@@ -43,13 +43,13 @@ export function Avatar({ name, kind = 'person', size = 'md', className }: {
   const box = size === 'sm' ? 'w-6 h-6 text-2xs' : 'w-8 h-8 text-xs'
   if (kind === 'agent') {
     return (
-      <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-brand-solid/60 text-brand-legible bg-canvas', box, className)}>
+      <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-brand-solid/60 text-brand-legible bg-surface', box, className)}>
         <Bot size={size === 'sm' ? 12 : 16} />
       </span>
     )
   }
   return (
-    <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center justify-center rounded-full bg-brand-pale text-brand-legible font-semibold border border-canvas', box, className)}>
+    <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center justify-center rounded-full bg-surface-alt text-brand-legible font-semibold border border-surface', box, className)}>
       {initials(name)}
     </span>
   )
@@ -80,7 +80,7 @@ export function AvatarStack({ people, max = 4, label, size = 'md', className }: 
         )
         return p.tooltip ? <Tooltip key={p.key} label={p.tooltip} side="bottom">{face}</Tooltip> : <span key={p.key} className="contents">{face}</span>
       })}
-      {more > 0 && <Readout tone="caption" className="ml-1.5 text-xs animate-fade-in">+{more}</Readout>}
+      {more > 0 && <Readout tone="caption" className="ml-2 text-xs animate-fade-in">+{more}</Readout>}
     </div>
   )
 }

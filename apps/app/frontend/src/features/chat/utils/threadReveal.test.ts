@@ -12,7 +12,7 @@ describe('where the thread goes to reveal an agent', () => {
     assert.equal(revealScrollTop({ ...view, kind: 'main', top: 2000, height: 900 }), 2948)
   })
 
-  test('a sub-agent panel is centered', () => {
+  test('a deployed agent panel is centered', () => {
     // The panel's middle (1000 + 300 + 18) at the window's middle (300).
     assert.equal(revealScrollTop({ ...view, kind: 'agent', top: 300, height: 36 }), 1018)
   })

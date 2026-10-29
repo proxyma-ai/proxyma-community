@@ -38,7 +38,7 @@ export function AudioPlayer({ src, title, crossOrigin, labels }: {
   }
 
   return (
-    <div className="flex items-center gap-2.5 max-w-full my-2 px-3 py-2 rounded-lg border border-line/40 bg-surface/40">
+    <div className="flex items-center gap-3 max-w-full my-2 px-3 py-2 rounded-lg border surface-card shadow-card">
       <button
         type="button"
         onClick={toggle}
@@ -49,7 +49,7 @@ export function AudioPlayer({ src, title, crossOrigin, labels }: {
       </button>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-ink-primary truncate">{title}</p>
-        <div className="mt-1.5 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-2">
           <ProgressBar value={Math.min(1, progress) * 100} size="xs" className="flex-1" />
           <Readout tone="caption" className="text-xs shrink-0">{formatTime(duration)}</Readout>
         </div>
@@ -102,7 +102,7 @@ export function Lightbox({ src, alt, onClose, ariaLabel, crossOrigin }: {
         data-autofocus
         // The panel is `contents`, so the image is what arrives and leaves (useExitGhost).
         data-motion-panel=""
-        className="relative max-w-full max-h-full shadow-card-lg object-contain animate-slide-up"
+        className="relative max-w-full max-h-full shadow-float object-contain animate-slide-up"
       />
     </DialogShell>
   )

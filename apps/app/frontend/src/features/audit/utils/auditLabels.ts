@@ -193,7 +193,7 @@ export function summaryText(row: { action: string; target: string | null; summar
 export function serviceLabel(role: string, t: Translate): string {
   switch (role) {
     case 'CHAT': return t('Chat')
-    case 'SUB_AGENT': return t('Delegated work')
+    case 'SUB_AGENT': return t('Deployed agents')
     case 'TITLE': return t('Conversation titles')
     case 'CONDENSATION': return t('Memory condensation')
     case 'QUERY_EXPANSION': return t('Query expansion')
@@ -225,7 +225,7 @@ export function settingLabel(target: string | null, t: Translate): string {
 function settingGroup(prefix: string, t: Translate): string {
   switch (prefix) {
     case 'chat': return t('Agents')
-    case 'sub-agent': return t('Agents (sub-agents)')
+    case 'sub-agent': return t('Agents (deployed agents)')
     case 'embedding': return t('Search (embedding)')
     case 'reranking': return t('Search (reranking)')
     case 'retrieval': return t('Search')

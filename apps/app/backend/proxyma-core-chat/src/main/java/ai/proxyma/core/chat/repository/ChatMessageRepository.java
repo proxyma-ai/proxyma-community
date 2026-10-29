@@ -21,15 +21,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     /** Every row, condensed ones included - the TRANSCRIPT. */
     List<ChatMessage> findByConversationIdOrderByCreatedAtAscIdAsc(String conversationId);
 
-    /**
-     * Every row's role, time and summary flag, oldest first - and nothing else, since the agents
-     * graph asks every few seconds while agents work and a long conversation's content is
-     * megabytes. Rows of {@code [MessageRole, Instant, Boolean]}; see ConversationAgents.turnsOf.
-     */
-    @Query("SELECT m.role, m.createdAt, m.summary FROM ChatMessage m WHERE m.conversationId = :conversationId "
-            + "ORDER BY m.createdAt ASC, m.id ASC")
-    List<Object[]> findStampsByConversationId(@Param("conversationId") String conversationId);
-
     /** The rows the MODEL reads: everything not folded into a summary. */
     List<ChatMessage> findByConversationIdAndCondensedFalseOrderByCreatedAtAscIdAsc(String conversationId);
 

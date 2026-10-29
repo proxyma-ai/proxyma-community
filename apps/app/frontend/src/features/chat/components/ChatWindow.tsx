@@ -5,8 +5,7 @@ import { MessageBubble } from './MessageBubble'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { QuestionPrompt } from './QuestionPrompt'
 import { StepLimitPrompt } from './StepLimitPrompt'
-import { AgentPrompts, SubAgentReportedNotice } from './AgentPrompts'
-import { findAgent } from '../utils/subAgent'
+import { AgentMailNotice, AgentPrompts } from './AgentPrompts'
 import { QUIET_MS, waitFace } from '../utils/waitState'
 import { settledLength } from '../utils/threadOps'
 import { revealScrollTop } from '../utils/threadReveal'
@@ -67,8 +66,9 @@ interface Props {
 
 export function ChatWindow({ messages, streaming, toolCalls = [], loading = false, onRetry, conversationId, pendingApprovals = [], pendingEnableRequests = [], condensing = false, onRewind, attachedToolCallCount = 0, readOnly = false, workflowRuns = {}, compact = false }: Props) {
   const { t } = useTranslation()
-  // The thread's side gutter: 8px on a phone and 24px from `sm` up on the chat page, 12px in a panel.
-  const gutter = compact ? 'px-3' : 'px-2 sm:px-6'
+  // The thread's side gutter: the page's own (PAGE_GUTTER) on the chat page - 12px on a phone, 24px
+  // from `sm` - so the thread lines up with the header (the UI review, 2026-10-28); 12px in a panel.
+  const gutter = compact ? 'px-3' : 'px-3 sm:px-6'
   const pendingQuestions = useChatStore(s => s.pendingQuestions)
   // NOT WHILE CONDENSING, nor on the render that ends it. A condensation adds nothing to read, and
   // following it to the bottom pulled a reader who had scrolled up back down two or three times
@@ -301,7 +301,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
   }, [loading])
 
   // A new message, or a streamed answer growing, moves questions without a scroll event. Once a
-  // frame: it measures every question, and with sub-agents at work the messages change many times a
+  // frame: it measures every question, and with agents at work the messages change many times a
   // frame's worth of time.
   const pinFrame = useRef(0)
   useEffect(() => {
@@ -310,8 +310,8 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
   }, [messages])
   useEffect(() => () => cancelAnimationFrame(pinFrame.current), [])
 
-  // AN AGENT'S NAME CLICKED IN THE AGENTS MAP (threadReveal.ts): the latest turn, or the sub-agent's
-  // panel - which opens and lights up by itself (SubAgentPanel). A frame late, so the map has
+  // AN AGENT'S NAME CLICKED IN THE AGENTS MAP (threadReveal.ts): the latest turn, or a deployed
+  // agent's panel (AgentPanel). A frame late, so the map has
   // closed and the panel has begun to open. It is the reader's own scroll as far as following the
   // thread goes: a smooth scroll up holds the thread there by the thread's rule (threadFollow.ts).
   // A request made before this thread was mounted is not this thread's to act on.
@@ -327,7 +327,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
       const target = reveal.target
       const el = target.kind === 'main'
         ? [...scroller.querySelectorAll<HTMLElement>('[data-turn]')].pop()
-        : scroller.querySelector<HTMLElement>(`[data-sub-agent="${CSS.escape(target.agentId)}"]`)
+        : scroller.querySelector<HTMLElement>(`[data-agent="${CSS.escape(target.agentId)}"]`)
       if (!el) return
       const box = el.getBoundingClientRect()
       scroller.scrollTo({
@@ -346,12 +346,12 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
     return () => cancelAnimationFrame(frame)
   }, [reveal])
 
-  // The main agent's own questions; a sub-agent's are drawn by AgentPrompts.
+  // The agent's own questions; a workflow step's are drawn by AgentPrompts.
   const ownQuestions = useLeavingItems(pendingQuestions.filter(q => !q.parentCallId), q => q.callId)
 
   if (loading) {
     return (
-      <div className={cn('flex-1 overflow-y-auto py-5 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
+      <div className={cn('flex-1 overflow-y-auto py-6 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
         <ChatThreadSkeleton />
       </div>
     )
@@ -385,12 +385,12 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
         <MessageErrorBoundary resetKey={m.content}>
         {/* The tool calls belong to THIS message, and this message's own content is the answer
             they produced. The list is open, five rows tall at most - see ToolCallList.
-            The conversation id is for a sub-agent's own Stop - one working in the background is
-            held by the message that started it, however long ago. */}
+            The conversation id is for a deployed agent's own controls - one working in the
+            background is held by the message that deployed it, however long ago. */}
         {ownToolCalls && ownToolCalls.length > 0 && (
           <ToolCallList toolCalls={ownToolCalls} conversationId={readOnly ? undefined : conversationId} />
         )}
-        {m.subAgentReports && m.subAgentReports.length > 0 && <SubAgentReportedNotice reports={m.subAgentReports} />}
+        {m.agentMail && m.agentMail.length > 0 && <AgentMailNotice entries={m.agentMail} />}
         {!stepsOnly && <MessageBubble message={m} onRetry={onRetry} isLast={i === messages.length - 1}
           endsTurn={i < messages.length - 1 ? messages[i + 1].role === 'user' : !streaming} conversationId={conversationId} allMessages={messages} messageIndex={i} streaming={streaming} onRewind={onRewind} readOnly={readOnly} />}
         {/* Below the message that invoked it, and therefore above the reply the run produces
@@ -413,28 +413,27 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
             the thread to jump up by its height. */}
         {conversationId && ownQuestions.map(({ item: q, key, leaving }) => (
           <Presence key={key} show={!leaving}>
-            <div className="mb-5" data-turn-prompt="">
+            <div className="mb-6" data-turn-prompt="">
               {q.stepLimit
                 ? <StepLimitPrompt pending={q} stepLimit={q.stepLimit} conversationId={conversationId} />
                 : <QuestionPrompt pending={q} conversationId={conversationId} />}
             </div>
           </Presence>
         ))}
-        {/* And what SUB-AGENTS are waiting on the user for - here rather than in their panels,
-            which may be several turns up the thread. */}
+        {/* And what a WORKFLOW STEP is waiting on the user for - here rather than in its row,
+            which may be folded away in the step table. */}
         {conversationId && (
           <AgentPrompts
             conversationId={conversationId}
             approvals={pendingApprovals.filter(a => a.parentCallId)}
             enableRequests={pendingEnableRequests.filter(r => r.parentCallId)}
             questions={pendingQuestions.filter(q => q.parentCallId)}
-            titleOf={agentId => findAgent(messages, toolCalls, agentId)?.title}
           />
         )}
         {/* The wait row eases in and out (Presence): it goes the moment the first words stream,
             and in one frame it pulled everything up by its height. */}
         <Presence show={!!face}>
-          <div className="mb-5">
+          <div className="mb-6">
             {/* Keyed on the face, so each wait mounts afresh and its seconds count that wait alone. */}
             {face && <ThinkingIndicator key={face} face={face} />}
           </div>
@@ -494,10 +493,10 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
       <span role="status" className="sr-only">{announcement}</span>
       {/* RELATIVE, so the scroller is the containing block of every absolutely placed thing in the
           thread (0.36.0 feedback). Without it a screen-reader-only label in a tool row or a
-          sub-agent's panel was placed against this component's root, outside the scroller, and
+          deployed agent's panel was placed against this component's root, outside the scroller, and
           the thread's whole height overflowed the chat page's own box - which a scroll to the end
           then scrolled (see scrollToEnd). */}
-      <div ref={scrollerRef} className={cn('relative flex-1 min-h-0 overflow-y-auto py-5 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
+      <div ref={scrollerRef} className={cn('relative flex-1 min-h-0 overflow-y-auto py-6 short:py-3', gutter, !compact && 'sm:[scrollbar-gutter:stable_both-edges]')}>
         <div className={THREAD_COLUMN}>
           {sections.map((section, si) => (
             // One section per question: the user's message and every reply under it.

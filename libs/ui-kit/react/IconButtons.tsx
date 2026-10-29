@@ -122,7 +122,7 @@ export function IconCountButton({ icon: Icon, label, count, active, working, onC
         className={cn(
           iconButton(size, active ? null : 'default'),
           active && 'text-brand-legible',
-          count != null && count !== '' && 'w-auto touch:w-auto px-1.5 gap-1.5',
+          count != null && count !== '' && 'w-auto touch:w-auto px-2 gap-1',
           className,
         )}
       >
@@ -158,7 +158,7 @@ export function MenuTrigger({ icon: Icon, value, ariaLabel, open, onClick, tone 
       aria-expanded={open}
       aria-label={ariaLabel}
       className={cn(
-        'shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-ui transition-colors focus-ring',
+        'shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-ui transition-colors focus-ring',
         tone === 'warning' ? 'text-warning' : 'text-ink-caption mouse:hover:text-ink-secondary',
         className,
       )}

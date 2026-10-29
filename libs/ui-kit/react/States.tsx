@@ -28,7 +28,7 @@ export function EmptyState({ children, title, action, className }: {
     // as a flash.
     <div className={cn('py-4 text-left animate-fade-in', className)}>
       {title && <p className={cn(TEXT.label, 'mb-0.5')}>{title}</p>}
-      <p className={cn(TEXT.option, 'leading-relaxed text-ink-caption max-w-prose')}>{children}</p>
+      <p className={cn(TEXT.option, 'text-ink-caption max-w-prose')}>{children}</p>
       {action && <div className="mt-3">{action}</div>}
     </div>
   )
@@ -52,7 +52,7 @@ export function LoadingState({ label, className, centered }: { label?: string; c
 export function ErrorState({ title, children, action, className }: { title: ReactNode; children?: ReactNode; action?: ReactNode; className?: string }) {
   return (
     <div role="alert" className={cn('py-4 text-left animate-fade-in', className)}>
-      <p className={cn(TEXT.label, 'flex items-center gap-1.5 text-danger')}>
+      <p className={cn(TEXT.label, 'flex items-center gap-2 text-danger')}>
         <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
         {title}
       </p>
@@ -93,7 +93,7 @@ export function InlineNotice({ tone = 'neutral', children, action, size = 'sm', 
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('flex items-start gap-1.5 animate-fade-in', size === 'md' ? 'text-sm' : 'text-xs', 'leading-relaxed', ink, className)}
+      className={cn('flex items-start gap-2 animate-fade-in', size === 'md' ? 'text-sm' : 'text-xs', ink, className)}
     >
       {tone === 'progress'
         ? <Spinner size={glyph} className="mt-0.5" />

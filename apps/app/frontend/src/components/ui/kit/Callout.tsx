@@ -17,8 +17,8 @@ import { TEXT } from './typeScale'
 export type CalloutTone = 'neutral' | 'info' | 'warning' | 'danger' | 'success'
 
 const TONE: Record<CalloutTone, { box: string; ink: string; icon: ComponentType<{ size?: number | string; className?: string }> }> = {
-  neutral: { box: 'bg-surface/40 border-line/40', ink: 'text-ink-caption', icon: Info },
-  info: { box: 'bg-brand-solid/[0.07] border-brand-solid/30', ink: 'text-brand-legible', icon: Info },
+  neutral: { box: 'bg-surface-alt border-line/60', ink: 'text-ink-caption', icon: Info },
+  info: { box: 'surface-card border-brand-solid/40', ink: 'text-brand-legible', icon: Info },
   warning: { box: 'bg-warning/[0.07] border-warning/35', ink: 'text-warning', icon: AlertTriangle },
   danger: { box: 'bg-danger/5 border-danger/30', ink: 'text-danger', icon: XCircle },
   success: { box: 'bg-success/[0.07] border-success/35', ink: 'text-success', icon: CheckCircle2 },
@@ -28,8 +28,9 @@ const TONE: Record<CalloutTone, { box: string; ink: string; icon: ComponentType<
  * A BOX THAT SAYS SOMETHING ABOUT THE WHOLE SECTION - read-only mode, a token shown once, a
  * restart needed, a failed sign-in, a documentation note. Eight boxes had eight recipes in
  * Settings alone; the docs had a third shape with a left rule. One now: `rounded-lg border px-4
- * py-3`, a 7% tint of the tone with its border at a third, a 16px glyph in the tone, the title
- * the type scale's label (14/500) and the body 13px secondary. `icon={null}` drops the glyph.
+ * py-3`, a 7% tint of the tone with its border at a third - except `info`, the brand's, which is the
+ * neutral surface with a brand border (the brand is never a tinted background, since 2026-10-28) -
+ * a 16px glyph in the tone, the title the type scale's label (14/500) and the body 14/20 secondary. `icon={null}` drops the glyph.
  *
  * The docs' `.note`/`.warn` (proxyma-primitives.css, `.prose-doc`) are this same box for HTML that
  * cannot render a component.
@@ -52,7 +53,7 @@ export function Callout({ tone = 'neutral', title, children, actions, icon, clas
       {Icon && <Icon size={16} className={cn('shrink-0 mt-0.5', t.ink)} aria-hidden="true" />}
       <div className="flex-1 min-w-0">
         {title && <p className={TEXT.label}>{title}</p>}
-        {children && <div className={cn('text-xs leading-relaxed text-ink-secondary', title && 'mt-0.5')}>{children}</div>}
+        {children && <div className={cn('text-sm text-ink-secondary', title && 'mt-1')}>{children}</div>}
         {actions && <div className="mt-3 flex flex-wrap items-center gap-3">{actions}</div>}
       </div>
     </div>

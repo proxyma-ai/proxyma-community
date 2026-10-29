@@ -85,7 +85,7 @@ export function getTourSteps(): TourStep[] {
       route: '/',
       targetId: 'tour-chat-input',
       title: 'Not a chatbot - a team of agents',
-      text: 'Give it a task, not just a question. The main agent plans the work, hands parts of it to sub-agents running in parallel, and keeps going across your systems for as many steps as the job takes.',
+      text: 'Give it a task, not just a question. The agent plans the work, deploys agents to do parts of it in parallel, and keeps going across your systems for as many steps as the job takes.',
       points: [
         'Every step, source and change stays visible in the thread',
         'Writes to Jira, Confluence or Bitbucket wait for your approval unless you let it work alone',

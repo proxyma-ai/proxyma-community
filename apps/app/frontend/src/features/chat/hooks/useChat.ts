@@ -13,19 +13,16 @@ import {
   stop as stopFollowing,
 } from '../utils/chatStream'
 import { serverText } from '@/i18n/serverText'
-import {
-  agentDone, agentText, agentToolFinished, agentToolStarted, anyAgentRunning, findAgent, startAgent,
-  withAgent, withAgentInMessages,
-} from '../utils/subAgent'
+import { applyStatus, childrenBusy, parseAgentMail, parseAgentStatus, type AgentTreeData } from '../utils/agentTree'
 import { chatApi } from '../services/chatApi'
 import { useChatInstance } from '../instance/ChatInstanceContext'
+import type { ChatInstance } from '../instance/chatInstance'
 import { useAuthStore } from '@/store/authStore'
 import { useToastStore } from '@/store/toastStore'
 import { useTranslation, type Translate } from '@/i18n'
 import { refreshAccessToken } from '@/services/httpClient'
 import type {
-  ChatSseEvent, ConversationUsage, ChatMessage, PendingPrompt, SubAgentInfo, SubAgentStatus,
-  ToolCallInfo, WorkflowRunSnapshot,
+  ChatSseEvent, ConversationUsage, ChatMessage, PendingPrompt, ToolCallInfo, WorkflowRunSnapshot,
 } from '../types/chat.types'
 import type { ConversationsPage } from '../services/chatApi'
 
@@ -100,7 +97,8 @@ function toStoreMessage(m: ChatMessage): ChatMessage {
     // puts the step table back exactly where the live one had it - see WorkflowRun.triggerMessageId.
     workflowRunId: m.workflowRunId,
     stepLimit: m.stepLimit ?? undefined,
-    subAgentReports: m.subAgentReports ?? undefined,
+    // What reached the agent from its inbox at this point - see AgentMailEntry.
+    agentMail: m.agentMail ? parseAgentMail(m.agentMail) : undefined,
   }
 }
 
@@ -118,9 +116,21 @@ function toStoreMessage(m: ChatMessage): ChatMessage {
 // the current message's text was last appended" is what marks the next 'text' event as belonging to
 // a NEW iteration rather than a continuation - see newSegmentPendingRef's use below.
 
-const AGENT_STATUSES: SubAgentStatus[] = ['running', 'completed', 'partial', 'failed', 'stopped']
-const agentStatus = (value: unknown): SubAgentStatus =>
-  AGENT_STATUSES.includes(value as SubAgentStatus) ? value as SubAgentStatus : 'failed'
+// The tools whose result changes the agent tree or the alarms - what is read again when one returns.
+const TREE_TOOLS = new Set(['deployAgent', 'tellAgent', 'controlAgent', 'awaitAgents', 'deployAgents', 'verifyReport', 'deliberate'])
+const ALARM_TOOL = 'alarm'
+
+/**
+ * Leaves the conversation a chat holds - what its New conversation button does: stops following its
+ * stream and clears it. For a caller outside the chat page (the sidebar's recent chats), which then
+ * navigates: the chat page sends the address back to a conversation it still holds, so it must find
+ * none held.
+ */
+export function resetChatInstance(instance: ChatInstance): void {
+  stopFollowing(instance.stream)
+  instance.manualCondense.current = false
+  instance.store.getState().reset()
+}
 
 export function useChat() {
   const qc = useQueryClient()
@@ -146,25 +156,23 @@ export function useChat() {
   // `resumed`: picking up a stream a hidden tab paused - its first new event says whether anything
   // was missed meanwhile (chatStream.ts's `missed`).
   const attachStream = useCallback((convId: string, afterSeq = -1, resumed = false) => {
-    // One change to a sub-agent, wherever the call that started it is held: the turn's list, or
-    // the message that claimed it - several turns up, for one working in the background.
-    const updateAgent = (agentId: string, change: (agent: SubAgentInfo) => SubAgentInfo) => {
-      store.setToolCalls(prev => withAgent(prev, agentId, change))
-      store.setMessages(prev => withAgentInMessages(prev, agentId, change))
+    // Whether an agent this conversation deployed may still speak on its stream: one at work, or
+    // one owing it a report - by the tree as last read, with what the stream said since over it.
+    const agentsBusy = () => {
+      const tree = qc.getQueryData<AgentTreeData>(keys.agentTree(convId))
+      return childrenBusy(convId, tree?.agents, getState().agentStatus)
     }
-    const knownAgent = (agentId: string | undefined) => {
-      if (!agentId) return undefined
-      const state = getState()
-      return findAgent(state.messages, state.toolCalls, agentId)
-    }
-    // Nothing left to listen for: no turn, and no sub-agent working. The stream is closed here
-    // rather than by the 'done' that ended the last turn, which said more was coming.
+    // Nothing left to listen for: no turn, and no agent of its own at work or owing a report. The
+    // stream is closed here rather than by the 'done' that ended the last turn, which said more
+    // was coming.
     const closeIfIdle = () => {
-      const state = getState()
-      if (state.streaming || anyAgentRunning(state.messages, state.toolCalls)) return
+      if (getState().streaming || agentsBusy()) return
       stopFollowing(page)
       qc.invalidateQueries({ queryKey: keys.activeConversations() })
     }
+    // What the tree and the alarms chip show, read again.
+    const refreshAgents = () => qc.invalidateQueries({ queryKey: keys.agentTree(convId) })
+    const refreshAlarms = () => qc.invalidateQueries({ queryKey: keys.alarms(convId) })
     // Run at the END of a turn, from both the done and the error path. A tool row leaves its
     // running animation on a 'tool-result' event and on nothing else, so a call the turn never
     // heard back about goes on pulsing after the input has been re-enabled - reporting on work
@@ -243,9 +251,9 @@ export function useChat() {
           }
           // Nor an event from a stream that has been replaced.
           if (!accept(page, generation, event.seq)) return
-          // What a sub-agent does in the background is not the turn speaking: it must not reset
+          // A deployed agent changing where it stands is not the turn speaking: it must not reset
           // the turn's own quiet clock (which decides what the row under the thread says).
-          if (!event.type.startsWith('sub-agent-') || event.type === 'sub-agent-reported') store.setLastEventAt(Date.now())
+          if (event.type !== 'agent-status') store.setLastEventAt(Date.now())
           if (typeof event.now === 'number') store.setClockSkewMs(Date.now() - event.now)
           // Any reply from the provider ends a retry; a 'retry' event below starts one.
           if (event.type === 'thinking' || event.type === 'text' || event.type === 'tool-start') {
@@ -290,15 +298,6 @@ export function useChat() {
               break
             }
             case 'tool-start': {
-              // A sub-agent's own call goes into its panel, in the order it works - never into the
-              // turn's list, which is the main agent's and is emptied when the next turn starts.
-              if (knownAgent(event.parentCallId)) {
-                updateAgent(event.parentCallId, agent => agentToolStarted(agent, {
-                  kind: 'tool', callId: event.callId, toolName: event.toolName, arguments: event.data,
-                  done: false, startedAt: event.at,
-                }))
-                break
-              }
               store.setAwaitingModel(false)
               store.setThinkingTokens(null)
               // parentCallId arrives as '' for everything the main agent does; normalized to
@@ -322,9 +321,12 @@ export function useChat() {
               store.removePendingApproval(event.callId)
               store.removePendingEnableRequest(event.callId)
               store.removePendingQuestion(event.callId)
-              if (knownAgent(event.parentCallId)) {
-                updateAgent(event.parentCallId, agent => agentToolFinished(agent, event.callId, event.data, event.at))
-                break
+              // A call that changed the agent tree or the alarms: what shows them is read again.
+              {
+                const toolName = event.toolName
+                  || getState().toolCalls.find(tc => tc.callId === event.callId && !tc.done)?.toolName
+                if (toolName && TREE_TOOLS.has(toolName)) refreshAgents()
+                if (toolName === ALARM_TOOL) refreshAlarms()
               }
               // On the turn's list AND on whichever message ended up claiming this call (any
               // message, not just the last one - a turn can span several).
@@ -381,79 +383,43 @@ export function useChat() {
               store.setMessages(prev => applyStepLimit(prev, limit, unclaimed, answering))
               break
             }
-            case 'sub-agent-start': {
-              // callId is the `delegate` call that started it; from here on it is known by its own
-              // id (parentCallId), which every later event about it carries.
-              try {
-                const d = JSON.parse(event.data) as { agentId: string; mode?: string; title?: string; timeoutAt?: number }
-                const agent: SubAgentInfo = {
-                  id: d.agentId, mode: d.mode === 'async' ? 'async' : 'sync', status: 'running',
-                  title: d.title, startedAt: event.at, timeoutAt: d.timeoutAt, items: [],
-                }
-                store.setToolCalls(prev => startAgent(prev, event.callId, agent))
-                // A page that joined late may hold the call in a message already.
-                store.setMessages(prev => {
-                  if (findAgent(prev, getState().toolCalls, agent.id)) return prev
-                  return prev.map(m => {
-                    if (!m.toolCalls) return m
-                    const next = startAgent(m.toolCalls, event.callId, agent)
-                    return next === m.toolCalls ? m : { ...m, toolCalls: next }
-                  })
-                })
-              } catch { /* ignore parse errors, mirrors the 'usage' case's own try/catch style */ }
+            case 'agent-status': {
+              // An agent this conversation deployed has changed where it stands. Its panel, the
+              // agents map and the button's blink follow at once - the store's copy, and the tree's
+              // own row - and the tree is read again for what the event does not carry (its spend,
+              // a newly deployed agent).
+              const update = parseAgentStatus(event.data)
+              if (!update) break
+              store.putAgentStatus(update)
+              qc.setQueryData<AgentTreeData>(keys.agentTree(convId), prev => applyStatus(prev, update))
+              refreshAgents()
+              // It may have been the last thing worth listening for.
+              closeIfIdle()
               break
             }
-            case 'sub-agent-wait': {
-              // Its model call is out.
-              updateAgent(event.parentCallId, agent => ({ ...agent, awaitingModelSince: event.at, thinkingTokens: undefined }))
-              break
-            }
-            case 'sub-agent-thinking': {
-              const tokens = Number.parseInt(event.data, 10)
-              updateAgent(event.parentCallId, agent => ({
-                ...agent, awaitingModelSince: undefined, thinkingTokens: Number.isFinite(tokens) ? tokens : 0,
+            case 'agent-mail': {
+              // The running turn has taken what waited in its inbox: a deployed agent's report or
+              // message, an alarm going off, a background job's result, what the user told a
+              // deployed agent. The thread says so at this point - what the agent says next is its
+              // reaction to it - and, as with a message typed mid-turn, the steps taken before it
+              // stay above it.
+              const entries = parseAgentMail(event.data)
+              if (entries.length === 0) break
+              const unclaimed = takeUnclaimedToolCalls()
+              store.setMessages(prev => appendSettled(claimToolCalls(prev, unclaimed), {
+                role: 'assistant', content: '', agentMail: entries,
               }))
-              break
-            }
-            case 'sub-agent-text': {
-              // The WHOLE of that paragraph so far - see agentText.
-              try {
-                const d = JSON.parse(event.data) as { segment: number; text: string }
-                updateAgent(event.parentCallId, agent => agentText(agent, d.segment, d.text))
-              } catch { /* ignore parse errors, mirrors the 'usage' case's own try/catch style */ }
-              break
-            }
-            case 'sub-agent-done': {
-              try {
-                const d = JSON.parse(event.data) as { status?: string; report?: string; endedAt?: number; wakes?: boolean }
-                updateAgent(event.parentCallId, agent =>
-                  agentDone(agent, agentStatus(d.status), d.report ?? '', d.endedAt ?? event.at))
-                // The main agent is about to be told ('wakes'): a turn follows, or the running one
-                // takes it. Otherwise this may have been the last thing worth listening for.
-                if (!d.wakes) closeIfIdle()
-              } catch { /* ignore parse errors, mirrors the 'usage' case's own try/catch style */ }
-              break
-            }
-            case 'sub-agent-reported': {
-              // A background sub-agent's report has just been put in front of the main agent. The
-              // thread says so at this point: what the agent says next is its reaction to it. As
-              // with a message typed mid-turn, the steps taken before it stay above it.
-              try {
-                const d = JSON.parse(event.data) as { title?: string; status?: string; kind?: string }
-                const unclaimed = takeUnclaimedToolCalls()
-                store.setMessages(prev => appendSettled(claimToolCalls(prev, unclaimed), {
-                  role: 'assistant', content: '',
-                  subAgentReports: [{ agentId: event.callId, title: d.title ?? '', status: agentStatus(d.status),
-                    ...(d.kind === 'message' ? { kind: 'message' as const } : {}) }],
-                }))
-                newSegmentPendingRef.current = true
-              } catch { /* ignore parse errors, mirrors the 'usage' case's own try/catch style */ }
+              newSegmentPendingRef.current = true
+              if (entries.some(e => e.kind === 'alarm')) refreshAlarms()
+              refreshAgents()
               break
             }
             case 'turn-start': {
-              // A turn nobody sent a message to start: a sub-agent reported while the conversation
-              // was idle, and the main agent is answering it. Everything doSend sets up for a turn
-              // this page started, minus the message.
+              // A turn nobody sent a message to start: something reached the agent's inbox while
+              // the conversation was idle - a deployed agent's report, an alarm, a background
+              // result - and it is answering it. Everything doSend sets up for a turn this page
+              // started, minus the message.
+              refreshAlarms()
               if (getState().streaming) break
               manualCondenseRef.current = false
               store.setStreaming(true)
@@ -633,10 +599,11 @@ export function useChat() {
           store.setStreaming(false)
           store.setCondensing(false)
           settleToolActivity()
-          // The turn is over; sub-agents may not be (`more`). The stream then stays open for them
-          // and for the turn their reports will start - unless, by this page's own count, none is
-          // left and none is owed.
+          // The turn is over; the agents it deployed may not be (`more`). The stream then stays
+          // open for them and for the turn their reports will start.
           if (!more) ended(page, generation)
+          // An alarm it set or one that went off.
+          qc.invalidateQueries({ queryKey: keys.alarms(convId) })
           qc.invalidateQueries({ queryKey: keys.conversations() })
           // Also drop the cached message history for this conversation - setConversationId()
           // reads it via fetchQuery(), which serves the 30s-stale cached snapshot rather than
@@ -675,8 +642,8 @@ export function useChat() {
           //
           // ONLY THE IDS OF THE TAIL since 2026-10-17: of the messages with no id yet, plus one, from
           // the end of the transcript. The whole conversation after every turn was most of what a page
-          // received while background sub-agents reported, each report being a turn - and the message
-          // that started them carries all their steps. Nothing without an id, nothing asked for.
+          // received while background work reported, each report being a turn. Nothing without an
+          // id, nothing asked for.
           const missing = idlessTail(getState().messages)
           if (missing > 0) {
             chatApi.getMessageIds(convId, missing + 1).then(ids => {
@@ -692,16 +659,15 @@ export function useChat() {
           store.setStreaming(false)
           store.setCondensing(false)
           settleToolActivity()
-          // No turn was running: the stream was open for sub-agents in the background, and what
-          // failed is the connection to it. Their panels say what is known; nothing was being
+          // No turn was running: the stream was open for agents working in the background, and
+          // what failed is the connection to it. Their panels say what is known; nothing was being
           // answered that an error bubble could belong to.
           if (!wasStreaming) {
             if (connectionLost) return
           }
-          // The TURN failed and sub-agents are still working: go on following them.
+          // The TURN failed and agents it deployed are still working: go on following them.
           if (!connectionLost) {
-            const state = getState()
-            if (anyAgentRunning(state.messages, state.toolCalls)) {
+            if (agentsBusy()) {
               setTimeout(() => {
                 if (getState().conversationId === convId && !page.close) {
                   attachStream(convId, page.lastSeq)
@@ -833,7 +799,7 @@ export function useChat() {
       qc.invalidateQueries({ queryKey: keys.activeConversations() })
       if (getState().conversationId !== sentFrom) return
       store.setConversationId(convId)
-      // Already following this conversation - sub-agents were working in the background - so the
+      // Already following this conversation - its agents were working in the background - so the
       // server kept its event sink and the new stream replays it: skip what this page holds.
       attachStream(convId, resumeAfter(page, convId))
       for (const q of getState().messageQueue) if (q.clientId) offerToTurn(q.clientId)
@@ -1082,6 +1048,7 @@ export function useChat() {
     store.clearPendingEnableRequests()
     store.clearPendingQuestions()
     store.clearQueue()
+    store.clearAgentStatus()
     store.setMessages([])
     store.setWorkflowRuns([])
     store.setLoadingHistory(true)
@@ -1150,8 +1117,8 @@ export function useChat() {
     if (!status.active && !status.condensing && !status.background) {
       return setConversationId(id)
     }
-    // A turn is running, or only sub-agents in the background are. Either way the stream is
-    // followed; only a turn makes the composer a Stop button.
+    // A turn is running, or only background work is - agents it deployed, a background job. Either
+    // way the stream is followed; only a turn makes the composer a Stop button.
     const turnRunning = status.active || status.condensing
     store.setConversationId(id)
     store.setToolCalls([])
@@ -1172,6 +1139,7 @@ export function useChat() {
     store.clearPendingEnableRequests()
     store.clearPendingQuestions()
     store.clearQueue()
+    store.clearAgentStatus()
     store.setWorkflowRuns([])
     store.setAttachedToolCallCount(0)
     store.setLoadingHistory(true)
@@ -1189,7 +1157,7 @@ export function useChat() {
     // before it began, would be the wrong starting point for that replay.
     //
     // AND ONLY FROM WHERE THE TRANSCRIPT STOPS (`eventSeq`), since 2026-10-02. With a turn running
-    // that is where the turn began, as before. With only sub-agents running it is the last event
+    // that is where the turn began, as before. With only background work running it is the last event
     // published: the sink still holds the turn that started them, which the transcript already
     // carries in full, and replaying it would say all of it twice.
     let eventSeq = -1

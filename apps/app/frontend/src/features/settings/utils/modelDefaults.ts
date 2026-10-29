@@ -3,7 +3,7 @@
 // Since 2026-10-03 the agent runs with the MODEL's own limits until it is given others (see
 // ChatSettings.FROM_MODEL on the server). Each of those two controls therefore has a first choice
 // that means "not set", and what it says depends on what is known: the number the provider states
-// for the model, the agent's own setting for a sub-agent, or neither.
+// for the model, the agent's own setting for a deployed agent, or neither.
 //
 // Pure, so `node --test` reaches it: the page must name the same number the server will use, and
 // which of the three it is was decided here and nowhere else.
@@ -37,7 +37,7 @@ export function tokenCountLabel(tokens: number): string {
 /**
  * The first choice of a limit's group - the one that means "not set":
  *
- * - `same`: a sub-agent whose agent HAS a setting takes that setting.
+ * - `same`: a deployed agent whose agent HAS a setting takes that setting.
  * - `model`: nothing is set, and the provider states the model's own.
  * - `default`: nothing is set and nothing is stated, for the context window - the server assumes
  *   one, and the page says which.
@@ -52,7 +52,7 @@ export interface UnsetLimit {
 export function unsetLimit(
   kind: 'output' | 'context',
   stated: number | null | undefined,
-  // For a sub-agent: the agent's own stored value, '' while the agent follows its model.
+  // For a deployed agent: the agent's own stored value, '' while the agent follows its model.
   agentSetting = '',
 ): UnsetLimit {
   const inherited = Number.parseInt(agentSetting, 10)

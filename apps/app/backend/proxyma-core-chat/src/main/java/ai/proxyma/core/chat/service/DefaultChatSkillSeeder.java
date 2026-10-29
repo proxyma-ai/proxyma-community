@@ -187,7 +187,7 @@ class DefaultChatSkillSeeder {
             - Found nothing, or only weak evidence: say so. "The indexed sources don't cover this" \
               beats a confident answer built on a thin match.
             - Cite only what you actually read - never a source you only saw named in another \
-              document. Keep a sub-agent's sources attached to the claims they support.
+              document. Keep an agent's sources attached to the claims they support.
             """
         ),
         new SeededSkill(
@@ -402,9 +402,9 @@ class DefaultChatSkillSeeder {
             - `convertDocument` before summarizing or quoting - never guess a binary file's \
               contents.
             - A real document comes back offloaded. Call `convertDocument` YOURSELF - it confirms \
-              the conversion - then, if `delegate` is available, delegate the reading with the \
+              the conversion - then deploy an agent (`deployAgent`) to do the reading, with the \
               `filePath`, what the document is and every part to cover; if you do not know the \
-              parts yet (sheets, sections), have the sub-agent enumerate and cover each. "It is \
+              parts yet (sheets, sections), have the agent enumerate and cover each. "It is \
               one file" says nothing about how much reading it is.
             - "Summarize this file" means every sheet or section, not the two that looked \
               promising. Read it yourself only for a targeted lookup you can name a search term \
@@ -637,7 +637,7 @@ class DefaultChatSkillSeeder {
               "Example Domain", then `removeSource` it.
 
             ## 11. Agents
-            - `delegate`, if offered: a sub-agent reports this installation's version. PASS if \
+            - `deployAgent`: an agent you deploy reports this installation's version. PASS if \
               it matches step 1.
 
             ## Report

@@ -103,7 +103,7 @@ export function SetupPage() {
     // The kit's sign-in card, as every auth page is: the lockup ONCE (app UI review, F11), and a
     // card that scrolls in its own box - this is the longest of the four forms.
     <AuthLayout
-      logo={<Logo />}
+      logo={<Logo size={22} />}
       title={t('Create the super admin account')}
       subtitle={t('Initial server setup')}
       // The card's own note under its subtitle (AuthLayout's `description`), not a Caption in the form.

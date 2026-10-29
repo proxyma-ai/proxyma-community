@@ -18,7 +18,7 @@ import { isGone, withReason } from '@/services/apiError'
 interface Props {
   request: PendingEnableRequest
   conversationId: string
-  /** "From sub-agent: X", for a sub-agent's request (AgentPrompts) - under the dialog's title. */
+  /** Who asks, when it is not the agent itself - under the dialog's title. */
   from?: string
 }
 

@@ -56,7 +56,7 @@ export function AuditEventDialog({ id, multiUser, onClose }: { id: string; multi
         wrapTitle
       />
       {/* The recorded detail is of unknown length, so the body is the one region that scrolls. */}
-      <DialogBody scroll className="space-y-5">
+      <DialogBody scroll className="space-y-6">
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-2/3" />
@@ -107,7 +107,7 @@ function EntryBody({ entry, multiUser }: { entry: AuditEventDetail; multiUser: b
 
       {fields && fields.length > 0 && (
         <div>
-          <Eyebrow className="mb-1.5">{t('Recorded with it')}</Eyebrow>
+          <Eyebrow className="mb-2">{t('Recorded with it')}</Eyebrow>
           <JsonFieldTree fields={fields} />
         </div>
       )}

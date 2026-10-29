@@ -30,8 +30,7 @@ import java.util.List;
  *
  * <p>It follows the OPERATING SYSTEM's light or dark setting, not the app's Appearance, which lives
  * in the window's own storage where this process cannot read it. A tray menu is an OS surface, and
- * matching the taskbar it opens from is the smaller surprise. Dark is the Black shade, the one the
- * splash already uses.
+ * matching the taskbar it opens from is the smaller surprise. Dark is the splash's own dark gray.
  */
 final class TrayMenu {
 
@@ -51,20 +50,20 @@ final class TrayMenu {
     private static final float TEXT = 14f;      // text-sm
     private static final int RADIUS = 8;        // rounded-lg
 
-    /** The tokens this menu uses, per mode - proxyma-tokens.css, Black shade and light. */
+    /** The colors this menu uses, per mode - mirroring proxyma-tokens.css's Dark and Light as of 2026-10-28. */
     private record Palette(Color fill, Color line, Color ink, Color inkHover, Color hover, Color danger, Color dangerHover) {
         static Palette current() {
             if (lightTheme()) {
                 Color fill = new Color(255, 255, 255);
-                return new Palette(fill, blend(new Color(216, 221, 223), fill, 0.45f),
-                        new Color(56, 56, 56), new Color(24, 24, 24),
+                return new Palette(fill, blend(new Color(228, 228, 231), fill, 0.45f),
+                        new Color(63, 63, 70), new Color(24, 24, 27),
                         blend(new Color(90, 90, 90), fill, 0.10f),
                         new Color(185, 28, 28), blend(new Color(185, 28, 28), fill, 0.10f));
             }
-            Color fill = new Color(37, 37, 38);   // --float-fill in the Black shade
-            return new Palette(fill, blend(new Color(60, 60, 60), fill, 0.45f),
-                    new Color(204, 204, 204), new Color(255, 255, 255),
-                    blend(new Color(157, 157, 157), fill, 0.10f),
+            Color fill = new Color(28, 28, 30);   // Dark's surface plane as of 2026-10-28
+            return new Palette(fill, blend(new Color(46, 46, 50), fill, 0.45f),
+                    new Color(212, 212, 216), new Color(244, 244, 245),
+                    blend(new Color(161, 161, 170), fill, 0.10f),
                     new Color(248, 113, 113), blend(new Color(248, 113, 113), fill, 0.10f));
         }
     }

@@ -117,6 +117,9 @@ final class ModelCall {
         /** The provider failed in a way worth waiting out, and attempt {@code attempt} is next. */
         default void retry(int attempt, Throwable failure) {}
 
+        /** An attempt at the call starts: the first, or the next one once a retry's wait is over. */
+        default void attempt() {}
+
         /** The call failed for good, and not because the caller stopped it. Thrown right after. */
         default void failed(Throwable failure) {}
     }
@@ -260,6 +263,8 @@ final class ModelCall {
         Aggregated aggregated;
         try {
             aggregated = source
+                    // Per attempt: a retry subscribes again, so this marks the end of its wait.
+                    .doOnSubscribe(subscription -> listener.attempt())
                     // Stops consuming (and cancels the upstream provider call) as soon as a stop
                     // lands, instead of only being noticed between whole calls - a generation that
                     // degenerates into a long/repeating stream otherwise could not be interrupted
@@ -484,7 +489,7 @@ final class ModelCall {
         return status == 429 || status == 503 || status == 529;
     }
 
-    /** Whether the provider refused for its RATE LIMIT in particular - what a sub-agent's report says. */
+    /** Whether the provider refused for its RATE LIMIT in particular - what a failed agent's report says. */
     static boolean isRateLimited(Throwable e) {
         return httpStatus(e) == 429;
     }

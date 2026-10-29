@@ -58,7 +58,7 @@ export function WriteToolConsentModal({ connectorLabel, onAccept, onCancel }: Pr
           />
         </DialogDescription>
         <Checkbox
-          className="mt-5"
+          className="mt-6"
           checked={acknowledged}
           shake={shake.shaking}
           onChange={v => { setAcknowledged(v); if (v) setError('') }}

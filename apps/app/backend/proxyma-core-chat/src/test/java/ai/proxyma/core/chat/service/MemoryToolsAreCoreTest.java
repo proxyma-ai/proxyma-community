@@ -26,9 +26,7 @@ class MemoryToolsAreCoreTest {
 
     private final ChatSkillService skills = mock(ChatSkillService.class);
     private final LicenseToolScope license = mock(LicenseToolScope.class);
-    private final SubAgentService subAgents = mock(SubAgentService.class);
-    private final ToolSkillGating gating = new ToolSkillGating(skills,
-            subAgents, mock(KnowledgeGraphService.class), license);
+    private final ToolSkillGating gating = new ToolSkillGating(skills, mock(KnowledgeGraphService.class), license);
 
     private static ToolCallback tool(String name) {
         ToolDefinition definition = mock(ToolDefinition.class);
@@ -54,7 +52,6 @@ class MemoryToolsAreCoreTest {
         when(skills.toolsForSkillName("Memory & Knowledge"))
                 .thenReturn(Optional.of(Set.of("recall", "remember", "searchConversations")));
         when(license.isToolIncluded(anyString(), anySet())).thenReturn(true);
-        when(subAgents.isAvailable()).thenReturn(true);
 
         ToolCallback recall = tool("recall");
         ToolCallback search = tool("searchConversations");

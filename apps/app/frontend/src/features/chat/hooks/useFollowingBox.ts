@@ -5,7 +5,7 @@ import { catchUpIn, followsChange, holdAfterScroll, pushesPastEnd } from '../uti
 const BOX_SLACK_PX = 8
 
 /**
- * A box inside the thread that scrolls on its own - a tool list past five calls, a sub-agent's
+ * A box inside the thread that scrolls on its own - a tool list past five calls, a deployed agent's
  * panel - following its newest line by the THREAD'S rule (threadFollow.ts): a scroll away from the
  * end holds it for a while, every scroll restarts the while, back at the end follows at once, and
  * once the while is over it goes to the end by itself if anything arrived meanwhile.
@@ -24,7 +24,7 @@ export function useFollowingBox(deps: DependencyList) {
   const wheelImpl = useRef<(e: WheelEvent) => void>(() => {})
   const onWheelRef = useRef((e: WheelEvent) => wheelImpl.current(e))
 
-  // ONCE A FRAME, in the frame (2026-10-17). Every running sub-agent's panel follows its newest line,
+  // ONCE A FRAME, in the frame (2026-10-17). Every running deployed agent's panel follows its newest line,
   // and set at each change, reading scrollHeight forced a layout per panel per event - with eight at
   // work, the most of what the page spent. Read in the frame, the first read lays the page out and
   // the rest find it laid out: setting scrollTop changes no layout.

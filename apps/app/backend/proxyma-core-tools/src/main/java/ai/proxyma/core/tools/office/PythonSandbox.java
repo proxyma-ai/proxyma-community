@@ -25,6 +25,16 @@ public interface PythonSandbox {
      */
     Result run(String code, Map<String, byte[]> inputs, Duration timeout) throws IOException;
 
+    /**
+     * Runs a SHELL COMMAND the same way: {@code inputs} laid out, everything under {@code outputs/}
+     * returned (runCommand). Only the container runs one - its shell, with no network, as nobody - so
+     * a sandbox with no shell refuses; Desktop runs its commands on the user's machine instead
+     * (RunCommandTool), behind the write approval.
+     */
+    default Result shell(String command, Map<String, byte[]> inputs, Duration timeout) throws IOException {
+        throw new IOException("This installation runs no shell commands in a sandbox.");
+    }
+
     record Result(int exitCode, String stdout, String stderr, boolean timedOut, Map<String, byte[]> outputs) {}
 
     /** The limits every implementation enforces the same way. */

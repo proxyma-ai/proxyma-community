@@ -21,7 +21,7 @@ interface RowProps {
 }
 
 // One tool call: whether it worked, what it is, what it did, how long it took. The same row for
-// the main agent's calls (ToolCallList) and a sub-agent's (SubAgentPanel). The row itself is the
+// every call the agent makes (ToolCallList). The row itself is the
 // kit's `ToolCallRow`, shared with the site's product scenes; what it SAYS - the wording, the
 // glyph, the approval and enable prompts - is this app's.
 export function ToolCallRow({ tc, approval, enableRequest, conversationId, onOpenDetail }: RowProps) {
@@ -49,9 +49,8 @@ export function ToolCallRow({ tc, approval, enableRequest, conversationId, onOpe
     <div>
       {/* WHAT the tool is and WHETHER it worked, in one mark (see ToolMark). The words are
           clickable in every state (not just once done), so a running call's arguments can be read
-          before it lands. A failed call's error is shown in full and wrapped - never truncated:
-          it is the one line of the row a reader needs to read to the end, and cutting it at 300px
-          left its useful half off-screen. */}
+          before it lands. A failed call's error starts on the row's one line; the whole of it is
+          in the detail the words open (the UI review, 2026-10-28). */}
       <KitToolCallRow
         icon={toolIcon(tc.toolName)}
         state={!tc.done ? 'running' : failed ? 'failed' : 'done'}

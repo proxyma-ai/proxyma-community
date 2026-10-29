@@ -134,8 +134,8 @@ export function WorkingBadge({ count, label, onClick, className }: {
         onClick={onClick}
         aria-label={label}
         className={cn(
-          'inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-full px-1.5 touch:h-tap touch:min-w-tap',
-          'bg-brand-accent/15 text-brand-legible mouse:hover:text-ink-primary focus-ring',
+          'inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-full px-2 touch:h-tap touch:min-w-tap',
+          'bg-surface-alt text-brand-legible mouse:hover:text-ink-primary focus-ring',
           className,
         )}
       >

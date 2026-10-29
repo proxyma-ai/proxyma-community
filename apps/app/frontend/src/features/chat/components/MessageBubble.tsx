@@ -103,7 +103,7 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
   const showActionsRow = showActions || showRewind || showUserCopy
 
   // The kit's message layout: a user's right-aligned in primary ink at most 78% wide, the
-  // assistant's the column's full width in secondary ink, an error in danger ink, at TEXT.body's 15px -
+  // assistant's the column's full width in secondary ink, an error in danger ink, at TEXT.body's 16px -
   // MarkdownRenderer's blocks match it, so agent and user messages stay the same size.
   //
   // NO BACKGROUND AND NO HORIZONTAL PADDING, since 2026-09-14 - the maintainer's call. The text
@@ -121,7 +121,7 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
   const footer = (
     <>
       {isUser && message.attachmentNames && message.attachmentNames.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-2 justify-end animate-fade-in">
+        <div className="flex flex-wrap gap-2 mt-2 justify-end animate-fade-in">
           {message.attachmentNames.map((name, i) => <SentAttachment key={`${name}-${i}`} name={name} />)}
         </div>
       )}
@@ -409,7 +409,7 @@ function GuardrailNotice({ message }: { message: ChatMessage }) {
     <NoticeCard icon={ShieldCheck} title={message.content}>
       {categories.length > 0 && (
         // A fact about the message, sentence case and unfilled: the kit Badge's outline variant.
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {categories.map((c, i) => <Badge key={`${c}-${i}`} variant="outline" label={c} />)}
         </div>
       )}

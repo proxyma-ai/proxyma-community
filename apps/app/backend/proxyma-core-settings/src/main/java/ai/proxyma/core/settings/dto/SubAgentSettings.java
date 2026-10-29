@@ -68,6 +68,35 @@ public class SubAgentSettings {
     @JsonProperty("prompt-cache")
     private String promptCache = "";
 
+    // THE AGENT TREE (2026-10-28, the maintainer's design): every agent may deploy child agents, and
+    // they theirs, down to this many levels below the conversation the user opened - 2 by default,
+    // at most 5. A child at the limit is not offered deployAgent and is refused it at the call.
+    @JsonProperty("max-depth")
+    private Integer maxDepth;
+    // Whether children of the same parent may message each other (tellAgent to a sibling). Off by
+    // default: a parent hears from each child, and the children work apart.
+    @JsonProperty("peer-messaging")
+    private Boolean peerMessaging;
+
+    public static final int DEFAULT_MAX_DEPTH = 2;
+    public static final int MAX_DEPTH_CEILING = 5;
+
+    public Integer getMaxDepth() { return maxDepth; }
+    public void setMaxDepth(Integer maxDepth) { this.maxDepth = maxDepth; }
+    public Boolean getPeerMessaging() { return peerMessaging; }
+    public void setPeerMessaging(Boolean peerMessaging) { this.peerMessaging = peerMessaging; }
+
+    /** How many levels of agents may sit below the conversation the user opened, 1 to 5. */
+    public int maxDepth() {
+        if (maxDepth == null) return DEFAULT_MAX_DEPTH;
+        return Math.max(1, Math.min(MAX_DEPTH_CEILING, maxDepth));
+    }
+
+    /** Whether siblings may message each other. */
+    public boolean peerMessaging() {
+        return Boolean.TRUE.equals(peerMessaging);
+    }
+
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
 
@@ -99,6 +128,32 @@ public class SubAgentSettings {
 
     public String getPromptCache() { return promptCache; }
     public void setPromptCache(String promptCache) { this.promptCache = promptCache; }
+
+    // WHICH MODELS AN AGENT MAY NAME when it deploys one (the maintainer's request, 2026-10-29: an
+    // agent invented model names, and a fixed model or none was the only choice). ANY: any model a
+    // configured provider lists; ONLY: just the entries of model-list; EXCEPT: all but those. An
+    // entry is a provider instance id, for all its models, or "<instance id>|<model>", one per line.
+    // What an agent may name is always also a model a provider lists (AgentModels). The default
+    // model above, used when an agent names none, is the person's own choice and is not checked.
+    public static final String MODELS_ANY = "ANY";
+    public static final String MODELS_ONLY = "ONLY";
+    public static final String MODELS_EXCEPT = "EXCEPT";
+
+    @JsonProperty("model-rule")
+    private String modelRule = MODELS_ANY;
+    @JsonProperty("model-list")
+    private String modelList = "";
+
+    public String getModelRule() { return modelRule; }
+    public void setModelRule(String modelRule) { this.modelRule = modelRule; }
+    public String getModelList() { return modelList; }
+    public void setModelList(String modelList) { this.modelList = modelList; }
+
+    /** The rule as one of ANY, ONLY or EXCEPT; anything else reads as ANY. */
+    public String modelRule() {
+        String r = modelRule == null ? "" : modelRule.strip().toUpperCase(java.util.Locale.ROOT);
+        return MODELS_ONLY.equals(r) || MODELS_EXCEPT.equals(r) ? r : MODELS_ANY;
+    }
 
     /**
      * The lifetime a sub-agent's calls ask for: its own choice, else the agent's, resolved for a

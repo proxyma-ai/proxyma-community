@@ -14,6 +14,7 @@ import { cardClass } from './Card'
 import { cn } from './cn'
 import { FadeSwap } from './FadeSwap'
 import { PAGE_COLUMN, PAGE_GUTTER, PROSE_MEASURE } from './layout'
+import { TEXT } from './typeScale'
 
 /**
  * THE MARKETING SITE'S PATTERNS - sections, their headings, plan cards, the FAQ, a link card, the
@@ -29,18 +30,25 @@ import { PAGE_COLUMN, PAGE_GUTTER, PROSE_MEASURE } from './layout'
  * A home-page section: the page column, a rule above it, `py-16 sm:py-24`. `compact` is the band
  * between two large sections (the trust strip); `first` drops the rule.
  */
-export function PageSection({ id, children, size = 'default', first, className, innerClassName }: {
+export function PageSection({ id, children, size = 'default', first, tone = 'page', ruled = true, className, innerClassName }: {
   id?: string
   children: ReactNode
   size?: 'default' | 'compact'
   first?: boolean
+  /**
+   * `page` (the default): on the page's own plane. `sheet`: a band of the card plane across the
+   * window, lined above and below - a sheet laid on the page, its depth - and never ruled.
+   */
+  tone?: 'page' | 'sheet'
+  /** The rule above it (the default); `false` where the spacing, or a sheet beside it, separates. */
+  ruled?: boolean
   className?: string
   innerClassName?: string
 }) {
   return (
     <section id={id} className={cn(
-      size === 'default' ? 'py-16 sm:py-24 short:py-8' : 'py-10 sm:py-14 short:py-6',
-      !first && 'border-t border-line',
+      size === 'default' ? 'py-16 sm:py-24 short:py-8' : 'py-12 sm:py-16 short:py-6',
+      tone === 'sheet' ? 'bg-surface border-y border-line' : !first && ruled && 'border-t border-line',
       className,
     )}>
       <div className={cn(PAGE_COLUMN, PAGE_GUTTER, innerClassName)}>{children}</div>
@@ -48,10 +56,12 @@ export function PageSection({ id, children, size = 'default', first, className, 
   )
 }
 
+// Steps of the preset's scale (since 2026-10-28; they were 36/52, 32/44 and 26/34px, off it), each
+// with that step's own leading.
 const DISPLAY_SIZE = {
-  hero: 'text-[2.25rem] sm:text-[3.25rem]',
-  section: 'text-[2rem] sm:text-[2.75rem]',
-  sub: 'text-[1.625rem] sm:text-[2.125rem]',
+  hero: 'text-4xl sm:text-5xl',
+  section: 'text-3xl sm:text-4xl',
+  sub: 'text-2xl sm:text-3xl',
 }
 
 /**
@@ -70,8 +80,8 @@ export function DisplayHeading({ title, lead, as: Tag = 'h2', size, className }:
   const s = size ?? (Tag === 'h1' ? 'hero' : Tag === 'h2' ? 'section' : 'sub')
   return (
     <div className={cn(PROSE_MEASURE, className)}>
-      <Tag className={cn('display text-ink-primary', DISPLAY_SIZE[s], 'leading-[1.1]')}>{title}</Tag>
-      {lead && <p className="mt-4 text-base sm:text-lg leading-relaxed text-ink-secondary">{lead}</p>}
+      <Tag className={cn('display text-ink-primary', DISPLAY_SIZE[s])}>{title}</Tag>
+      {lead && <p className={cn(TEXT.lead, 'mt-4')}>{lead}</p>}
     </div>
   )
 }
@@ -96,7 +106,10 @@ export function SplitSection({ heading, children, sticky = true, id, className }
   )
 }
 
-/** One numbered feature: the numeral in the brand face, a title, a sentence, and its picture. */
+/**
+ * One numbered feature: the numeral as a brand-ink readout (the UI face - Orbitron is the wordmark's
+ * alone, since 2026-10-28), a title, a sentence, and its picture.
+ */
 export function FeatureRow({ index, title, sentence, extra, media }: {
   index: number
   title: ReactNode
@@ -105,11 +118,11 @@ export function FeatureRow({ index, title, sentence, extra, media }: {
   media: ReactNode
 }) {
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-x-12 lg:items-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-x-12 lg:items-start">
       <div className="lg:col-span-5 min-w-0">
-        <p aria-hidden="true" className="font-brand font-bold text-3xl leading-none text-brand-legible">{String(index).padStart(2, '0')}</p>
-        <h3 className="mt-3 text-xl sm:text-2xl font-bold tracking-tight text-ink-primary leading-snug">{title}</h3>
-        <p className="mt-3 text-base leading-relaxed text-ink-secondary">{sentence}</p>
+        <p aria-hidden="true" className="data-readout font-semibold text-3xl leading-none text-brand-legible">{String(index).padStart(2, '0')}</p>
+        <h3 className="mt-3 text-xl sm:text-2xl font-semibold text-ink-primary">{title}</h3>
+        <p className={cn(TEXT.body, 'mt-3')}>{sentence}</p>
         {extra}
       </div>
       <div className="lg:col-span-7 min-w-0">{media}</div>
@@ -133,13 +146,13 @@ export function RuledColumns({ items, variant = 'fact', columns = 3, boxed, titl
     <dl className={cn('grid gap-6', columns === 2 && 'sm:grid-cols-2', columns === 3 && 'sm:grid-cols-3', columns === 4 && 'sm:grid-cols-2 lg:grid-cols-4', title && 'mt-6')}>
       {items.map((it, i) => (
         <div key={i} className={cn(
-          variant === 'fact' && columns !== 4 && 'sm:border-l sm:border-line sm:pl-5 sm:first:border-l-0 sm:first:pl-0',
+          variant === 'fact' && columns !== 4 && 'sm:border-l sm:border-line sm:pl-6 sm:first:border-l-0 sm:first:pl-0',
           // Four across only from lg (two at sm), so a rule at sm would open the second row.
-          variant === 'fact' && columns === 4 && 'lg:border-l lg:border-line lg:pl-5 lg:first:border-l-0 lg:first:pl-0',
+          variant === 'fact' && columns === 4 && 'lg:border-l lg:border-line lg:pl-6 lg:first:border-l-0 lg:first:pl-0',
           variant === 'point' && 'border-t border-line pt-4',
         )}>
           <dt className="text-sm font-semibold text-ink-primary">{it.term}</dt>
-          <dd className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{it.detail}</dd>
+          <dd className="mt-2 text-sm text-ink-secondary">{it.detail}</dd>
         </div>
       ))}
     </dl>
@@ -159,9 +172,9 @@ export function RuledColumns({ items, variant = 'fact', columns = 3, boxed, titl
  */
 export function IncludedList({ items, size = 'sm', className }: { items: ReactNode[]; size?: 'xs' | 'sm' | 'md'; className?: string }) {
   return (
-    <ul className={cn('flex flex-col gap-2.5', className)}>
+    <ul className={cn('flex flex-col gap-2', className)}>
       {items.map((it, i) => (
-        <li key={i} className={cn('flex items-start gap-2.5 text-ink-secondary', size === 'xs' ? 'text-xs' : size === 'sm' ? 'text-sm' : 'text-base')}>
+        <li key={i} className={cn('flex items-start gap-2 text-ink-secondary', size === 'xs' ? 'text-xs' : size === 'sm' ? 'text-sm' : 'text-base')}>
           <Check size={14} className={cn('shrink-0 text-brand-legible', size === 'xs' ? 'mt-0.5' : 'mt-1')} aria-hidden="true" />
           <span>{it}</span>
         </li>
@@ -175,11 +188,13 @@ export function IncludedList({ items, size = 'sm', className }: { items: ReactNo
  * the price in the display face, its note, a rule, what is included, and the one action. The
  * featured plan is a heavier brand RULE, never a second colour or a shadow.
  */
-export function PlanCard({ name, badge, tagline, price, wasPrice, priceNote, features, action, featured }: {
+export function PlanCard({ name, badge, tagline, price, priceSize = 'figure', wasPrice, priceNote, features, action, featured }: {
   name: ReactNode
   badge?: ReactNode
   tagline: ReactNode
   price: ReactNode
+  /** `figure` (48px) for a number, `words` (30px) for a price written in words ("Free", "From $1,490 a year"). */
+  priceSize?: 'figure' | 'words'
   /** The list price while a sale runs, struck through beside the sale price. */
   wasPrice?: ReactNode
   priceNote?: ReactNode
@@ -188,22 +203,22 @@ export function PlanCard({ name, badge, tagline, price, wasPrice, priceNote, fea
   featured?: boolean
 }) {
   return (
-    <div className={cn('relative flex flex-col rounded-lg px-6 py-6 sm:px-7 sm:py-7', featured ? 'border-2 border-brand-solid' : 'border border-line')}>
+    <div className={cn('relative flex flex-col rounded-lg px-4 py-6 sm:p-8', featured ? 'border-2 border-brand-solid' : 'border border-line')}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-1">
         <h3 className="text-lg font-semibold text-ink-primary">{name}</h3>
         {badge}
       </div>
-      <p className="text-sm text-ink-secondary mb-5 md:min-h-[2.75rem]">{tagline}</p>
+      <p className="text-sm text-ink-secondary mb-4">{tagline}</p>
       {/* A sale's price arrives after the page (it is fetched), and fades in over the list price. */}
       <FadeSwap swapKey={wasPrice ? 'sale' : 'list'}>
         <div className="mb-0.5 flex flex-wrap items-baseline gap-x-3">
           {wasPrice && <s className="display text-2xl text-ink-caption">{wasPrice}</s>}
-          <span className="display text-5xl text-ink-primary">{price}</span>
+          <span className={cn('display text-ink-primary', priceSize === 'words' ? 'text-3xl' : 'text-5xl')}>{price}</span>
         </div>
         <p className="text-xs text-ink-caption mb-6">{priceNote}</p>
       </FadeSwap>
-      <div className="h-px mb-5 bg-line" />
-      <IncludedList items={features} className="mb-7 flex-1" />
+      <div className="h-px mb-6 bg-line" />
+      <IncludedList items={features} className="mb-8 flex-1" />
       {action}
     </div>
   )
@@ -227,11 +242,11 @@ export function LinkCard({ href, icon: Icon, title, summary, external, render }:
   const body = (
     <>
       {Icon && <Icon size={20} className="text-brand-legible mb-3" aria-hidden="true" />}
-      <p className="text-base font-semibold text-ink-primary inline-flex items-center gap-1.5">
+      <p className="text-base font-semibold text-ink-primary inline-flex items-center gap-2">
         {title}
         {external && <SquareArrowOutUpRight size={14} className="text-ink-caption" aria-hidden="true" />}
       </p>
-      {summary && <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{summary}</p>}
+      {summary && <p className="mt-2 text-sm text-ink-secondary">{summary}</p>}
     </>
   )
   if (render) return <>{render(cls, body)}</>
@@ -285,10 +300,10 @@ export function Timeline({ items, className }: {
     )}>
       {items.map((it, i) => (
         <li key={i} className="relative border-l border-line pl-6 pb-6 last:pb-0 md:border-l-0 md:border-t md:pl-0 md:pb-0 md:pt-6">
-          <span aria-hidden="true" className="absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full bg-brand-solid md:left-0 md:-top-[5px]" />
+          <span aria-hidden="true" className="absolute -left-[4px] top-1 h-2 w-2 rounded-full bg-brand-solid md:left-0 md:-top-[4px]" />
           <p className="data-readout text-xs font-semibold text-brand-legible">{it.marker}</p>
-          <p className="mt-1.5 text-sm font-semibold text-ink-primary">{it.title}</p>
-          {it.body && <p className="mt-1 text-sm leading-relaxed text-ink-secondary">{it.body}</p>}
+          <p className="mt-2 text-sm font-semibold text-ink-primary">{it.title}</p>
+          {it.body && <p className="mt-1 text-sm text-ink-secondary">{it.body}</p>}
         </li>
       ))}
     </ol>
@@ -319,7 +334,7 @@ export function DownloadRow({ id, name, audience, needs, action, note, className
         <h3 className="text-lg font-semibold text-ink-primary">{name}</h3>
         <p className="mt-1 text-sm text-ink-secondary">{audience}</p>
       </div>
-      <div className="min-w-0 text-sm leading-relaxed text-ink-secondary md:col-span-5">{needs}</div>
+      <div className="min-w-0 text-sm text-ink-secondary md:col-span-5">{needs}</div>
       <div className="flex min-w-0 flex-col items-start gap-2 md:col-span-3 md:items-stretch">
         {action}
         {note && <p className="text-xs text-ink-caption">{note}</p>}
@@ -362,13 +377,13 @@ export function CompareTable({ columns, columnLabels, groups, yes, no, caption, 
             <tr>
               {/* A cell, not a `th`: `.table-stack` restyles cells, and a group heading has to stack
                   with the rows under it on a phone. */}
-              <td colSpan={columns.length + 1} className="pt-7 pb-2 text-left text-sm font-semibold text-ink-primary">{g.heading}</td>
+              <td colSpan={columns.length + 1} className="pt-8 pb-2 text-left text-sm font-semibold text-ink-primary">{g.heading}</td>
             </tr>
             {g.rows.map((r, ri) => (
               <tr key={ri} className="border-b border-line/40">
-                <td className="py-2.5 pr-4 text-ink-secondary">{r.label}</td>
+                <td className="py-3 pr-4 text-ink-secondary">{r.label}</td>
                 {r.values.map((v, vi) => (
-                  <td key={vi} data-label={columnLabels[vi]} className="px-3 py-2.5 text-ink-secondary">
+                  <td key={vi} data-label={columnLabels[vi]} className="px-3 py-3 text-ink-secondary">
                     {v === true
                       ? <><Check size={16} className="inline text-brand-legible" aria-hidden="true" /><span className="sr-only">{yes}</span></>
                       : v === false

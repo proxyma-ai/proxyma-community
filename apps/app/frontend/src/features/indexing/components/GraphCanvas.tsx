@@ -140,7 +140,7 @@ function useGraphTheme(): Theme {
   const [theme, setTheme] = useState<Theme>(() => readTheme())
   useEffect(() => {
     const observer = new MutationObserver(() => setTheme(readTheme()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode', 'data-shade'] })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] })
     return () => observer.disconnect()
   }, [])
   return theme

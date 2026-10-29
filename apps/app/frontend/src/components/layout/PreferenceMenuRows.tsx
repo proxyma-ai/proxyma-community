@@ -22,18 +22,16 @@ import { useThemeStore } from '@/store/themeStore'
  */
 
 /**
- * The names each appearance goes by in every menu, translated at the call site.
- *
- * <p>The stored values are still `gray` and `black`; what they are CALLED is Proxyma - the
- * product's own teal-tinted dark - and Dark, a neutral VS Code-style gray. See appearance.ts.
+ * The names each appearance goes by in every menu, translated at the call site. See the kit's
+ * appearance.ts for what each resolves to.
  */
 export function useAppearanceNames(): Record<AppearancePreference, string> {
   const { t } = useTranslation()
-  return { system: t('System'), light: t('Light'), gray: t('Proxyma'), black: t('Dark') }
+  return { system: t('System'), light: t('Light'), dark: t('Dark') }
 }
 
 /**
- * Appearance - System, Light, Proxyma or Dark - as one row opening a submenu: the kit's
+ * Appearance - System, Light or Dark - as one row opening a submenu: the kit's
  * `AppearanceMenuRow`, fed this app's theme store and its words.
  *
  * <p>NEITHER THE SUBMENU NOR THE MENU CLOSES ON A CHOICE. Appearance is something people flip

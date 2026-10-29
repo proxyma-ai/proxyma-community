@@ -1,80 +1,67 @@
 /**
- * Appearance - the four-way preference behind every theme menu, as PURE functions.
+ * Appearance - the three-way preference behind every theme menu, as PURE functions.
  *
- * <p>System, Light, Proxyma and Dark, since 0.13.0. It was a two-way light/dark flip before that,
- * and the old "dark" is what Proxyma is now: the teal-tinted n950 canvas the product has always
- * had. Dark is a neutral VS Code-style gray beside it, and System follows the operating system
- * live - light to Light, dark to Dark (since 2026-09-26; it was Proxyma until then).
+ * <p>System, Light and Dark, since 2026-10-28 (the UI review: "no colored page backgrounds"). From
+ * 0.13.0 until then there was a fourth, Proxyma - a teal-tinted dark stored as `gray` - and Dark was
+ * stored as `black`, the name it shipped under when it was a true black. Both stored words, and the
+ * `dark` of the two-way flip before 0.13.0, now read as Dark, so nobody who chose a dark appearance
+ * wakes up to a white page. System follows the operating system live.
  *
- * <p>THE STORED VALUES ARE STILL `gray` AND `black`, the names Proxyma and Dark shipped under in
- * 0.13.0, when Dark was a true black. Renaming them would need a second migration and would make
- * the Privacy Policy's list of stored words untrue; only what a person reads changed.
- *
- * <p>TWO ATTRIBUTES ON <html>, NOT ONE WITH FOUR VALUES. `data-mode` stays the light/dark axis
- * it always was, so every `[data-mode="dark"]` selector in four frontends and the Tailwind preset's
- * `darkMode` keep matching for both dark shades without being touched. `data-shade="black"` is the
- * second axis and exists only when Dark (`black`) is in effect; proxyma-tokens.css re-points the
- * plane and ink tokens under it. A page with neither script run still paints Proxyma, from the
- * bare :root block.
+ * <p>ONE ATTRIBUTE ON <html>: `data-mode`, light or dark. proxyma-tokens.css keys its Dark block on
+ * it, and a page with no script run paints Light from the bare :root block. The second attribute
+ * Dark used to need beside Proxyma (`data-shade`) is gone; applying an appearance removes one an
+ * older build's pre-paint script may have left.
  *
  * <p>PLAIN .ts WITH NO IMPORTS AND NO JSX, so `node --test` can load it directly - see
  * appearance.test.ts beside it, which sync.mjs does not ship. Keep it strippable: no constructor
  * parameter properties, no enums. The pre-paint script that repeats `parseAppearance` and
- * `resolveAppearance` before any module exists is generated from one place since 2026-10-14 -
+ * `resolveAppearance` before any module exists is generated from one place -
  * `appearanceInitScript` (appearanceScript.ts), held to these two by its test.
  */
 
-export type AppearancePreference = 'system' | 'light' | 'gray' | 'black'
+export type AppearancePreference = 'system' | 'light' | 'dark'
 
 /** Menu order. */
-export const APPEARANCE_PREFERENCES: readonly AppearancePreference[] = ['system', 'light', 'black', 'gray']
+export const APPEARANCE_PREFERENCES: readonly AppearancePreference[] = ['system', 'light', 'dark']
 
 export type AppearanceMode = 'light' | 'dark'
 
-/** What is actually stamped on <html>. `shade` is `black` only for Dark, and null otherwise. */
+/** What is actually stamped on <html>. */
 export interface ResolvedAppearance {
   mode: AppearanceMode
-  shade: 'black' | null
 }
 
 /**
  * A stored string back to a preference.
  *
- * <p>MIGRATES THE TWO-WAY VALUES every existing install has written: `dark` becomes `gray`, which
- * is the same canvas under its newer name, and `light` stays `light`. Anything else - nothing
- * stored, storage disabled, a value from some future build - is `fallback`, so an unreadable
- * value never leaves a page with no theme at all.
+ * <p>MIGRATES EVERY WORD AN OLDER BUILD WROTE: `gray` (Proxyma, removed 2026-10-28) and `black`
+ * (Dark's 0.13.0 name) are Dark, as the two-way flip's `dark` always was. Anything else - nothing
+ * stored, storage disabled, a value from some future build - is `fallback`, so an unreadable value
+ * never leaves a page with no theme at all.
  */
 export function parseAppearance(stored: string | null | undefined, fallback: AppearancePreference): AppearancePreference {
   switch (stored) {
     case 'system':
     case 'light':
+    case 'dark':
+      return stored
     case 'gray':
     case 'black':
-      return stored
-    case 'dark':
-      return 'gray'
+      return 'dark'
     default:
       return fallback
   }
 }
 
-/**
- * A preference plus the OS setting to the two attributes. System maps a light OS to Light and a
- * dark OS to Dark (`black`), the neutral one - Proxyma's teal is the one a person picks on purpose.
- */
+/** A preference plus the OS setting to the one attribute. */
 export function resolveAppearance(preference: AppearancePreference, systemPrefersDark: boolean): ResolvedAppearance {
   switch (preference) {
     case 'light':
-      return { mode: 'light', shade: null }
-    case 'gray':
-      return { mode: 'dark', shade: null }
-    case 'black':
-      return { mode: 'dark', shade: 'black' }
+      return { mode: 'light' }
+    case 'dark':
+      return { mode: 'dark' }
     case 'system':
-      // A dark OS means Dark - the neutral one - not Proxyma's teal. Changed 2026-09-26 at the
-      // maintainer's request; System was Proxyma on a dark OS until then.
-      return systemPrefersDark ? { mode: 'dark', shade: 'black' } : { mode: 'light', shade: null }
+      return { mode: systemPrefersDark ? 'dark' : 'light' }
   }
 }
 
@@ -86,8 +73,7 @@ export interface AppearanceTarget {
 
 /** The canvas of a resolved appearance, for the browser chrome - THEME_COLOR in appearanceScript.ts. */
 export function themeColor(resolved: ResolvedAppearance): string {
-  if (resolved.mode === 'light') return '#ffffff'
-  return resolved.shade === 'black' ? '#181818' : '#11181a'
+  return resolved.mode === 'light' ? '#ffffff' : '#161617'
 }
 
 /**
@@ -97,8 +83,8 @@ export function themeColor(resolved: ResolvedAppearance): string {
  */
 export function applyAppearance(target: AppearanceTarget, resolved: ResolvedAppearance): void {
   target.setAttribute('data-mode', resolved.mode)
-  if (resolved.shade) target.setAttribute('data-shade', resolved.shade)
-  else target.removeAttribute('data-shade')
+  // An older build's second attribute - harmless now, since no token reads it, but not left behind.
+  target.removeAttribute('data-shade')
   const doc = (target as { ownerDocument?: Document | null }).ownerDocument
   if (doc?.head) {
     let meta = doc.querySelector('meta[name="theme-color"]')

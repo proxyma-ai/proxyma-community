@@ -1,7 +1,7 @@
 /* Proxyma documentation theme - behavior. No dependencies, no network.
 
    1. Appearance: a Light/Dark switch beside the logo, Light by default. Dark is the product's
-      neutral Dark (data-mode="dark" data-shade="black"). The pre-paint snippet in <head> applies
+      neutral Dark (data-mode="dark"). The pre-paint snippet in <head> applies
       the stored choice before first paint; this wires the switch.
    2. Scroll spy: the table of contents marks the section being read.
    3. Per-section disclosure in the table of contents, and Expand all / Collapse all.
@@ -22,7 +22,6 @@
   function apply(dark) {
     var el = document.documentElement;
     el.setAttribute('data-mode', dark ? 'dark' : 'light');
-    if (dark) el.setAttribute('data-shade', 'black'); else el.removeAttribute('data-shade');
     var sw = document.querySelector('.appearance');
     if (sw) sw.setAttribute('aria-checked', String(dark));
   }

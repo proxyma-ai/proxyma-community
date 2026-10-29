@@ -8,9 +8,23 @@
 // Sandboxed preloads may use webUtils (Electron 29+), so the renderer still gets no Node.
 'use strict'
 
-const { contextBridge, webUtils } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('proxymaWindow', {
+  // The window's own buttons, since the window is borderless (2026-10-29): minimize, maximize or
+  // restore, close (which hides, as the title bar's did), and whether it is maximized - asked once
+  // and then told on each change. Nothing else of the window is reachable from the page.
+  controls: {
+    minimize: () => ipcRenderer.send('window:minimize'),
+    toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
+    close: () => ipcRenderer.send('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+    onMaximizedChange: callback => {
+      const listener = (_event, maximized) => callback(maximized === true)
+      ipcRenderer.on('window:maximized', listener)
+      return () => ipcRenderer.removeListener('window:maximized', listener)
+    },
+  },
   pathForFile: file => {
     try {
       return webUtils.getPathForFile(file) || null

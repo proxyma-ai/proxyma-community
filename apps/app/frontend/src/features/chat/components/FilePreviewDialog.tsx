@@ -372,7 +372,7 @@ function SlidesBody({ blob }: { blob: Blob }) {
     <ol className="p-4 space-y-3">
       {slides.map((lines, i) => (
         <li key={i}><Card variant="solid" padding="sm">
-          <Eyebrow className="mb-1.5">{t('Slide {number}', { number: i + 1 })}</Eyebrow>
+          <Eyebrow className="mb-2">{t('Slide {number}', { number: i + 1 })}</Eyebrow>
           {lines.length === 0
             ? <Caption>{t('No text on this slide')}</Caption>
             : lines.map((line, j) => (

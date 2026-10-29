@@ -34,6 +34,14 @@ public class SearchTool {
         this.connectorService = connectorService;
     }
 
+    // Set by Spring; absent in a test that builds the tool by hand, which then searches as before.
+    private ai.proxyma.core.chat.module.AgentProfiles agentProfiles;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentProfiles(ai.proxyma.core.chat.module.AgentProfiles agentProfiles) {
+        this.agentProfiles = agentProfiles;
+    }
+
     static final int MAX_TOP_K = 25;
 
     @Tool(description = "Hybrid keyword + semantic search over everything indexed: files, Jira, Confluence, "
@@ -69,6 +77,10 @@ public class SearchTool {
             } else {
                 connectorService.listVisibleTo(userId).forEach(r -> searched.put(r.getId(), r));
             }
+            // A saved agent reads only the sources it was given, of those its person can read
+            // (AgentProfile.sourceIds) - never one more.
+            ToolUserContext.agentProfile(agentProfiles)
+                    .ifPresent(profile -> searched.keySet().removeIf(id -> !profile.reads(id)));
             List<String> collectionIds = searched.keySet().stream().map(SourceCollections::of).toList();
 
             if (collectionIds.isEmpty()) {

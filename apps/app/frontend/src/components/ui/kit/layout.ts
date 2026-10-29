@@ -31,6 +31,19 @@ export const PAGE_GUTTER = 'px-3 sm:px-6'
 /**
  * THE MEASURE for running prose that spans a page or section: it ends on the grid's eight-column
  * line (2/3 of the column less a third of a 3rem gap) - where the second of three equal columns
- * ends, and where the FAQ's and the download section's text ends. Full width below `lg`.
+ * ends, and where the FAQ's and the download section's text ends - and never past about 70
+ * characters a line (since 2026-10-28; the review measured 114-142 on the site's widest prose).
  */
-export const PROSE_MEASURE = 'lg:max-w-[calc(66.6667%-1rem)]'
+export const PROSE_MEASURE = 'max-w-[70ch] lg:max-w-[min(70ch,calc(66.6667%-1rem))]'
+
+/**
+ * THE COLUMN'S EDGES FOR SOMETHING PLACED ABSOLUTELY in a box as wide as the window - a control
+ * floating over a full-bleed canvas (Constellations), which cannot sit inside `PAGE_COLUMN` and has
+ * to land on its lines anyway (since 2026-10-28; the review found the canvas's controls at x=12
+ * under a header starting at x=232). The same arithmetic as PAGE_COLUMN plus PAGE_GUTTER: the
+ * gutter on a phone, and from `sm` half of what the column leaves plus the gutter.
+ */
+export const PAGE_INSET_LEFT =
+  'left-3 sm:left-[max(1.5rem,calc((100%_-_64rem)_/_2_+_1.5rem))] 2xl:left-[max(1.5rem,calc((100%_-_80rem)_/_2_+_1.5rem))]'
+export const PAGE_INSET_RIGHT =
+  'right-3 sm:right-[max(1.5rem,calc((100%_-_64rem)_/_2_+_1.5rem))] 2xl:right-[max(1.5rem,calc((100%_-_80rem)_/_2_+_1.5rem))]'

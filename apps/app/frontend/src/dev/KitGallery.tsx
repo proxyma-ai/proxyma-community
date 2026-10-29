@@ -27,7 +27,7 @@ import {
 
 // -- the token file, per appearance ----------------------------------------------------------
 
-/** The token file's three blocks, each variable's value in each appearance. */
+/** The token file's two blocks - Light the bare :root, Dark :root[data-mode="dark"] - each variable's value in each appearance. */
 function parseTokens(css: string): Record<Appearance, Record<string, string>> {
   const block = (selector: RegExp) => {
     const m = selector.exec(css)
@@ -38,15 +38,14 @@ function parseTokens(css: string): Record<Appearance, Record<string, string>> {
     for (const v of css.slice(start, end).matchAll(/--([\w-]+):\s*([^;]+);/g)) out[v[1]] = v[2].trim()
     return out
   }
-  const gray = block(/^:root \{/m)
+  const light = block(/^:root \{/m)
   return {
-    gray,
-    light: { ...gray, ...block(/^:root\[data-mode="light"\] \{/m) },
-    black: { ...gray, ...block(/^:root\[data-mode="dark"\]\[data-shade="black"\] \{/m) },
+    light,
+    dark: { ...light, ...block(/^:root\[data-mode="dark"\] \{/m) },
   }
 }
 
-/** "17 24 26" as #11181a; anything else as written. */
+/** "22 22 23" as #161617; anything else as written. */
 function show(value: string | undefined): string {
   if (!value) return '-'
   const m = /^(\d+)\s+(\d+)\s+(\d+)$/.exec(value)
@@ -55,11 +54,11 @@ function show(value: string | undefined): string {
 }
 
 const TOKENS = parseTokens(tokensCss)
-const COLUMNS: { id: Appearance; name: string }[] = [{ id: 'light', name: 'Light' }, { id: 'gray', name: 'Proxyma' }, { id: 'black', name: 'Dark' }]
+const COLUMNS: { id: Appearance; name: string }[] = [{ id: 'light', name: 'Light' }, { id: 'dark', name: 'Dark' }]
 
 // Spelled out whole so Tailwind's scanner sees every class.
 const SPACE_BAR: Record<string, string> = {
-  '1': 'w-1', '1.5': 'w-1.5', '2': 'w-2', '3': 'w-3', '4': 'w-4', '5': 'w-5', '6': 'w-6', '8': 'w-8', 'tap-sm': 'w-tap-sm', tap: 'w-tap',
+  '1': 'w-1', '2': 'w-2', '3': 'w-3', '4': 'w-4', '6': 'w-6', '8': 'w-8', '12': 'w-12', '16': 'w-16', 'h-8': 'w-8', 'tap-sm': 'w-tap-sm', tap: 'w-tap',
 }
 
 // -- layout pieces ----------------------------------------------------------------------------
@@ -165,7 +164,7 @@ function Tokens() {
               <div key={s.name} className="min-w-0">
                 <div className={cn('h-12 rounded-md border border-line/40', s.swatch)} />
                 <p className="mt-1 text-2xs font-mono text-ink-primary">{s.name}</p>
-                <p className="text-2xs data-readout text-ink-caption">{show(TOKENS.gray[s.name])}</p>
+                <p className="text-2xs data-readout text-ink-caption">{show(TOKENS.light[s.name])}</p>
                 {s.role && <p className="text-2xs text-ink-disabled leading-snug">{s.role}</p>}
               </div>
             ))}
@@ -200,7 +199,7 @@ function Tokens() {
 
       <div className="grid lg:grid-cols-2 gap-10">
         <div className="space-y-3 min-w-0">
-          <SectionHeading caption="Tailwind's 4px steps; the spacing table in frontend.md says which goes where.">Spacing</SectionHeading>
+          <SectionHeading caption="The 4-point rhythm: 4, 8, 12, 16, 24, 32, 48, 64 - and the control heights.">Spacing</SectionHeading>
           {SPACING.map(s => (
             <div key={s.cls} className="flex items-center gap-3">
               <span className="w-14 text-2xs font-mono text-ink-caption">{s.cls}</span>
@@ -210,15 +209,15 @@ function Tokens() {
           ))}
         </div>
         <div className="space-y-3 min-w-0">
-          <SectionHeading caption="Two radii do almost everything: the control's and the surface's.">Radius</SectionHeading>
+          <SectionHeading caption="By role: the control's 6px and the surface's 10px do almost everything.">Radius</SectionHeading>
           <div className="grid grid-cols-3 gap-3">
             {RADII.map(r => (
               <div key={r.cls}><div className={cn('h-12 border border-line bg-surface', r.cls)} /><p className="mt-1 text-2xs font-mono text-ink-primary break-all">{r.cls} <span className="text-ink-caption">{r.px}</span></p><p className="text-2xs text-ink-disabled leading-snug">{r.use}</p></div>
             ))}
           </div>
-          <SectionHeading caption="Elevation without glow: borders set panels apart, shadows only lift what floats.">Shadows</SectionHeading>
+          <SectionHeading caption="One shadow, for what floats. A card in the page has a border and none.">Shadows</SectionHeading>
           <div className="grid grid-cols-3 gap-4">
-            {SHADOWS.map(s => <div key={s.cls}><div className={cn('h-14 rounded-lg surface-float border border-line/45', s.cls)} /><p className="mt-2 text-2xs font-mono text-ink-primary break-all">{s.cls}</p><p className="text-2xs text-ink-disabled">{s.use}</p></div>)}
+            {SHADOWS.map(s => <div key={s.cls}><div className={cn('h-14 rounded-lg surface-float border', s.cls)} /><p className="mt-2 text-2xs font-mono text-ink-primary break-all">{s.cls}</p><p className="text-2xs text-ink-disabled">{s.use}</p></div>)}
           </div>
         </div>
       </div>
@@ -227,7 +226,7 @@ function Tokens() {
         <div className="space-y-3 min-w-0">
           <SectionHeading caption="Three durations and three curves; nothing bounces. Point at a row to see it ease.">Motion</SectionHeading>
           {MOTION.map(m => (
-            <div key={m.token} className="flex items-center gap-3 rounded-md px-2 py-1.5 mouse:hover:bg-brand-accent/15 transition-colors" >
+            <div key={m.token} className="flex items-center gap-3 rounded-md px-2 py-2 mouse:hover:bg-surface-alt transition-colors" >
               <span className="w-28 text-2xs font-mono text-ink-primary">{m.token}</span>
               <Readout tone="caption" className="text-2xs w-40">{m.value}</Readout>
               <Caption as="span">{m.use}</Caption>
@@ -271,7 +270,7 @@ function LogoSheet() {
 // -- the page ---------------------------------------------------------------------------------
 
 export function KitGallery() {
-  const [appearance, setAppearance] = useState<AppearancePreference>('gray')
+  const [appearance, setAppearance] = useState<AppearancePreference>('system')
   const [query, setQuery] = useState('')
   const [panelConversation, setPanelConversation] = useState<string | null>(null)
 
@@ -289,7 +288,7 @@ export function KitGallery() {
   const visible = useMemo(() => KIT_REGISTRY.filter(e => !q || e.name.toLowerCase().includes(q) || e.purpose.toLowerCase().includes(q)), [q])
 
   return (
-    <div className="h-full overflow-y-auto bg-canvas">
+    <div className="h-full overflow-y-auto app-sheet">
       <header className="sticky top-0 z-header header-bar border-b border-line/40">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center gap-x-6 gap-y-2">
           <Logo size={24} />
@@ -301,7 +300,7 @@ export function KitGallery() {
             ariaLabel="Appearance"
             value={appearance}
             onChange={setAppearance}
-            options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'gray', label: 'Proxyma' }, { value: 'black', label: 'Dark' }]}
+            options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
           />
         </div>
         <nav className="max-w-6xl mx-auto px-3 sm:px-6 pb-2 flex gap-x-4 gap-y-1 flex-wrap text-xs" aria-label="Groups">

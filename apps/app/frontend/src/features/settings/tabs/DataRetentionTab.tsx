@@ -43,18 +43,19 @@ export function DataRetentionTab({ trackChange, pending }: TabProps) {
       {t('How long each kind of data is kept, swept daily.')}{' '}
       <strong className="text-ink-secondary">{t('0 keeps it forever')}</strong>.
     </>}>
-      <FormColumns>
+      {/* Three columns, so Desktop's three fields fill one row rather than leaving a cell empty. */}
+      <FormColumns cols={3} from="md">
         {field('Conversations (days)',
-               'Idle conversations. Pinned ones are never deleted.',
+               'Idle conversations; pinned ones are kept.',
                'conversation-days', conversationDays)}
         {FEATURES.auth && field('Evaluation data (days)',
                'Per-turn and per-search records.',
                'evaluation-days', evaluationDays)}
         {field('Usage records (days)',
-               'Every model call and its cost, the LLM calls in Logs.',
+               'Every model call and its cost.',
                'usage-days', usageDays)}
         {field('Logs (days)',
-               'Tool calls, guardrail checks, diagnostics and activity in Logs.',
+               'Tool calls, guardrail checks and activity.',
                'audit-days', auditDays)}
         {FEATURES.auth && field('Feedback (days)',
                'Submitted feedback and its attachments.',

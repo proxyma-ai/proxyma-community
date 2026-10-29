@@ -55,7 +55,6 @@ class SystemPromptRefreshTest {
             + SystemPromptService.DATE_LEAD + "2026-09-28 (Monday).";
 
     private SmartChatMemory memory;
-    private SubAgentService subAgents;
     private ChatSkillService skills;
     private ChatService chatService;
 
@@ -63,7 +62,6 @@ class SystemPromptRefreshTest {
     void setUp() {
         memory = mock(SmartChatMemory.class);
         when(memory.replaceSystemPrompt(anyString(), anyString())).thenReturn(true);
-        subAgents = mock(SubAgentService.class);
         ToolCallbackProvider tools = mock(ToolCallbackProvider.class);
         when(tools.getToolCallbacks()).thenReturn(new ToolCallback[0]);
         ProductIdentity identity = mock(ProductIdentity.class);
@@ -81,7 +79,7 @@ class SystemPromptRefreshTest {
                 mock(ToolSkillGating.class), prompts, mock(FeedbackRepository.class),
                 mock(ConversationShareRepository.class), mock(ChatEventSink.class),
                 mock(ConversationTitleService.class), mock(ModelPricingService.class),
-                subAgents, mock(WorkflowRunService.class), mock(WorkflowService.class),
+                mock(WorkflowRunService.class), mock(WorkflowService.class),
                 mock(WorkflowRunner.class), guardrails);
     }
 
@@ -98,13 +96,12 @@ class SystemPromptRefreshTest {
     @Test
     @DisplayName("a conversation started under an earlier version's prompt is given the current one on its next turn")
     void anOlderPromptIsReplaced() {
-        when(subAgents.isAvailable()).thenReturn(true);
 
         chatService.refreshSystemPrompt(CONVERSATION, history(OLD), null, "u-1");
 
         assertThat(written())
                 .startsWith("You are Proxyma, an AI agent that works across")
-                .contains("HOW YOU WORK - you lead, sub-agents do the work.")
+                .contains("HOW YOU WORK - you lead, the agents you deploy do the work.")
                 .doesNotContain("DELEGATION - your default")
                 .contains("SKILLS - one line each.")
                 .endsWith(SystemPromptService.DELEGATION_REMINDER);
@@ -113,7 +110,6 @@ class SystemPromptRefreshTest {
     @Test
     @DisplayName("a conversation already under the current prompt is left alone, turn after turn")
     void theCurrentPromptIsNotRewritten() {
-        when(subAgents.isAvailable()).thenReturn(true);
         chatService.refreshSystemPrompt(CONVERSATION, history(OLD), null, "u-1");
         String current = written();
 
@@ -123,21 +119,6 @@ class SystemPromptRefreshTest {
         // Once, for the old one. A rewrite on every turn would cost the provider's cached prefix
         // on every turn.
         verify(memory, times(1)).replaceSystemPrompt(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("removing the sub-agent model takes the delegation section out of a conversation that had it")
-    void aRemovedSubAgentModelIsNoticed() {
-        when(subAgents.isAvailable()).thenReturn(true);
-        chatService.refreshSystemPrompt(CONVERSATION, history(OLD), null, "u-1");
-        String withDelegation = written();
-
-        when(subAgents.isAvailable()).thenReturn(false);
-        chatService.refreshSystemPrompt("conv-2", history(withDelegation), null, "u-1");
-
-        ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
-        verify(memory).replaceSystemPrompt(eq("conv-2"), text.capture());
-        assertThat(text.getValue()).doesNotContain("HOW YOU WORK").doesNotContain("delegate");
     }
 
     @Test

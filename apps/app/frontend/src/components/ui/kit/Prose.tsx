@@ -21,22 +21,23 @@ import { TEXT } from './typeScale'
  * size, `my-1` paragraphs, lists hanging their markers outside. One set of classes, so the
  * markdown renderer stops carrying its own.
  *
- * The thread reads at `TEXT.body`'s 15px since 2026-10-15 (the readability pass): an answer is
- * the one thing in the product read at length, and it was the UI's 14px. A table in it stays 14px
- * (`ProseTable`), as in every other table.
+ * The thread reads at `TEXT.body`, 16/26 (since 2026-10-28; 15px from 2026-10-15, the UI's 14px
+ * before that): an answer is the one thing in the product read at length. A table in it stays 14px
+ * (`ProseTable`), as in every other table. EVERY TEXT BLOCK IS CAPPED AT 70ch (the review measured
+ * answers at 99-113 characters a line); a table or a code block keeps the column's width.
  */
 export const PROSE_CHAT = {
-  h1: cn(TEXT.title, 'mt-4 mb-2'),
-  h2: cn(TEXT.section, 'mt-3 mb-1.5'),
-  h3: 'text-[15px] font-semibold text-ink-primary mt-2 mb-1',
-  p: 'my-1 text-[15px] leading-relaxed',
+  h1: cn(TEXT.title, 'mt-4 mb-2 max-w-[70ch]'),
+  h2: cn(TEXT.section, 'mt-3 mb-2 max-w-[70ch]'),
+  h3: 'text-base font-medium text-ink-primary mt-2 mb-1 max-w-[70ch]',
+  p: 'my-1 text-base max-w-[70ch]',
   /** A list; nested lists sit tight under their item (`depth > 0`). */
   list: (ordered: boolean, depth: number) => cn(
     ordered ? 'list-decimal' : 'list-disc',
-    'list-outside pl-5 space-y-0.5 text-[15px] leading-relaxed',
-    depth === 0 ? 'my-1.5' : 'mt-0.5',
+    'list-outside pl-6 space-y-1 text-base max-w-[70ch]',
+    depth === 0 ? 'my-2' : 'mt-1',
   ),
-  quote: 'border-l-2 border-line pl-3 my-2 text-ink-caption text-[15px] leading-relaxed',
+  quote: 'border-l-2 border-line pl-3 my-2 text-ink-caption text-base max-w-[70ch]',
   hr: 'border-line/40 my-3',
   /** A link in running text: the paragraph's own weight, brand ink, underlined under a mouse only. */
   link: 'text-brand-legible underline-offset-[3px] mouse:hover:underline focus-ring rounded-sm',
@@ -44,8 +45,10 @@ export const PROSE_CHAT = {
 
 /**
  * A TABLE IN PROSE - ruled between rows, a caption-ink header, no grid and no filled header row
- * (`.prose-doc table`'s look, at the thread's size). Wider than the column, it scrolls sideways in
- * the kit's `HScroll`. `nowrap(cell)` keeps a one-token cell (an issue key, a date) on one line.
+ * (`.prose-doc table`'s look, at the thread's size), in a CARD since 2026-10-29 (the depth review:
+ * the card plane, its line and `shadow-card`, as `.prose-doc .table-wrap` is). Wider than the
+ * column, it scrolls sideways in the kit's `HScroll`. `nowrap(cell)` keeps a one-token cell (an
+ * issue key, a date) on one line.
  */
 export function ProseTable({ headers, rows, nowrap, className }: {
   headers: ReactNode[]
@@ -54,7 +57,8 @@ export function ProseTable({ headers, rows, nowrap, className }: {
   className?: string
 }) {
   return (
-    <HScroll className={cn('my-2', className)}>
+    <div className={cn('kit-card my-2 rounded-lg border surface-card shadow-card overflow-hidden', className)}>
+    <HScroll>
       <table className="min-w-full text-sm border-collapse">
         <thead>
           <tr>
@@ -67,13 +71,14 @@ export function ProseTable({ headers, rows, nowrap, className }: {
           {rows.map((row, ri) => (
             <tr key={ri}>
               {row.map((cell, ci) => (
-                <td key={ci} className={cn('border-b border-line/20 px-3 py-2 align-top', nowrap?.(ri, ci) && 'whitespace-nowrap')}>{cell}</td>
+                <td key={ci} className={cn('px-3 py-2 align-top', ri < rows.length - 1 && 'border-b border-line/20', nowrap?.(ri, ci) && 'whitespace-nowrap')}>{cell}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
     </HScroll>
+    </div>
   )
 }
 

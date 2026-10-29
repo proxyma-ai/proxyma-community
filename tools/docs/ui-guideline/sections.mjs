@@ -26,6 +26,9 @@ const note = (label, body, kind = 'note') => `<div class="${kind}"><span class="
 const API_NOTES = {
   TEXT_LINK_BASE: 'The shared part of every text link class; textLink() adds the tone.',
   PAGE_GUTTER: 'The inset inside the page column: 12px on a phone, 24px from sm.',
+  PAGE_INSET_RIGHT: 'PAGE_INSET_LEFT\'s other side: the column\'s right edge for something placed absolutely in a box as wide as the window.',
+  TOAST_STACK: 'The header\'s column inside TOAST_LAYER: toasts against its right edge from sm, across it on a phone.',
+  TOAST_DOCK: 'A toast stack in a page\'s own flow, for a page the fixed layer would cover - the chat page docks it above its composer.',
   pageTitle: 'The browser tab title: "Page - Product", or the product alone.',
   ICON_BUTTON_BASE: 'The shared part of every icon button class: shape, focus ring, disabled state, 44px on touch.',
   createTypeahead: 'A typeahead buffer that collects keystrokes for TYPEAHEAD_MS and finds the row they spell.',
@@ -74,13 +77,13 @@ const API_NOTES = {
   DIALOG_SHEET_OVERLAY: 'The overlay of a dialog that is a bottom sheet on a phone.',
   MODAL_SCRIM: 'The scrim under every dialog: it darkens and blurs what is behind - the one backdrop blur anywhere.',
   MENU_PANEL: 'A menu\'s panel as a class string, for a menu that owns its own surface; prefer MenuSurface.',
-  SOURCE_LIST_BOX: 'The bleed of the source list, so its rows line up with the page text.',
+  SOURCE_LIST_BOX: 'The source list\'s box: no bleed since 2026-10-28 - its rules and columns stop on the page column; only a hovered row\'s fill reaches past.',
   headerNavLink: 'The classes of a navigation word on the header bar.',
   SETTINGS_PANEL: 'The settings window\'s panel.',
   SETTINGS_OVERLAY: 'The settings window\'s overlay; it does not scroll - each tab scrolls in its own column.',
   useInViewOnce: 'Whether a site scene has been scrolled into view, so it may start.',
   useScenePlayer: 'A site scene\'s clock: play, pause and replay, and reduced motion.',
-  APPEARANCE_PREFERENCES: 'The four appearance preferences, in menu order.',
+  APPEARANCE_PREFERENCES: 'The three appearance preferences, in menu order.',
   CHART_INK: 'Chart ink and lines as SVG paints that follow the appearance.',
   exitingProps: 'The attributes of a panel that is leaving: inert, so nothing in it takes a click or focus.',
 }
@@ -103,11 +106,11 @@ export function guidelineBody({ repo, kit, picture }) {
   // -- 1. Principles ---------------------------------------------------------------------------
   out.push(`<h2 id="principles">Principles</h2>`)
   out.push(ul([
-    '**Calm, dense, flat.** Proxyma is a tool people work in all day: information first, decoration last, the brand color used for meaning.',
+    '**Calm, neutral, flat.** Proxyma is a tool people work in all day: information first, decoration last. The page is neutral grey in both appearances; **the brand teal acts** - the one primary action, links, focus, a selection\'s indicator - and is never a background.',
     '**Build from the kit, at the highest level that fits.** A page holds layout glue, data, state and words - never hand-made buttons, chips, cards, dialog panels or text sizes. If what you need is close to a kit part, change the kit; if it is genuinely one surface\'s own, keep it local and say why in a comment.',
     '**Semantic tokens only.** No arbitrary hex, no `dark:` variant, no `z-[...]`, no numeric `duration-*`, no `shadow-[...]`, no inline style.',
     '**No glow, anywhere.** Emphasis is a border. The one exception is the chat composer\'s light.',
-    '**No glass.** Panels are solid. The one exception is the modal scrim, which darkens and blurs what is behind a dialog.',
+    '**Glass, in the app and the consoles** (since 2026-10-29, the maintainer\'s request - it reverses 2026-09-26\'s "no glass"). Every surface of an app shell is a pane over a field of the brand\'s teals: the frame and the page are blurred glass, a card is translucent with no blur of its own, and what floats is the most opaque glass. Text stays AA over the worst point of the field, and less transparency gives solid planes. The landing site stays solid.',
     '**Every change is animated.** Things arrive, leave and swap smoothly in all four apps; nothing bounces; reduced motion makes everything instant.',
     '**Content is as wide as the header.** Every page sits in the header\'s column (`PAGE_COLUMN`); no page restates a width of its own.',
     '**Sentence case, plain words.** The English text is also the translation key, so it is written once, as it reads.',
@@ -117,17 +120,16 @@ export function guidelineBody({ repo, kit, picture }) {
 
   // -- 2. Appearance -----------------------------------------------------------------------------
   out.push(`<h2 id="appearance">Appearance</h2>`)
-  out.push(p('Four appearances, chosen in Settings or a menu. This page switches between Light and Dark beside its logo, and every swatch, specimen and logo below follows it; the token tables show all three planes side by side.'))
-  const ATTRS = { system: 'Light or Dark, as the operating system is (`prefers-color-scheme`)', light: '`data-mode="light"`', gray: '`data-mode="dark"`', black: '`data-mode="dark" data-shade="black"`' }
+  out.push(p('Three appearances, chosen in Settings or a menu: System, Light and Dark (since 2026-10-28 - the teal-tinted Proxyma appearance is gone, and with it every colored page background). This page switches between Light and Dark beside its logo, and every swatch, specimen and logo below follows it; the token tables show both side by side.'))
+  const ATTRS = { system: 'Light or Dark, as the operating system is (`prefers-color-scheme`)', light: '`data-mode="light"`', dark: '`data-mode="dark"`' }
   out.push(table(['Appearance', 'Stored as', 'On <html>', 'What it is'], T.APPEARANCES.map(a => [`**${a.name}**`, `\`${a.id}\``, ATTRS[a.id], a.note])))
   out.push(ul([
-    '**One attribute decides light or dark: `data-mode` on `<html>`.** Never write a `dark:` variant - one semantic class covers every appearance.',
-    '**Dark is a second attribute, `data-shade="black"`.** It re-points the planes (`--canvas`, `--surface`, `--surface-alt`, `--line`), `--float-fill` and the four `--ink-*` tokens to a neutral gray; brand, status and chart tokens stay Proxyma\'s.',
-    'Code asking "is it dark" reads `data-mode`, which is right for both dark shades. Code that reads a plane token and caches it observes `data-shade` too.',
-    'The stored choice is applied before first paint by a pre-paint script (`appearanceInitScript`; resolution in `appearance.ts`, tested). Each Vite app\'s `index.html` and the landing site\'s `ThemeProvider` carry a copy - change them together.',
+    '**One attribute: `data-mode` on `<html>`, light or dark.** Light is the bare `:root` block, so a page paints Light before any script runs; Dark is `:root[data-mode="dark"]`, which re-points the semantic tokens. Never write a `dark:` variant - one semantic class covers both.',
+    'A stored `gray` or `black` (what 0.13.0-0.36 wrote for Proxyma and Dark) and the older `dark` all read as Dark, so nobody who chose a dark page wakes up to a white one. Applying an appearance removes the `data-shade` attribute older builds stamped.',
+    'The stored choice is applied before first paint by the kit\'s `appearanceInitScript` (resolution in `appearance.ts`, held to it by `appearanceScript.test.ts`). The app and both consoles serve it as a FILE their Vite config emits (`/appearance-init.js`, `/prepaint.js`) because their Content-Security-Policy allows no inline script; the landing site inlines it (`MODE_INIT_SCRIPT`). No app carries a hand-written copy.',
     'A change while the page is open crossfades once (`applyAppearanceSmoothly`, a View Transition); startup applies it with none (`applyAppearance`).',
     'It is offered by `AppearanceMenu` and, inside a menu, `AppearanceMenuRow`. Choosing closes neither the submenu nor the menu, so people can compare.',
-    'On the landing site the four stored words are a published claim (the Privacy and Cookie Policies name them). Storing anything else there is a legal change - ask first.',
+    'On the landing site the stored words - `system`, `light`, `dark` - are a published claim: the Privacy and Cookie Policies name them (amended with the maintainer\'s approval on 2026-10-28). Storing anything else there is a legal change - ask first.',
   ]))
 
   // -- 3. Color -----------------------------------------------------------------------------------
@@ -136,9 +138,12 @@ export function guidelineBody({ repo, kit, picture }) {
     'Pages use the **semantic** tokens below; they re-map per appearance for free.',
     'The raw ramps (`proxima-*`, `mono-*`) are mode-invariant and exist for the logo mark. Never for page chrome, and never an arbitrary hex.',
     'Every token holds an RGB triple, so any of them takes an opacity: `bg-surface/40`, `border-line/45`.',
-    '**Contrast, measured on all three planes (canvas, surface, surface-alt) in every appearance:** primary and secondary ink at 8.4:1 or more, caption ink at 5.8:1 or more - well past the 4.5:1 AA floor, because captions are where small text lives. Disabled ink (placeholders, a disabled control) clears 4.5:1 on canvas and surface. Never fade text with opacity to make it quieter; take the next ink down.',
+    '**In an app shell the planes are glass** (`data-app-shell` on `<html>`, since 2026-10-29): the field (`.app-field`), the frame (`.app-glass`), the page (`.app-sheet`, with teal light in its top-left and bottom-right corners), a card (`.surface-card`), what floats (`.surface-float`), the bar (`.header-bar`) and a field\'s fill (`bg-field`, frosted). The solid planes are re-pointed there to what the glass composites to, so a sticky row among glass ones is no patch. **Contrast is measured on each plane composited over the field\'s worst point**, not on the token: caption ink is 4.9:1 or more on every glass plane in both appearances. A reader who asks for less transparency, or a browser without backdrop blur, gets every plane solid. Only the frame, the sheet, the bar, the scrim and what floats blur, at most 24px; never a card or a list\'s row.',
+    '**The planes and inks are neutral grey in both appearances** - no teal and no blue tint. Light: canvas `#ffffff`, surface `#f6f6f7`, surface-alt `#efeff1`, line `#e4e4e7`. Dark: canvas `#161617`, surface `#1c1c1e`, surface-alt `#232326`, line `#2e2e32`.',
+    '**Contrast, measured on all three planes (canvas, surface, surface-alt) in both appearances:** primary and secondary ink at 9:1 or more; caption ink 4.9:1 or more in Light (`#66666f`) and 6.1:1 or more in Dark (`#a1a1aa`) - AA for text everywhere, because captions are where small text lives. Disabled ink is 3:1 for UI only (a placeholder, a disabled control, a switch\'s off track), never for text that must be read. The status inks clear 4.5:1 on every plane. Lines are decorative and not held to 3:1. Never fade text with opacity to make it quieter; take the next ink down.',
+    '**The brand acts; it is not a background.** `brand-solid` is ONE ramp step per appearance - `p900` in Light, `p700` in Dark - and nothing else in that appearance is a brand fill. `brand-legible` (`p800` / `p300`) is teal text. The focus line is teal in both. A selected row, chip or tab is a NEUTRAL fill (`surface-alt`, or `brand-chip-bg`, which is the same grey) with a teal indicator or ink (`SELECTED_ROW`: the fill and a 2px brand bar) - never a teal fill: the review measured `#909090` on a `#172e36` row at 4.46:1.',
   ]))
-  const COLS = [['light', 'Light'], ['gray', 'Proxyma'], ['black', 'Dark']]
+  const COLS = [['light', 'Light'], ['dark', 'Dark']]
   const swatch = (name, ap) => {
     const v = resolveToken(tokens[ap], name)
     return `<span class="gl-sw" style="background:rgb(${esc(v)})"></span><span class="gl-hex">${esc(hex(v))}</span>`
@@ -156,42 +161,43 @@ export function guidelineBody({ repo, kit, picture }) {
   out.push(`<h3 id="color-roles">Fill, text and decoration</h3>`)
   out.push(pic('brand-roles'))
   out.push(ul([
-    '`brand-solid` is a **fill**: the primary button, a switch that is on, the chosen day. Text on it is `brand-on-solid`.',
+    '`brand-solid` is a **fill**, one step per appearance: the primary button, a switch that is on, the chosen day. Text on it is `brand-on-solid` (9.1:1 in Light, 5.7:1 in Dark).',
     '`brand-legible` is the same color tuned for **text**: links, the wordmark, work done.',
     '`brand-accent` is **decorative only** - meter fills, dots, borders, a reveal. It cannot carry a label.',
-    '`brand-pale` is the pale chip fill, always paired with `brand-legible` text.',
+    '`brand-pale` (and `brand-chip-bg`) is NEUTRAL since 2026-10-28 - the surface-alt grey - the fill of a selected chip or pill, always paired with `brand-legible` ink.',
   ]))
   out.push(pic('status-roles'))
   out.push(ul([
     '`success`, `warning` and `danger` are **text** colors: a verdict, an attention line, a failure and the actions that remove.',
     'The `-solid` fills are mode-invariant and carry `on-status` text: a status badge, and the destructive button.',
     'Charts take `CHART_SERIES` in order. The order is checked for color-vision deficiency - do not reorder it; the remainder is `CHART_SERIES_OTHER`.',
-    'Focus and emphasis are a border: `.focus-border` (its color is `--focus-line`) for fields and cards, a brand border for a promoted card.',
+    'Focus and emphasis are a border: `.focus-border` (its color is `--focus-line`, teal in both appearances) for fields and cards, a brand border for a promoted card; `.focus-ring` is `brand-solid`.',
   ]))
-  out.push(`<h3 id="color-ramps">The ramps (the logo only)</h3>`)
+  out.push(`<h3 id="color-ramps">The ramps (the logo, and what the semantic tokens point at)</h3>`)
   for (const ramp of T.RAMPS) {
     out.push(p(`**${ramp.title}.** ${ramp.note}`))
-    out.push(`<div class="gl-ramp">${ramp.steps.map(s => `<div><span class="gl-sw gl-sw-lg" style="background:rgb(${esc(resolveToken(tokens.gray, s.name))})"></span><code>${esc(s.name)}</code><span class="gl-hex">${esc(hex(resolveToken(tokens.gray, s.name)))}</span>${s.role ? `<span class="gl-role">${md(s.role)}</span>` : ''}</div>`).join('')}</div>`)
+    out.push(`<div class="gl-ramp">${ramp.steps.map(s => `<div><span class="gl-sw gl-sw-lg" style="background:rgb(${esc(resolveToken(tokens.light, s.name))})"></span><code>${esc(s.name)}</code><span class="gl-hex">${esc(hex(resolveToken(tokens.light, s.name)))}</span>${s.role ? `<span class="gl-role">${md(s.role)}</span>` : ''}</div>`).join('')}</div>`)
   }
 
   // -- 4. Typography -----------------------------------------------------------------------------
   out.push(`<h2 id="typography">Typography</h2>`)
   out.push(pic('type-roles'))
   out.push(ul([
-    '**One scale for every surface: the kit\'s `TEXT` roles** and the components that draw them (`Title`, `SectionHeading`, `FieldLabel`, `Caption`, `Eyebrow`, `Paragraph`). Nothing sets a text size by hand.',
+    '**One scale for every surface: the kit\'s `TEXT` roles** and the components that draw them (`PageTitle`, `Title`, `SectionHeading`, `FieldLabel`, `Caption`, `Eyebrow`, `Paragraph`). Nothing sets a text size by hand. Every role is a step of the preset\'s `fontSize`, and every step has ONE leading.',
     'A heading is `SectionHeading`; a field\'s name is `FieldLabel`. One name never does both jobs.',
-    'Each role is a step above the one that explains it and a step below the one it sits in: caption 13, label and option 14, body 15, section 16, lead 17, title 18. A label never reads as loud as its section, nor as quiet as a caption.',
-    '**Nothing a person reads is under 12px.** 12 (`text-2xs`) is the floor, for what sits inside a small shape: a badge, a chart\'s axis, a count in a mark. Dense UI text - captions, fields, small buttons, menus - is 13 (`text-xs`).',
-    'Running text - a dialog\'s body, a chat message, a manual - is `TEXT.body`, 15px in secondary ink; the UI around it is 14. Headings are primary ink.',
-    'No weight under 400 is used for text. Captions are 400 in caption ink, labels 500, headings 600 to 700.',
+    '**The scale, since 2026-10-28** (the review measured 31 size/leading/weight combinations in the app and 64 on the site, with 66% of the app\'s text at 13px): page title 24/32 600; dialog and Settings-tab title 18/26 600; section 16/24 600; **reading body 16/26 400** - a chat answer, a manual, a paragraph read rather than scanned; lead 18/28 400; **UI text 14/20** - a row, a label (500), a field\'s text (400), a button (600); caption 13/18 400; code 13/20 in the mono face.',
+    'The off-scale 15px body and 17px lead are gone: a reading role sat between two steps of the scale and nothing else was that size, so every call site that wanted "a bit bigger" picked its own.',
+    '**No weight 700 below the page title.** A bold label beside a semibold heading read as the heading; buttons went from 700 to 600. Orbitron\'s wordmark is the one bold word in the product chrome.',
+    '**Nothing a person reads is under 12px**, and 12 (`text-2xs`) is for badges and key caps only - what sits inside a small shape.',
+    '**A line is at most about 70 characters.** `Paragraph`, `PROSE_CHAT`, `.prose-doc` and `PROSE_MEASURE` cap their text blocks at 70ch of their own size; tables and code keep the column\'s width.',
     'Inline code is 0.9em of its sentence and never under 12px: Consolas\'s x-height is the UI face\'s own (both 0.49 of the em), so a smaller code token only reads as smaller.',
   ]))
   out.push(pic('faces'))
   out.push(pic('readout-vs-code'))
   out.push(ul([
-    '**Text never uses the code face - only figures do.** `.data-readout` (or `Readout`) is for anything carrying figures: counts, costs, dates, IDs. It draws digits and `. , : % $` in the monospace face and every other character in the UI face (`--font-readout` leads with `Proxyma Figures`, a `local()` face limited by `unicode-range`).',
-    '`font-mono` is for **code** only: a code block, a command, a key or token, a stack trace, a template placeholder. An ID, a logger name, a date or a purchase order is a readout, not code.',
-    'Orbitron is the wordmark and display numerals only.',
+    '**Numbers are the UI face\'s tabular figures** (since 2026-10-28, replacing 2026-10-05\'s Consolas digits). `.data-readout` (or `Readout`) is for anything carrying figures - counts, costs, dates, IDs: Space Grotesk with `font-variant-numeric: tabular-nums`, so digits keep one width and a column aligns, while a figure and the word beside it stay one face. `--font-readout` is the UI face. The review found Consolas digits beside Space Grotesk digits in one caption.',
+    '`font-mono` is for **code** only: a code block, a command, a key or token, a stack trace, a template placeholder. An ID, a logger name, a date or a purchase order is a readout, not code - and never mono.',
+    'Orbitron is the wordmark only.',
   ]))
   out.push(`<h3 id="sentence-case">Sentence case</h3>`)
   out.push(ul([
@@ -205,29 +211,35 @@ export function guidelineBody({ repo, kit, picture }) {
   // -- 5. Spacing and layout ---------------------------------------------------------------------
   out.push(`<h2 id="spacing">Spacing and layout</h2>`)
   out.push(pic('spacing'))
+  out.push(ul([
+    '**A 4-point rhythm** (since 2026-10-28): every padding, gap and margin in a kit component is 4, 8, 12, 16, 24, 32, 48 or 64px - Tailwind\'s 1, 2, 3, 4, 6, 8, 12 and 16. The review counted 14 paddings, 20 margins and 8 gaps in the app, 10px the commonest gap; 6, 10, 14, 20 and 28 are gone from the kit. A 2px nudge for optical alignment is not a step.',
+    '**Control sizes**: a field and a default button are 36px under a mouse (`h-9`, the field\'s `min-h-9`), a small button 32px (`h-8`), and every one of them 44px on glass (`touch:h-tap`). A form row lines up with the button that submits it.',
+  ]))
   out.push(p('Where each step goes. Follow it for new work; a deliberate exception carries a comment saying why.'))
   out.push(table(['Element', 'Classes'], [
     ['Page content', '`Page` - `max-w-5xl 2xl:max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 short:py-3 space-y-6 short:space-y-3`; a route\'s skeleton uses the same'],
+    ['Page title', '`PageHeader` / `PageTitle` - 24/32 600, its actions on its line, a caption line under it'],
     ['Dialog panel', '`w-full max-w-* mx-4` inside the dialog overlay (the app\'s `ModalShell`), which has no horizontal padding below `sm` (`px-0 py-4 sm:px-4`) - so the `mx-4` alone is the backdrop margin on a phone, never drop it'],
     ['Dialog header (divided)', '`DialogHeader` - `px-4 sm:px-6 py-4 border-b border-line/45`'],
-    ['Dialog body', '`DialogBody` - `px-4 sm:px-6 py-5`, fields `space-y-4`. A title in the body (no divider) sits in the same `px-4 sm:px-6 py-5`'],
-    ['Centered confirmation body', '`px-4 sm:px-6 pt-6 pb-5`'],
+    ['Dialog body', '`DialogBody` - `px-4 sm:px-6 py-6`, fields `space-y-4`. A title in the body (no divider) sits in the same padding'],
+    ['Centered confirmation body', '`DialogBody centered` - `px-4 sm:px-6 py-6`'],
     ['Dialog footer', '`DialogFooter` - `flex justify-end gap-3 px-4 sm:px-6 py-4 border-t border-line/45`'],
     ['Form action row, footer buttons', '`gap-3`'],
     ['Inline action cluster in a row', '`gap-2` (`RowActions`)'],
     ['Settings tab root', '`SettingsSections` (`.settings-sections`: 3rem above each rule, 3rem below) for several sub-sections, `space-y-6` for one; a lead paragraph goes in its `intro`'],
-    ['Settings tab title', 'drawn once by the kit\'s `SettingsWindow` from the tab\'s name - a tab never draws its own name as a heading'],
+    ['Settings tab title', 'drawn once by the kit\'s `SettingsWindow` from the tab\'s name (`PageTitle level="tab"`, 18/26) - a tab never draws its own name as a heading'],
     ['Settings sub-section heading', '`SettingsSection` (its `title`, `caption` and `toggle`), or `SectionHeading` (`mb-4`, or `mb-0` - `flush` - inside a `space-y-*` block), its `caption` and `action` (a section switch, an Add button) as props'],
-    ['Field label to control', '`FieldLabel` (`mb-2`), in dialogs too; never `Input`\'s own `label` inside Settings'],
-    ['Settings list row (title, caption, trailing action)', 'the kit\'s `ListRow` (`gap-3 py-3`, top-aligned) or `SwitchRow` in a `List` - never an action pinned top-right over a wrapping caption'],
-    ['Card or panel', '`Card` - `px-4 sm:px-5 py-4`, `bg-surface/40 border border-line/40 rounded-lg`'],
+    ['Field label to control', '`FieldLabel` (`mb-2`), in dialogs too; never `Input`\'s own `label` inside Settings. With a hint: the label `mb-1`, the hint (`FieldHint`, 13/18 caption ink) `mb-2`, then the control'],
+    ['A description and its title', 'directly under the title, 4px (`mt-1`), 13/18 caption ink, `max-w-[60ch]` - a field\'s hint, a section\'s or a card\'s caption, a switch row\'s or a choice\'s caption alike; never after the content it describes'],
+    ['Settings list row (title, caption, trailing action)', 'the kit\'s `ListRow` (`gap-3 py-3`, top-aligned) or `SwitchRow` in a `List` - never an action pinned top-right over a wrapping caption. Selected: `SELECTED_ROW`'],
+    ['Card or panel', '`Card` - `px-4 sm:px-6 py-4` (`sm` `p-3`, `lg` `p-6 sm:p-8`), `bg-surface/40 border border-line/40 rounded-lg`, no shadow'],
     ['Stat tile, and a grid of them', '`StatTile` `px-4 py-3`, `StatGrid` `gap-3`'],
   ]))
   out.push(ul([
     'Below `sm` every dialog and every card steps to `px-4`.',
     '**Content width matches the header.** The header and every page share `PAGE_COLUMN`; a new page inherits the shared wrapper (`Page`) and never restates a width.',
-    '**Gutters: 12px on a phone** for the header and every page (`PAGE_GUTTER`, `px-3 sm:px-6`), and 8px for the chat thread and composer.',
-    'The Settings rail fits 1280x720 without scrolling: `py-1` rows with no gap, `space-y-4` groups, `md:py-4`. No entry is hidden to get there.',
+    '**Gutters: 12px on a phone** for the header and every page (`PAGE_GUTTER`, `px-3 sm:px-6`), the chat thread and composer included (since 2026-10-28; they were 8px).',
+    'The Settings rail fits 1280x720 without scrolling: `py-1` rows with no gap, `space-y-4` groups, `md:py-4`; its rows stay 13px for that reason. No entry is hidden to get there.',
   ]))
   out.push(table(['Constant', 'Value', 'Use'], T.LAYOUT.map(l => [`\`${l.name}\``, `\`${l.value}\``, l.use])))
 
@@ -235,15 +247,16 @@ export function guidelineBody({ repo, kit, picture }) {
   out.push(`<h2 id="shape">Radius, elevation and layers</h2>`)
   out.push(pic('radii'))
   out.push(ul([
-    '`rounded-md` (6px) for buttons, inputs, badges, chips and code; `rounded-lg` (8px) for cards, panels, dialogs and menus.',
-    '`rounded-full` only for what is round by nature: dots, switches, avatars, the play button.',
+    '**Radius by role** (since 2026-10-28; the preset defines these on `theme`, so no other step exists): `rounded-md` - and bare `rounded`, the same 6px - for every control: buttons, inputs, badges, chips, menu rows, code; `rounded-lg` (10px) for every surface: cards, panels, dialogs, popovers, menus, the composer; `rounded-sm` (4px) for a tiny chip only (a kbd, a checkbox square).',
+    '`rounded-full` only for what is round by nature: dots, switches, avatars, pills.',
+    'The one exception is the desktop splash card, `rounded-[14px]`: it matches the native launcher window (`SplashWindow.java`, `RADIUS = 14`) it replaces on screen.',
   ]))
   out.push(pic('shadows'))
   out.push(ul([
-    'A panel in the flow is set apart by a **border**, never a shadow. Only what floats casts one: `shadow-card` (menus, popovers, dialogs, toasts) and `shadow-card-lg` (the lightbox), both mode-aware.',
+    '**Three shadows, one per plane off the page** (since 2026-10-29): `shadow-card` on a card, a panel, a stat tile, a settings section and a lifted pill; `shadow-float` on menus, popovers, a Select\'s list, tooltips, dialogs, toasts and the lightbox; `shadow-well` (inset) on a sunken well. In an app shell the card and float shadows carry a highlight along the top - the glass\'s light edge. The preset defines no other shadow class.',
     'No arbitrary `shadow-[...]` and no colored drop shadow - on a light page it has nowhere to fade to and reads as a halo.',
-    '`.surface-float` is the plane of dialogs and dropdowns; `.header-bar` is a fixed page header. Both are **solid**: no translucent panel anywhere.',
-    '**The scrim is the one blur.** Behind an open dialog everything is darkened and blurred (`MODAL_SCRIM`, `bg-black/50 backdrop-blur-sm`); status screens and the lightbox are darker (`MODAL_SCRIM_DARK`). A dialog over a dialog lays a second scrim on top.',
+    '**The glass** (since 2026-10-29): in an app shell `.surface-float` - dialogs, dropdowns, tooltips, toasts, the composer - is the most opaque glass with the strongest blur, and `.header-bar` a glass bar; a card (`.surface-card`) is translucent with no blur of its own. Give a floating panel `border`, never a border color: the class draws the light edge. On the landing site both are solid.',
+    '**Behind an open dialog** everything is darkened and blurred (`MODAL_SCRIM`, `.modal-scrim`: a cool shade in Light, black in Dark); status screens and the lightbox are darker (`MODAL_SCRIM_DARK`). A dialog over a dialog lays a second scrim on top.',
     'The chat\'s pinned question has no background: the answer under it fades into the canvas (`.pin-fade`).',
     '**The composer\'s light is the one glow**: a conic gradient of the brand accent turning round the chat composer as a 1.5px ring, the same gradient blurred behind it. Lit while the composer has focus, turning faster while the agent works. Hover only firms up the neutral border.',
   ]))
@@ -329,6 +342,9 @@ export function guidelineBody({ repo, kit, picture }) {
     '**A field is a hole in the surface, not another surface**: `bg-canvas`. Every text control shares `FIELD_BASE`; a `bg-surface` field is a bug.',
     'Native `<select>` and `<input type="datetime-local">` are drawn by the OS and cannot match: use `Select` and `DateTimePicker`. Free text and numbers stay native.',
     'A field and its words are `Field`: the label, a description, a hint or an error, tied to the control for assistive technology.',
+    '**A field\'s hint sits under its label and above the control, since 2026-10-29** (the maintainer\'s review: "Description should be placed below the section title, and have reasonable padding/margins"): the label, 4px, the hint in 13/18 caption ink at about 70 characters a line, 8px, the control - so the explanation is read before the control it explains. **The error stays under the control**, which is what it points at, and the control is described by both. **A field with no label keeps its hint under the control**: words over a bare control read as its title. `fieldWords` (`field.ts`) decides it for every kit field; a hand-made one uses `FieldHint` and `FieldNote`. Give the hint to the `Field`, never also to the control inside it.',
+    '**The same holds for every description**: a section\'s (`SectionHeading`\'s `caption`), a card\'s (`CardHeader`\'s `caption`), a switch row\'s, a checkbox\'s or a radio option\'s sits directly under its title at 4px - never as a line after the content it explains. A note about a group of fields goes before them.',
+    '**Side-by-side fields keep their controls level** (`FormColumns`): when every child is a labelled kit field, each is a two-row subgrid (`.field-stack` in `proxyma-primitives.css`), so a field with a hint and its neighbor without still line up.',
   ]))
   out.push(`<h3 id="menus-pattern">Menus and lists that open</h3>`)
   out.push(ul([
@@ -348,7 +364,7 @@ export function guidelineBody({ repo, kit, picture }) {
   out.push(ul([
     'Sub-page tabs are `SubNavTabs`: a row of underlined words in sentence case.',
     'Every table takes its parts from the kit (`TableCard`, `Th`, `SortTh`, `TR`, `TD`) with sentence-case headers in caption ink.',
-    'A status is a `Badge` (upper case, solid or pale); a fact beside a name is the `outline` Badge (sentence case, no fill).',
+    'A status is a `Badge` (solid or pale, semibold); a fact beside a name is the `outline` Badge (medium, no fill). Every badge keeps the case of its label since 2026-10-28.',
   ]))
 
   // -- 11. Icons and brand marks -----------------------------------------------------------------
@@ -416,8 +432,8 @@ export function guidelineBody({ repo, kit, picture }) {
   out.push(p('What sits beside the kit in `design/`: the mark (above), the faces and their licenses, the theme of the operator manuals, and the store\'s product image. Every asset there is generated or rendered from a source named here - re-run the source rather than editing the output.'))
   out.push(`<h3 id="fonts">Faces and their licenses</h3>`)
   out.push(table(['Face', 'Its job', 'How it is shipped', 'License'], [
-    ['**Space Grotesk** 400-700', 'The UI face: every surface of the apps and the site, and the reading face of the three engineering documents (this page, the architecture document, the development guide)','The three Vite apps bundle `@fontsource/space-grotesk` (the kit\'s `proxyma-fonts.css`); the site self-hosts it through `next/font`, with the latin, latin-ext and vietnamese subsets; each engineering document embeds `design/docs-theme/fonts/space-grotesk-var-latin.woff2` (`tools/docs/lib/doc-page.mjs`)', 'SIL Open Font License 1.1'],
-    ['**Orbitron** 700 (900 on the splash)', 'The wordmark, the site\'s hero lockup and display numerals. Latin only: it never sets a sentence that is translated', 'As above (`@fontsource/orbitron`, `next/font`)', 'SIL Open Font License 1.1'],
+    ['**Space Grotesk** 400-600 (700 at display sizes)', 'The UI face, and its tabular figures for every number: every surface of the apps and the site, and the reading face of the three engineering documents (this page, the architecture document, the development guide)','The three Vite apps bundle `@fontsource/space-grotesk` (the kit\'s `proxyma-fonts.css`); the site self-hosts it through `next/font`, with the latin, latin-ext and vietnamese subsets; each engineering document embeds `design/docs-theme/fonts/space-grotesk-var-latin.woff2` (`tools/docs/lib/doc-page.mjs`)', 'SIL Open Font License 1.1'],
+    ['**Orbitron** 700 (900 on the splash)', 'The wordmark and the site\'s hero lockup. Latin only: it never sets a sentence that is translated', 'As above (`@fontsource/orbitron`, `next/font`)', 'SIL Open Font License 1.1'],
     ['**Space Mono** 400', 'The code face where Consolas and Cascadia Code are not installed (`--font-mono` names it third)', 'As above', 'SIL Open Font License 1.1'],
     ['Consolas, Cascadia Code', 'The code face and the figures of a readout', 'The platform\'s own; never bundled', '-'],
   ]))
@@ -435,7 +451,7 @@ export function guidelineBody({ repo, kit, picture }) {
   out.push(ul([
     '`design/store/enterprise.html` is Proxyma Enterprise\'s product image, 1600x1200 (4:3). `node design/store/render.mjs enterprise` renders it to `design/store/lemonsqueezy-enterprise.png` in Microsoft Edge through playwright-core (`PLAYWRIGHT_CORE` names another copy of the module).',
     '**Its headline is the Enterprise page\'s own.** Change that page\'s headline and the image together, then re-render; a listing that says what the site does not is the drift this rule exists to stop.',
-    'It is the product\'s own look: the Proxyma appearance\'s tokens, the lockup with the name beside the mark, no glow and no colored shadow. The picture in it is a real Enterprise Server page (`enterprise-screenshot.png`), never a mock. Its fonts are bundled beside it with their licenses (`design/store/fonts/`), so a render is the same offline.',
+    'It is the product\'s own look: a copy of the dark tokens as they were when it was made (the retired Proxyma appearance - re-render it from the Dark tokens when it next changes), the lockup with the name beside the mark, no glow and no colored shadow. The picture in it is a real Enterprise Server page (`enterprise-screenshot.png`), never a mock. Its fonts are bundled beside it with their licenses (`design/store/fonts/`), so a render is the same offline.',
   ]))
 
   // -- 14. Words ---------------------------------------------------------------------------------

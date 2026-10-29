@@ -4,13 +4,13 @@ import { useTranslation } from '@/i18n'
 import { useAppearanceNames } from './PreferenceMenuRows'
 
 /**
- * Appearance - System, Light, Proxyma or Dark - as the header's icon menu, wired to this app's theme
+ * Appearance - System, Light or Dark - as the header's icon menu, wired to this app's theme
  * store.
  *
  * <p>It was `ThemeToggleButton`, a sun/moon flip, until 0.13.0. The control has been a bare icon in
  * the header, a row inside the three menus, and a header icon again as of 2026-09-06 - beside the
  * language control, in the same corner the landing site puts the same pair. It is still that pair;
- * it now opens a panel like its neighbour instead of flipping, because four choices cannot flip.
+ * it now opens a panel like its neighbor instead of flipping, because three choices cannot flip.
  *
  * <p>THE CONTROL ITSELF IS THE KIT'S, on the same shell as the language menu beside it. All this
  * file decides is where the preference comes from.

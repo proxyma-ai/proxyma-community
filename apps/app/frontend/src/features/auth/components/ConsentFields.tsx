@@ -65,8 +65,8 @@ export function ConsentFields({
             }}
           />
         </Checkbox>
-        {/* Under the label's text rather than the box: 16px box plus the 10px gap. */}
-        <Presence show={!!error}><Caption id={errorId} tone="danger" role="alert" className="mt-1 pl-[26px]">{error}</Caption></Presence>
+        {/* Under the label's text rather than the box: 16px box plus the 8px gap. */}
+        <Presence show={!!error}><Caption id={errorId} tone="danger" role="alert" className="mt-1 pl-6">{error}</Caption></Presence>
       </div>
     </div>
   )

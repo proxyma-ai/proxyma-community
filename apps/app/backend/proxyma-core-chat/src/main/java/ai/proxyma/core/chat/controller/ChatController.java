@@ -453,19 +453,230 @@ public class ChatController {
         return usage;
     }
 
-    // The conversation's agents - the main one and every sub-agent, finished ones included - and
-    // what each spent: the agents graph beside the composer's model. Same ownership check as the
-    // conversation itself.
-    @GetMapping("/chat/conversations/{id}/agents")
-    public Mono<ResponseEntity<ai.proxyma.core.chat.dto.ConversationAgents>> conversationAgents(
-            @PathVariable String id, ServerWebExchange exchange) {
+    // -- The agent tree, alarms (ai.proxyma.core.chat.agents) --------------------------------------
+
+    private ai.proxyma.core.chat.agents.AgentTree agentTree;
+    private ai.proxyma.core.chat.agents.AgentAlarms agentAlarms;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentTree(ai.proxyma.core.chat.agents.AgentTree agentTree) {
+        this.agentTree = agentTree;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentAlarms(ai.proxyma.core.chat.agents.AgentAlarms agentAlarms) {
+        this.agentAlarms = agentAlarms;
+    }
+
+    // Every agent of the tree this conversation is in - its root, every child at every depth, where
+    // each stands and what it spent - for the agents map, the panels and the "back to" link of a
+    // child's page. Same ownership check as the conversation itself.
+    @GetMapping("/chat/conversations/{id}/agent-tree")
+    public Mono<ResponseEntity<Map<String, Object>>> agentTree(@PathVariable String id, ServerWebExchange exchange) {
         return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
             String uid = userId.isEmpty() ? null : userId;
-            String guestSessionId = resolveGuestSessionId(exchange, false);
             Conversation conv = chatService.getConversation(id);
-            if (!canAccessConversation(conv, uid, guestSessionId))
-                return ResponseEntity.status(404).<ai.proxyma.core.chat.dto.ConversationAgents>build();
-            return ResponseEntity.ok(chatService.agents(conv));
+            if (agentTree == null || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
+                return ResponseEntity.status(404).<Map<String, Object>>build();
+            return ResponseEntity.ok(agentTreeView(id));
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    private Map<String, Object> agentTreeView(String conversationId) {
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        String rootId = agentTree.rootOf(conversationId);
+        out.put("rootConversationId", rootId);
+        out.put("maxDepth", agentTree.maxDepth());
+        List<Map<String, Object>> agents = new java.util.ArrayList<>();
+        Map<String, Conversation> convs = new java.util.HashMap<>();
+        List<ai.proxyma.core.chat.model.AgentNode> nodes = agentTree.treeOf(conversationId);
+        for (Conversation c : chatMemory.findConversations(nodes.stream()
+                .map(ai.proxyma.core.chat.model.AgentNode::getConversationId).toList())) {
+            convs.put(c.getId(), c);
+        }
+        for (ai.proxyma.core.chat.model.AgentNode n : nodes) {
+            Map<String, Object> v = new java.util.LinkedHashMap<>();
+            v.put("agentId", n.getId().toString());
+            v.put("conversationId", n.getConversationId());
+            v.put("parentConversationId", n.getParentConversationId());
+            // Titles and reports the model wrote, crossing to the browser - screened as every other
+            // agent text is.
+            v.put("title", ai.proxyma.core.system.util.SensitivePaths.scrub(n.getTitle()));
+            v.put("status", n.getStatus());
+            v.put("lifetime", n.getLifetime());
+            v.put("depth", n.getDepth());
+            v.put("owesReport", n.isReportOwed());
+            v.put("lastReport", n.getLastReport() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getLastReport()));
+            v.put("model", n.getModel());
+            v.put("createdAt", n.getCreatedAt() == null ? null : n.getCreatedAt().toString());
+            v.put("endedAt", n.getEndedAt() == null ? null : n.getEndedAt().toString());
+            v.put("working", chatService.isActive(n.getConversationId()));
+            Conversation c = convs.get(n.getConversationId());
+            v.put("inputTokens", c == null ? 0 : c.getInputTokens());
+            v.put("outputTokens", c == null ? 0 : c.getOutputTokens());
+            v.put("costUsd", c == null ? 0 : c.getEstimatedCostUsd());
+            // Its limits, what checked it, and why the tree stopped it - for the agents map.
+            v.put("budgetUsd", n.getBudgetUsd());
+            v.put("deadlineAt", n.getDeadlineAt() == null ? null : n.getDeadlineAt().toString());
+            v.put("role", n.getRole());
+            v.put("verification", n.getVerification() == null ? null
+                    : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getVerification()));
+            v.put("stopNote", n.getStopNote() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getStopNote()));
+            agents.add(v);
+            if (n.getConversationId().equals(conversationId)) out.put("self", v);
+        }
+        out.put("agents", agents);
+        return out;
+    }
+
+    // The person can do anything to any agent of a tree they own: pause, resume, stop, dismiss.
+    @PostMapping("/chat/conversations/{id}/agent-tree/{agentId}/{action}")
+    public Mono<ResponseEntity<Map<String, Object>>> controlAgent(@PathVariable String id, @PathVariable String agentId,
+                                                                 @PathVariable String action, ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            Conversation conv = chatService.getConversation(id);
+            if (agentTree == null || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
+                return ResponseEntity.status(404).<Map<String, Object>>build();
+            Map<String, Object> result = agentTree.controlInTree(id, agentId, action);
+            return Boolean.TRUE.equals(result.get("success")) ? ResponseEntity.ok(result)
+                    : ResponseEntity.badRequest().body(result);
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // -- The approvals inbox (ApprovalInbox) ----------------------------------------------------------
+
+    private ai.proxyma.core.chat.agents.ApprovalInbox approvalInbox;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setApprovalInbox(ai.proxyma.core.chat.agents.ApprovalInbox approvalInbox) {
+        this.approvalInbox = approvalInbox;
+    }
+
+    // The caller's own requests, newest first: waiting only, or every one with its outcome. Nobody
+    // signed in on a multi-user server has none.
+    @GetMapping("/chat/approvals")
+    public Mono<ResponseEntity<Map<String, Object>>> approvals(@RequestParam(defaultValue = "true") boolean pending,
+                                                              @RequestParam(defaultValue = "0") int page,
+                                                              @RequestParam(defaultValue = "20") int size,
+                                                              ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            if (approvalInbox == null || (uid == null && chatMemory.isMultiUser())) {
+                return ResponseEntity.ok(approvalPage(org.springframework.data.domain.Page.empty()));
+            }
+            return ResponseEntity.ok(approvalPage(approvalInbox.forUser(uid, pending, page, size)));
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // The requests of every agent of the tree this conversation is in.
+    @GetMapping("/chat/conversations/{id}/approvals")
+    public Mono<ResponseEntity<Map<String, Object>>> conversationApprovals(@PathVariable String id,
+                                                                          @RequestParam(defaultValue = "true") boolean pending,
+                                                                          @RequestParam(defaultValue = "0") int page,
+                                                                          @RequestParam(defaultValue = "20") int size,
+                                                                          ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            Conversation conv = chatService.getConversation(id);
+            if (approvalInbox == null || agentTree == null
+                    || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
+                return ResponseEntity.status(404).<Map<String, Object>>build();
+            return ResponseEntity.ok(approvalPage(approvalInbox.forTrees(List.of(agentTree.rootOf(id)), pending, page, size)));
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // Decides up to a hundred requests at once: {ids, decision: APPROVE|DENY, note}. Each is decided
+    // only when the caller may answer that conversation's prompts - the person it works for - and only
+    // while it still waits; the answer counts what was decided and what was not.
+    @PostMapping("/chat/approvals/decide")
+    public Mono<ResponseEntity<Map<String, Object>>> decideApprovals(@RequestBody Map<String, Object> body,
+                                                                    ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            if (approvalInbox == null) return ResponseEntity.status(404).<Map<String, Object>>build();
+            Optional<ai.proxyma.core.chat.agents.ApprovalInbox.Decision> decision =
+                    ai.proxyma.core.chat.agents.ApprovalInbox.parseDecision(String.valueOf(body.get("decision")));
+            Object rawIds = body.get("ids");
+            if (decision.isEmpty() || !(rawIds instanceof List<?> ids) || ids.isEmpty()
+                    || ids.size() > ai.proxyma.core.chat.agents.ApprovalInbox.DECIDE_MAX) {
+                return ResponseEntity.badRequest().<Map<String, Object>>build();
+            }
+            Object rawNote = body.get("note");
+            String note = rawNote instanceof String s ? s : null;
+            String guest = resolveGuestSessionId(exchange, false);
+            int decided = 0;
+            int skipped = 0;
+            for (Object raw : ids) {
+                Optional<ai.proxyma.core.chat.model.ToolApprovalRequest> r = approvalInbox.find(String.valueOf(raw));
+                if (r.isEmpty() || !r.get().isPending() || !mayReachPending(r.get().getConversationId(), uid, guest)) {
+                    skipped++;
+                    continue;
+                }
+                if (approvalInbox.decide(r.get(), decision.get(), note, uid)) decided++;
+                else skipped++;
+            }
+            return ResponseEntity.ok(Map.<String, Object>of("decided", decided, "skipped", skipped));
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    private static Map<String, Object> approvalPage(org.springframework.data.domain.Page<ai.proxyma.core.chat.agents.ApprovalInbox.View> page) {
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        List<Map<String, Object>> items = new java.util.ArrayList<>();
+        for (ai.proxyma.core.chat.agents.ApprovalInbox.View v : page.getContent()) items.add(approvalView(v));
+        out.put("items", items);
+        out.put("totalItems", page.getTotalElements());
+        out.put("totalPages", page.getTotalPages());
+        out.put("page", page.getNumber());
+        return out;
+    }
+
+    /** One request for a page - what the model wrote, screened at the boundary like every agent text. */
+    public static Map<String, Object> approvalView(ai.proxyma.core.chat.agents.ApprovalInbox.View v) {
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", v.id());
+        m.put("conversationId", v.conversationId());
+        m.put("rootConversationId", v.rootConversationId());
+        m.put("agentTitle", v.agentTitle() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(v.agentTitle()));
+        m.put("toolName", v.toolName());
+        m.put("arguments", v.arguments() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(v.arguments()));
+        m.put("status", v.status());
+        m.put("requestedAt", v.requestedAt() == null ? null : v.requestedAt().toString());
+        m.put("decidedAt", v.decidedAt() == null ? null : v.decidedAt().toString());
+        m.put("note", v.note());
+        m.put("result", v.result() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(v.result()));
+        return m;
+    }
+
+    // The alarms the conversation's agent set, soonest first, each with a Cancel on the page.
+    @GetMapping("/chat/conversations/{id}/alarms")
+    public Mono<ResponseEntity<List<Map<String, Object>>>> alarms(@PathVariable String id, ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            Conversation conv = chatService.getConversation(id);
+            if (agentAlarms == null || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
+                return ResponseEntity.status(404).<List<Map<String, Object>>>build();
+            List<Map<String, Object>> out = agentAlarms.pending(id).stream().map(a -> {
+                Map<String, Object> v = new java.util.LinkedHashMap<>();
+                v.put("alarmId", a.getId().toString());
+                v.put("dueAt", a.getDueAt().toString());
+                v.put("note", ai.proxyma.core.system.util.SensitivePaths.scrub(a.getNote()));
+                return v;
+            }).toList();
+            return ResponseEntity.ok(out);
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    @DeleteMapping("/chat/conversations/{id}/alarms/{alarmId}")
+    public Mono<ResponseEntity<Void>> cancelAlarm(@PathVariable String id, @PathVariable String alarmId,
+                                                  ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            Conversation conv = chatService.getConversation(id);
+            if (agentAlarms == null || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
+                return ResponseEntity.status(404).<Void>build();
+            boolean ok = Boolean.TRUE.equals(agentAlarms.cancel(id, alarmId).get("success"));
+            return ok ? ResponseEntity.noContent().<Void>build() : ResponseEntity.status(404).<Void>build();
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 
@@ -675,25 +886,6 @@ public class ChatController {
                 return ResponseEntity.status(404).<Void>build();
             chatService.stop(id);
             return ResponseEntity.noContent().<Void>build();
-        }).subscribeOn(Schedulers.boundedElastic()));
-    }
-
-    // Stops ONE sub-agent of the conversation - the Stop on its panel. The conversation's own Stop
-    // above ends the running turn (and the sub-agents that turn is waiting for); a sub-agent in the
-    // background outlives the turn that started it, so it has a stop of its own. Same ownership
-    // check; 404 when it is not running there, which a double click or a sub-agent that finished
-    // first both produce.
-    @PostMapping("/chat/conversations/{id}/sub-agents/{agentId}/stop")
-    public Mono<ResponseEntity<Void>> stopSubAgent(@PathVariable String id, @PathVariable String agentId,
-                                                   ServerWebExchange exchange) {
-        return resolveUserId(exchange).flatMap(userId -> Mono.<ResponseEntity<Void>>fromCallable(() -> {
-            String uid = userId.isEmpty() ? null : userId;
-            String guestSessionId = resolveGuestSessionId(exchange, false);
-            if (!mayReachPending(id, uid, guestSessionId))
-                return ResponseEntity.status(404).<Void>build();
-            return chatService.stopSubAgent(id, agentId)
-                    ? ResponseEntity.noContent().<Void>build()
-                    : ResponseEntity.status(404).<Void>build();
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 

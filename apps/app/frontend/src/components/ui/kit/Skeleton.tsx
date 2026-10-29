@@ -29,7 +29,7 @@ export function Skeleton({ className }: { className?: string }) {
 export function ListRowSkeleton({ action = true }: { action?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3 py-3" aria-hidden="true">
-      <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="flex-1 min-w-0 space-y-2">
         <Skeleton className="h-3.5 w-2/5" />
         <Skeleton className="h-3 w-3/5" />
       </div>
@@ -42,7 +42,7 @@ export function ListRowSkeleton({ action = true }: { action?: boolean }) {
 export function SwitchRowSkeleton() {
   return (
     <div className="flex items-start justify-between gap-3 py-3" aria-hidden="true">
-      <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="flex-1 min-w-0 space-y-2">
         <Skeleton className="h-3.5 w-32" />
         <Skeleton className="h-3 w-48" />
       </div>
@@ -51,13 +51,13 @@ export function SwitchRowSkeleton() {
   )
 }
 
-/** A `Field`: its 13px name, `mb-2`, then a control's 36px box. */
+/** A `Field`: its 14px name, `mb-2`, then a control's 36px box. */
 export function FieldSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('flex flex-col', className)} aria-hidden="true">
-      {/* The label's 20px line and the field's 32px, so nothing moves when the field arrives. */}
+      {/* The label's 20px line and the field's 36px, so nothing moves when the field arrives. */}
       <div className="h-5 mb-2 flex items-center"><Skeleton className="h-3.5 w-24" /></div>
-      <Skeleton className="h-8 w-full max-w-sm rounded-md" />
+      <Skeleton className="h-9 w-full max-w-sm rounded-md" />
     </div>
   )
 }
@@ -67,9 +67,9 @@ export function RadioGroupSkeleton({ count = 3, horizontal }: { count?: number; 
   return (
     <div className="space-y-3" aria-hidden="true">
       <Skeleton className="h-3.5 w-28" />
-      <div className={horizontal ? 'flex flex-wrap gap-4' : 'space-y-2.5'}>
+      <div className={horizontal ? 'flex flex-wrap gap-4' : 'space-y-2'}>
         {Array.from({ length: count }, (_, i) => (
-          <div key={i} className="flex items-center gap-2.5">
+          <div key={i} className="flex items-center gap-2">
             <Skeleton className="h-4 w-4 rounded-full" />
             <Skeleton className="h-3 w-20" />
           </div>

@@ -89,9 +89,7 @@ class ChatModuleTest {
         license.setModules(List.of(module));
         ChatSkillService skills = mock(ChatSkillService.class);
         when(skills.toolsForSkillName(anyString())).thenReturn(Optional.empty());
-        SubAgentService subAgents = mock(SubAgentService.class);
-        when(subAgents.isAvailable()).thenReturn(true);
-        return new ToolSkillGating(skills, subAgents, mock(KnowledgeGraphService.class), license, List.of(module));
+        return new ToolSkillGating(skills, mock(KnowledgeGraphService.class), license, List.of(module));
     }
 
     private List<String> offered(ToolSkillGating gating, Set<String> unlocked, String conversationId) {
@@ -173,7 +171,7 @@ class ChatModuleTest {
                 mock(ToolSkillGating.class), prompts, mock(FeedbackRepository.class),
                 mock(ConversationShareRepository.class), mock(ChatEventSink.class),
                 mock(ConversationTitleService.class), mock(ModelPricingService.class),
-                mock(SubAgentService.class), mock(WorkflowRunService.class), mock(WorkflowService.class),
+                mock(WorkflowRunService.class), mock(WorkflowService.class),
                 mock(WorkflowRunner.class), guardrails);
         chat.setChatModules(List.of(module));
         return chat;

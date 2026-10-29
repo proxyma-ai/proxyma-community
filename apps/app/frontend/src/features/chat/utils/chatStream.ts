@@ -4,7 +4,7 @@
  *
  * <p>Held by the PAGE, not by a hook instance - since the 0.27.0 feedback, where messages and tool
  * rows showed twice. AppShell remounts the chat page on every pathname change, the first message's
- * `/` to `/chat/{id}` included, and useChat kept all of this in refs of its own. Before sub-agents
+ * `/` to `/chat/{id}` included, and useChat kept all of this in refs of its own. Before deployed agents
  * ran in the background that cost nothing, because a turn's `done` closed the stream. Now a `done`
  * that says more is coming keeps it open, so the stream the old instance opened went on following
  * the conversation after the page remounted - and the next send from the new instance opened a
@@ -110,7 +110,7 @@ export function ended(s: ChatStream, generation: number) {
  * RELEASES THE CONNECTION AND KEEPS THE PLACE - for a tab hidden for a while (chatInstance.ts).
  *
  * <p>A browser keeps six HTTP/1.1 connections per site across all its tabs, and a chat stream holds
- * one for as long as a turn or a background sub-agent runs; tabs left open in the background used
+ * one for as long as a turn or a background deployed agent runs; tabs left open in the background used
  * the pool up, and the next page's requests waited for ever. So a hidden tab closes its stream, but
  * unlike `stop` keeps the conversation and the last event handled, and `resumePoint` says where to
  * pick up.
@@ -189,7 +189,7 @@ export function parseOpen(data: string): StreamOpen | null {
  * records which server it reached. The page then loads the conversation again instead of waiting.
  *
  * <p>Gone when the server is another process than the one the page was following: everything held
- * in memory there - the running turn, background sub-agents, the replay, the numbering - died with
+ * in memory there - the running turn, background deployed agents, the replay, the numbering - died with
  * it. A restart mid-turn (Settings' restart, an update, a crash) left the page showing "Waiting
  * for ..." for ever: the restarted server numbers the conversation from zero and replays nothing,
  * so the reconnected stream said nothing at all, and the next message was sent into the dead turn

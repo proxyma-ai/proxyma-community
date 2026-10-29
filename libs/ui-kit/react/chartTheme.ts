@@ -81,7 +81,7 @@ export const CHART_GRID = { stroke: CHART_INK.line, strokeDasharray: '2 4', vert
  * which takes a class. The cursor band under the pointer is the faint caption tint.
  */
 export const CHART_TOOLTIP = {
-  contentStyle: { fontSize: 12, borderRadius: 8, backgroundColor: 'transparent', border: 'none' },
-  wrapperClassName: 'surface-float border border-line/45 rounded-lg shadow-card text-ink-secondary',
+  contentStyle: { fontSize: 13, borderRadius: 10, backgroundColor: 'transparent', border: 'none' },
+  wrapperClassName: 'surface-float border rounded-lg shadow-float text-ink-secondary',
   cursor: { fill: 'rgb(var(--ink-caption) / 0.08)' },
 } as const

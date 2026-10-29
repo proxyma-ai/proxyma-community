@@ -97,7 +97,7 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
           duplicate that prop exists to avoid.
 
           The facts are the kit's KeyValueList, a name and its value per row. */}
-      <div className="flex items-stretch gap-5">
+      <div className="flex items-stretch gap-6">
         <span className="shrink-0 self-stretch w-20" aria-hidden="true">
           {/* Turns at the header's idle speed, 30 degrees a second: the kit's named mark-idle
               animation, which the kit's prefers-reduced-motion rule stops with no code here. */}
@@ -169,7 +169,7 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
           THIRD-PARTY-NOTICES.txt, the same file the installers put in the installation folder. */}
       <SignpostSection
         title={t('Open-source licenses')}
-        caption={t('The open-source software in Proxyma, the license each part is under, and how to get the source code of the GPL and LGPL parts.')}
+        caption={t('Each open-source part, its license, and how to get GPL and LGPL source.')}
         action={
           <Button variant="secondary" onClick={() => setShowNotices(true)}>
             <Scale size={14} />
@@ -261,7 +261,7 @@ function DocumentationSection() {
   return (
     <SettingsSection
       title={t('Documentation')}
-      caption={t('Manuals, the API and MCP reference, and answers to common questions, published on proxyma.ai for the current release.')}
+      caption={t('Manuals, the API and MCP reference, and common questions, on proxyma.ai.')}
       gap="list"
     >
       {/* Icons match proxyma.ai/docs one-for-one: a rack for the server manual, a laptop for the
@@ -373,7 +373,7 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
                 })}
               </>
             )
-            : t('The terms for the services Proxyma runs, such as feedback and diagnostics. This edition itself is under the AGPL.')}
+            : t('The terms for the services Proxyma runs, such as feedback and diagnostics.')}
           href="https://proxyma.ai/terms"
         />
         <LinkRow
@@ -395,7 +395,7 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
             title={t('Send diagnostics to Proxyma')}
             caption={FEATURES.auth
               ? t('Proxyma Enterprise Server never sends diagnostics or rated answers to Proxyma.')
-              : t('Error types, timings and enabled features, sent once a day - never your documents, questions, file names or account. A rated answer and its question are sent too; off by default.')}
+              : t('Error types, timings and enabled features once a day, and any answer you rate with its question.')}
             checked={dataCollectionAllowed && !telemetryBlockedByTier}
             onChange={v => dataCollectionMutation.mutate(v)}
             disabled={dataCollectionMutation.isPending || telemetryBlockedByTier}

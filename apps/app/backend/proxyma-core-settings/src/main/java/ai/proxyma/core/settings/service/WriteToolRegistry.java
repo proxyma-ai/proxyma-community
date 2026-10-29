@@ -80,6 +80,11 @@ public final class WriteToolRegistry {
     // source the caller does not own.
     public static final Set<String> SOURCE_CONTENT_NAMES = Set.of("saveToSource");
 
+    // A shell command (runCommand): on the user's own machine on Desktop, in the sandbox container on a
+    // server. A write for the approval pause and Read-only everywhere - each call shows the command
+    // and waits for the user in Ask. No settings switch gates it (McpGuardService lets it through).
+    public static final Set<String> COMMAND_NAMES = Set.of("runCommand");
+
     // Tools that write only inside the conversation's own workspace. NOT write tools - no approval,
     // the maintainer's choice - but still kept from an agent that runs outside any conversation,
     // which has no workspace.
@@ -117,6 +122,7 @@ public final class WriteToolRegistry {
         all.addAll(LOCAL_FILE_NAMES);
         all.addAll(KEY_ACCOUNT_NAMES);
         all.addAll(SOURCE_CONTENT_NAMES);
+        all.addAll(COMMAND_NAMES);
         return Set.copyOf(all);
     }
 

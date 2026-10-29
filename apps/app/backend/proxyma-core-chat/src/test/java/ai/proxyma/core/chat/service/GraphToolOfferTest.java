@@ -57,8 +57,7 @@ class GraphToolOfferTest {
         gate.refresh(LicenseTier.ENTERPRISE);
         ChatSkillService skills = mock(ChatSkillService.class);
         when(skills.toolsForSkillName(anyString())).thenReturn(Optional.empty());
-        SubAgentService subAgents = mock(SubAgentService.class);
-        ToolSkillGating gating = new ToolSkillGating(skills, subAgents, graph, new LicenseToolScope(gate), List.of());
+        ToolSkillGating gating = new ToolSkillGating(skills, graph, new LicenseToolScope(gate), List.of());
         gating.setConnectorService(connectors);
 
         List<ToolCallback> core = List.of(tool("searchIndexedSources"), tool("searchKnowledgeGraph"));

@@ -86,6 +86,8 @@ function stackGap(mark: number): string {
   return 'gap-4'
 }
 
+// The lockup's gap is OPTICAL, a share of the mark's height, so it is the one spacing in the kit
+// allowed off the 4-point rhythm (6 and 10px): the logo is the maintainer's and is kept as drawn.
 function lockupGap(mark: number): string {
   if (mark <= 20) return 'gap-1.5'
   if (mark <= 32) return 'gap-2'
@@ -129,7 +131,7 @@ export function Logo({ iconRef, size, markOnly = false, productName = 'Proxyma',
           <span className={cn('font-brand font-bold text-brand-legible tracking-wider leading-none', wordmarkSize(mark))}>
             {productName}
           </span>
-          <span className={cn('text-2xs text-ink-caption leading-none whitespace-nowrap', subtitleClassName)}>
+          <span className={cn('text-xs text-ink-caption leading-none whitespace-nowrap', subtitleClassName)}>
             {subtitle}
           </span>
         </span>

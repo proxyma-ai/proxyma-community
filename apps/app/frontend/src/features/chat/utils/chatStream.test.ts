@@ -52,7 +52,7 @@ describe('one stream per page', () => {
 
 describe('where a new stream starts', () => {
   test('after the last event handled, when the conversation is still followed', () => {
-    // A send while sub-agents work in the background: the server kept the sink, and replaying it
+    // A send while deployed agents work in the background: the server kept the sink, and replaying it
     // from the start would put the previous turn on screen a second time.
     const page = newChatStream()
     const g = follow(page, 'c1', -1)
@@ -186,7 +186,7 @@ describe('a hidden tab releases its stream and keeps its place', () => {
     assert.equal(resumePoint(other, 1000), null)
   })
 
-  test('a send while paused resumes from the place kept, as a send beside background sub-agents does', () => {
+  test('a send while paused resumes from the place kept, as a send beside background deployed agents does', () => {
     const page = newChatStream()
     const g = follow(page, 'c1', -1)
     keepClose(page, g, () => {})

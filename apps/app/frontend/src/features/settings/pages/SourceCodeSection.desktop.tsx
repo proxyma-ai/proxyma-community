@@ -23,10 +23,10 @@ export function SourceCodeSection() {
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: configApi.get, staleTime: Infinity, retry: false })
   const source = communitySource(config?.version)
   const caption = source.kind === 'release'
-    ? t('Proxyma Community is free software: you can use, study, change and share it under the GNU Affero General Public License, version 3. The source code of this version is public.')
+    ? t('Proxyma Community is free software under the GNU Affero General Public License v3. The source code of this version is public.')
     : source.kind === 'development'
-      ? t('Proxyma Community is free software: you can use, study, change and share it under the GNU Affero General Public License, version 3. This is a development build: its own source code is not published, and the source code of each release is.')
-      : t('Proxyma Community is free software: you can use, study, change and share it under the GNU Affero General Public License, version 3. The source code of each release is public.')
+      ? t('Proxyma Community is free software under the GNU Affero General Public License v3. This development build is not published; each release is.')
+      : t('Proxyma Community is free software under the GNU Affero General Public License v3. The source code of each release is public.')
   return (
     <SettingsSection title={t('Source code')} caption={caption} gap="list">
       <List>

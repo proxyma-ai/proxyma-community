@@ -30,11 +30,10 @@ public record ChatMessageResponse(
         // The step limit this row's turn stopped at, on the row the notice is drawn under - what
         // the 'step-limit' event says live. Null everywhere else.
         Integer stepLimit,
-        // Set on the row that stands for a message putting background sub-agents' reports in front
-        // of the main agent: which ones reported at this point of the thread - what the
-        // 'sub-agent-reported' event says live. The row has no content; the report itself is in
-        // the sub-agent's own panel. Null everywhere else.
-        List<SubAgentReported> subAgentReports) {
+        // Set on the row that stands for the agent reading its inbox (AgentInbox): a report from an
+        // agent it deployed, a message, an alarm, a background result, what the user told one of its
+        // agents - what the 'agent-mail' event says live. The row has no content. Null elsewhere.
+        List<AgentMail> agentMail) {
 
     public ChatMessageResponse(Long id, MessageRole role, String content, List<ToolCallResponse> toolCalls,
                                List<String> attachmentNames, List<String> mentions, List<String> skillMentions,
@@ -42,23 +41,14 @@ public record ChatMessageResponse(
         this(id, role, content, toolCalls, attachmentNames, mentions, skillMentions, workflowRunId, stepLimit, null);
     }
 
-    /**
-     * One sub-agent whose report reached the main agent; status is lower case, as the events have it.
-     * kind is "message" for a message a running sub-agent sent (messageMainAgent), else null.
-     */
+    /** One item of an agent's inbox as the thread shows it: kind is report, message, alarm, background or user_talk. */
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    public record SubAgentReported(String agentId, String title, String status, String kind) {}
+    public record AgentMail(String agentId, String title, String kind) {}
 
     // Field names match the frontend's ToolCallInfo shape exactly (see chat.types.ts) so no
     // frontend type change is needed to consume this. startedAt and endedAt are epoch
     // milliseconds, null for a call stored before 2026-10-01 or one that never got a result.
-    // `agent` is set on a `delegate` call: the sub-agent it started, as the thread shows it.
     public record ToolCallResponse(String callId, String toolName, String arguments, String result, boolean done,
-                                   Long startedAt, Long endedAt, SubAgentView agent) {
-
-        public ToolCallResponse(String callId, String toolName, String arguments, String result, boolean done,
-                                Long startedAt, Long endedAt) {
-            this(callId, toolName, arguments, result, done, startedAt, endedAt, null);
-        }
+                                   Long startedAt, Long endedAt) {
     }
 }

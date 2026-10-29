@@ -32,7 +32,7 @@ interface Props {
   conversationId: string
   // Opens the call's detail dialog - every argument, and the raw JSON.
   onOpenDetail: () => void
-  // "From sub-agent: X", for a sub-agent's write (AgentPrompts) - the card's eyebrow.
+  // Who asks, when it is not the agent itself - the card's eyebrow.
   from?: ReactNode
 }
 

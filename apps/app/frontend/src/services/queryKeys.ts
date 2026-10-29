@@ -29,8 +29,9 @@ export const keys = {
   // can never be read as a conversation id.
   keyAccountConversations: (accountId: string) => ['conversations', { keyAccount: accountId }] as const,
   // Under the conversation's own key, so whatever refreshes the conversation after a turn
-  // refreshes its agents graph with it.
-  conversationAgents: (id: string) => ['conversations', id, 'agents'] as const,
+  // refreshes its agent tree and its alarms with it.
+  agentTree: (id: string) => ['conversations', id, 'agent-tree'] as const,
+  alarms: (id: string) => ['conversations', id, 'alarms'] as const,
   // The caller's own long-term memory - Settings > Memory.
   agentMemory:      ()          => ['agent-memory'] as const,
   // Not under 'conversations': 'active' there would read as a conversation id.

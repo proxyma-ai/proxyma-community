@@ -61,7 +61,8 @@ export function AuditTabBody({ tab, title, caption, multiUser, summary: drawSumm
           caption={logCaption}
           action={data?.canClear ? <ClearAuditButton tab={tab} /> : undefined}
         >
-          {t('Logs')}
+          {/* Not "Logs": that is the page's own title, right above (the UI review, 2026-10-28). */}
+          {t('Entries')}
         </SectionHeading>
         <AuditEventLog tab={tab} days={days} summary={data} multiUser={multiUser} />
       </section>

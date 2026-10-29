@@ -12,68 +12,40 @@ export interface ToolCallInfo {
   arguments: string
   result?: string
   done: boolean
-  // Set only on calls a delegated sub-agent made: the callId of the `delegate` row they belong
-  // under. Absent for everything the main agent does, which is the overwhelming majority - see
-  // ChatEvent.parentCallId on the backend.
+  // Set only on calls made inside a running workflow STEP: the step's synthetic call id, which nests
+  // them under its row. Absent for everything the agent does on its own.
   parentCallId?: string
   // When the call started and ended, in epoch milliseconds on the SERVER's clock - the `at` of its
   // tool-start and tool-result events live, and what the result row recorded once reloaded. Absent
   // on a call stored before 2026-10-01, and endedAt on one that never reported back.
   startedAt?: number
   endedAt?: number
-  // On a `delegate` call: the sub-agent it started - what it is doing or did, and what it
-  // reported. From the 'sub-agent-*' events live and from the transcript after a reload; absent
-  // on a delegation stored before 2026-10-02, which has only its call and its result.
-  agent?: SubAgentInfo
 }
 
-// One thing a sub-agent did, in the order it happened: a tool call, or something it said between
-// tool calls. Field names match the backend's SubAgentView.Item.
-export interface SubAgentItem {
-  kind: 'tool' | 'text'
-  callId?: string
-  toolName?: string
-  arguments?: string
-  result?: string
-  done: boolean
-  startedAt?: number
-  endedAt?: number
-  text?: string
-  // Which paragraph a text item is - 'sub-agent-text' carries the whole of it each time, so a
-  // later event for the same segment replaces this one rather than adding to it.
-  segment?: number
-}
+// THE TREE OF AGENTS (since 2026-10-28). Every agent - the one in the conversation the user opened
+// included - can deploy agents of its own, each of them a conversation of its own run by the same
+// turn loop (AgentNode on the backend). Status and lifetime are the backend's words, as it sends them.
+export type AgentStatus = 'RUNNING' | 'WAITING' | 'IDLE' | 'PAUSED' | 'DONE' | 'STOPPED' | 'FAILED'
+export type AgentLifetime = 'SHORT' | 'LONG'
 
-export type SubAgentStatus = 'running' | 'completed' | 'partial' | 'failed' | 'stopped'
-
-// A sub-agent as the thread shows it. `mode` 'sync': the main agent is waiting for it; 'async':
-// it works in the background and reports when it is done, while the conversation goes on.
-export interface SubAgentInfo {
-  id: string
-  mode: 'sync' | 'async'
-  status: SubAgentStatus
-  title?: string
-  startedAt?: number
-  endedAt?: number
-  report?: string
-  items: SubAgentItem[]
-  // Since when it has been waiting on its model, and how much that model has thought so far in
-  // this call - at most one of the two is set, and neither once it is writing or calling a tool.
-  awaitingModelSince?: number
-  thinkingTokens?: number
-  // When it is stopped if it has not finished - server clock, like every other time here.
-  timeoutAt?: number
-}
-
-// A background sub-agent's report reaching the main agent - the point in the thread where the
-// assistant starts speaking about it without having been asked.
-export interface SubAgentReported {
+// The 'agent-status' event's data: one agent this conversation deployed has changed where it stands.
+export interface AgentStatusUpdate {
   agentId: string
   title: string
-  status: SubAgentStatus
-  // 'message' for a message a running sub-agent sent its main agent (messageMainAgent); absent for
-  // a report.
-  kind?: 'message'
+  status: AgentStatus
+  lifetime: AgentLifetime
+  depth: number
+  owesReport: boolean
+  conversationId: string
+}
+
+// What reached a running turn from its inbox - one line each in the thread, never a user bubble.
+// `agentId` and `title` are null for what no agent sent (an alarm).
+export type AgentMailKind = 'report' | 'message' | 'alarm' | 'background' | 'user_talk' | 'approval' | 'context' | 'memory'
+export interface AgentMailEntry {
+  agentId: string | null
+  title: string | null
+  kind: AgentMailKind
 }
 
 // One invocation of a workflow: the plan and the live state of every step, as ONE object. The
@@ -152,9 +124,10 @@ export interface ChatMessage {
   // Set on the message a "stopped at the step limit" notice is drawn under: the limit the turn
   // reached. From the 'step-limit' event live, and from the transcript after a reload.
   stepLimit?: number
-  // Set on a row that stands for sub-agents reporting back to the main agent - see
-  // SubAgentReported. The row has no text of its own.
-  subAgentReports?: SubAgentReported[]
+  // Set on a row that stands for what reached the agent from its inbox while it worked - a deployed
+  // agent's report or message, an alarm, a background job's result, what the user told a deployed
+  // agent. The row has no text of its own.
+  agentMail?: AgentMailEntry[]
 }
 
 export interface QueuedMessage {
@@ -262,16 +235,15 @@ export type PermissionMode = 'ASK' | 'AUTO' | 'READ_ONLY'
 export interface ChatSseEvent {
   type: 'text' | 'thinking' | 'tool-start' | 'tool-result' | 'tool-approval-request' | 'tool-enable-request' | 'user-question' | 'user-injected' | 'condense-start' | 'condense-end'
     | 'usage' | 'title' | 'workflow-run' | 'retry' | 'guardrail' | 'step-limit' | 'prompt-closed' | 'error' | 'session-expired' | 'done'
-    | 'sub-agent-start' | 'sub-agent-wait' | 'sub-agent-thinking' | 'sub-agent-text' | 'sub-agent-done'
-    | 'sub-agent-reported' | 'turn-start'
+    | 'agent-status' | 'agent-mail' | 'turn-start'
     // The stream's own first event, no event of the conversation's: which server this is and
     // whether anything still runs there (ChatController.openEvent, chatStream.ts's `opened`).
     | 'open'
   callId: string
   toolName: string
   data: string
-  // '' for every event the main agent produces; the sub-agent's id on everything a sub-agent does
-  // or asks, and the running workflow STEP's call id on events emitted from inside one. Always
+  // '' for every event the agent produces itself, and the running workflow STEP's call id on events
+  // emitted from inside one. Always
   // present on the wire (the backend defaults it to ''), so this is non-optional here and
   // normalized to undefined where it's consumed.
   parentCallId: string
@@ -304,7 +276,7 @@ export interface PendingQuestion {
   // asks whether to go on (ChatService.askToContinue). Shown by StepLimitPrompt, in the reader's
   // language, and closed by 'prompt-closed' since no tool call stands behind it.
   stepLimit?: StepLimitQuestion
-  // The sub-agent asking, when it is not the main agent - shown with the question.
+  // The workflow step asking, when it is asked from inside one.
   parentCallId?: string
 }
 
@@ -318,7 +290,7 @@ export interface PendingApproval {
   // had registered (maintainer's report, 2026-09-26). The row stays until the call's result arrives.
   decision?: ApprovalChoice
   decisionSent?: boolean
-  // The sub-agent whose call this is, when it is not the main agent's - shown with the prompt.
+  // The workflow step whose call this is, when it is made from inside one.
   parentCallId?: string
   // Wall-clock moment (Date.now()) this approval was queued - set once in chatStore's
   // addPendingApproval (not by the SSE payload itself), and used as the anchor for the five-minute
@@ -343,7 +315,7 @@ export interface PendingEnableRequest {
   connectorField?: string
   connectionId?: string
   connectionName?: string
-  // The sub-agent whose call this is, when it is not the main agent's.
+  // The workflow step whose call this is, when it is made from inside one.
   parentCallId?: string
 }
 
@@ -359,7 +331,8 @@ export interface PendingPrompt {
 
 // A conversation as the server hands it to a page that is about to follow its event stream: the
 // thread, the stream position it is true as of (handle only events numbered above it), the
-// prompts open at that position, and whether sub-agents are working there in the background.
+// prompts open at that position, and whether work goes on there in the background (agents it
+// deployed, background jobs).
 export interface ConversationSnapshot extends ConversationUsage {
   messages: ChatMessage[]
   eventSeq?: number

@@ -1,6 +1,5 @@
 package ai.proxyma.core.chat.controller;
 
-import ai.proxyma.core.chat.service.SubAgentService;
 import ai.proxyma.core.chat.service.SystemPromptService;
 import ai.proxyma.core.settings.config.ProductIdentity;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +27,6 @@ import reactor.core.scheduler.Schedulers;
 public class ChatSystemPromptController {
 
     private final SystemPromptService systemPromptService;
-    private final SubAgentService subAgentService;
     private final ProductIdentity productIdentity;
 
     // Desktop mode has no SecurityWebFilterChain at all, so there is no role to check there - and
@@ -41,10 +39,8 @@ public class ChatSystemPromptController {
     @Value("${proxyma.home-server:false}")
     private boolean homeServer;
 
-    public ChatSystemPromptController(SystemPromptService systemPromptService, SubAgentService subAgentService,
-                                      ProductIdentity productIdentity) {
+    public ChatSystemPromptController(SystemPromptService systemPromptService, ProductIdentity productIdentity) {
         this.systemPromptService = systemPromptService;
-        this.subAgentService = subAgentService;
         this.productIdentity = productIdentity;
     }
 
@@ -73,7 +69,8 @@ public class ChatSystemPromptController {
     }
 
     private String assembled() {
-        boolean canDelegate = subAgentService.isAvailable();
+        // Every agent may deploy agents (AgentTree): the guidance on how is always in.
+        boolean canDelegate = true;
         String instructions = SystemPromptService.instructions(systemPromptService.read(),
                 productIdentity.getProductName(), canDelegate);
         return canDelegate ? instructions.stripTrailing() + "\n\n" + SystemPromptService.DELEGATION_REMINDER : instructions;

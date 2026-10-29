@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { Trash2, Pin, PinOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
-  EmptyState, FadeSwap, HoverActions, IconButton, InlineConfirm, List, ListRow, ListRowSkeleton, MetaList, Presence, Readout, StatusDot,
+  ConfirmDialog, EmptyState, FadeSwap, HoverActions, IconButton, List, ListRow, ListRowSkeleton, MetaList, Presence, Readout, StatusDot, Tooltip,
   pageCount, usePageFor,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
@@ -74,9 +74,9 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.conversations() }),
     onError: (e: unknown) => addToast(withReason(t('Failed to update pin'), e), 'danger'),
   })
-  // Confirmation is inline (the kit InlineConfirm in place of the row's actions), not a modal -
-  // deleting a conversation has no sub-consequences worth a full dialog's weight.
-  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  // THE CONFIRMATION EVERY DELETE OPENS (the UI review, 2026-10-28): it was inline, Cancel and
+  // Delete in place of the row's actions - one idea, two components.
+  const [confirming, setConfirming] = useState<Conversation | null>(null)
 
   const conversations = data?.items ?? []
 
@@ -90,7 +90,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
         <FadeSwap swapKey={isLoading ? 'loading' : conversations.length === 0 ? 'empty' : 'list'}>
         {isLoading ? (
           // The kit's row skeleton, on the rows' own geometry and inset.
-          <div className="px-5 divide-y divide-line/20" role="status" aria-busy="true">
+          <div className="px-4 sm:px-6 divide-y divide-line/20" role="status" aria-busy="true">
             <span className="sr-only">{t('Loading conversations')}</span>
             {Array.from({ length: 6 }, (_, i) => <ListRowSkeleton key={i} />)}
           </div>
@@ -98,7 +98,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
           // A sentence and the action that fills the list (app UI review, F12) - it was a speech
           // bubble over centered disabled-grey text, which said what was missing and not how to
           // change that.
-          <EmptyState className="px-5" action={emptyAction}>
+          <EmptyState className="px-4 sm:px-6" action={emptyAction}>
             {t('Your conversations are listed here, newest first, from the first question you ask.')}
           </EmptyState>
         ) : (
@@ -106,10 +106,11 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
             {/* The kit's rows, each one that OPENS and carries its own actions (ListRow with onClick
                 and action): the text is the button, pin and delete sit beside it, and the whole row
                 takes the hover fill - a stretched title button did the first two by hand and lost
-                the third (CHAT-34). `inset` keeps the fill inside the list, whose `px-3` and the
-                row's own `px-2` line the text up with the dialog's title at 20px. The actions show
-                on hover or focus under a mouse and ALWAYS on a touch screen (HoverActions). */}
-            <List className="px-3">
+                the third (CHAT-34). `inset` keeps the fill inside the list, whose `px-2 sm:px-4` and
+                the row's own `px-2` line the text up with the dialog's title, as every dialog's
+                padding. The actions show on hover or focus under a mouse and ALWAYS on a touch
+                screen (HoverActions). */}
+            <List className="px-2 sm:px-4">
               {conversations.map((c: Conversation) => {
                 const deleting = del.isPending && del.variables === c.id
                 const pinLabel = c.pinned
@@ -121,16 +122,18 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
                     selected={activeId === c.id}
                     onClick={() => onSelect(c.id)}
                     inset
-                    titleClamp={2}
+                    // ONE LINE, the whole title a tooltip away (the UI review: two-line titles
+                    // made every row a different height).
+                    titleClamp={1}
                     leading={isWorking(c.id) ? <StatusDot label={t('Still working')} /> : undefined}
-                    title={c.title}
+                    title={<Tooltip label={c.title} className="block min-w-0"><span className="block truncate">{c.title}</span></Tooltip>}
                     // The facts UNDER the title, as every list row's meta line (maintainer, 2026-10-06):
                     // they sat at the right of the title, squeezing it, and said only the time. The
                     // pin mark leads, then when it was last active, then how many messages the person
                     // sent - `messageCount` counts their own messages, one per exchange, never the
                     // assistant's replies or the hidden rows a skill or condensation stores.
                     caption={(
-                      <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="flex items-center gap-2 min-w-0">
                         {/* Fades in and out as the conversation is pinned and unpinned. */}
                         <Presence show={!!c.pinned} collapse={false} className="shrink-0 flex">
                           <Pin size={12} className="text-brand-accent-legible fill-current" aria-hidden="true" />
@@ -145,16 +148,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
                         />
                       </span>
                     )}
-                    action={confirmingId === c.id ? (
-                      <InlineConfirm
-                        cancelLabel={t('Cancel')}
-                        confirmLabel={t('Delete')}
-                        pendingLabel={t('Deleting...')}
-                        pending={deleting}
-                        onCancel={() => setConfirmingId(null)}
-                        onConfirm={() => del.mutate(c.id, { onSuccess: () => setConfirmingId(null) })}
-                      />
-                    ) : (
+                    action={(
                       <HoverActions>
                         {/* Spells out the retention rule at the exact control that governs it -
                             pinning is the ONLY thing that exempts a conversation from
@@ -173,7 +167,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
                           tone="danger"
                           icon={Trash2}
                           label={t('Delete')}
-                          onClick={() => setConfirmingId(c.id)}
+                          onClick={() => setConfirming(c)}
                           disabled={deleting}
                         />
                       </HoverActions>
@@ -188,12 +182,26 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
       </div>
       {/* Under the scrolling rows, so it stays in reach at any scroll position. */}
       <ListPager
-        className="px-5 border-t border-line/20"
+        className="px-4 sm:px-6 border-t border-line/20"
         page={page}
         pages={pages}
         onPage={setPage}
         countText={t('{count} conversation|{count} conversations', { count: total })}
       />
+      {confirming && (
+        <ConfirmDialog
+          title={t('Delete conversation')}
+          description={t('You are about to {verb}:', { verb: t('delete') })}
+          subject={confirming.title}
+          consequences={[t('The conversation and every message in it are deleted. This cannot be undone.')]}
+          confirmLabel={t('Delete')}
+          cancelLabel={t('Cancel')}
+          pendingLabel={t('Deleting...')}
+          pending={del.isPending}
+          onConfirm={() => del.mutate(confirming.id, { onSuccess: () => setConfirming(null) })}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
     </div>
   )
 }

@@ -98,7 +98,7 @@ function tocHtml(sections) {
 // contents width the default width. Mirrors apply() and the TOC_* bounds in doc-theme.js; change
 // both together. Light unless this reader chose Dark - the operating system is not asked
 // (maintainer, 2026-10-26: "just light and dark, default to light").
-const PREPAINT = `(function(){var r=document.documentElement;var d=false;try{d=localStorage.getItem('proxyma-docs-theme')==='dark'}catch(e){}r.setAttribute('data-mode',d?'dark':'light');if(d)r.setAttribute('data-shade','black');try{var w=parseInt(localStorage.getItem('proxyma-docs-toc-width'),10);if(w>=200&&w<=480)r.style.setProperty('--toc-width',w+'px');}catch(e){}})();`
+const PREPAINT = `(function(){var r=document.documentElement;var d=false;try{d=localStorage.getItem('proxyma-docs-theme')==='dark'}catch(e){}r.setAttribute('data-mode',d?'dark':'light');try{var w=parseInt(localStorage.getItem('proxyma-docs-toc-width'),10);if(w>=200&&w<=480)r.style.setProperty('--toc-width',w+'px');}catch(e){}})();`
 
 // The Light/Dark switch's thumb carries the sun or the moon of the appearance it is on.
 const SUN = '<svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></svg>'

@@ -27,6 +27,7 @@ public class ContainerPythonSandbox implements PythonSandbox {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final URI runUri;
+    private final URI shellUri;
     private final String token;
     // NO PROXY, ever: the container is on the compose network, which a corporate proxy cannot reach.
     // Left to the JVM default, the client followed http.proxyHost - set whenever Settings > Network
@@ -37,6 +38,7 @@ public class ContainerPythonSandbox implements PythonSandbox {
 
     public ContainerPythonSandbox(String baseUrl, String token) {
         this.runUri = URI.create(baseUrl.replaceAll("/+$", "") + "/run");
+        this.shellUri = URI.create(baseUrl.replaceAll("/+$", "") + "/shell");
         this.token = token == null ? "" : token;
     }
 
@@ -47,13 +49,24 @@ public class ContainerPythonSandbox implements PythonSandbox {
 
     @Override
     public Result run(String code, Map<String, byte[]> inputs, Duration timeout) throws IOException {
+        return post(runUri, "code", code, inputs, timeout);
+    }
+
+    /** runCommand on a server: the container's /shell, as its /run - no network, no volume, as nobody. */
+    @Override
+    public Result shell(String command, Map<String, byte[]> inputs, Duration timeout) throws IOException {
+        return post(shellUri, "command", command, inputs, timeout);
+    }
+
+    private Result post(URI uri, String field, String text, Map<String, byte[]> inputs, Duration timeout)
+            throws IOException {
         ObjectNode body = JSON.createObjectNode();
-        body.put("code", code);
+        body.put(field, text);
         body.put("timeoutSeconds", timeout.toSeconds());
         ObjectNode files = body.putObject("files");
         inputs.forEach((name, bytes) -> files.put(name, Base64.getEncoder().encodeToString(bytes)));
 
-        HttpRequest request = HttpRequest.newBuilder(runUri)
+        HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(timeout.plusSeconds(15))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + token)

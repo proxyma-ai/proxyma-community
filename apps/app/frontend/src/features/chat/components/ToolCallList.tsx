@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { Presence, ToolCallGroup, cn, toolFold } from '@/components/ui/kit'
 import { ToolCallDetailModal } from './ToolCallDetailModal'
 import { ToolCallRow } from './ToolCallRow'
-import { SubAgentPanel } from './SubAgentPanel'
+import { AgentPanel } from './AgentPanel'
 import { toolBlocks } from '../utils/toolBlocks'
 import type { ToolCallInfo, PendingApproval, PendingEnableRequest } from '../types/chat.types'
 import { useTranslation } from '@/i18n'
 
 // What the agent did between two things it said, as BLOCKS in the order it worked: a group of its
-// own tool calls, each sub-agent it handed work to, the next group of tool calls (toolBlocks.ts).
+// own tool calls, each agent it deployed, the next group of tool calls (toolBlocks.ts).
 //
 // The tool NAME and a dump of its argument values used to be what a row and the header said -
 // "Search Indexed Sources - release notes 5 0.3". Both now read as a clause about what is
@@ -43,10 +43,9 @@ export function ToolCallList({
           lining up. */}
       <div className="mb-2 space-y-2">
         {toolBlocks(toolCalls).map(block => block.kind === 'agent' ? (
-          <SubAgentPanel
-            key={block.call.agent?.id ?? block.call.callId}
+          <AgentPanel
+            key={block.call.callId}
             call={block.call}
-            steps={block.steps}
             conversationId={conversationId}
             onOpenDetail={setModalTool}
           />
@@ -54,8 +53,8 @@ export function ToolCallList({
           <ToolGroup
             key={block.calls[0].callId}
             calls={block.calls}
-            // The main agent's own prompts. A sub-agent's are drawn at the foot of the thread
-            // (AgentPrompts), since its panel may be far from where the reader is.
+            // The agent's own prompts. A workflow step's are drawn at the foot of the thread
+            // (AgentPrompts).
             pendingApprovals={pendingApprovals.filter(a => block.calls.some(tc => tc.callId === a.callId))}
             pendingEnableRequests={pendingEnableRequests.filter(r => block.calls.some(tc => tc.callId === r.callId))}
             conversationId={conversationId}

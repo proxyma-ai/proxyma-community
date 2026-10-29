@@ -1,5 +1,5 @@
 import {
-  MessageCircleQuestion,
+  MessageCircleQuestion, AlarmClock, Hourglass, Layers, SlidersHorizontal, Boxes, ShieldCheck, Scale, Gavel, FileOutput,
   AppWindow, ArrowRightLeft, Bot, BotMessageSquare, MessageSquareReply, Brain, BrainCog, Database, Download, FileCheck, FilePen,
   FilePlus, FileSearch, FileText, FileType, FileX, Files, FolderOpen, FolderTree, Save, GitBranch, GitCommitHorizontal,
   GitCompare, GitMerge, GitPullRequest, GitPullRequestArrow, GitPullRequestDraft, Globe, Info,
@@ -63,9 +63,25 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   remember:             BrainCog,     // writing to memory, not reading from it
   readSkill:            FileText,     // Skills' own icon in the settings rail
   askUser:              MessageCircleQuestion, // the assistant asking you
-  delegate:             Bot,          // the row reads "Agent", so show an agent
-  steerSubAgent:        BotMessageSquare, // the main agent telling one of its agents something
-  messageMainAgent:     MessageSquareReply, // a sub-agent talking back to the agent that started it
+  // The tree of agents (since 2026-10-28): every agent can deploy agents of its own.
+  deployAgent:          Bot,          // a panel of its own in the thread, with this robot
+  tellAgent:            BotMessageSquare, // a message to another agent of the tree
+  awaitAgents:          Hourglass,    // waiting on the reports of agents it deployed
+  controlAgent:         SlidersHorizontal, // pausing, resuming, stopping or listing them
+  alarm:                AlarmClock,
+  background:           Layers,       // a tool left running behind the agent's back
+  // Since 2026-10-29: one agent per item of a list, a report read whole, a report checked, a panel
+  // argued before, its decision recorded, and a file handed to another agent.
+  deployAgents:         Boxes,
+  readAgentReport:      FileText,
+  verifyReport:         ShieldCheck,
+  deliberate:           Scale,
+  recordDecision:       Gavel,
+  handFile:             FileOutput,
+  // Tools that no longer exist, kept so a conversation stored before then still reads.
+  delegate:             Bot,
+  steerSubAgent:        BotMessageSquare,
+  messageMainAgent:     MessageSquareReply,
   read:                 FileText,
   grep:                 FileSearch,   // searching INSIDE files, not for them
   convertDocument:      FileType,

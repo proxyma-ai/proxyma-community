@@ -5,28 +5,30 @@ import type { ToolCallInfo } from '../types/chat.types'
 
 const call = (callId: string, extra: Partial<ToolCallInfo> = {}): ToolCallInfo =>
   ({ callId, toolName: 'searchIndexedSources', arguments: '{}', done: true, ...extra })
-const delegate = (callId: string, extra: Partial<ToolCallInfo> = {}) => call(callId, { toolName: 'delegate', ...extra })
-const step = (callId: string, parentCallId: string) => call(callId, { parentCallId })
+const deploy = (callId: string) => call(callId, { toolName: 'deployAgent' })
 
 const shape = (calls: ToolCallInfo[]) => toolBlocks(calls).map(b => b.kind === 'tools'
   ? `tools(${b.calls.map(c => c.callId).join(',')})`
-  : `agent ${b.call.callId}(${b.steps.map(c => c.callId).join(',')})`)
+  : `agent ${b.call.callId}`)
 
-test('tools, then sub-agents, then tools: three kinds of block in the order they ran', () => {
+test('tools, then deployed agents, then tools: each agent a block of its own, in the order they ran', () => {
+  const calls = [call('t1'), call('t2'), deploy('d1'), deploy('d2'), call('t3')]
+  assert.deepEqual(shape(calls), ['tools(t1,t2)', 'agent d1', 'agent d2', 'tools(t3)'])
+})
+
+test('a deployed agent is never a row inside a tool group', () => {
+  assert.deepEqual(shape([call('t1'), deploy('d1'), call('t2')]), ['tools(t1)', 'agent d1', 'tools(t2)'])
+})
+
+test('a stored delegation and the steps it once nested are ordinary calls, never dropped', () => {
   const calls = [
-    call('t1'), call('t2'),
-    delegate('d1'), step('d1-a', 'd1'), delegate('d2'), step('d2-a', 'd2'), step('d1-b', 'd1'),
-    call('t3'),
+    call('t1'),
+    call('d1', { toolName: 'delegate' }),
+    call('d1-a', { parentCallId: 'd1' }),
+    call('s1', { toolName: 'steerSubAgent' }),
+    call('m1', { toolName: 'messageMainAgent' }),
   ]
-  assert.deepEqual(shape(calls), ['tools(t1,t2)', 'agent d1(d1-a,d1-b)', 'agent d2(d2-a)', 'tools(t3)'])
-})
-
-test('a sub-agent is never a row inside a tool group', () => {
-  assert.deepEqual(shape([call('t1'), delegate('d1'), call('t2')]), ['tools(t1)', 'agent d1()', 'tools(t2)'])
-})
-
-test('a step whose delegation is not in the list is shown as an ordinary call, never dropped', () => {
-  assert.deepEqual(shape([call('t1'), step('lost', 'gone')]), ['tools(t1,lost)'])
+  assert.deepEqual(shape(calls), ['tools(t1,d1,d1-a,s1,m1)'])
 })
 
 test('no calls, no blocks', () => {

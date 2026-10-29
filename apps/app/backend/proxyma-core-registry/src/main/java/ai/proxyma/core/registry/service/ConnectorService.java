@@ -354,16 +354,61 @@ public class ConnectorService {
     // so on desktop - where `shared` is false on every connector, and the UI doesn't even offer the
     // toggle, sharing being a multi-user concept - getConnectorStatus reported zero connectors and
     // search ran against zero collections. Every local folder was invisible to the agent.
+    //
+    // NARROWED by SourceNarrowing when the work on this thread has been given fewer sources than its
+    // user can see - a saved agent's turn on Enterprise Server reads only the sources its profile
+    // names. Intersected, never added to: a narrowing cannot make anything visible.
     public List<RegisteredConnector> listVisibleTo(String userId) {
-        if (userId != null) return listVisibleToUser(userId);
-        return multiUser ? listShared() : listAll();
+        List<RegisteredConnector> visible = userId != null ? listVisibleToUser(userId)
+                : multiUser ? listShared() : listAll();
+        Optional<Set<UUID>> allowed = allowedSources();
+        if (allowed.isEmpty()) return visible;
+        Set<UUID> ids = allowed.get();
+        return visible.stream().filter(r -> ids.contains(r.getId())).toList();
     }
 
     // Collection-id counterpart of listVisibleTo(), for the search paths that need ids rather
-    // than entities. Same null-userId reasoning - see above.
+    // than entities. Same null-userId reasoning - see above - and the same narrowing.
     public List<String> visibleCollectionIds(String userId) {
-        if (userId != null) return getCollectionIdsForUser(userId);
-        return multiUser ? getSharedCollectionIds() : toCollectionIds(listAll());
+        List<String> visible = userId != null ? getCollectionIdsForUser(userId)
+                : multiUser ? getSharedCollectionIds() : toCollectionIds(listAll());
+        Optional<Set<UUID>> allowed = allowedSources();
+        if (allowed.isEmpty()) return visible;
+        Set<String> ids = allowed.get().stream().map(id -> id.toString().replace("-", ""))
+                .collect(Collectors.toSet());
+        return visible.stream().filter(ids::contains).toList();
+    }
+
+    // What SourceNarrowing allows on this thread: empty for "everything visible". A narrowing that
+    // fails to answer allows NOTHING - a failure must cost the narrowed work its sources, never hand
+    // it every source its user can see.
+    private Optional<Set<UUID>> allowedSources() {
+        if (sourceNarrowings.isEmpty()) return Optional.empty();
+        Set<UUID> allowed = null;
+        for (SourceNarrowing narrowing : sourceNarrowings) {
+            Optional<Set<UUID>> one;
+            try {
+                one = narrowing.allowedSources();
+            } catch (RuntimeException e) {
+                log.warn("[ConnectorService] a source narrowing failed to answer, so nothing is visible: {}", e.getMessage());
+                return Optional.of(Set.of());
+            }
+            if (one == null || one.isEmpty()) continue;
+            if (allowed == null) {
+                allowed = new HashSet<>(one.get());
+            } else {
+                allowed.retainAll(one.get());
+            }
+        }
+        return Optional.ofNullable(allowed);
+    }
+
+    // None on Desktop and Home Server unless the chat registers one - see SourceNarrowing.
+    private List<SourceNarrowing> sourceNarrowings = List.of();
+
+    @Autowired(required = false)
+    void setSourceNarrowings(List<SourceNarrowing> sourceNarrowings) {
+        this.sourceNarrowings = sourceNarrowings == null ? List.of() : List.copyOf(sourceNarrowings);
     }
 
     private static List<String> toCollectionIds(List<RegisteredConnector> connectors) {

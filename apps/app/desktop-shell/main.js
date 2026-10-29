@@ -21,7 +21,7 @@
 // is in the repository is exactly what ships (tools/build/stage-desktop-shell.mjs copies it).
 'use strict'
 
-const { app, BrowserWindow, Menu, net, session, shell, nativeTheme, screen } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, net, session, shell, nativeTheme, screen } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -165,11 +165,16 @@ function createWindow() {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     title: 'Proxyma',
+    // BORDERLESS, since 2026-10-29 (the maintainer's glass shell): the page draws the whole window -
+    // the frosted frame edge to edge, and its own minimize, maximize and close (wireWindowControls,
+    // preload.js). Windows keeps the resize edges of a frameless window and Windows 11 rounds its
+    // corners; the page marks where the window is dragged from (`-webkit-app-region: drag`).
+    frame: false,
     icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
-    // The canvas color of the appearance the OS asks for - System resolves a dark OS to Dark - so
+    // The field color of the appearance the OS asks for - System resolves a dark OS to Dark - so
     // the first frame before the page paints is not a white flash on a dark desktop. Matches
-    // Dark's and Light's --canvas in proxyma-tokens.css.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#181818' : '#ffffff',
+    // Dark's and Light's --field-base in proxyma-tokens.css.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#101011' : '#e9ecee',
     show: false,
     webPreferences: {
       contextIsolation: true,
@@ -210,11 +215,30 @@ function createWindow() {
   })
 
   keepToOrigin(win)
+  wireWindowControls(win)
   wireShortcuts(win)
   recoverFromCrashes(win)
   followBuild(win)
   loadWhenReady(win)
   watchOwner()
+}
+
+// THE WINDOW'S OWN BUTTONS, drawn by the page since the window lost its frame (2026-10-29). Three
+// requests and one notice, and only from this window's own page: a request from any other frame or
+// window is ignored. Close is the window's close, so it hides as the title bar's did.
+function wireWindowControls(win) {
+  const mine = event => !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame
+  ipcMain.on('window:minimize', event => { if (mine(event)) win.minimize() })
+  ipcMain.on('window:toggle-maximize', event => {
+    if (!mine(event)) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+  ipcMain.on('window:close', event => { if (mine(event)) win.close() })
+  ipcMain.handle('window:is-maximized', event => (mine(event) ? win.isMaximized() : false))
+  const tell = () => { if (!win.isDestroyed()) win.webContents.send('window:maximized', win.isMaximized()) }
+  win.on('maximize', tell)
+  win.on('unmaximize', tell)
 }
 
 // A NEW BUILD IS LOADED, since 2026-10-03 (the maintainer's report: after an update the window

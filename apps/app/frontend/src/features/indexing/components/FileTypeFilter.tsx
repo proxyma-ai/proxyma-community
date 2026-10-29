@@ -86,7 +86,7 @@ export function FileTypeFilter({ value, onChange, disabled }: Props) {
         </Presence>
       </div>
 
-      <div className="space-y-2.5 min-w-0">
+      <div className="space-y-2 min-w-0">
         {groups.map(([key, exts]) => {
           const allOn = exts.every(e => value.includes(e))
           return (
@@ -100,7 +100,7 @@ export function FileTypeFilter({ value, onChange, disabled }: Props) {
               {/* Selection is carried by the chip's pressed fill alone: a check mark inside the
                   chip made the row reflow as chips were toggled, and the pressed state already
                   says "on" unambiguously. */}
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {exts.map(ext => (
                   <Chip
                     key={ext}
@@ -148,9 +148,9 @@ function FileTypeFilterSkeleton() {
     <div className="space-y-3" aria-hidden="true">
       <Skeleton className="h-3.5 w-32" />
       {[0, 1].map(group => (
-        <div key={group} className="space-y-1.5">
+        <div key={group} className="space-y-2">
           <Skeleton className="h-3 w-28" />
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {[0, 1, 2, 3, 4].map(chip => <Skeleton key={chip} className="h-6 w-12 rounded-md" />)}
           </div>
         </div>

@@ -5,6 +5,8 @@ import ai.proxyma.core.chat.external.ExternalToolSource;
 import ai.proxyma.core.common.audit.AuditEntry;
 import ai.proxyma.core.common.audit.ToolAudit;
 import ai.proxyma.core.common.conversation.ConversationPaths;
+import ai.proxyma.core.chat.module.AgentProfile;
+import ai.proxyma.core.chat.module.AgentProfiles;
 import ai.proxyma.core.chat.module.ChatModule;
 import ai.proxyma.core.common.concurrent.BlockingWork;
 import ai.proxyma.core.guardrail.GuardrailDecision;
@@ -92,7 +94,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Lazy
-public class ChatService implements AgentHost {
+public class ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
 
@@ -135,7 +137,8 @@ public class ChatService implements AgentHost {
         // not name it. Read here and persisted in the SystemMessage like everything else below - and
         // written again at the start of a later turn if any of it has changed since. See
         // refreshSystemPrompt.
-        boolean canDelegate = subAgentService.isAvailable();
+        // Every agent may deploy agents (AgentTree): the guidance on how is always in.
+        boolean canDelegate = true;
         String prompt = SystemPromptService.instructions(systemPromptService.read(),
                 productIdentity.getProductName(), canDelegate);
         // Injected instead of a getCurrentDateTime tool - the agent needs "what's today" far more
@@ -409,7 +412,8 @@ public class ChatService implements AgentHost {
      */
     static boolean isScaffolding(String content) {
         return SmartChatMemory.isCondensedSummaryMarker(content) || SmartChatMemory.isSkillMarker(content)
-                || SmartChatMemory.isWorkflowMarker(content) || SubAgentService.isReportMessage(content)
+                || SmartChatMemory.isWorkflowMarker(content)
+                || ai.proxyma.core.chat.agents.AgentInbox.isInboxMessage(content)
                 || FORCED_ANSWER_INSTRUCTION.equals(content);
     }
 
@@ -475,7 +479,6 @@ public class ChatService implements AgentHost {
     // tool itself reaches this loop as an ordinary ToolCallback like any other. Injectable without a
     // cycle: SubAgentService depends on nothing from this class (it already arrives indirectly via
     // ToolSkillGating, which needs it for the same availability check).
-    private final SubAgentService subAgentService;
     private final ConcurrentHashMap<String, AtomicBoolean> abortFlags = new ConcurrentHashMap<>();
     // Stop requests that arrived before the turn they were meant for had registered its abort flag,
     // keyed by conversationId and stamped with when they arrived. See stop().
@@ -535,8 +538,24 @@ public class ChatService implements AgentHost {
             "findGraphTimeline", "findGraphThemes",
             "searchConversations", "recall");
 
+    /**
+     * A call run in the background (BackgroundJobs, whose call ids carry this prefix) may take far
+     * longer: nobody waits on it - the agent carries on and its result arrives as a message. Half an
+     * hour, so a build or a long command finishes; a background job is still bounded.
+     */
+    public static final String BACKGROUND_CALL_PREFIX = "bg-";
+    static final int BACKGROUND_TOOL_TIMEOUT_SECONDS = 30 * 60;
+
+    /** awaitAgents' limit: its longest wait, and half a minute for the reports it hands back. */
+    public static int awaitToolTimeoutSeconds() {
+        return (int) ai.proxyma.core.chat.agents.AgentTree.AWAIT_MAX.toSeconds() + 30;
+    }
+
     /** How long this tool may execute before it is abandoned. */
     int toolTimeoutSeconds(String toolName) {
+        // A wait is as long as the wait it was asked for: awaitAgents held to 60 seconds was given up
+        // while it still waited, and the report it then took reached nobody (feedback 8a3e3c01).
+        if (ai.proxyma.core.chat.agents.AgentTree.AWAIT_TOOL.equals(toolName)) return awaitToolTimeoutSeconds();
         if (!SEARCH_TOOLS.contains(toolName)) return TOOL_CALL_TIMEOUT_SECONDS;
         try {
             return settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class).searchTimeoutSeconds();
@@ -601,7 +620,6 @@ public class ChatService implements AgentHost {
                        ChatEventSink chatEventSink,
                        ConversationTitleService conversationTitleService,
                        ModelPricingService modelPricingService,
-                       SubAgentService subAgentService,
                        WorkflowRunService workflowRunService,
                        WorkflowService workflowService,
                        WorkflowRunner workflowRunner,
@@ -609,7 +627,6 @@ public class ChatService implements AgentHost {
         this.workflowRunService = workflowRunService;
         this.workflowService = workflowService;
         this.workflowRunner = workflowRunner;
-        this.subAgentService = subAgentService;
         this.llmGateway = llmGateway;
         this.settingsService = settingsService;
         this.globalQuotaGate = globalQuotaGate;
@@ -678,6 +695,9 @@ public class ChatService implements AgentHost {
                             List<String> attachmentPaths, String userId,
                             String userDisplayName, String guestSessionId, List<String> skillMentions,
                             boolean continuation, String surface) {
+        long turnStartedNanos = System.nanoTime();
+        // A turn a PERSON opened - not a continuation, not one a module or the tree started.
+        if (!unattendedStarts.remove(conversationId) && !continuation && message != null) personSpoke(conversationId);
         // Refused before anything is persisted or any provider is contacted, so an exhausted
         // budget costs nothing and leaves no half-written turn. The per-user quota deliberately
         // never blocks chat; this one is the deployment's bill and does.
@@ -775,6 +795,10 @@ public class ChatService implements AgentHost {
         SpendSubject previousSubject = null;
         // Set by a continuation that found nothing it could deliver - see the finally.
         boolean deliveredNothing = false;
+        // What the turn answered, or why it failed - for the agent tree (AgentTree.turnEnded).
+        String[] ended = new String[2];
+        // What the turn is doing, for a page that shows it without its stream (turnStates).
+        Object live = turnActivity.begin(conversationId);
         try {
             SearchContext.setUserId(userId);
             // On the turn's own thread too, not only on its tools' threads: what is recorded from
@@ -797,7 +821,11 @@ public class ChatService implements AgentHost {
             String provider = settings.getProvider();
             String model = settings.getModel();
             int maxOutputTokens = settings.getMaxOutputTokens();
-            int maxIterations = ChatSettings.iterationCeiling(settings.getMaxIterations());
+            // A saved agent's own settings, when a product module holds this conversation for one
+            // (AgentProfile): its step limit here, its model below. Empty for every ordinary chat.
+            Optional<AgentProfile> profile = AgentProfiles.of(chatModules, conversationId, userId);
+            int maxIterations = ChatSettings.iterationCeiling(profile.map(AgentProfile::maxSteps)
+                    .orElse(settings.getMaxIterations()));
             ChatSettings.Tone tone = settings.getTone();
 
             // What the user picked in the composer for THIS message. Every skill visible to them is
@@ -835,8 +863,18 @@ public class ChatService implements AgentHost {
             // configured, so the two no longer compete. With no sub-agent configured it does fall
             // back to the main model and that contention returns; the cost of losing is unchanged
             // and cosmetic (the placeholder title stands, and it never blocks the turn).
-            if (isNewConversation) {
+            // Not for an agent another agent deployed: it has the title it was deployed with, and a
+            // model call to name it again would be spent on every child.
+            if (isNewConversation && (agentTree == null || !agentTree.isChild(conversationId))) {
                 conversationTitleService.generateTitleAsync(conversationId, message);
+            }
+            // A deployed agent starts on the servers its parent switched to (useServer): the task was
+            // written against them, and a Jira key from one server means nothing on another.
+            if (isNewConversation && agentTree != null) {
+                agentTree.node(conversationId).ifPresent(n -> {
+                    String servers = chatMemory.activeServers(n.getParentConversationId());
+                    if (servers != null && !servers.isBlank()) chatMemory.setActiveServers(conversationId, servers);
+                });
             }
 
             // Product name, user display name, personality, and skills are all resolved here and
@@ -865,18 +903,22 @@ public class ChatService implements AgentHost {
             // then names what actually ran, with nothing threaded through react() to do it. A run
             // is one turn per step, so a workflow left on the main chat model multiplies its price
             // by the step count, which is the whole reason the field exists.
-            boolean ownModel = workflow != null && workflow.model() != null;
-            if (ownModel) {
-                // A workflow may name a model without a provider, meaning "the chat role's
-                // provider, this model" - see WorkflowService.normalizeModelChoice.
-                if (workflow.provider() != null) provider = workflow.provider();
-                model = workflow.model();
-            }
+            TurnModel turnModel = TurnModel.of(provider, model,
+                    workflow == null ? null : workflow.provider(), workflow == null ? null : workflow.model(),
+                    profile.orElse(null));
+            provider = turnModel.provider();
+            model = turnModel.model();
+            boolean ownModel = turnModel.own();
+            boolean agentModel = turnModel.agent();
 
             // Full advertised-list resolution happens fresh at the top of every react() iteration
             // (see ToolSkillGating) - coreToolCallbacks here is just this method's own honest
             // starting point, not the final list used for iteration 1's actual LLM call.
-            if (ownModel && !llmGateway.isAvailable(new LlmGateway.ModelOverride(provider, model))) {
+            if (agentModel && !llmGateway.isAvailable(new LlmGateway.ModelOverride(provider, model))) {
+                throw new IllegalStateException("This agent is set to run on a provider that is no "
+                        + "longer configured. Open the agent's Model tab and pick another.");
+            }
+            if (ownModel && !agentModel && !llmGateway.isAvailable(new LlmGateway.ModelOverride(provider, model))) {
                 // Refused, rather than quietly falling back to the chat model. The override is
                 // chosen to spend LESS, so silently running the whole procedure on the expensive
                 // model would bill the author for the opposite of what the file says while
@@ -898,7 +940,7 @@ public class ChatService implements AgentHost {
             ChatSettings.PromptCache cacheSetting = settings.getPromptCache();
             Instant previousTurn = lastTurnEnded.get(conversationId);
             ChatSettings.PromptCache turnCache = cacheSetting.forTurn(
-                    subAgentService.hasRunning(conversationId) || subAgentService.hasUndelivered(conversationId),
+                    hasBackgroundWork(conversationId),
                     previousTurn == null ? null : Duration.between(previousTurn, Instant.now()));
             LlmGateway.SessionOptions tunedOptions = LlmGateway.SessionOptions.tuned(tone, maxOutputTokens);
             // The conversation is the prompt-cache clock's line: each call says whether it read the
@@ -917,7 +959,10 @@ public class ChatService implements AgentHost {
             log.debug("[Chat] prompt cache setting={} turn={} conversationId={}", cacheSetting, turnCache, conversationId);
             // Logged from the SESSION rather than from settings, so it names the model that will
             // actually answer rather than the one this method asked for.
-            if (ownModel) {
+            if (agentModel) {
+                log.info("[Chat] conversation {} runs on its agent's model: {}/{}",
+                        conversationId, session.provider(), session.model());
+            } else if (ownModel) {
                 log.info("[Workflow] '{}' runs on its own model: {}/{}",
                         workflow.name(), session.provider(), session.model());
             }
@@ -1016,14 +1061,20 @@ public class ChatService implements AgentHost {
             // surface and a sub-agent's own turn) read the answer from here rather than from the
             // event stream, so returning the pre-guardrail text would leave exactly one path
             // through the product where the output guardrail does nothing at all.
+            ended[0] = finalAnswer;
             return new ChatResult(finalAnswer, conversationId, result.iterations());
+        } catch (RuntimeException e) {
+            ended[1] = failureText(e);
+            throw e;
         } finally {
+            turnEnded(conversationId, (System.nanoTime() - turnStartedNanos) / 1_000_000, ended[0]);
             SearchContext.clear();
             // Restored, never left behind: chat() runs on a pooled boundedElastic thread, and a
             // subject left set there billed the NEXT task on that thread to this turn's user.
             SpendContext.set(previousSubject);
             // This turn's flag only: never one a later turn has put in its place.
             abortFlags.remove(conversationId, abort);
+            turnActivity.end(conversationId, live);
             turnFloors.remove(conversationId);
             lastTurnEnded.put(conversationId, Instant.now());
             // A message that arrived after the last step was never placed; the page, which saw no
@@ -1042,8 +1093,119 @@ public class ChatService implements AgentHost {
             // starts the same turn that just failed: on PostgreSQL, before SubAgentRun's columns
             // were text, that was a loop logging a stack trace several times a second for as long
             // as the server ran. The report stays owed, and the user's next turn takes it.
+            // The agent tree hears that this conversation's turn is over: a child reports to its
+            // parent, and what the user said to a child goes up with its answer. Before the wake, so
+            // a child that still has mail is not reported as finished by a turn that did not read it.
+            if (agentTree != null && !deliveredNothing) {
+                try {
+                    agentTree.turnEnded(conversationId, continuation ? null : message, ended[0], ended[1]);
+                } catch (RuntimeException e) {
+                    log.warn("[Chat] the agent tree could not settle conversationId={}: {}", conversationId, e.getMessage());
+                }
+            }
             if (!deliveredNothing) wake(conversationId);
         }
+    }
+
+    // -- How full the context window is ------------------------------------------------------------
+
+    /** Where the agent is told its window is filling: before condensation (at 80%) takes the detail. */
+    static final double CONTEXT_NOTE_AT = 0.65;
+    /** Below this a conversation has been condensed (or never filled): it may be told again. */
+    static final double CONTEXT_NOTE_RESET = 0.5;
+    // Conversations told since their last condensation, and the note waiting for the next step.
+    private final Set<String> contextNoted = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> contextNotes = new ConcurrentHashMap<>();
+
+    /**
+     * After each model call: the first time a conversation's prompt passes {@link #CONTEXT_NOTE_AT}
+     * of the window (and has not reached condensation), a note is held for its next step saying how
+     * full it is and that what matters should be saved now - the user's request (feedback
+     * 499724c9): an agent that knows condensation is coming can remember first.
+     */
+    void noteContext(String conversationId, int promptTokens, int window) {
+        String note = contextNoteFor(promptTokens, window, contextNoted.contains(conversationId));
+        if (window > 0 && promptTokens < window * CONTEXT_NOTE_RESET) contextNoted.remove(conversationId);
+        if (note == null) return;
+        contextNoted.add(conversationId);
+        contextNotes.put(conversationId, note);
+    }
+
+    /** The note for a prompt this size, or null: none below the mark, at condensation, or told already. */
+    static String contextNoteFor(int promptTokens, int window, boolean told) {
+        if (told || window <= 0 || promptTokens <= 0) return null;
+        double used = (double) promptTokens / window;
+        if (used < CONTEXT_NOTE_AT || used >= SmartChatMemory.CONDENSE_THRESHOLD) return null;
+        String text = String.format(Locale.ROOT,
+                "About %d%% of your context window is in use (%,d of %,d tokens). At %d%% the earlier part of "
+                        + "this conversation is condensed into a summary, and detail the summary leaves out is gone "
+                        + "from your view. If anything so far must outlast that - a decision, a figure, a preference "
+                        + "the user stated, where you are in a long task - save it now with remember. This note comes "
+                        + "once; carry on with your work.",
+                Math.round(used * 100), promptTokens, window, Math.round(SmartChatMemory.CONDENSE_THRESHOLD * 100));
+        return ai.proxyma.core.chat.agents.AgentInbox.render(List.of(new ai.proxyma.core.chat.agents.AgentInbox.Taken(
+                null, ai.proxyma.core.chat.agents.AgentInbox.Kind.CONTEXT, null, null, text, Instant.now())));
+    }
+
+    // Writes the held note after what a step has just written, and tells the page it reached the agent.
+    private void writeContextNote(String conversationId) {
+        String note = contextNotes.remove(conversationId);
+        if (note == null) return;
+        chatMemory.add(conversationId, List.of(new org.springframework.ai.chat.messages.UserMessage(note)));
+        publishAgentMail(conversationId, List.of(new ai.proxyma.core.chat.agents.AgentInbox.Taken(
+                null, ai.proxyma.core.chat.agents.AgentInbox.Kind.CONTEXT, null, null, "", Instant.now())));
+    }
+
+    // -- What a module keeps for the agent between conversations (ChatModule.memoryContext) --------
+
+    /**
+     * The history a model call reads, with a module's memory for the agent written in when no copy is
+     * in view - the conversation's first step, or the first after a condensation took the earlier copy
+     * into its summary. A MESSAGE, never the system prompt, so the cached prefix holds: it lands after
+     * what the step has just written (the opening message, or a tool round and what came with it), and
+     * so never between a tool call and its result.
+     */
+    private List<Message> withModuleMemory(String conversationId, List<Message> history) {
+        if (conversationId == null || chatModules.isEmpty() || hasMemoryInView(history)) return history;
+        String userId = SearchContext.getUserId();
+        StringBuilder text = new StringBuilder();
+        for (ChatModule module : chatModules) {
+            try {
+                module.memoryContext(conversationId, userId).filter(c -> !c.isBlank()).ifPresent(c -> {
+                    if (!text.isEmpty()) text.append("\n\n");
+                    text.append(c.strip());
+                });
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not give conversation {} its memory: {}", conversationId, e.getMessage());
+            }
+        }
+        if (text.isEmpty()) return history;
+        Message memory = memoryMessage(text.toString());
+        chatMemory.add(conversationId, List.of(memory));
+        publishAgentMail(conversationId, List.of(new ai.proxyma.core.chat.agents.AgentInbox.Taken(
+                null, ai.proxyma.core.chat.agents.AgentInbox.Kind.MEMORY, null, null, "", Instant.now())));
+        List<Message> out = new ArrayList<>(history);
+        out.add(memory);
+        return out;
+    }
+
+    /** The message a module's memory is written as: inbox-shaped, so the thread draws it as one line. */
+    static Message memoryMessage(String text) {
+        return new org.springframework.ai.chat.messages.UserMessage(ai.proxyma.core.chat.agents.AgentInbox.render(List.of(
+                new ai.proxyma.core.chat.agents.AgentInbox.Taken(null, ai.proxyma.core.chat.agents.AgentInbox.Kind.MEMORY,
+                        null, null, text, Instant.now()))));
+    }
+
+    /** Whether a copy of a module's memory is in what the model reads now. */
+    static boolean hasMemoryInView(List<Message> history) {
+        String heading = "[" + ai.proxyma.core.chat.agents.AgentInbox.Kind.MEMORY.heading() + "]";
+        for (Message m : history) {
+            if (m instanceof org.springframework.ai.chat.messages.UserMessage u && u.getText() != null
+                    && u.getText().startsWith(heading)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // -- Background sub-agents reporting back ---------------------------------------------------
@@ -1061,31 +1223,97 @@ public class ChatService implements AgentHost {
         return hasBackgroundWork(conversationId) ? "more" : "";
     }
 
-    /** Whether sub-agents are running in the conversation, or a report is still owed to its agent. */
+    /** Whether agents it deployed are working, a background job runs, or mail is still owed to its agent. */
     public boolean hasBackgroundWork(String conversationId) {
-        return subAgentService.hasRunning(conversationId) || subAgentService.hasUndelivered(conversationId);
+        return owed(conversationId)
+                || (agentTree != null && agentTree.hasBusyChildren(conversationId))
+                || (backgroundJobs != null && backgroundJobs.hasRunning(conversationId))
+                || (approvalInbox != null && approvalInbox.hasPending(conversationId));
     }
 
-    /** Stops one sub-agent of a conversation. False when it is not running there. */
-    public boolean stopSubAgent(String conversationId, String agentId) {
-        return subAgentService.stop(conversationId, agentId);
+    /**
+     * Why a turn failed, as the agent that deployed this one reads it - a rate limit the provider
+     * kept up past every retry named as one, in words the parent can act on, since its answer is to
+     * deploy fewer agents at once or wait, not to try the same thing again.
+     */
+    static String failureText(Throwable e) {
+        String why = Failures.describe(e);
+        return ModelCall.isRateLimited(e)
+                ? "RATE LIMITED - the provider kept refusing for its rate limit. Deploy fewer agents at once, "
+                        + "or wait before trying again. (" + why + ")"
+                : why;
     }
 
-    /** The conversation's agents and what each spent - see ConversationAgents. */
-    public ai.proxyma.core.chat.dto.ConversationAgents agents(Conversation conv) {
-        var total = new ai.proxyma.core.chat.dto.ConversationAgents.Spend(conv.getInputTokens(),
-                conv.getOutputTokens(), conv.getCacheReadTokens(), conv.getCacheWriteTokens(),
-                conv.getEstimatedCostUsd());
-        var turns = ai.proxyma.core.chat.dto.ConversationAgents.turnsOf(chatMemory.messageStamps(conv.getId()),
-                isActive(conv.getId()));
-        // Titles the model wrote, crossing to the browser: screened as the sub-agent's own panel
-        // screens the same title (SubAgentView.scrubbed).
-        List<SubAgentService.AgentUsage> agents = subAgentService.usage(conv.getId()).stream()
-                .map(a -> new SubAgentService.AgentUsage(a.id(), SensitivePaths.scrub(a.title()), a.mode(), a.status(),
-                        a.startedAt(), a.endedAt(), a.provider(), a.model(), a.inputTokens(), a.outputTokens(),
-                        a.cacheReadTokens(), a.cacheWriteTokens(), a.costUsd(), a.contextTokens(), a.contextWindow()))
-                .toList();
-        return ai.proxyma.core.chat.dto.ConversationAgents.of(total, agents, turns);
+    // -- The agent tree, alarms and background work (ai.proxyma.core.chat.agents) ------------------
+
+    private ai.proxyma.core.chat.agents.AgentTree agentTree;
+    private ai.proxyma.core.chat.agents.AgentInbox agentInbox;
+    private ai.proxyma.core.chat.agents.BackgroundJobs backgroundJobs;
+
+    // Optional, so the tests that build this class by hand need not build the tree.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAgentTree(ai.proxyma.core.chat.agents.AgentTree agentTree) {
+        this.agentTree = agentTree;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAgentInbox(ai.proxyma.core.chat.agents.AgentInbox agentInbox) {
+        this.agentInbox = agentInbox;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setBackgroundJobs(ai.proxyma.core.chat.agents.BackgroundJobs backgroundJobs) {
+        this.backgroundJobs = backgroundJobs;
+    }
+
+    private ai.proxyma.core.chat.agents.ApprovalInbox approvalInbox;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApprovalInbox(ai.proxyma.core.chat.agents.ApprovalInbox approvalInbox) {
+        this.approvalInbox = approvalInbox;
+    }
+
+    /** The first module's reason this conversation may take no further step, or null. */
+    String limitReached(String conversationId) {
+        if (conversationId == null) return null;
+        for (ChatModule module : chatModules) {
+            try {
+                Optional<String> reason = module.stopReason(conversationId);
+                if (reason != null && reason.isPresent()) return reason.get();
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether conversation {} may go on: {}", conversationId,
+                        e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether nobody watches this conversation (a module's run for a schedule or another agent): a
+     * write waits in the approvals inbox, a question and the step limit do not wait at all.
+     */
+    boolean unwatched(String conversationId) {
+        if (conversationId == null || approvalInbox == null) return false;
+        for (ChatModule module : chatModules) {
+            try {
+                if (module.parksApprovals(conversationId)) return true;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether conversation {} is watched: {}", conversationId,
+                        e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /** Something reached a conversation's inbox: its running turn reads it, or one is started for it. */
+    @org.springframework.context.event.EventListener
+    public void onInboxPosted(ai.proxyma.core.chat.agents.AgentInboxPostedEvent event) {
+        wake(event.conversationId());
+    }
+
+    /** The mode a conversation's tool calls run under - what a child it deploys starts in. */
+    public PermissionMode permissionMode(String conversationId) {
+        return conversationId == null ? PermissionMode.ASK : permissionModes.getOrDefault(conversationId, PermissionMode.ASK);
     }
 
     /**
@@ -1094,44 +1322,144 @@ public class ChatService implements AgentHost {
      * ('sub-agent-reported'), which is where the thread says the sub-agent reported back.
      */
     private Message takeReports(String conversationId) {
-        if (!subAgentService.hasUndelivered(conversationId)) return null;
-        List<SubAgentService.Settled> reports = subAgentService.takeReports(conversationId);
-        // And what running sub-agents have said meanwhile (messageMainAgent), after the reports.
-        List<SubAgentService.Note> notes = subAgentService.takeNotes(conversationId);
-        if (reports.isEmpty() && notes.isEmpty()) return null;
-        for (SubAgentService.Settled report : reports) {
-            publishReported(conversationId, report.agentId(), report.title(), report.status(), null);
+        Message taken = takeReportsOnce(conversationId);
+        // Remembered: what was taken is already marked delivered, so a turn stopped before its first
+        // step must still keep it (reactStep), or nobody ever hears it.
+        if (taken != null) openingsTaken.put(conversationId, taken);
+        return taken;
+    }
+
+    // What takeReports handed out and no step has written yet, by conversation.
+    private final Map<String, Message> openingsTaken = new ConcurrentHashMap<>();
+
+    // Writes what takeReports handed out straight into the conversation, and forgets it was owed.
+    private void writeTaken(String conversationId, Message taken) {
+        openingsTaken.remove(conversationId, taken);
+        chatMemory.add(conversationId, List.of(taken));
+    }
+
+    private Message takeReportsOnce(String conversationId) {
+        // The conversation's inbox first - reports from its agents, messages, alarms, background
+        // results, so the row reads as what it is (AgentInbox.isInboxMessage) - then a module's.
+        List<ai.proxyma.core.chat.agents.AgentInbox.Taken> mail = agentInbox == null ? List.of()
+                : agentInbox.takeWhere(conversationId, t -> true);
+        String fromModules = takeModuleInputs(conversationId);
+        if (mail.isEmpty()) {
+            return fromModules == null ? null : new org.springframework.ai.chat.messages.UserMessage(fromModules);
         }
-        for (SubAgentService.Note note : notes) {
-            publishReported(conversationId, note.agentId(), note.title(), "RUNNING", "message");
-        }
-        String text = reports.isEmpty() ? ""
-                : SubAgentService.reportMessage(reports, subAgentService.runningTitles(conversationId));
-        if (!notes.isEmpty()) text = (text.isEmpty() ? "" : text + "\n\n") + SubAgentService.noteMessage(notes);
+        publishAgentMail(conversationId, mail);
+        String text = ai.proxyma.core.chat.agents.AgentInbox.render(mail);
+        if (fromModules != null) text = text + "\n\n" + fromModules;
         return new org.springframework.ai.chat.messages.UserMessage(text);
     }
 
-    // The thread's line where a report - or a running sub-agent's message, `kind` "message" -
-    // reached the main agent.
-    private void publishReported(String conversationId, String agentId, String title, String status, String kind) {
-        String data;
+    // The thread's line where the agent read its mail - 'agent-mail', one entry per item.
+    private void publishAgentMail(String conversationId, List<ai.proxyma.core.chat.agents.AgentInbox.Taken> mail) {
         try {
-            Map<String, Object> fields = new java.util.LinkedHashMap<>();
-            fields.put("title", title == null ? "" : title);
-            fields.put("status", status.toLowerCase(Locale.ROOT));
-            if (kind != null) fields.put("kind", kind);
-            data = JSON.writeValueAsString(fields);
+            List<Map<String, Object>> entries = new ArrayList<>();
+            for (ai.proxyma.core.chat.agents.AgentInbox.Taken t : mail) {
+                Map<String, Object> e = new java.util.LinkedHashMap<>();
+                e.put("agentId", t.fromAgentId() == null ? null : t.fromAgentId().toString());
+                e.put("title", t.fromTitle() == null ? null : SensitivePaths.scrub(t.fromTitle()));
+                e.put("kind", t.kind().name().toLowerCase(Locale.ROOT));
+                entries.add(e);
+            }
+            eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                    ChatEvent.Type.AGENT_MAIL.value(), null, null, JSON.writeValueAsString(Map.of("entries", entries))));
         } catch (Exception e) {
-            data = "{}";
+            log.debug("[Chat] could not tell the page about mail in {}: {}", conversationId, e.getMessage());
         }
-        eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                ChatEvent.Type.SUB_AGENT_REPORTED.value(), agentId, null, data));
     }
 
-    /** A background sub-agent has reported - see {@link AgentHost#subAgentSettled}. */
-    @Override
-    public void subAgentSettled(String conversationId) {
+    // -- What a product module holds for a conversation (ChatModule.hasPendingInput) --------------
+
+    /** Whether a module holds a message for this conversation's agent. Never throws. */
+    private boolean moduleInputOwed(String conversationId) {
+        for (ChatModule module : chatModules) {
+            try {
+                if (module.hasPendingInput(conversationId)) return true;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether it holds a message for {}: {}",
+                        conversationId, e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /** What the modules hold for this conversation, taken once and joined, or null. */
+    private String takeModuleInputs(String conversationId) {
+        StringBuilder out = new StringBuilder();
+        for (ChatModule module : chatModules) {
+            try {
+                if (!module.hasPendingInput(conversationId)) continue;
+                module.takePendingInput(conversationId).filter(t -> !t.isBlank()).ifPresent(t -> {
+                    if (!out.isEmpty()) out.append("\n\n");
+                    out.append(t.strip());
+                });
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module's message for {} could not be taken: {}", conversationId, e.getMessage());
+            }
+        }
+        return out.isEmpty() ? null : out.toString();
+    }
+
+    // Conversations whose next turn runUnattended started - no person's.
+    private final Set<String> unattendedStarts = ConcurrentHashMap.newKeySet();
+
+    // Every module hears that a person spoke in a conversation (ChatModule.personSpoke).
+    private void personSpoke(String conversationId) {
+        for (ChatModule module : chatModules) {
+            try {
+                module.personSpoke(conversationId);
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not hear that a person spoke in {}: {}", conversationId, e.getMessage());
+            }
+        }
+    }
+
+    // Every module is told how long the turn took (ChatModule.turnEnded); none may fail the turn.
+    private void turnEnded(String conversationId, long durationMs, String answer) {
+        for (ChatModule module : chatModules) {
+            try {
+                module.turnEnded(conversationId, durationMs, answer);
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not record the end of a turn of {}: {}", conversationId, e.getMessage());
+            }
+        }
+    }
+
+    /** Whether anything is owed to this conversation's agent: its inbox, or a module's message. */
+    private boolean owed(String conversationId) {
+        return moduleInputOwed(conversationId)
+                || (agentInbox != null && agentInbox.hasPending(conversationId));
+    }
+
+    /**
+     * A module has something for this conversation (ChatModule.takePendingInput): a running turn
+     * takes it at its next step, and with none running a turn is started for it - as a sub-agent's
+     * report reaches its main agent. Safe to call from any thread, and when nothing is owed.
+     */
+    public void pendingInputArrived(String conversationId) {
         wake(conversationId);
+    }
+
+    /**
+     * Runs one turn with no page behind it - a product module's scheduled work or a message between
+     * its agents - and returns when the turn has ended, with its answer. Everything the chat page's
+     * own turn does is done the same way (the conversation is created on first use, under
+     * {@code surface}, for {@code userId}; the budget gate, the guardrails, the lock), and a page that
+     * opens the conversation meanwhile follows it live. Blocking: call it from a worker thread.
+     *
+     * @param skills skills to read before the first step, as a person picking them in the composer
+     */
+    public ChatResult runUnattended(String conversationId, String message, String userId, String surface,
+                                    PermissionMode mode, List<String> skills) {
+        unattendedStarts.add(conversationId);
+        chatEventSink.startTurn(conversationId, hasBackgroundWork(conversationId) || isActive(conversationId));
+        setPermissionMode(conversationId, mode == null ? PermissionMode.ASK : mode);
+        recordTurnStart(conversationId, userId == null ? "local" : "user:" + userId, surface);
+        return chat(conversationId, message, List.of(), List.of(), userId, null, null,
+                skills == null ? List.of() : skills, surface);
     }
 
     /**
@@ -1149,7 +1477,9 @@ public class ChatService implements AgentHost {
      */
     private void wake(String conversationId) {
         try {
-            if (!subAgentService.hasUndelivered(conversationId) || isActive(conversationId)) return;
+            if (!owed(conversationId) || isActive(conversationId)) return;
+            // A paused or stopped agent starts no turn: what reached it waits for a resume.
+            if (agentTree != null && !agentTree.mayWake(conversationId)) return;
             if (!waking.add(conversationId)) return;
             Optional<Conversation> conversation = chatMemory.findConversation(conversationId);
             if (conversation.isEmpty()) {
@@ -1163,7 +1493,7 @@ public class ChatService implements AgentHost {
             chatEventSink.startTurn(conversationId, true);
             eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.TURN_START.value(), null, null, ""));
-            log.info("[Chat] continuing conversationId={} for a sub-agent's report", conversationId);
+            log.info("[Chat] continuing conversationId={} for what reached its inbox", conversationId);
             turnsDispatched.put(conversationId, System.currentTimeMillis());
             // The name the user's own turns put in the prompt, so the continuation's prompt is the
             // same prompt and the cached prefix holds - see turnDisplayNames.
@@ -1371,6 +1701,53 @@ public class ChatService implements AgentHost {
         return abortFlags.containsKey(conversationId);
     }
 
+    // -- What a turn is doing, for a page that does not follow its stream ---------------------------
+
+    private final TurnActivity turnActivity = new TurnActivity();
+
+    /**
+     * What a conversation's agent is doing at this moment, read from memory alone - no query, and
+     * nothing of what was said. {@code running}: a turn runs, since {@code startedAt} (epoch ms);
+     * {@code tool}: the NAME of the tool call it is in, the latest when several run, else null - never
+     * its arguments or result; {@code rateLimited}: its model call is waiting out a provider's rate
+     * limit; {@code awaitingApproval}: a write of this conversation waits for a person, as a prompt in
+     * the page or in the approvals inbox (ApprovalInbox), turn or no turn; {@code waitingOnAgents}: how
+     * many agents a wait of its (awaitAgents) is still for.
+     */
+    public record TurnState(boolean running, long startedAt, String tool, boolean rateLimited,
+                            boolean awaitingApproval, int waitingOnAgents) {}
+
+    /**
+     * The state of each of these conversations that is doing something: a turn running, or a write
+     * waiting for a person. A conversation doing neither is left out. In memory only, so a page that
+     * polls it for many conversations costs nothing but the lookups.
+     */
+    public Map<String, TurnState> turnStates(java.util.Collection<String> conversationIds) {
+        if (conversationIds == null || conversationIds.isEmpty()) return Map.of();
+        // The conversations with an approval or a consent switch open in the page, read once.
+        Set<String> prompting = new java.util.HashSet<>();
+        for (String callId : pendingApprovals.keySet()) {
+            String c = pendingDecisionConversation.get(callId);
+            if (c != null) prompting.add(c);
+        }
+        for (String callId : pendingEnableDecisions.keySet()) {
+            String c = pendingDecisionConversation.get(callId);
+            if (c != null) prompting.add(c);
+        }
+        Map<String, TurnState> out = new java.util.HashMap<>();
+        for (String id : conversationIds) {
+            if (id == null || out.containsKey(id)) continue;
+            TurnActivity.Snapshot turn = turnActivity.of(id);
+            boolean approval = prompting.contains(id) || (approvalInbox != null && approvalInbox.hasPending(id));
+            if (turn == null && !approval) continue;
+            int waiting = turn == null || agentTree == null ? 0 : agentTree.waitingOn(id);
+            out.put(id, turn == null
+                    ? new TurnState(false, 0, null, false, true, 0)
+                    : new TurnState(true, turn.startedAt(), turn.tool(), turn.rateLimited(), approval, waiting));
+        }
+        return out;
+    }
+
     /**
      * Whether anything is still to publish into this conversation's event stream: a turn running
      * or a condensation (isActive, isCondensingNow), a turn started and not registered yet - POST
@@ -1453,6 +1830,8 @@ public class ChatService implements AgentHost {
         }
         injected.computeIfAbsent(conversationId, k -> new java.util.concurrent.ConcurrentLinkedQueue<>())
                 .add(new Injected(clientId, message));
+        if (agentTree != null) agentTree.userSpoke(conversationId, message);
+        personSpoke(conversationId);
         return new InjectResult(InjectOutcome.ACCEPTED, null);
     }
 
@@ -1626,8 +2005,7 @@ public class ChatService implements AgentHost {
                     ? chatEventSink.turnStartSequence(conversationId)
                     : chatEventSink.currentSequence(conversationId)) - 1;
             List<ChatMessageResponse> messages = transcript(chatMemory.findAllMessages(conversationId),
-                    workflowRunService.runIdsByTriggerMessage(conversationId), floor,
-                    (callId, result) -> subAgentFor(conversationId, callId, result, asOf));
+                    workflowRunService.runIdsByTriggerMessage(conversationId), floor);
             // A turn that began, or ended, while the rows were being read: the rows and the
             // position describe two different moments. Read again, once.
             if (attempt == 0 && !Objects.equals(floor, turnFloors.get(conversationId))) continue;
@@ -1641,38 +2019,10 @@ public class ChatService implements AgentHost {
         }
     }
 
-    // The sub-agent a `delegate` call started, as of that stream position. The call's result names
-    // it; a call that has not returned yet is matched by its own id among the ones running.
-    private ai.proxyma.core.chat.dto.SubAgentView subAgentFor(String conversationId, String callId, String result,
-                                                              long asOf) {
-        String agentId = null;
-        if (result != null && result.contains("\"agentId\"")) {
-            try {
-                agentId = JSON.readTree(result).path("agentId").asText(null);
-            } catch (Exception e) {
-                agentId = null;
-            }
-        }
-        Optional<ai.proxyma.core.chat.dto.SubAgentView> view = agentId != null
-                ? subAgentService.view(conversationId, agentId, asOf)
-                : subAgentService.viewByCall(conversationId, callId, asOf);
-        return view.map(ai.proxyma.core.chat.dto.SubAgentView::scrubbed).orElse(null);
-    }
-
-    /** Finds the sub-agent a `delegate` call started; null when there is none to show. */
-    interface AgentLookup {
-        ai.proxyma.core.chat.dto.SubAgentView find(String callId, String result);
-    }
-
-    static List<ChatMessageResponse> transcript(List<ChatMessage> rows, Map<Long, String> workflowRunsByMessage,
-                                                Long liveTurnFloor) {
-        return transcript(rows, workflowRunsByMessage, liveTurnFloor, (callId, result) -> null);
-    }
-
     // A function of the rows alone, so the rules above are tested without a running turn
     // (TranscriptTest). liveTurnFloor is null unless a turn is running - see turnFloors.
     static List<ChatMessageResponse> transcript(List<ChatMessage> rows, Map<Long, String> workflowRunsByMessage,
-                                                Long liveTurnFloor, AgentLookup agents) {
+                                                Long liveTurnFloor) {
         boolean liveTurnReached = false;
         List<ChatMessageResponse> result = new ArrayList<>();
         List<PendingToolCall> pending = new ArrayList<>();
@@ -1719,7 +2069,7 @@ public class ChatService implements AgentHost {
                 case USER -> {
                     // The steps taken before this message stay ABOVE it, in a row of their own -
                     // never carried into the reply that follows it, and never dropped.
-                    flushToolCalls(result, pending, stepLimitToFlush, agents);
+                    flushToolCalls(result, pending, stepLimitToFlush);
                     stepLimitToFlush = null;
                     // A real user message ends any run that was still in progress - a run that was
                     // interrupted (a restart, a Stop) never reaches its last step, and without this
@@ -1728,16 +2078,15 @@ public class ChatService implements AgentHost {
                     // Background sub-agents reporting to the main agent. Stored as a USER row - the
                     // only role a provider accepts there - and nothing the user said: the thread
                     // says WHO reported, and the report itself is in that sub-agent's panel.
-                    if (SubAgentService.isReportMessage(row.getContent())) {
+                    if (ai.proxyma.core.chat.agents.AgentInbox.isInboxMessage(row.getContent())) {
                         // The one that OPENED a turn still running is left to the stream, with the
                         // rest of that turn: its 'sub-agent-reported' event is replayed, and a row
                         // here as well would say it twice.
                         if (liveTurnFloor != null && row.getId() != null && row.getId() > liveTurnFloor) return result;
-                        List<ChatMessageResponse.SubAgentReported> reported =
-                                SubAgentService.reportsIn(row.getContent()).stream()
-                                        .map(r -> new ChatMessageResponse.SubAgentReported(r[0],
-                                                SensitivePaths.scrub(r[1]), r[2].toLowerCase(Locale.ROOT),
-                                                "message".equals(r[3]) ? "message" : null))
+                        List<ChatMessageResponse.AgentMail> reported =
+                                ai.proxyma.core.chat.agents.AgentInbox.entriesIn(row.getContent()).stream()
+                                        .map(r -> new ChatMessageResponse.AgentMail(r[0],
+                                                r[1] == null ? null : SensitivePaths.scrub(r[1]), r[2]))
                                         .toList();
                         result.add(new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT,
                                 "", null, null, null, null, null, null, reported));
@@ -1766,7 +2115,7 @@ public class ChatService implements AgentHost {
                     boolean noticeHere = stepLimit != null && visible && ownCalls.isEmpty();
                     if (visible) {
                         List<ChatMessageResponse.ToolCallResponse> claimed = pending.isEmpty() ? null
-                                : pending.stream().map(p -> p.toResponse(agents)).toList();
+                                : pending.stream().map(p -> p.toResponse()).toList();
                         result.add(new ChatMessageResponse(row.getId(), row.getRole(),
                                 SensitivePaths.scrub(row.getContent()), claimed, null, null, null, null,
                                 noticeHere ? stepLimit : null));
@@ -1804,17 +2153,17 @@ public class ChatService implements AgentHost {
             // is still running - see turnFloors.
             if (liveTurnReached) return result;
         }
-        flushToolCalls(result, pending, stepLimitToFlush, agents);
+        flushToolCalls(result, pending, stepLimitToFlush);
         return result;
     }
 
     // Gives the tool calls no message has claimed a row of their own, and empties the list. Also
     // the row a step-limit notice lands on when the last step wrote nothing to put it under.
     private static void flushToolCalls(List<ChatMessageResponse> result, List<PendingToolCall> pending,
-                                       Integer stepLimit, AgentLookup agents) {
+                                       Integer stepLimit) {
         if (pending.isEmpty() && stepLimit == null) return;
         List<ChatMessageResponse.ToolCallResponse> calls = pending.isEmpty() ? null
-                : pending.stream().map(p -> p.toResponse(agents)).toList();
+                : pending.stream().map(p -> p.toResponse()).toList();
         // No id: it is not one stored message, and nothing on it can be rated, shared or rewound.
         result.add(new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT, "",
                 calls, null, null, null, null, stepLimit));
@@ -1840,12 +2189,9 @@ public class ChatService implements AgentHost {
         // own memory, and it needs the real paths there to read an offloaded result back on a later
         // turn. Only the copy heading for the browser is screened - same boundary rule as
         // ChatController.formatSseEvent, which covers these two fields live.
-        ChatMessageResponse.ToolCallResponse toResponse(AgentLookup agents) {
-            // A `delegate` call carries the sub-agent it started: what it did and what it reported.
-            ai.proxyma.core.chat.dto.SubAgentView agent =
-                    SubAgentService.DelegateToolNames.DELEGATE.equals(toolName) ? agents.find(callId, result) : null;
+        ChatMessageResponse.ToolCallResponse toResponse() {
             return new ChatMessageResponse.ToolCallResponse(callId, toolName,
-                    SensitivePaths.scrub(arguments), SensitivePaths.scrub(result), done, startedAt, endedAt, agent);
+                    SensitivePaths.scrub(arguments), SensitivePaths.scrub(result), done, startedAt, endedAt);
         }
     }
 
@@ -1994,7 +2340,6 @@ public class ChatService implements AgentHost {
             cascade(id, "workflow runs", () -> workflowRunService.deleteForConversation(id));
             // The same for its sub-agents: one still running is stopped, and none is left to
             // report to a conversation that is gone.
-            cascade(id, "sub-agents", () -> subAgentService.forget(id));
         }
         // And for what other modules keep by its id (a key account's panel binding).
         if (!conversationIds.isEmpty()) {
@@ -2111,7 +2456,7 @@ public class ChatService implements AgentHost {
             // Auto's step up: once a background sub-agent is working, what this turn writes is read
             // when its report wakes the agent - minutes from now, past a five-minute cache. The
             // steps from here on ask for an hour (ChatSettings.PromptCache.forTurn says why).
-            if (longCacheSession != null && subAgentService.hasRunning(conversationId)) {
+            if (longCacheSession != null && hasBackgroundWork(conversationId)) {
                 session = longCacheSession.get();
                 longCacheSession = null;
                 log.debug("[Chat] prompt cache steps up to one hour conversationId={}", conversationId);
@@ -2127,7 +2472,7 @@ public class ChatService implements AgentHost {
                     // in a turn of its own a moment after this one ends.
                     Message reports = takeReports(conversationId);
                     if (!late.isEmpty()) {
-                        if (reports != null) chatMemory.add(conversationId, List.of(reports));
+                        if (reports != null) writeTaken(conversationId, reports);
                         message = new org.springframework.ai.chat.messages.UserMessage(
                                 late.stream().map(Injected::text).collect(java.util.stream.Collectors.joining("\n\n")));
                         iteration++;
@@ -2174,12 +2519,17 @@ public class ChatService implements AgentHost {
      */
     boolean askToContinue(String conversationId, int limit, int more, AtomicBoolean abort) {
         if (workflowSteps.containsKey(conversationId)) return false;
+        // A deployed agent answers with what it has: nobody may be watching its conversation, and its
+        // parent can tell it to go on.
+        if (agentTree != null && agentTree.isChild(conversationId)) return false;
+        // Nor where nobody watches: the question would hold the run for half an hour unanswered.
+        if (unwatched(conversationId)) return false;
         String trackingId = "step-limit-" + UUID.randomUUID();
         CompletableFuture<String> future = registerPendingQuestion(conversationId, trackingId);
         try {
             askUser(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.USER_QUESTION.value(), trackingId, CONTINUE_PROMPT,
-                    continueQuestion(limit, more)), null);
+                    continueQuestion(limit, more)));
             log.info("[Chat] turn at its step limit asks to continue conversationId={} limit={}", conversationId, limit);
             long deadline = System.currentTimeMillis() + Duration.ofMinutes(APPROVAL_TIMEOUT_MINUTES).toMillis();
             while (true) {
@@ -2195,7 +2545,7 @@ public class ChatService implements AgentHost {
         } finally {
             pendingQuestions.remove(trackingId);
             pendingDecisionConversation.remove(trackingId);
-            promptClosed(trackingId, null);
+            promptClosed(trackingId);
             eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.PROMPT_CLOSED.value(), trackingId, null, null));
         }
@@ -2256,13 +2606,16 @@ public class ChatService implements AgentHost {
             // And the reports that open a continuation: takeReports has already marked them
             // delivered, so a continuation stopped before its first step dropped them for good -
             // the agent never heard what its sub-agents found. Kept, they are read next turn.
-            if (message instanceof org.springframework.ai.chat.messages.UserMessage opening
-                    && SubAgentService.isReportMessage(opening.getText())) {
+            // A teammate's reply or any module's message taken with them likewise (openingsTaken).
+            boolean taken = openingsTaken.remove(conversationId, message);
+            if (taken || (message instanceof org.springframework.ai.chat.messages.UserMessage opening
+                    && ai.proxyma.core.chat.agents.AgentInbox.isInboxMessage(opening.getText()))) {
                 chatMemory.add(conversationId, List.of(message));
             }
             return ReactStep.done(new ChatResult("Chat was stopped.", conversationId, iteration));
         }
 
+        openingsTaken.remove(conversationId, message);
         chatMemory.add(conversationId, List.of(message));
         // Messages the user typed during the tool round just finished go in right after its
         // results, so the next model call reads them - see inject().
@@ -2276,16 +2629,30 @@ public class ChatService implements AgentHost {
             // The reports of background sub-agents that finished during that round go in at the
             // same point, for the same reason - see wake().
             Message reports = takeReports(conversationId);
-            if (reports != null) chatMemory.add(conversationId, List.of(reports));
+            if (reports != null) writeTaken(conversationId, reports);
+        }
+        // After the tool round or the message that opened the turn: never between a tool call and
+        // its result, which every provider refuses.
+        writeContextNote(conversationId);
+
+        // A budget or a deadline - this agent's, an ancestor's, its saved agent's run - ends the turn
+        // here, before the next model call spends more (ChatModule.stopReason).
+        String limit = limitReached(conversationId);
+        if (limit != null) {
+            log.info("[Chat] turn ended by a limit conversationId={}: {}", conversationId, limit);
+            return ReactStep.done(new ChatResult(limit, conversationId, iteration));
         }
 
         // Re-resolved fresh every iteration (not just once per turn) - a readSkill call earlier
         // in THIS same turn must unlock its connector's tools before the very next LLM call, not
         // just on the next user message. See ToolSkillGating's class javadoc.
         // The turn's user is on this thread (chat() put it there), as callTools reads it below.
+        // Less the skills a saved agent is not given (AgentProfile.withheldSkills): their tools are
+        // never unlocked, however the skill came to be read.
+        Set<String> unlocked = unlockedForAgent(conversationId, unlockedSkillNames(conversationId));
         List<ToolCallback> advertised = withExternalTools(toolSkillGating.resolveAdvertised(
-                toolCallbacks, coreToolCallbacks, unlockedSkillNames(conversationId), conversationId,
-                SearchContext.getUserId()), unlockedSkillNames(conversationId), SearchContext.getUserId());
+                toolCallbacks, coreToolCallbacks, unlocked, conversationId,
+                SearchContext.getUserId()), unlocked, SearchContext.getUserId());
         // Advertised per CALL now - the session owns the options object that used to be mutated
         // here, which read as though the options were constant across a turn. They never were.
         log.debug("[Chat] iter={} advertising {} tool(s)", iteration, advertised.size());
@@ -2300,7 +2667,7 @@ public class ChatService implements AgentHost {
                     List.of(new org.springframework.ai.chat.messages.UserMessage(FORCED_ANSWER_INSTRUCTION)));
         }
 
-        List<Message> promptMessages = chatMemory.get(conversationId);
+        List<Message> promptMessages = withModuleMemory(conversationId, chatMemory.get(conversationId));
 
         // One model call, streamed - the same call a sub-agent makes (ModelCall). What is this
         // loop's own is what happens to each piece of it: the answer goes out as TEXT events, a
@@ -2345,7 +2712,13 @@ public class ChatService implements AgentHost {
                                 null, null, String.valueOf(tokens)));
                     }
 
+                    // A rate limit's wait is over once the next attempt starts.
+                    @Override public void attempt() {
+                        turnActivity.rateLimited(conversationId, false);
+                    }
+
                     @Override public void retry(int attempt, Throwable failure) {
+                        if (ModelCall.isRateLimited(failure)) turnActivity.rateLimited(conversationId, true);
                         latency.retryCount.incrementAndGet();
                         eventPublisher.publishEvent(new ChatEvent(conversationId,
                                 chatEventSink.nextSequence(conversationId),
@@ -2407,6 +2780,7 @@ public class ChatService implements AgentHost {
             // instead of growing" bug this was. promptTokensTotal is pre-normalized per provider
             // by TokenUsageExtractor so this call site doesn't need to know which provider it is.
             chatMemory.recordContextTokens(conversationId, (int) iterationUsage.promptTokensTotal());
+            noteContext(conversationId, (int) iterationUsage.promptTokensTotal(), chatMemory.contextWindow());
             // Persists the cumulative total and pushes it to the client right after THIS response
             // - not just once at the very end of the whole turn - so the usage meter visibly moves
             // through a long multi-iteration turn instead of jumping once at the very end.
@@ -2426,7 +2800,7 @@ public class ChatService implements AgentHost {
                 iterationUsage.cacheReadTokens(), iterationUsage.cacheWriteTokens());
 
         if (assistant.hasToolCalls() && iteration < maxIteration) {
-            ToolResponseMessage toolResponse = callTools(conversationId, assistant.getToolCalls(), abort, null);
+            ToolResponseMessage toolResponse = callTools(conversationId, assistant.getToolCalls(), abort);
             return ReactStep.next(toolResponse);
         }
         if (assistant.hasToolCalls()) {
@@ -2524,9 +2898,7 @@ public class ChatService implements AgentHost {
      * call may run - the permission mode, the approval pause, the consent prompt, the timeout - is
      * the same code for both.
      */
-    @Override
-    public ToolResponseMessage callTools(String conversationId, List<ToolCall> toolCalls, AtomicBoolean abort,
-                                         AgentScope scope) {
+    public ToolResponseMessage callTools(String conversationId, List<ToolCall> toolCalls, AtomicBoolean abort) {
         List<String> trackingIds = toolCalls.stream()
                 .map(tc -> (tc.id() != null && !tc.id().isEmpty()) ? tc.id() : UUID.randomUUID().toString())
                 .toList();
@@ -2563,7 +2935,7 @@ public class ChatService implements AgentHost {
                 SearchContext.setAbortFlag(abort);
                 SpendContext.set(callerSubject);
                 try {
-                    return callTool(conversationId, tc, tid, abort, scope);
+                    return callTool(conversationId, tc, tid, abort);
                 } finally {
                     endedAt.set(index, System.currentTimeMillis());
                     SearchContext.clear();
@@ -2576,7 +2948,7 @@ public class ChatService implements AgentHost {
         Map<String, Object> timings = new java.util.LinkedHashMap<>();
         for (int i = 0; i < futures.size(); i++) {
             ToolResponse tr = joinRespectingAbort(conversationId, futures.get(i), toolCalls.get(i),
-                    trackingIds.get(i), abort, scope);
+                    trackingIds.get(i), abort);
             responses.add(tr);
             // A call the turn stopped waiting on has no end of its own; it ended, for the reader,
             // when the turn gave up on it.
@@ -2608,18 +2980,16 @@ public class ChatService implements AgentHost {
     // the frontend). Reported as "the stop button did not stop it and the loading indicator kept
     // going", which was the UI's account of it, not the backend's.
     private ToolResponse joinRespectingAbort(String conversationId, CompletableFuture<ToolResponse> future,
-                                             ToolCall toolCall, String trackingId, AtomicBoolean abort,
-                                             AgentScope scope) {
-        int timeoutSeconds = toolTimeoutSeconds(toolCall.name());
+                                             ToolCall toolCall, String trackingId, AtomicBoolean abort) {
+        int timeoutSeconds = trackingId != null && trackingId.startsWith(BACKGROUND_CALL_PREFIX)
+                ? BACKGROUND_TOOL_TIMEOUT_SECONDS : toolTimeoutSeconds(toolCall.name());
         while (true) {
             try {
                 return future.get(1, TimeUnit.SECONDS);
             } catch (TimeoutException te) {
                 if (abort.get()) {
-                    // A sub-agent is stopped for more reasons than the user's Stop - it ran out of
-                    // time, or the turn it serves ended - and it says which.
                     return abandon(conversationId, toolCall, trackingId,
-                            failure(scope == null ? "Aborted by user" : scope.stopNote()), scope);
+                            failure("Aborted by user"));
                 }
                 // The tool's own limit (toolTimeoutSeconds). Only once it is EXECUTING - see
                 // TOOL_CALL_TIMEOUT_SECONDS.
@@ -2638,18 +3008,18 @@ public class ChatService implements AgentHost {
                             : " Try a narrower request, or tell the user the service is slow.";
                     return abandon(conversationId, toolCall, trackingId,
                             "{\"success\":false,\"error\":\"Timed out after " + timeoutSeconds
-                                    + " seconds." + advice + "\"}", scope);
+                                    + " seconds." + advice + "\"}");
                 }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 return abandon(conversationId, toolCall, trackingId,
-                        "{\"success\":false,\"error\":\"Interrupted\"}", scope);
+                        "{\"success\":false,\"error\":\"Interrupted\"}");
             } catch (ExecutionException ee) {
                 Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
                 log.warn("[Chat] tool '{}' future failed unexpectedly: {}", toolCall.name(),
                         Failures.describe(cause), cause);
                 return abandon(conversationId, toolCall, trackingId,
-                        Failures.describe(cause, "Tool call failed"), scope);
+                        Failures.describe(cause, "Tool call failed"));
             }
         }
     }
@@ -2666,60 +3036,42 @@ public class ChatService implements AgentHost {
     // wrapped here, so each caller keeps the exact result string it used before this method
     // existed - the two abort cases stay a success:false envelope, and a genuine future failure
     // stays the bare Failures.describe() text that every other failure path in callTool produces.
-    private ToolResponse abandon(String conversationId, ToolCall toolCall, String trackingId, String payload,
-                                 AgentScope scope) {
+    private ToolResponse abandon(String conversationId, ToolCall toolCall, String trackingId, String payload) {
+        // A wait for agents is not left running: what it would take next, nobody would read.
+        if (agentTree != null && ai.proxyma.core.chat.agents.AgentTree.AWAIT_TOOL.equals(toolCall.name())) {
+            try {
+                agentTree.abandonWaits(conversationId);
+            } catch (RuntimeException e) {
+                log.warn("[Chat] could not end the waits of conversationId={}: {}", conversationId, e.getMessage());
+            }
+        }
         // Same derivation as callTool()'s own events, so an abandoned call inside a workflow step
         // or a sub-agent stays nested there rather than jumping to the top level as it settles.
-        publishToolResult(conversationId, scope, trackingId, payload);
+        publishToolResult(conversationId, trackingId, payload);
         return new ToolResponse(toolCall.id(), toolCall.name(), payload);
     }
 
-    // Whose row a tool event nests under: the sub-agent's, else the running workflow step's, else
-    // nobody's - which is every ordinary turn.
-    private String parentCallId(String conversationId, AgentScope scope) {
-        if (scope != null) return scope.agentId();
+    // Whose row a tool event nests under: the running workflow step's, else nobody's - which is
+    // every ordinary turn.
+    private String parentCallId(String conversationId) {
         WorkflowStepContext workflowStep = workflowSteps.get(conversationId);
         return workflowStep == null ? null : workflowStep.stepCallId();
     }
 
-    // The two events every tool call publishes. A sub-agent is told of each as it is numbered, so
-    // it can say exactly what it had done as of any point in the stream - see SubAgentService.
-    //
-    // NUMBERED AND RECORDED UNDER THE SUB-AGENT'S OWN LOCK. What it says it had done as of event N
-    // (SubAgentService.Run.viewAsOf) has to agree with which events are numbered N and below, and
-    // a number handed out a moment before the record is written is a step a page joining at
-    // exactly that moment gets from neither.
-    private void publishToolStart(String conversationId, AgentScope scope, String trackingId,
-                                  String toolName, String arguments) {
-        ChatEvent event;
-        if (scope == null) {
-            event = new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                    ChatEvent.Type.TOOL_START.value(), trackingId, toolName, arguments,
-                    parentCallId(conversationId, null));
-        } else {
-            synchronized (scope) {
-                event = new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                        ChatEvent.Type.TOOL_START.value(), trackingId, toolName, arguments, scope.agentId());
-                scope.toolStarted(trackingId, toolName, arguments, event.sequence(), event.at());
-            }
+    // The two events every tool call publishes.
+    private void publishToolStart(String conversationId, String trackingId, String toolName, String arguments) {
+        // A background job's call is not what the turn is doing: the turn goes on beside it.
+        if (trackingId != null && !trackingId.startsWith(BACKGROUND_CALL_PREFIX)) {
+            turnActivity.toolStarted(conversationId, trackingId, toolName);
         }
-        eventPublisher.publishEvent(event);
+        eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                ChatEvent.Type.TOOL_START.value(), trackingId, toolName, arguments, parentCallId(conversationId)));
     }
 
-    private void publishToolResult(String conversationId, AgentScope scope, String trackingId, String result) {
-        ChatEvent event;
-        if (scope == null) {
-            event = new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                    ChatEvent.Type.TOOL_RESULT.value(), trackingId, null, result,
-                    parentCallId(conversationId, null));
-        } else {
-            synchronized (scope) {
-                event = new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
-                        ChatEvent.Type.TOOL_RESULT.value(), trackingId, null, result, scope.agentId());
-                scope.toolFinished(trackingId, result, event.sequence(), event.at());
-            }
-        }
-        eventPublisher.publishEvent(event);
+    private void publishToolResult(String conversationId, String trackingId, String result) {
+        turnActivity.toolEnded(conversationId, trackingId);
+        eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                ChatEvent.Type.TOOL_RESULT.value(), trackingId, null, result, parentCallId(conversationId)));
     }
 
     // -- Prompts waiting for the user -----------------------------------------------------------
@@ -2730,40 +3082,34 @@ public class ChatService implements AgentHost {
     // So what is still open is kept, and handed to a page with the transcript (pendingPrompts).
     private final ConcurrentHashMap<String, ChatEvent> openPrompts = new ConcurrentHashMap<>();
 
-    // Asks the user. The time a sub-agent spends waiting for the answer is the user's, not its own.
-    private void askUser(ChatEvent request, AgentScope scope) {
+    // Asks the user.
+    private void askUser(ChatEvent request) {
         openPrompts.put(request.callId(), request);
-        if (scope != null) scope.waitingForUser(true);
         eventPublisher.publishEvent(request);
     }
 
-    private void promptClosed(String trackingId, AgentScope scope) {
-        if (openPrompts.remove(trackingId) != null && scope != null) scope.waitingForUser(false);
-    }
-
-    // A prompt asked by a sub-agent says which one; one asked by the main agent has no parent, as
-    // before - inside a workflow step too, where the step's id means nothing to a prompt.
-    private static String askedBy(AgentScope scope) {
-        return scope == null ? null : scope.agentId();
+    private void promptClosed(String trackingId) {
+        openPrompts.remove(trackingId);
     }
 
     // The Audit Logs page's record of each call, made here rather than in the tool wrapper below
     // because only this path knows what the model was given (the result after guardRetrieved) and
     // what never ran (a write refused or denied, a tool a sub-agent may not call) - see ToolAudit.
-    private ToolResponse callTool(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort,
-                                  AgentScope scope) {
+    private ToolResponse callTool(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort) {
         long started = System.nanoTime();
         ToolResponse response = ToolAudit.recordedByCaller(
-                () -> callToolUnaudited(conversationId, toolCall, trackingId, abort, scope));
+                () -> callToolUnaudited(conversationId, toolCall, trackingId, abort));
         try {
             ApprovalNote approval = approvalNotes.remove(trackingId);
             String result = response.responseData();
             boolean threw = threwCalls.remove(trackingId);
-            String outcome = (approval != null && approval.denied())
-                    || (scope != null && refusedToSubAgents(toolCall.name()) != null)
+            // Refused as the call itself was decided, never decided a second time for the audit: a
+            // profile read twice could disagree with what actually happened.
+            boolean refused = refusedCalls.remove(trackingId);
+            String outcome = (approval != null && approval.denied()) || refused
                     ? AuditEntry.DENIED : threw ? AuditEntry.FAILED : null;
             ToolAudit.record(SearchContext.getUserId(), conversationId, toolCall.name(),
-                    scope == null ? "Agent" : "Sub-agent", scope == null ? null : scope.agentId(),
+                    "Agent", null,
                     toolCall.arguments(), result, outcome, approval == null ? null : approval.text(),
                     (System.nanoTime() - started) / 1_000_000);
         } catch (Exception ignored) {
@@ -2780,6 +3126,8 @@ public class ChatService implements AgentHost {
     // Calls whose tool THREW: the catch below turns the exception into readable text, which carries
     // no failure envelope for the audit entry to recognize.
     private final Set<String> threwCalls = ConcurrentHashMap.newKeySet();
+    // Calls refused before they ran (a sub-agent's main-agent-only tool, a tool an agent is not given).
+    private final Set<String> refusedCalls = ConcurrentHashMap.newKeySet();
 
     private void noteApproval(String trackingId, String text, boolean denied) {
         if (trackingId != null) approvalNotes.put(trackingId, new ApprovalNote(text, denied));
@@ -2810,8 +3158,78 @@ public class ChatService implements AgentHost {
         }
     }
 
+    // The skills unlocked in this conversation that its agent may read - all of them for an
+    // ordinary conversation.
+    private Set<String> unlockedForAgent(String conversationId, Set<String> unlocked) {
+        if (unlocked.isEmpty() || chatModules.isEmpty()) return unlocked;
+        Optional<AgentProfile> profile = AgentProfiles.of(chatModules, conversationId, SearchContext.getUserId());
+        if (profile.isEmpty() || (profile.get().withheldSkills() == null && !profile.get().locked())) return unlocked;
+        Set<String> out = new LinkedHashSet<>();
+        for (String name : unlocked) if (profile.get().allowsSkill(name)) out.add(name);
+        return out;
+    }
+
+    // Null when this conversation may call the tool; the sentence the model reads when it may not.
+    private String refusedToAgent(String conversationId, String toolName) {
+        return refusedToAgent(conversationId, toolName, null);
+    }
+
+    // The same, knowing the call's arguments: reading a skill the agent is not given is refused, and
+    // so is a connected MCP server's tool behind one - whose name no list holds in advance.
+    private String refusedToAgent(String conversationId, String toolName, String arguments) {
+        if (chatModules.isEmpty()) return null;
+        Optional<AgentProfile> profile = AgentProfiles.of(chatModules, conversationId, SearchContext.getUserId());
+        if (profile.isEmpty()) return null;
+        if (!profile.get().allows(toolName)) {
+            return failure("The tool " + toolName + " is not given to this agent. Its tools are set on the "
+                    + "agent's Access tab; work with the tools you were offered.");
+        }
+        Set<String> skills = profile.get().withheldSkills();
+        if (skills == null || skills.isEmpty()) return null;
+        if (READ_SKILL.equals(toolName)) {
+            String skill = skillNameOf(arguments);
+            if (skill != null && !profile.get().allowsSkill(skill)) {
+                return failure("The skill " + skill + " is not given to this agent. Its tools are set on the "
+                        + "agent's Access tab; work with the tools you were offered.");
+            }
+            return null;
+        }
+        String notGiven = failure("The tool " + toolName + " is not given to this agent. Its tools are "
+                + "set on the agent's Access tab; work with the tools you were offered.");
+        boolean registered = toolCallbacks.stream().anyMatch(t -> t.getToolDefinition().name().equals(toolName));
+        if (registered) {
+            // A tool of a group the agent is not given is refused at the call, not only left out of
+            // the list: the list is a visibility gate, and a model can call a tool by name. A tool in
+            // no group is a core tool, decided by withheldTools above.
+            Set<String> groups = toolSkillGating.skillsUnlocking(toolName);
+            return !groups.isEmpty() && groups.stream().noneMatch(profile.get()::allowsSkill) ? notGiven : null;
+        }
+        if (externalTools == null) return null;
+        try {
+            // Which server a tool is from is read off its NAME - never by reaching a server, which
+            // could start a withheld server's command, and whose failure would let the call through.
+            Optional<String> skill = externalTools.skillOf(SearchContext.getUserId(), toolName);
+            return skill.isPresent() && !profile.get().allowsSkill(skill.get()) ? notGiven : null;
+        } catch (RuntimeException e) {
+            log.warn("[Chat] could not tell which MCP server tool '{}' is from, so it is refused: {}", toolName, e.getMessage());
+            return notGiven;
+        }
+    }
+
+    private static final String READ_SKILL = "readSkill";
+
+    private static String skillNameOf(String arguments) {
+        if (arguments == null || arguments.isBlank()) return null;
+        try {
+            com.fasterxml.jackson.databind.JsonNode node = JSON.readTree(arguments).path("skillName");
+            return node.isTextual() ? node.asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private ToolResponse callToolUnaudited(String conversationId, ToolCall toolCall, String trackingId,
-                                           AtomicBoolean abort, AgentScope scope) {
+                                           AtomicBoolean abort) {
         ToolCallback cb = toolCallbacks.stream()
                 .filter(t -> t.getToolDefinition().name().equals(toolCall.name()))
                 .findFirst()
@@ -2838,14 +3256,19 @@ public class ChatService implements AgentHost {
 
         String result;
         try {
-            publishToolStart(conversationId, scope, trackingId, toolCall.name(), arguments);
+            publishToolStart(conversationId, trackingId, toolCall.name(), arguments);
 
             // The two tools a sub-agent is not handed (SubAgentService leaves them out of what it
             // advertises), refused here as well - a model can call a tool by name without having
             // been offered it, and the tool list is a visibility gate, never the control.
-            String refusal = scope == null ? null : refusedToSubAgents(toolCall.name());
+            String refusal = null;
+            // A tool a saved agent is not given (AgentProfile.withheldTools) is refused here too, by
+            // the same reasoning: the advertised list hides it, this is what stops it. Asked of the
+            // conversation, so the agent's sub-agents are held to it as well.
+            if (refusal == null) refusal = refusedToAgent(conversationId, toolCall.name(), toolCall.arguments());
             if (refusal != null) {
-                publishToolResult(conversationId, scope, trackingId, refusal);
+                refusedCalls.add(trackingId);
+                publishToolResult(conversationId, trackingId, refusal);
                 return new ToolResponse(toolCall.id(), toolCall.name(), refusal);
             }
 
@@ -2856,31 +3279,22 @@ public class ChatService implements AgentHost {
             if (misnamed != null) {
                 log.info("[Chat] tool call '{}' not run - its argument names do not match the tool's", toolCall.name());
                 String answer = failure(misnamed);
-                publishToolResult(conversationId, scope, trackingId, answer);
+                publishToolResult(conversationId, trackingId, answer);
                 return new ToolResponse(toolCall.id(), toolCall.name(), answer);
             }
 
             // The assistant asking the user: answered by the person, never by a tool - see
             // awaitUserAnswers. The answer is this call's result.
             if (ai.proxyma.core.chat.question.ChatOnlyTools.ASK_USER.equals(toolCall.name())) {
-                String answers = awaitUserAnswers(conversationId, toolCall, trackingId, abort, scope);
-                publishToolResult(conversationId, scope, trackingId, answers);
+                String answers = awaitUserAnswers(conversationId, toolCall, trackingId, abort);
+                publishToolResult(conversationId, trackingId, answers);
                 return new ToolResponse(toolCall.id(), toolCall.name(), answers);
             }
 
-            // A sub-agent messaging the agent that started it: answered by that agent, never by a
-            // tool - see SubAgentService.messageMain. The reply, if it waits for one, is the result.
-            if (SubAgentService.DelegateToolNames.MESSAGE_MAIN.equals(toolCall.name())) {
-                String answer = scope == null
-                        ? failure("Only a sub-agent can message the agent that started it.")
-                        : subAgentService.messageMain(conversationId, scope.agentId(), toolCall.arguments(), abort);
-                publishToolResult(conversationId, scope, trackingId, answer);
-                return new ToolResponse(toolCall.id(), toolCall.name(), answer);
-            }
 
-            String denial = awaitApprovalIfNeeded(conversationId, toolCall, trackingId, abort, scope);
+            String denial = awaitApprovalIfNeeded(conversationId, toolCall, trackingId, abort);
             if (denial != null) {
-                publishToolResult(conversationId, scope, trackingId, denial);
+                publishToolResult(conversationId, trackingId, denial);
                 return new ToolResponse(toolCall.id(), toolCall.name(), denial);
             }
 
@@ -2889,9 +3303,7 @@ public class ChatService implements AgentHost {
             // a stale id left behind would make a later, unrelated tool call look like it belonged
             // to a delegation.
             SearchContext.setToolCallId(trackingId);
-            if (!SubAgentService.DelegateToolNames.DELEGATE.equals(toolCall.name())) {
-                toolExecutionStarted.put(trackingId, System.nanoTime());
-            }
+            toolExecutionStarted.put(trackingId, System.nanoTime());
             try {
                 result = cb.call(toolCall.arguments());
             } finally {
@@ -2917,7 +3329,7 @@ public class ChatService implements AgentHost {
             // calls that arrive right back here.
             result = guardRetrieved(conversationId, toolCall.name(), result);
 
-            publishToolResult(conversationId, scope, trackingId, result);
+            publishToolResult(conversationId, trackingId, result);
         } catch (Exception e) {
             log.warn("[Chat] tool '{}' threw {}: {}", toolCall.name(),
                     e.getClass().getSimpleName(), Failures.describe(e), e);
@@ -2926,34 +3338,9 @@ public class ChatService implements AgentHost {
             // event rather than anything the agent or the user could read.
             result = Failures.describe(e, "Tool call failed");
             threwCalls.add(trackingId);
-            publishToolResult(conversationId, scope, trackingId, result);
+            publishToolResult(conversationId, trackingId, result);
         }
         return new ToolResponse(toolCall.id(), toolCall.name(), result);
-    }
-
-    /**
-     * Why a sub-agent may not call this tool, or null if it may.
-     *
-     * <p>Three tools, and each for a reason that is about the CONVERSATION rather than about trust.
-     * {@code delegate}: a sub-agent that starts sub-agents has no bound on what one turn spends.
-     * {@code steerSubAgent}: the conversation's sub-agents are the main agent's to direct.
-     * {@code useServer}: it switches which Jira, Confluence or Bitbucket server the whole
-     * conversation talks to, and several sub-agents run in it at once - one switching it would
-     * send another's write to the wrong server. The main agent switches before it delegates.
-     */
-    static String refusedToSubAgents(String toolName) {
-        if (SubAgentService.DelegateToolNames.DELEGATE.equals(toolName)) {
-            return failure("A sub-agent cannot delegate. Do this part yourself, or report it as remaining.");
-        }
-        // Sub-agents are the main agent's to direct, and a sub-agent has none of its own.
-        if (SubAgentService.DelegateToolNames.STEER.equals(toolName)) {
-            return failure("A sub-agent cannot direct other sub-agents.");
-        }
-        if (WriteToolRegistry.CONVERSATION_STATE_NAMES.contains(toolName)) {
-            return failure("A sub-agent cannot switch the conversation's server - other agents share it. "
-                    + "Report which server the task needs; the agent that delegated to you switches it.");
-        }
-        return null;
     }
 
     // Pauses the ReAct loop for a write-capable tool call until the user accepts (once, or "all"
@@ -2963,14 +3350,6 @@ public class ChatService implements AgentHost {
     // so blocking here does not stall the SSE event bus. Returns null to proceed with the call,
     // or a synthetic denial result string if the user (or an abort/timeout) denies it.
     String awaitApprovalIfNeeded(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort) {
-        return awaitApprovalIfNeeded(conversationId, toolCall, trackingId, abort, null);
-    }
-
-    // The same gate for a sub-agent's call (`scope`), deliberately not a second one: the mode, the
-    // conversation's "accept all", the connection's switches and the pause itself are the user's
-    // decisions about what may be written in THIS conversation, whoever asks.
-    String awaitApprovalIfNeeded(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort,
-                                 AgentScope scope) {
         // Per CALL, not per tool name. A READ through a tool that can also write - a GET through
         // callJiraApi, linkJiraIssues listing link types - changes nothing, so it takes neither the
         // "enable write tools" prompt nor the approval pause (maintainer's decision, 2026-09-24).
@@ -2997,7 +3376,7 @@ public class ChatService implements AgentHost {
             // org-mode/org-wide-blocked writes keep the immediate rejection below unchanged, since
             // those settings aren't this user's to flip.
             if (mcpGuard.isBlockedOnlyByUserConsent(toolCall.name(), userId)) {
-                String enableRejection = awaitEnableDecision(conversationId, toolCall, trackingId, abort, scope);
+                String enableRejection = awaitEnableDecision(conversationId, toolCall, trackingId, abort);
                 if (enableRejection != null) {
                     noteApproval(trackingId, "Refused: write tools left switched off", true);
                     return enableRejection;
@@ -3021,13 +3400,23 @@ public class ChatService implements AgentHost {
             noteApproval(trackingId, "Allowed: Auto permission mode", false);
             return null;
         }
+        // A request a person approved in the approvals inbox, run now under the id it was given.
+        if (approvalInbox != null && approvalInbox.consumeApproved(toolCall.id())) {
+            noteApproval(trackingId, "Approved in the approvals inbox", false);
+            return null;
+        }
+        // Nobody watches this conversation: the write is kept for a person, and the turn goes on.
+        if (unwatched(conversationId)) {
+            noteApproval(trackingId, "Waiting in the approvals inbox", false);
+            return approvalInbox.park(conversationId, userId, toolCall);
+        }
 
         CompletableFuture<ApprovalDecision> future = registerPendingApproval(conversationId, trackingId);
         try {
             askUser(new ChatEvent(conversationId,
                     chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.TOOL_APPROVAL_REQUEST.value(), trackingId, toolCall.name(),
-                    toolCall.arguments() != null ? toolCall.arguments() : "{}", askedBy(scope)), scope);
+                    toolCall.arguments() != null ? toolCall.arguments() : "{}", null));
             log.info("[Chat] approval requested: '{}' trackingId={} conversationId={}",
                     toolCall.name(), trackingId, conversationId);
 
@@ -3080,7 +3469,7 @@ public class ChatService implements AgentHost {
         } finally {
             pendingApprovals.remove(trackingId);
             pendingDecisionConversation.remove(trackingId);
-            promptClosed(trackingId, scope);
+            promptClosed(trackingId);
         }
     }
 
@@ -3098,17 +3487,16 @@ public class ChatService implements AgentHost {
      * same abort checkpoint, so Stop ends the wait at once. Returns the result the model reads.
      */
     String awaitUserAnswers(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort) {
-        return awaitUserAnswers(conversationId, toolCall, trackingId, abort, null);
-    }
-
-    String awaitUserAnswers(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort,
-                            AgentScope scope) {
+        if (unwatched(conversationId)) {
+            return failure("Nobody is watching this conversation to answer: it runs on a schedule or for another "
+                    + "agent. Decide with your best judgment and say what you assumed, or ask the agent that leads you.");
+        }
         CompletableFuture<String> future = registerPendingQuestion(conversationId, trackingId);
         try {
             askUser(new ChatEvent(conversationId,
                     chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.USER_QUESTION.value(), trackingId, toolCall.name(),
-                    toolCall.arguments() != null ? toolCall.arguments() : "{}", askedBy(scope)), scope);
+                    toolCall.arguments() != null ? toolCall.arguments() : "{}", null));
             long deadline = System.currentTimeMillis() + Duration.ofMinutes(APPROVAL_TIMEOUT_MINUTES).toMillis();
             while (true) {
                 if (abort.get()) return failure("The turn was stopped before the user answered.");
@@ -3126,7 +3514,7 @@ public class ChatService implements AgentHost {
         } finally {
             pendingQuestions.remove(trackingId);
             pendingDecisionConversation.remove(trackingId);
-            promptClosed(trackingId, scope);
+            promptClosed(trackingId);
         }
     }
 
@@ -3220,9 +3608,9 @@ public class ChatService implements AgentHost {
     static final String ANSWER_UNREADABLE =
             "The user's answer could not be read, so nothing was written. Ask the user whether to try again.";
 
-    static final String READ_ONLY_REFUSAL = "{\"success\":false,\"error\":\"The user has set this chat to Navigator, "
+    static final String READ_ONLY_REFUSAL = "{\"success\":false,\"error\":\"The user has set this chat to Read-only, "
             + "so nothing can be created, changed or deleted. Say what you would have done, and that switching "
-            + "the mode beside the model to Co-pilot or Autopilot lets you do it.\"}";
+            + "the permission beside the model to Ask or Auto lets you do it.\"}";
 
     /**
      * Records who started this conversation's turn - see turnOwners - and where the conversation is
@@ -3258,7 +3646,7 @@ public class ChatService implements AgentHost {
         return turnOwners.entrySet().stream()
                 .filter(e -> owner.equals(e.getValue().owner())
                         && java.util.Objects.equals(surface, e.getValue().surface())
-                        && (isActive(e.getKey()) || subAgentService.hasRunning(e.getKey())))
+                        && (isActive(e.getKey()) || hasBackgroundWork(e.getKey())))
                 .sorted((a, b) -> Long.compare(b.getValue().startedAt(), a.getValue().startedAt()))
                 .map(Map.Entry::getKey)
                 .toList();
@@ -3323,8 +3711,7 @@ public class ChatService implements AgentHost {
     // pattern (same worker thread, same bounded timeout, same abort-checkpoint). Returns null if
     // the user enabled the setting live (caller re-checks the gate before proceeding), or a
     // synthetic rejection result string if they kept it disabled / aborted / timed out.
-    private String awaitEnableDecision(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort,
-                                       AgentScope scope) {
+    private String awaitEnableDecision(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort) {
         WriteToolRegistry.Connector connector = WriteToolRegistry.connectorFor(toolCall.name());
         if (connector == null) return null; // not one of WriteToolRegistry's connectors - defensive, shouldn't happen
 
@@ -3349,7 +3736,7 @@ public class ChatService implements AgentHost {
             askUser(new ChatEvent(conversationId,
                     chatEventSink.nextSequence(conversationId),
                     ChatEvent.Type.TOOL_ENABLE_REQUEST.value(), trackingId, toolCall.name(), payload,
-                    askedBy(scope)), scope);
+                    null));
             log.info("[Chat] enable-decision requested: '{}' trackingId={} conversationId={}",
                     toolCall.name(), trackingId, conversationId);
 
@@ -3390,7 +3777,7 @@ public class ChatService implements AgentHost {
         } finally {
             pendingEnableDecisions.remove(trackingId);
             pendingDecisionConversation.remove(trackingId);
-            promptClosed(trackingId, scope);
+            promptClosed(trackingId);
         }
     }
 

@@ -235,4 +235,59 @@ class FailuresTest {
             assertEquals("Read timed out", Failures.blockTimeout("Read timed out"));
         }
     }
+
+    /** Stands in for Spring's WebClientResponseException: its message leaves the body out. */
+    static final class StreamedHttpError extends RuntimeException {
+        private final String body;
+        StreamedHttpError(String message, String body) {
+            super(message);
+            this.body = body;
+        }
+        public String getResponseBodyAsString() {
+            return body;
+        }
+    }
+
+    @Nested
+    @DisplayName("An HTTP error's response body says why, when its message does not")
+    class ResponseBody {
+
+        private static final String STREAMED = "400 Bad Request from POST http://localhost:11434/api/chat";
+
+        @Test
+        @DisplayName("an Ollama model without tool support is named, with what to do about it")
+        void ollamaWithoutTools() {
+            String said = Failures.describe(new RuntimeException("Aggregation Error", new StreamedHttpError(STREAMED,
+                    "{\"error\":\"registry.ollama.ai/library/gemma3:4b does not support tools\"}")));
+            assertTrue(said.startsWith("This model cannot use tools"), said);
+            assertTrue(said.contains("registry.ollama.ai/library/gemma3:4b does not support tools"), said);
+            assertTrue(said.contains(STREAMED), said);
+        }
+
+        @Test
+        @DisplayName("an embedding model picked for chat says so")
+        void ollamaEmbeddingModel() {
+            String said = Failures.describe(new StreamedHttpError(STREAMED,
+                    "{\"error\":\"\\\"nomic-embed-text\\\" does not support chat\"}"));
+            assertTrue(said.startsWith("This is an embedding model"), said);
+            assertTrue(said.contains("\"nomic-embed-text\" does not support chat"), said);
+        }
+
+        @Test
+        @DisplayName("an OpenAI-style nested error gives its message, plain text is kept, HTML and blanks are not")
+        void shapes() {
+            assertEquals(STREAMED + ": The model `gpt-9` does not exist", Failures.describe(new StreamedHttpError(STREAMED,
+                    "{\"error\":{\"message\":\"The model `gpt-9` does not exist\",\"type\":\"invalid_request_error\"}}")));
+            assertEquals(STREAMED + ": upstream said no", Failures.describe(new StreamedHttpError(STREAMED, "upstream said no")));
+            assertEquals(STREAMED, Failures.describe(new StreamedHttpError(STREAMED, "<html><body>Bad</body></html>")));
+            assertEquals(STREAMED, Failures.describe(new StreamedHttpError(STREAMED, "  ")));
+        }
+
+        @Test
+        @DisplayName("a body the message already quotes is not said twice")
+        void notTwice() {
+            String body = "{\"error\":\"bad thing\"}";
+            assertEquals("400 - " + body, Failures.describe(new StreamedHttpError("400 - " + body, body)));
+        }
+    }
 }

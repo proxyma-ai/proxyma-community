@@ -33,7 +33,7 @@ export function StatTile({ label, value, sub, icon: Icon, loading, selected, onS
   const shown = typeof value === 'number' ? value.toLocaleString() : (value ?? '-')
   const body = (
     <>
-      <span className="flex items-center gap-1.5 mb-1 min-w-0">
+      <span className="flex items-center gap-2 mb-1 min-w-0">
         {Icon && <Icon size={14} className="shrink-0 text-ink-caption" aria-hidden="true" />}
         <span className={cn('truncate', size === 'display' ? 'text-sm text-ink-caption' : 'text-xs text-ink-caption')}>{label}</span>
       </span>

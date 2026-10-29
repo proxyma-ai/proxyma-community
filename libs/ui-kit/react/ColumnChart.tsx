@@ -124,7 +124,7 @@ export function ColumnChart({ values, active, onActive, readout, labels, groups,
         ))}
       </div>
       {ticks.length > 0 && (
-        <div className="relative h-4 mt-1.5 text-2xs text-ink-caption data-readout whitespace-nowrap" aria-hidden="true">
+        <div className="relative h-4 mt-2 text-2xs text-ink-caption data-readout whitespace-nowrap" aria-hidden="true">
           {ticks.map(tick => {
             // Centred under its column by the browser, not by the width estimate - except where the
             // estimate pushed it in from an edge, where it is pinned to that edge.

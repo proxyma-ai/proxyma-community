@@ -70,34 +70,16 @@ public record ChatEvent(
         // asks at its step limit (ChatService.askToContinue) belongs to no tool call. Since
         // 2026-10-03.
         PROMPT_CLOSED("prompt-closed"),
-        // A sub-agent has started. callId is the `delegate` call that started it - how the page
-        // knows which row it is - and parentCallId is the sub-agent's own id, which every later
-        // event about it carries (as callId and as parentCallId). data is a JSON object
-        // {agentId, mode, title, timeoutAt}; mode is "sync" or "async". Since 2026-10-02.
-        SUB_AGENT_START("sub-agent-start"),
-        // A sub-agent's model call is out and has not answered. data is empty. It ends at that
-        // sub-agent's next text, thinking or TOOL_START - there is no "answered" event, exactly as
-        // the main agent has none. Carries no model name on purpose: who may see which model
-        // answers is the settings API's decision, and this stream reaches every reader of the
-        // conversation.
-        SUB_AGENT_WAIT("sub-agent-wait"),
-        // A sub-agent's model is thinking: data is the estimated thinking tokens so far in this
-        // call, as THINKING is for the main agent.
-        SUB_AGENT_THINKING("sub-agent-thinking"),
-        // What a sub-agent is writing. data is a JSON object {segment, text}: the WHOLE of that
-        // paragraph so far, never a delta, so an event applied twice or out of order corrects
-        // itself. A new segment starts after each round of tool calls.
-        SUB_AGENT_TEXT("sub-agent-text"),
-        // A sub-agent has ended. data is a JSON object {status, report, endedAt, wakes}; status is
-        // "completed", "partial", "failed" or "stopped", and `wakes` says the main agent is about
-        // to be handed the report - in the running turn, or in one started for it.
-        SUB_AGENT_DONE("sub-agent-done"),
-        // A background sub-agent's report has just been put in front of the main agent. callId is
-        // the sub-agent's id; data is a JSON object {title, status}. The agent's next words are
-        // its reaction to it.
-        SUB_AGENT_REPORTED("sub-agent-reported"),
-        // A turn has started that nobody sent a message to start: a background sub-agent reported
-        // and the main agent is answering it. data is empty. A page following the conversation
+        // An agent this conversation deployed (AgentTree) changed where it stands. callId is the
+        // agent's id; data is a JSON object {agentId, title, status, lifetime, depth, owesReport,
+        // conversationId}. Its panel and the agents map follow it.
+        AGENT_STATUS("agent-status"),
+        // A turn has just read its inbox (AgentInbox): data is a JSON object {entries: [{agentId,
+        // title, kind}]}, kind report | message | alarm | background | user_talk. The thread draws
+        // a line per entry; the agent's next words are its reaction.
+        AGENT_MAIL("agent-mail"),
+        // A turn has started that nobody sent a message to start: something reached the agent's
+        // inbox (AgentInbox) - a report, a message, an alarm, a background result - and it answers it. data is empty. A page following the conversation
         // shows it as a turn in progress from here on.
         TURN_START("turn-start"),
         // Brackets a (potentially slow) LLM condensation call - see SmartChatMemory.condense() -

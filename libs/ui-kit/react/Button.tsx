@@ -30,9 +30,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 /**
  * The one Proxyma button.
  *
- * Sizes. `sm` is the default and the baseline every other control (Input, Select, SearchInput,
- * Badge) is dimensioned to match - most buttons never pass `size`. `md` is a deliberate
- * call-to-action. `lg` is for the marketing site's hero, not application chrome.
+ * Sizes. `md` is the default, 36px (44px on glass), the height of every field beside it (Input,
+ * Select, SearchInput) - most buttons never pass `size`. `sm` is 32px, for a dense row's own
+ * actions. `lg` (44px) is for the marketing site's hero, not application chrome. Since 2026-10-28;
+ * the default was a 13px `sm` and the review found the app reading at caption size.
  *
  * Hover is `opacity-90`, NOT a colour change, and only under a mouse (`mouse:hover:`) - a bare
  * hover sticks on glass after the tap. The secondary button answers with its BORDER only; it had a
@@ -52,7 +53,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  * anchor a Popover or take focus back from a dialog without a wrapper span.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'primary', size = 'sm', loading, disabledReason, className, children, disabled, type = 'button', onClick, ...props },
+  { variant = 'primary', size = 'md', loading, disabledReason, className, children, disabled, type = 'button', onClick, ...props },
   ref,
 ) {
   const reasonId = useId()
@@ -103,7 +104,7 @@ export interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorEl
  * crawlability) that a <button onClick={navigate}> throws away.
  */
 export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(function ButtonLink(
-  { variant = 'primary', size = 'sm', external, className, children, ...props },
+  { variant = 'primary', size = 'md', external, className, children, ...props },
   ref,
 ) {
   return (

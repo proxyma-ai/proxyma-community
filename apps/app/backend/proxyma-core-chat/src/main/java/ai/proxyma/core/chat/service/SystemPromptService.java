@@ -23,13 +23,9 @@ import java.util.regex.Pattern;
 // persists and pins a custom prompt. A blank saved file therefore reverts to DEFAULT (that is how
 // "Reset to default" / clearing the editor works), so read() never returns an empty prompt.
 //
-// DELEGATION guidance is a SEPARATE constant put in by resolve() when this deployment can
-// actually delegate - see DELEGATION. It used to sit inside DEFAULT in {{#IF_DELEGATION}} regions
-// a regex cut out; that is gone from the built-in prompt as of 0.1.2. Sub-agents are available
-// wherever the agent has a model (SubAgentService.isAvailable - there is no switch since
-// 2026-10-03, and with no model of their own they run on the agent's), and `delegate` is not
-// advertised when it is unavailable (ToolSkillGating.withDelegateIfAvailable) - so a prompt
-// naming it anyway would spend its most emphatic paragraphs on a tool the model does not have.
+// DELEGATION guidance is a SEPARATE constant put in by resolve() - see DELEGATION. It used to sit
+// inside DEFAULT in {{#IF_DELEGATION}} regions a regex cut out; that is gone from the built-in prompt
+// as of 0.1.2. Since the agent tree (2026-10-28) every agent can deploy agents, so it is always in.
 //
 // The markers are still UNDERSTOOD, for one reason: a prompt an admin saved before 0.1.2 may
 // contain them. See resolve().
@@ -109,8 +105,7 @@ public class SystemPromptService {
             """;
 
     /**
-     * How the main agent works when this deployment can delegate: it leads, and sub-agents do the
-     * work. Put into the prompt by {@link #resolve} - never inlined and never conditionally stripped.
+     * How an agent works: it leads, and the agents it deploys do the work. Put into the prompt by {@link #resolve} - never inlined and never conditionally stripped.
      *
      * <p>THE LEAD, NOT A HELPER, since 2026-10-03 (maintainer's request: the main agent should stay
      * at the high level and keep its context clean). Until then this was a section called
@@ -119,7 +114,7 @@ public class SystemPromptService {
      * delegation after three fruitless calls. A model read "search thoroughly, follow up with
      * focused queries" in SEARCH long before it reached any of that, and did the searching itself.
      * Now it is placed BEFORE the sections that describe the work, says it wins over them, makes
-     * 'delegate' the first call of a job with four named exceptions, allows one call of the agent's
+     * its deploying tool the first call of a job with four named exceptions, allows one call of the agent's
      * own before the rest is delegated, and is repeated in one line at the very end
      * ({@link #DELEGATION_REMINDER}).
      *
@@ -129,40 +124,44 @@ public class SystemPromptService {
      * an admin who rewrote the prompt without them silently lost the gating, and the guidance a
      * reader most needed to find was scattered through three unrelated sections.
      *
-     * <p>Availability is not the same as the sub-agent setting being on: it also needs a model
-     * configured (LlmProviderFactory.initSubAgent leaves it null while that is blank), and
-     * {@code delegate} is not advertised as a tool when it is unavailable (ToolSkillGating). The
-     * prompt must not name a tool the model does not have - the surest way to burn an iteration on
-     * a call that can only fail. Without it the agent does the work itself, as DEFAULT describes.
+     * <p>Since the agent tree (2026-10-28, AgentTree) it describes deployAgent and its companions -
+     * tellAgent, awaitAgents, controlAgent, alarm and background - where it described delegate and
+     * sub-agents. Every agent has them, so the guidance is always in. Since 2026-10-29: deployAgents
+     * (a fan-out), budgets and deadlines, verify and verifyReport, deliberate and recordDecision.
      */
     public static final String DELEGATION = """
-            HOW YOU WORK - you lead, sub-agents do the work. This comes before everything below and wins over it: where SOURCES, TASKS or SEARCH read as if you search, read or page through results yourself, a sub-agent does that and you write its task.
-            - Stay at the high level: understand what the user wants, split it into parts, hand each part to a sub-agent with 'delegate', check what comes back, and write the answer. Your context is the one thing nothing cleans: all of it is re-sent on every step and every later turn, so each tool result you read yourself is paid for again and again and crowds the conversation out. A sub-agent reads in a throwaway context, usually on a cheaper model, and returns only findings.
-            - DELEGATE BY DEFAULT. The first tool call of a job is 'delegate' unless one of these holds:
+            HOW YOU WORK - you lead, the agents you deploy do the work. This comes before everything below and wins over it: where SOURCES, TASKS or SEARCH read as if you search, read or page through results yourself, an agent you deploy does that and you write its task.
+            - Stay at the high level: understand what the user wants, split it into parts, deploy an agent for each part ('deployAgent'), check what comes back, and write the answer. Your context is the one thing nothing cleans: all of it is re-sent on every step and every later turn, so each tool result you read yourself is paid for again and again. An agent reads in a context of its own and reports only findings.
+            - DEPLOY BY DEFAULT. The first tool call of a job is 'deployAgent' unless one of these holds:
               1. No tool is needed - this conversation already answers it.
               2. ONE call you can name finishes it and its result is small: a single search for a simple factual question, one issue, page or file the user named, a status, a count.
-              3. You need a source's exact wording to quote, after a sub-agent has found it.
+              3. You need a source's exact wording to quote, after an agent has found it.
               4. A write the user asked for that is one call.
-              'readSkill', 'useServer', 'askUser', 'recall' and 'searchConversations' are always yours and never count - check memory before you delegate, and put what it gave you in the task. Everything else is delegated: research, "look wider", "check everything", anything needing several calls, and anything of unknown size - an unseen document, space, repository or offloaded result (peeking first pulls the bulk in anyway). Not sure which it is: delegate.
-            - ONE CALL OF YOUR OWN, THEN DELEGATE: if a call you made did not finish the job, do not make a second - delegate the rest, saying what you tried (the exact query, path or id), what came back and what is missing. Rewording a search or switching tool is a second call.
-            - Fan out: several 'delegate' calls in one reply run in parallel. Split independent parts - one per source, document, space, repository or question. Three narrow tasks beat one broad one.
-            - You write its system prompt ('instructions': its role, how to work, what the report must contain and in what shape) and its 'task'. Both are self-contained; it sees none of this conversation. Name the exact connectors, keys, ids, paths and URLs, and the facts, list or quotes you need back - "summarize the document" returns the whole document in summary form. Ask for findings with their sources, not for raw results.
-            - A sub-agent has your tools, with the skills loaded in this conversation, and cannot delegate or switch server ('useServer' - switch before you delegate). Load the skill a task needs ('readSkill') first. It can write: each write waits for the user's approval as yours would, so give it writes only the user asked for, and say exactly which.
-            - ASYNC BY DEFAULT, so the user can always talk to you: 'mode' "async" (the default) returns at once. Start every sub-agent the job needs in one reply, tell the user in a sentence what is running, and end your turn. Each report reaches you later as a message beginning "[Sub-agent report]" - from the sub-agent, not the user - and names any still running: answer once the last one you need is in. Never wait for, poll or repeat an async sub-agent. A running one may message you ("[Sub-agent message]"): a QUESTION pauses it until you answer with 'steerSubAgent' and its agentId - answer what you can, ask the user only what you cannot. 'steerSubAgent' with a message also gives a running one more information or a change of course - the user added something, another report changed the picture; stop=true ends one no longer needed. "sync" holds the user until it reports: only for one short step you cannot plan the next without.
-            - Offloaded results: delegate the reading - pass the 'filePath', what the file is and every part to cover. Never page through one yourself.
+              'readSkill', 'useServer', 'askUser', 'recall' and 'searchConversations' are always yours and never count - check memory before you deploy, and put what it gave you in the task. Everything else goes to an agent: research, "look wider", "check everything", anything needing several calls, and anything of unknown size. Not sure which it is: deploy.
+            - ONE CALL OF YOUR OWN, THEN DEPLOY: if a call you made did not finish the job, do not make a second - deploy an agent for the rest, saying what you tried (the exact query, path or id), what came back and what is missing.
+            - Fan out: several 'deployAgent' calls in one reply run in parallel, each on its own. Split independent parts - one per source, document, space, repository or question. Three narrow tasks beat one broad one.
+            - The 'task' is everything the agent knows: it sees none of this conversation. Name the exact connectors, keys, ids, paths and URLs (copied character for character), the facts, list or quotes you need back, and the shape of its report. Ask for findings with their sources, not raw results. Load the skill a task needs ('readSkill') and switch server ('useServer') first: an agent has your tools and access, never more.
+            - An agent works ON ITS OWN: 'deployAgent' returns at once. Deploy every agent the job needs in one reply, tell the user in a sentence what is running, and end your turn. Each report reaches you later as a message beginning "[Report from" - from the agent, not the user: answer once the last one you need is in. Never poll or redeploy a working agent. Call 'awaitAgents' only when your very next step cannot be planned without a report.
+            - Talk to your agents with 'tellAgent' (more information, a change of course, the answer to their question - an agent asks you with a message beginning "[Message from"); direct them with 'controlAgent' (list, pause, resume, stop, dismiss). A LONG agent (lifetime LONG) stays after its report for more work you give it; dismiss it when done. The user may also talk to your agents directly; you are told what was said ("[The user talked to").
+            - Your agents may deploy agents of their own, down to a set depth. A report covers its agent's whole subtree.
+            - The same task over a list (every ECU, every account, every contract): 'deployAgents' once with the list - one agent per item, queued past every cap, and ONE report back with every item's result ('readAgentReport' for one in full). Never deploy forty agents one by one.
+            - Limits: give an agent a 'budgetUsd' and 'minutes' when the work could run long or wide; they bound everything it deploys, and you are told if it stops at one.
+            - Checking: 'verify' true on an agent whose findings carry citations has a verifier check each claim against its source before the report reaches you; 'verifyReport' checks one already in. Say what the scorecard found.
+            - A judgment that needs more than one view (a root cause, a go/no-go, a reading of a clause): 'deliberate' with a panel of briefs that disagree, then decide yourself with 'recordDecision' and say who dissented and why.
+            - Time and waiting: set an 'alarm' to come back to something later (a build, a reply, a date) and end your turn; the alarm wakes you ("[Alarm"). Run a slow tool with 'background' and carry on; its result arrives as "[Background result".
             - Verify from what comes back; don't redo it. Check the evidence each finding cites and reuse it directly.
-            - A PARTIAL, FAILED or STOPPED report: say so, and delegate a new task for only what it says remains. Never resend the same task or quietly finish by hand.
+            - A report that says it could not finish: say so, and deploy a new agent for only what remains, or tell the same agent what to do next. Never resend the same task or quietly finish by hand.
             - You own the answer: its accuracy, its citations, and what is missing.
             """;
 
     /**
-     * The last line of a prompt that can delegate, after the skills and everything else appended
+     * The last line of a prompt that can deploy agents, after the skills and everything else appended
      * to it - where a model that has read several thousand words still finds it.
      */
     public static final String DELEGATION_REMINDER =
-            "REMEMBER HOW YOU WORK: you lead and sub-agents do the work. Before a tool call of your own, ask "
-            + "whether a sub-agent should make it - and after one call that did not finish the job, delegate "
-            + "the rest rather than making a second.";
+            "REMEMBER HOW YOU WORK: you lead and the agents you deploy do the work. Before a tool call of your "
+            + "own, ask whether an agent should make it - and after one call that did not finish the job, deploy "
+            + "an agent for the rest rather than making a second.";
 
     // Where DELEGATION goes in the built-in prompt: in front of this section's heading.
     private static final String FIRST_WORKING_SECTION = "\nSOURCES - ";

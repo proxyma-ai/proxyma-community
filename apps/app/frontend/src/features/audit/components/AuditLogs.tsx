@@ -77,7 +77,7 @@ export function AuditLogs({ initialTab }: { initialTab?: string | null }) {
 }
 
 /**
- * Every tool the agent, a sub-agent, a workflow or an MCP client called: what with, what came back,
+ * Every tool the agent, a deployed agent, a workflow or an MCP client called: what with, what came back,
  * how long it took, and - for a write - who let it through. The result is the one the MODEL was
  * given, after the guardrails, cut to its first few thousand characters.
  */

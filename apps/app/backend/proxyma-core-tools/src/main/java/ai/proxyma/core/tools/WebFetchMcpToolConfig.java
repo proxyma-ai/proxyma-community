@@ -154,10 +154,9 @@ public class WebFetchMcpToolConfig {
         return McpServerFeatures.SyncToolSpecification.builder().tool(tool).callHandler(handler).build();
     }
 
-    // How long an MCP client's call may run - the chat's own limits: a minute, the search limit for
-    // the search tools, and none of its own for delegation, which runs bounded calls of its own.
+    // How long an MCP client's call may run - the chat's own limits: a minute, and the search limit
+    // for the search tools.
     private static Duration timeoutFor(String toolName, SettingsService settings) {
-        if ("delegate".equals(toolName)) return null;
         if (SEARCH_TOOLS.contains(toolName)) {
             try {
                 return Duration.ofSeconds(settings.getSettings(ChatSettings.PREFIX, ChatSettings.class).searchTimeoutSeconds());

@@ -32,7 +32,9 @@ export function ToggleSwitch({ checked, onChange, disabled, ariaLabel, size = 'm
         small ? 'h-4 w-7' : 'h-6 w-11',
         onChange ? 'cursor-pointer' : 'cursor-default',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        checked ? 'bg-brand-solid' : 'bg-line',
+        // Off is the disabled ink, not the hairline: a switch is a control, and its track has to hold
+        // 3:1 against the page (the hairline is 1.3:1) for the knob to read as a position.
+        checked ? 'bg-brand-solid' : 'bg-ink-disabled',
         // The small switch is 28x16 - under the 24px floor. Its TARGET is 44px all round (an
         // invisible box), while the drawing keeps its size.
         small && 'before:absolute before:-inset-x-2 before:-inset-y-3.5',
@@ -41,7 +43,7 @@ export function ToggleSwitch({ checked, onChange, disabled, ariaLabel, size = 'm
     >
       <span
         className={cn(
-          'pointer-events-none inline-block rounded-full bg-thumb shadow-sm transition-transform duration-base ease-out',
+          'pointer-events-none inline-block rounded-full bg-thumb transition-transform duration-base ease-out',
           small ? 'h-3 w-3' : 'h-5 w-5',
           checked ? (small ? 'translate-x-3' : 'translate-x-5') : 'translate-x-0',
         )}

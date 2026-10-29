@@ -48,7 +48,10 @@ export function SecretInput({ value, serverValue, onChange, placeholder, labels,
   labels: SecretInputLabels
   id?: string
   autoFocus?: boolean
-  /** The line under the field, when there is no error. */
+  /**
+   * The line under the field, when there is no error - for a secret with NO label. Inside a
+   * labelled `Field`, give the hint to the `Field`, which puts it under the label (2026-10-29).
+   */
   hint?: React.ReactNode
   error?: string
   className?: string
@@ -97,7 +100,7 @@ export function SecretInput({ value, serverValue, onChange, placeholder, labels,
         type="button"
         tabIndex={masked ? 0 : -1}
         onClick={() => { setRevealed(r => !r); inputRef.current?.focus() }}
-        className={cn(eye, 'absolute right-0 top-0 h-8 w-8 flex items-center justify-center')}
+        className={cn(eye, 'absolute right-0 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center')}
         aria-label={masked ? labels.reveal : revealed ? labels.hide : labels.show}
         aria-pressed={revealed}
       >

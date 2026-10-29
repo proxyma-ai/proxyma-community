@@ -35,7 +35,23 @@ public class AgentMemoryService {
      * nobody - which would switch the feature off for the whole edition. The agent's tools and the
      * Settings page both resolve to it, so they read and write the same collection.
      */
-    public static final String LOCAL_USER_ID = "_local"; // never collides with a real UUID userId
+    public static final String LOCAL_USER_ID = "_local";
+
+    // A saved agent's own memory (AgentProfile.memoryKey), read and written with every method below
+    // in place of a user id. The prefix keeps it in a namespace no user id is in - those are UUIDs
+    // or LOCAL_USER_ID - so an agent's memory and a person's can never be the same collection.
+    private static final String AGENT_PREFIX = "agent:";
+
+    /** The memory key of a saved agent, to pass wherever a user id goes. */
+    public static String agentKey(String agentId) {
+        if (agentId == null || agentId.isBlank()) throw new IllegalArgumentException("agentId");
+        return AGENT_PREFIX + agentId.strip();
+    }
+
+    /** Whether this memory key is an agent's rather than a person's. */
+    public static boolean isAgentKey(String key) {
+        return key != null && key.startsWith(AGENT_PREFIX);
+    } // never collides with a real UUID userId
 
     // What an entry is about. RememberTool asks the model for it and newFactId encodes it into the
     // entry's id, so the distinction is recorded on every write.
@@ -184,11 +200,13 @@ public class AgentMemoryService {
             deleted++;
         }
         if (deleted > 0) {
-            AuditEntry.of(AuditCategory.DATA, "memory.deleted")
-                    .user(userId)
+            AuditEntry.Builder entry = AuditEntry.of(AuditCategory.DATA, "memory.deleted")
                     .summary(deleted + " memory entr" + (deleted == 1 ? "y" : "ies") + " deleted")
-                    .detail("entries", deleted)
-                    .record();
+                    .detail("entries", deleted);
+            // An agent's memory is not a person: the person whose turn deleted it is the actor
+            // (the builder's default, the turn's spend subject) and the agent's memory the target.
+            if (isAgentKey(userId)) entry.target(userId); else entry.user(userId);
+            entry.record();
         }
         return deleted;
     }

@@ -149,7 +149,7 @@ class DesktopUiIT extends DesktopJourney {
         Ui ui = Ui.open(app);
         Page page = ui.ready().page();
 
-        // The resolution of System/Light/Gray/Black into data-mode and data-shade is a pure
+        // The resolution of System/Light/Dark into data-mode is a pure
         // function with its own node --test suite. What only a browser can show is that the
         // choice is WRITTEN, read back on the next load, and applied before first paint -
         // the reload is the whole test.

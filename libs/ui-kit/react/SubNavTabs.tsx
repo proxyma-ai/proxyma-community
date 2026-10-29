@@ -29,12 +29,23 @@ interface Props<T extends string> {
   onChange: (key: T) => void
   /** Names the tab list for a screen reader - "Administration sections", say. */
   ariaLabel?: string
+  /**
+   * `compact` - 13px words in tighter pills - for a row inside a narrow panel (a Constellations agent's
+   * seven tabs in a 32rem panel, maintainer's review 2026-10-29), so it fits rather than scrolls.
+   */
+  density?: 'regular' | 'compact'
 }
 
 // Shared sub-page tab bar (Settings / Admin / Sources and both consoles use it, so the interaction
 // cannot drift between them).
 //
-// UNDERLINED, SENTENCE-CASE TABS, since 2026-09-30 (app UI review, finding F2) - the landing site's
+// A WELL WITH THE CURRENT TAB LIFTED OUT OF IT, since 2026-10-29 (the maintainer's review: "this
+// sub menu bar should be redesigned"), the approved "Lifted" style of the app's sidebar: the tabs
+// sit in a sunken, rounded well, the current one a raised pill (the float plane and the card
+// shadow) in primary ink, the rest secondary ink that brightens under the pointer. Words as written,
+// no icons for page sections, a count as a plain caption. The underline below is what it replaced.
+//
+// UNDERLINED, SENTENCE-CASE TABS, from 2026-09-30 (app UI review, finding F2) - the landing site's
 // tab shape (ShowcaseSection, GuardrailsSection): the words as written, the selected one in
 // ink-primary over a brand rule, the rest in caption ink, one hairline under the row. It was a row
 // of bordered, uppercase, icon-led pills from 2026-09-06, which was the loudest thing on every page
@@ -48,7 +59,7 @@ interface Props<T extends string> {
 // The baseline and the selection rule are both drawn INSIDE the row (pseudo-elements at bottom 0)
 // rather than as a border with a -1px margin, because a scrolling region clips anything that
 // hangs past its edge.
-export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel }: Props<T>) {
+export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel, density = 'regular' }: Props<T>) {
   // ONE TAB STOP FOR THE ROW, and the arrows walk it (since 2026-10-14; WAI-ARIA tabs, manual
   // activation): Left/Right move between the tabs, Home/End go to the ends, Enter or Space opens
   // the one focused. Opening on every arrow would load a page per keypress.
@@ -69,7 +80,10 @@ export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel
         role="tablist"
         aria-label={ariaLabel}
         onKeyDown={onKeyDown}
-        className="relative flex w-max min-w-full items-center gap-6 before:absolute before:inset-x-0 before:bottom-0 before:h-px before:bg-line"
+        // ONE SHAPE FOR EVERY WELL OF TABS (the maintainer, 2026-10-30: corners differed between two
+        // bars of one kind): a 12px track, a 4px inset and 8px tabs, so the corners are concentric at
+        // either density - the same as SegmentedControl's.
+        className="inline-flex w-max items-center gap-0.5 rounded-lg bg-surface-alt shadow-well p-1"
       >
         {tabs.map(t => {
           const Icon = t.icon
@@ -83,15 +97,14 @@ export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel
               tabIndex={isActive || (!tabs.some(x => x.key === active) && t === tabs[0]) ? 0 : -1}
               onClick={() => onChange(t.key)}
               className={cn(
-                'relative shrink-0 flex items-center gap-1.5 h-9 touch:h-11 whitespace-nowrap text-sm font-medium transition-colors focus-ring',
-                // The rule eases in and out with the words: `transition-colors` on the tab does not
-                // reach its ::after, so the selection used to jump.
-                'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors after:duration-base',
+                'relative shrink-0 flex items-center gap-2 whitespace-nowrap font-medium rounded-md focus-ring',
+                'transition-[background-color,color,box-shadow] duration-base ease-out',
+                density === 'compact' ? 'h-7 touch:h-10 px-2.5 text-xs' : 'h-8 touch:h-10 px-3.5 text-sm',
                 t.locked
-                  ? 'text-ink-disabled after:bg-transparent'
+                  ? 'text-ink-disabled'
                   : isActive
-                    ? 'text-ink-primary after:bg-brand-solid'
-                    : 'text-ink-caption after:bg-transparent mouse:hover:text-ink-primary',
+                    ? 'bg-surface-float text-ink-primary shadow-card'
+                    : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-surface/50',
               )}
             >
               {/* Quiet: the tab's own ink, at the rules' 14px for marks in tabs. */}

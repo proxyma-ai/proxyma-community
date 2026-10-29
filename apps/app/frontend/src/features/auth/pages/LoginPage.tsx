@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import {
-  AuthLayout, BackLink, Button, Caption, ExternalLink, FadeSwap, FormAlert, Input, OrDivider,
+  AuthLayout, Button, Caption, ExternalLink, FadeSwap, FormAlert, Input, OrDivider,
   PasswordInput, Presence, Skeleton, cn, safeLocalPath, textLink,
 } from '@/components/ui/kit'
 import { Rich } from '@/i18n/kit'
@@ -202,14 +202,8 @@ export function LoginPage() {
     // instead of spilling over the banner above it, and stays centred whenever it fits. The lockup
     // ONCE (app UI review, F11): the product name is in the mark.
     <AuthLayout
-      logo={<Logo />}
+      logo={<Logo size={22} />}
       title={isRegister ? t('Create your account') : t('Sign in to your account')}
-      // The kit's BackLink, drawn on the router's Link.
-      back={
-        <BackLink render={(className, content) => <Link to="/" className={className}>{content}</Link>}>
-          {t('Back to home')}
-        </BackLink>
-      }
       // The links under the form start at its left edge on a phone - nothing to tap mid-screen.
       footer={
         <>
@@ -341,7 +335,8 @@ export function LoginPage() {
           <Button
             type="submit"
             size="md"
-            className="w-full mt-1"
+            // 8px over the gap, as the consoles' sign-in (one layout, the UI review 2026-10-28).
+            className="w-full mt-2"
             loading={loading}
             disabled={isRegister && !accepted}
           >

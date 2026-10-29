@@ -226,7 +226,7 @@ export function ConfigTransferPage() {
       <SettingsSection
         gap="list"
         title={t('Export')}
-        caption={t("Writes the chosen settings to a JSON file, except API tokens, your account and connector Read/Write switches. It is a configuration, not a backup.")}
+        caption={t('Saves the chosen settings to a file, without API tokens. Not a backup.')}
       >
         <FormStack>
           <GroupPicker available={EXPORTABLE_GROUPS} value={exportGroups} onChange={setExportGroups} />
@@ -237,10 +237,22 @@ export function ConfigTransferPage() {
           <FadeSwap swapKey={includeSecrets} className="space-y-4">
           {includeSecrets ? (
             <>
-              <Field label={t('Passphrase')}>
-                {id => (
+              {/* The warning is the field's hint, under its name and before the box (the field rule
+                  of 2026-10-29). Stated plainly rather than as a footnote. Once the file leaves this
+                  machine the passphrase is the only thing standing between a Downloads folder and
+                  every API key this deployment holds, and there is no way to revoke a file. */}
+              <Field
+                label={t('Passphrase')}
+                hint={(
+                  <Caption tone="warning" icon={AlertTriangle}>
+                    {t('The passphrase cannot be recovered. Without it, nobody can read the credentials in this file.')}
+                  </Caption>
+                )}
+              >
+                {(id, aria) => (
                   <PasswordInput labels={{ show: t('Show password'), hide: t('Hide password') }}
                     id={id}
+                    {...aria}
                     value={exportPassphrase}
                     onChange={e => setExportPassphrase(e.target.value)}
                     placeholder={t('At least {count} characters', { count: MIN_PASSPHRASE_CHARS })}
@@ -248,12 +260,6 @@ export function ConfigTransferPage() {
                   />
                 )}
               </Field>
-              {/* Stated plainly rather than as a footnote. Once the file leaves this machine the
-                  passphrase is the only thing standing between a Downloads folder and every API
-                  key this deployment holds, and there is no way to revoke a file. */}
-              <Caption tone="warning" icon={AlertTriangle}>
-                {t('The passphrase cannot be recovered. Without it, nobody can read the credentials in this file.')}
-              </Caption>
             </>
           ) : (
             <Caption>
@@ -279,7 +285,7 @@ export function ConfigTransferPage() {
       <SettingsSection
         gap="list"
         title={t('Import')}
-        caption={t('Adds what the file contains without deleting or resetting anything; names already in use are kept. You see the changes before they apply.')}
+        caption={t("Adds the file's settings without deleting any; you review them first.")}
       >
         <FormStack>
           <Field label={t('Passphrase')}>
@@ -365,7 +371,7 @@ function ReportBlock({ report, title, footer }: {
       />
 
       <Presence show={!report.secretsApplied}>
-        <Caption tone="warning" icon={AlertTriangle} className="px-4 sm:px-5 py-2 border-b border-line/40">
+        <Caption tone="warning" icon={AlertTriangle} className="px-4 sm:px-6 py-2 border-b border-line/40">
           {t('No credentials were read from this file. Anything needing one keeps the value already configured here.')}
         </Caption>
       </Presence>
@@ -383,10 +389,10 @@ function ReportBlock({ report, title, footer }: {
             <table className={TABLE_CLASS}>
               <thead>
                 <tr className={THEAD_TR}>
-                  <Th compact className="pl-4 sm:pl-5">{t('Group')}</Th>
+                  <Th compact className="pl-4 sm:pl-6">{t('Group')}</Th>
                   <Th compact>{t('Name')}</Th>
                   <Th compact>{t('Status')}</Th>
-                  <Th compact className="pr-4 sm:pr-5">{t('Detail')}</Th>
+                  <Th compact className="pr-4 sm:pr-6">{t('Detail')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -398,11 +404,11 @@ function ReportBlock({ report, title, footer }: {
       </div>
 
       <Presence show={!!report.requiresRestart}>
-        <Caption tone="warning" icon={RotateCw} className="px-4 sm:px-5 py-2 border-t border-line/40">
+        <Caption tone="warning" icon={RotateCw} className="px-4 sm:px-6 py-2 border-t border-line/40">
           {t('Some of these only take effect after a restart.')}
         </Caption>
       </Presence>
-      {footer && <div className="px-4 sm:px-5 py-3 border-t border-line/40">{footer}</div>}
+      {footer && <div className="px-4 sm:px-6 py-3 border-t border-line/40">{footer}</div>}
     </Card>
   )
 }
@@ -414,12 +420,12 @@ function ReportRow({ entry }: { entry: ImportEntry }) {
   // The item is the row's name on a phone, where the table stacks: every other cell is labelled.
   return (
     <tr className={TR}>
-      <td data-label={t('Group')} className={cn(TD_COMPACT, 'pl-4 sm:pl-5 text-ink-disabled whitespace-nowrap')}>
+      <td data-label={t('Group')} className={cn(TD_COMPACT, 'pl-4 sm:pl-6 text-ink-disabled whitespace-nowrap')}>
         {group ? t(group.label) : entry.section}
       </td>
       <td className={cn(TD_COMPACT, 'text-ink-primary break-words')}>{entry.item}</td>
       <td data-label={t('Status')} className={cn(TD_COMPACT, 'whitespace-nowrap')}>
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-2">
           {entry.requiresRestart && (entry.outcome === 'CREATED' || entry.outcome === 'UPDATED') && (
             <Tooltip label={t('Takes effect after a restart')}>
               <span role="img" aria-label={t('Takes effect after a restart')} className="inline-flex shrink-0 text-warning">
@@ -430,7 +436,7 @@ function ReportRow({ entry }: { entry: ImportEntry }) {
           <span className={outcomeStyle(entry.outcome)}>{outcomeLabel(entry.outcome)}</span>
         </span>
       </td>
-      <td data-label={t('Detail')} className={cn(TD_COMPACT, 'pr-4 sm:pr-5 text-ink-caption')}>
+      <td data-label={t('Detail')} className={cn(TD_COMPACT, 'pr-4 sm:pr-6 text-ink-caption')}>
         {entry.detail && (
           <Tooltip label={entry.detail}>
             <span className="block max-w-64 truncate">{entry.detail}</span>

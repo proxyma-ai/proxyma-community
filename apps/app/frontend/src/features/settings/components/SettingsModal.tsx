@@ -385,7 +385,7 @@ function ReadOnlyConfigNotice() {
   const { t } = useTranslation()
   return (
     <Callout tone="neutral" icon={Eye}>
-      {t('View only - system configuration applies to the whole deployment, so only a super admin can change it.')}
+      {t('View only - only a super admin can change system configuration.')}
     </Callout>
   )
 }

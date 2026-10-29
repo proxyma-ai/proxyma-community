@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Button, Caption, DialogBody, DialogFooter, DialogHeader, FieldSkeleton, InlineCode, ListRow,
-  Presence, RadioGroupSkeleton, SettingsSection, SettingsSections, Skeleton, Textarea,
+  Presence, RadioGroupSkeleton, SettingsSection, SettingsSections, Skeleton, SwitchRow, Textarea,
 } from '@/components/ui/kit'
 import { configApi } from '@/services/configApi'
 import { settingsApi } from '../services/settingsApi'
@@ -20,9 +20,12 @@ import { useTranslation } from '@/i18n'
 import { Rich } from '@/i18n/kit'
 import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
 import type { TabProps } from '../pages/shared'
-import { ChoiceField, ProviderModelRow, useProviderInstances } from '../components/settingsParts'
+import { ChoiceField, ProviderModelRow, useModelComboboxLabels, useProviderInstances } from '../components/settingsParts'
+import { useProviderModels } from '../hooks/useProviderModels'
+import { Combobox, FormColumns, Select, Tooltip, iconButton } from '@/components/ui/kit'
+import { X } from 'lucide-react'
 
-// - Agents tab: the main agent, then the sub-agents -
+// - Agents tab: the main agent, then the agents it deploys -
 
 const TONES = [
   { key: 'concise',  label: 'Concise' },
@@ -42,10 +45,9 @@ const DEFAULT_MAX_ITERATIONS = '50'
 function useUnsetLimitChoice() {
   const { t } = useTranslation()
   return (limit: UnsetLimit) => {
-    const words = limit.words === 'same' ? t('Same as the agent')
-      : limit.words === 'model' ? t('Model default')
-      : limit.words === 'provider' ? t('Provider default')
-      : t('Default')
+    // ONE WORDING for "not set" in both groups (the UI review, 2026-10-28, found "Provider
+    // default" beside "Default (200k)"): the model's own number, whoever states it.
+    const words = limit.words === 'same' ? t('Same as the agent') : t('Model default')
     return { key: '', label: limit.amount ? `${words} (${limit.amount})` : words }
   }
 }
@@ -60,7 +62,7 @@ const MAX_OUTPUT_TOKENS_OPTIONS = [
   { key: '131072', label: '128k' },
 ]
 
-// The agent's and the sub-agents' alike - the maintainer's lists, 2026-10-03. A value stored
+// The agent's and its deployed agents' alike - the maintainer's lists, 2026-10-03. A value stored
 // before then that is not one of them (200k, 30 steps) still applies, and shows no choice selected.
 const CONTEXT_WINDOW_OPTIONS = [
   { key: '128000',  label: '128k' },
@@ -69,23 +71,13 @@ const CONTEXT_WINDOW_OPTIONS = [
   { key: '1000000', label: '1M' },
 ]
 
-// NO LIMIT is stored as '0' (ChatSettings.NO_ITERATION_LIMIT), for a sub-agent as for the agent:
-// the sub-agent's time limit still ends it.
+// NO LIMIT is stored as '0' (ChatSettings.NO_ITERATION_LIMIT), for a deployed agent as for the
+// agent.
 const MAX_AGENT_ITERATIONS_OPTIONS = [
   { key: '20', label: '20' },
   { key: '50', label: '50' },
   { key: '100', label: '100' },
   { key: '0', label: 'Unlimited' },
-]
-
-// How long one sub-agent may run, in minutes (SubAgentSettings.timeoutMinutes). No "unlimited",
-// for the reason above; the labels are numbers, like the iteration options.
-const SUB_AGENT_TIMEOUT_OPTIONS = [
-  { key: '5', label: '5' },
-  { key: '15', label: '15' },
-  { key: '30', label: '30' },
-  { key: '60', label: '60' },
-  { key: '120', label: '120' },
 ]
 
 // Settings > Agents "Prompt cache". Offered only while the agent's provider takes an explicit cache
@@ -94,8 +86,20 @@ const SUB_AGENT_TIMEOUT_OPTIONS = [
 // showing it there would be a control that does nothing.
 // Stored as the backend's ChatSettings.PromptCache values. AUTO REPLACED OFF on 2026-10-07
 // (maintainer's feedback): Auto is never less than five minutes, and steps up to an hour while
-// background sub-agents work or the reader pauses longer between turns (PromptCache.forTurn). A
+// deployed agents work in the background or the reader pauses longer between turns (PromptCache.forTurn). A
 // stored 'off' reads as Auto on both sides.
+// How many levels of deployed agents there may be under the conversation's own agent
+// (`sub-agent.max-depth`, 1 to 5). Unset is 2, the backend's default.
+const DEFAULT_MAX_DEPTH = '2'
+const MAX_DEPTH_OPTIONS = ['1', '2', '3', '4', '5'].map(n => ({ key: n, label: n }))
+
+// Which models an agent may name for one it deploys (SubAgentSettings model-rule, AgentModels).
+const MODEL_RULE_OPTIONS = [
+  { key: 'ANY',    label: 'Any listed model' },
+  { key: 'ONLY',   label: 'Only these' },
+  { key: 'EXCEPT', label: 'All but these' },
+]
+
 const PROMPT_CACHE_OPTIONS = [
   { key: 'auto', label: 'Auto' },
   { key: '5m',   label: '5 minutes' },
@@ -215,9 +219,9 @@ export function ChatTab({ trackChange, pending }: TabProps) {
 
   return (
     <SettingsSections>
-      {/* The main agent's own section, headed like the Sub-agents one under it: the tab is two
-          agents, and only one of them was named. */}
-      <SettingsSection title={t('Main agent')}>
+      {/* The main agent's own section, headed like the Deployed agents one under it: the tab is
+          two kinds of agent, and only one of them was named. */}
+      <SettingsSection title={t('Main agent')} caption={t('The agent that answers in your conversations.')}>
         <ProviderModelRow
           role="chat"
           providerLabel="Agent provider"
@@ -255,8 +259,8 @@ export function ChatTab({ trackChange, pending }: TabProps) {
           <ChoiceField
             label={t('Prompt cache')}
             hint={cacheField === 'on'
-              ? t('How long the provider caches the conversation for the next turn. Auto keeps 5 minutes, and 1 hour while sub-agents work in the background or when you pause longer between turns. 1 hour costs more to write.')
-              : t('{provider} uses OpenAI Chat Completions, which takes no cache instructions. Choose Anthropic Messages for it in Settings > AI Providers.', { provider: agentInstance?.name ?? '' })}
+              ? t('How long the provider keeps the conversation cached; 1 hour costs more.')
+              : t('To cache, switch {provider} to Anthropic Messages in AI Providers.', { provider: agentInstance?.name ?? '' })}
             value={promptCache}
             onChange={v => trackChange('chat', 'prompt-cache', v)}
             options={PROMPT_CACHE_OPTIONS}
@@ -265,9 +269,9 @@ export function ChatTab({ trackChange, pending }: TabProps) {
           />
         </Presence>
 
-        {/* Inside the master-agent block, not below the Sub-agents section where this used to sit:
-            the system prompt is the MASTER agent's prompt (a sub-agent gets its own task brief from
-            SubAgentService), so its position has to say so. It carries no section label of its own -
+        {/* Inside the master-agent block, not below the Deployed agents section where this used to
+            sit: the system prompt is the MASTER agent's prompt (a deployed agent gets its own task
+            brief), so its position has to say so. It carries no section label of its own -
             the row's title and description already say what it is, and an "Instructions" heading
             plus "The system prompt sets the agent's core behavior" restated it twice more.
             A kit ListRow that opens a dialog: a button, with the chevron that says so. */}
@@ -295,9 +299,15 @@ export function ChatTab({ trackChange, pending }: TabProps) {
   )
 }
 
-// Sub-agent settings. Lives on this tab rather than a tab of its own because a sub-agent is
-// still the agent - it is the same conversation, a worker the main agent hands work to. Kept
-// visually separate (divider + its own description).
+// THE AGENTS THE AGENT DEPLOYS (the tree of agents, since 2026-10-28; "sub-agents" before then,
+// and the settings prefix is still `sub-agent`). Every agent can deploy agents of its own, each in
+// a conversation of its own, down to the maximum depth set here. Lives on this tab rather than a
+// tab of its own because a deployed agent is still the agent, run by the same loop. Kept visually
+// separate (divider + its own description). The model and limits are what a deployed agent runs
+// on unless the agent deploying it names a model. A deployed agent runs as a conversation of its
+// own on the agent's loop, so it takes the agent's output ceiling, context window and prompt cache;
+// the four deployed-agent fields for those and a time limit went on 2026-10-28, when nothing read
+// them any more (the model still titles new conversations).
 //
 // NOTHING HERE HAS TO BE SET, since 2026-10-03: every field follows the agent's until it is given
 // a value of its own (SubAgentSettings), and the empty choice of each control says so. Choosing it
@@ -309,143 +319,180 @@ function SubAgentModelRow({ trackChange, pending }: TabProps) {
   return (
     <ProviderModelRow
       role="sub-agent"
-      providerLabel="Sub-agent provider"
-      modelLabel="Sub-agent model"
+      providerLabel="Deployed agent provider"
+      modelLabel="Deployed agent model"
       modelPlaceholder={agentModel || 'claude-haiku-4-5'}
       unsetProviderLabel={t('Same as the agent')}
       fallbackProvider={agentProvider}
-      modelHint={t("Leave the model empty to use the agent's. A cheaper, faster model here keeps long reading off the agent's price. It also titles new conversations.")}
+      modelHint={t("Empty uses the agent's model. A cheaper one here cuts cost, and it also titles new conversations.")}
       trackChange={trackChange}
       pending={pending}
     />
   )
 }
 
-/** A sub-agent's choices: "Same as the agent" first, naming what that currently is. */
+/**
+ * WHICH MODELS AN AGENT MAY NAME for an agent it deploys (the maintainer's request, 2026-10-29): any
+ * model a configured provider lists, only the entries chosen here, or all but them. An entry is a
+ * provider - all its models - or one of its models. Stored as SubAgentSettings' model-rule and
+ * model-list ("<provider id>" or "<provider id>|<model>", one per line); AgentModels applies it and
+ * refuses a name no provider lists whatever the rule.
+ */
+function DeployedModelRule({ trackChange, pending }: TabProps) {
+  const { t } = useTranslation()
+  const rule = useResolved('sub-agent', 'model-rule', pending, 'ANY') || 'ANY'
+  const raw = useResolved('sub-agent', 'model-list', pending, '')
+  const entries = parseModelList(raw)
+  const { data: instances = [] } = useProviderInstances()
+  const save = (next: ModelEntry[]) => trackChange('sub-agent', 'model-list', formatModelList(next))
+  return (
+    <div className="space-y-3">
+      <ChoiceField
+        label={t('Models agents may choose')}
+        hint={t('Applies when an agent picks a model for one it deploys.')}
+        value={rule}
+        onChange={v => trackChange('sub-agent', 'model-rule', v)}
+        options={MODEL_RULE_OPTIONS}
+        horizontal
+      />
+      <Presence show={rule !== 'ANY'}>
+        <div className="space-y-2">
+          {entries.map((e, i) => (
+            <ModelRuleEntry
+              key={i}
+              entry={e}
+              instances={instances}
+              onChange={next => save(entries.map((x, k) => (k === i ? next : x)))}
+              onRemove={() => save(entries.filter((_, k) => k !== i))}
+            />
+          ))}
+          <Button
+            variant="quiet"
+            size="sm"
+            onClick={() => save([...entries, { provider: instances[0]?.id ?? '', model: '' }])}
+            disabled={instances.length === 0}
+          >
+            {t('Add a provider or model')}
+          </Button>
+        </div>
+      </Presence>
+    </div>
+  )
+}
+
+interface ModelEntry { provider: string; model: string }
+
+function parseModelList(raw: string): ModelEntry[] {
+  return raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const bar = l.indexOf('|')
+    return bar < 0 ? { provider: l, model: '' } : { provider: l.slice(0, bar).trim(), model: l.slice(bar + 1).trim() }
+  })
+}
+
+function formatModelList(entries: ModelEntry[]): string {
+  return entries.filter(e => e.provider).map(e => (e.model ? `${e.provider}|${e.model}` : e.provider)).join('\n')
+}
+
+// One entry: a provider, and one of its models or every one.
+function ModelRuleEntry({ entry, instances, onChange, onRemove }: {
+  entry: ModelEntry
+  instances: ProviderInstance[]
+  onChange: (next: ModelEntry) => void
+  onRemove: () => void
+}) {
+  const { t } = useTranslation()
+  const labels = useModelComboboxLabels()
+  const { options, status, errorText, onOpen } = useProviderModels(entry.provider)
+  return (
+    <div className="flex items-center gap-2">
+      <FormColumns className="items-start flex-1 min-w-0">
+        <Select
+          value={entry.provider}
+          onChange={v => onChange({ provider: v, model: '' })}
+          options={instances.map(p => ({ value: p.id, label: p.name }))}
+          aria-label={t('Provider')}
+        />
+        <Combobox
+          value={entry.model}
+          onChange={v => onChange({ ...entry, model: v })}
+          placeholder={t('Every model')}
+          options={options}
+          status={status}
+          errorText={errorText}
+          onOpen={onOpen}
+          labels={labels}
+          aria-label={t('Model')}
+        />
+      </FormColumns>
+      <Tooltip label={t('Remove')}>
+        <button type="button" onClick={onRemove} aria-label={t('Remove')} className={iconButton('md', 'danger')}>
+          <X size={16} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    </div>
+  )
+}
+
+/** A deployed agent's choices: "Same as the agent" first, naming what that currently is. */
 function followingAgent(options: { key: string; label: string }[], agentValue: string, same: string,
                         t: (text: string) => string) {
   const agents = options.find(o => o.key === agentValue)?.label
   return [{ key: '', label: agents ? `${same} (${t(agents)})` : same }, ...options]
 }
 
-function SubAgentTimeLimitField({ trackChange, pending }: TabProps) {
-  const { t } = useTranslation()
-  // 30 since 2026-10-03, SubAgentSettings' own default.
-  const timeoutMinutes = useResolved('sub-agent', 'timeout-minutes', pending, '30')
-  return (
-    <ChoiceField
-      label={t('Sub-agent time limit (minutes)')}
-      hint={t('Out of time, a sub-agent is asked once for what it has found. Waiting for your answer to an approval or a question is not counted.')}
-      value={timeoutMinutes}
-      onChange={v => trackChange('sub-agent', 'timeout-minutes', v)}
-      options={SUB_AGENT_TIMEOUT_OPTIONS}
-      horizontal
-      figures
-    />
-  )
-}
-
 function SubAgentSection({ trackChange, pending }: TabProps) {
   const { t } = useTranslation()
-  // No switch, since 2026-10-03 (the maintainer's request): sub-agents are how the agent works. A
-  // sub-agent's writes take the same approval the agent's do, so always-on cannot change, approve
-  // or delete anything nobody agreed to.
+  // No switch, since 2026-10-03 (the maintainer's request): deploying agents is how the agent
+  // works. A deployed agent's writes take the same approval the agent's do, so always-on cannot
+  // change, approve or delete anything nobody agreed to.
   //
-  // Each value is '' while the sub-agents follow the agent - the first choice of each group, which
-  // names what the agent's currently is.
+  // Each value is '' while the deployed agents follow the agent - the first choice of each group,
+  // which names what the agent's currently is.
   const maxIterations = useResolved('sub-agent', 'max-iterations', pending, '')
-  const maxTokens = useResolved('sub-agent', 'max-output-tokens', pending, '')
-  const contextWindow = useResolved('sub-agent', 'context-max-tokens', pending, '')
+  const maxDepth = useResolved('sub-agent', 'max-depth', pending, DEFAULT_MAX_DEPTH)
+  const peerMessaging = useResolved('sub-agent', 'peer-messaging', pending, 'false') === 'true'
   const agentIterations = useResolved('chat', 'max-iterations', pending, DEFAULT_MAX_ITERATIONS)
   const same = t('Same as the agent')
-  // The two limits follow the agent's SETTING. Where the agent has none, each side takes its own
-  // model's - so the number named here is the sub-agents' model's, which is the agent's only while
-  // they have no model of their own.
-  const agentMaxTokens = useResolved('chat', 'max-output-tokens', pending, '')
-  const agentContextWindow = useResolved('chat', 'memory-max-tokens', pending, '')
-  const agentProvider = useResolved('chat', 'provider', pending, '')
-  const agentModel = useResolved('chat', 'model', pending, '')
-  const ownProvider = useResolved('sub-agent', 'provider', pending, '')
-  const ownModel = useResolved('sub-agent', 'model', pending, '')
-  const hasOwnModel = ownProvider !== '' && ownModel.trim() !== ''
-  const limits = useModelLimits(hasOwnModel ? ownProvider : agentProvider, hasOwnModel ? ownModel : agentModel)
-  const unsetChoice = useUnsetLimitChoice()
 
   return (
     <SettingsSection
-      title={t('Sub-agents')}
-      caption={t("The agent hands work to sub-agents and gets back only their reports. A sub-agent has the agent's tools and settings unless you choose others here; its changes need your approval like the agent's.")}
+      title={t('Deployed agents')}
+      caption={t('Agents the main agent deploys to handle parts of the work.')}
     >
+      <ChoiceField
+        label={t('Max depth')}
+        hint={t('How many levels of agents may work under the one in your conversation.')}
+        value={maxDepth}
+        onChange={v => trackChange('sub-agent', 'max-depth', v)}
+        options={MAX_DEPTH_OPTIONS}
+        horizontal
+        figures
+      />
+
+      {/* No row padding in a stack of fields, as on Updates: the stack spaces it. */}
+      <SwitchRow
+        className="py-0"
+        title={t('Agents may message their siblings')}
+        caption={t('Agents deployed by the same agent can message each other.')}
+        checked={peerMessaging}
+        onChange={v => trackChange('sub-agent', 'peer-messaging', String(v))}
+      />
+
       <SubAgentModelRow trackChange={trackChange} pending={pending} />
 
+      <DeployedModelRule trackChange={trackChange} pending={pending} />
+
       <ChoiceField
-        label={t('Max sub-agent iterations')}
+        label={t('Max deployed agent iterations')}
         value={maxIterations}
         onChange={v => trackChange('sub-agent', 'max-iterations', v)}
-        // An agent with no limit hands that on (SubAgentSettings.maxIterations); the time limit
-        // below is what ends a sub-agent then.
+        // An agent with no limit hands that on (SubAgentSettings.maxIterations).
         options={followingAgent(MAX_AGENT_ITERATIONS_OPTIONS, agentIterations, same, t)}
         horizontal
         figures
       />
 
-      <ChoiceField
-        label={t('Sub-agent max output tokens')}
-        value={maxTokens}
-        onChange={v => trackChange('sub-agent', 'max-output-tokens', v)}
-        options={[unsetChoice(unsetLimit('output', limits?.maxOutputTokens, agentMaxTokens)), ...MAX_OUTPUT_TOKENS_OPTIONS]}
-        horizontal
-        figures
-      />
-
-      {/* Worth setting when the sub-agent's model has a smaller window than the agent's: past
-          80% of it the sub-agent drops its oldest tool results to keep going. */}
-      <ChoiceField
-        label={t('Sub-agent context window')}
-        value={contextWindow}
-        onChange={v => trackChange('sub-agent', 'context-max-tokens', v)}
-        options={[unsetChoice(unsetLimit('context', limits?.contextWindow, agentContextWindow)), ...CONTEXT_WINDOW_OPTIONS]}
-        horizontal
-        figures
-      />
-
-      <SubAgentPromptCacheField
-        trackChange={trackChange}
-        pending={pending}
-        provider={hasOwnModel ? ownProvider : agentProvider}
-      />
-
-      <SubAgentTimeLimitField trackChange={trackChange} pending={pending} />
     </SettingsSection>
-  )
-}
-
-// A sub-agent's own prompt cache (2026-10-07, maintainer's feedback: sub-agents must cache too, and
-// had no option). It follows the agent's until set, as everything in this section does, and it is
-// offered where the agent's is: while the sub-agents' provider takes a cache instruction. Auto is
-// five minutes for a sub-agent - its calls come seconds apart (SubAgentSettings.promptCache).
-function SubAgentPromptCacheField({ trackChange, pending, provider }: TabProps & { provider: string }) {
-  const { t } = useTranslation()
-  const own = promptCacheChoice(useResolved('sub-agent', 'prompt-cache', pending, ''))
-  const agents = promptCacheChoice(useResolved('chat', 'prompt-cache', pending, 'auto'))
-  const { data: instances = [] } = useProviderInstances()
-  const instance = instances.find(p => p.id === provider)
-  const field = promptCacheField(instance)
-  // In or out as the sub-agents' provider changes - a Presence in the place the field holds.
-  return (
-    <Presence show={!!field}>
-    <ChoiceField
-      label={t('Sub-agent prompt cache')}
-      hint={field === 'on'
-        ? t('Auto is 5 minutes for a sub-agent, whose calls come seconds apart.')
-        : t('{provider} uses OpenAI Chat Completions, which takes no cache instructions. Choose Anthropic Messages for it in Settings > AI Providers.', { provider: instance?.name ?? '' })}
-      value={own}
-      onChange={v => trackChange('sub-agent', 'prompt-cache', v)}
-      options={followingAgent(PROMPT_CACHE_OPTIONS, agents, t('Same as the agent'), t)}
-      horizontal
-      disabled={field === 'off'}
-    />
-    </Presence>
   )
 }
 
@@ -542,12 +589,12 @@ function SystemPromptModal({ onClose, readOnly = false }: { onClose: () => void;
           ) : (
             <Caption>
               <InlineCode>{'{{PRODUCT_NAME}}'}</InlineCode>{' '}
-              {t("becomes this deployment's name - keep it as it is. The section on delegating to sub-agents is added to this prompt automatically.")}
+              {t("becomes this deployment's name - keep it as it is. The section on deploying agents is added to this prompt automatically.")}
               {/* One sentence with its two markers as slots, so a translation orders it its own way. */}
               {hasLegacyMarkers && (<>
                 {' '}
                 <Rich
-                  text={t('Text between {open} and {close} is included only while sub-agents are enabled.')}
+                  text={t('Text between {open} and {close} is included only while the agent can deploy agents.')}
                   parts={{
                     open: <InlineCode>{'{{#IF_DELEGATION}}'}</InlineCode>,
                     close: <InlineCode>{'{{/IF_DELEGATION}}'}</InlineCode>,

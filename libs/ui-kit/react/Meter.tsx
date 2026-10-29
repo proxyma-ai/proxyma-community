@@ -139,7 +139,7 @@ export function StackedBar({ segments, size = 'md', label, className }: {
 /** A swatch and its label (and value) - the legend under a chart or a stacked bar. */
 export function LegendSwatch({ swatchClass, label, value }: { swatchClass: string; label: ReactNode; value?: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-ink-caption">
+    <span className="inline-flex items-center gap-2 text-xs text-ink-caption">
       <span className={cn('w-2.5 h-2.5 rounded-sm shrink-0', swatchClass)} aria-hidden="true" />
       <span>{label}</span>
       {value !== undefined && <span className="data-readout text-ink-secondary">{value}</span>}
@@ -187,7 +187,7 @@ export function ProgressRow({ label, figures, value, tone = 'accent', action, cl
   const pct = value === undefined ? null : Math.round(Math.max(0, Math.min(100, value)))
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="flex items-baseline justify-between gap-3 mb-1.5 text-xs">
+      <div className="flex items-baseline justify-between gap-3 mb-2 text-xs">
         <span className="min-w-0 truncate text-ink-secondary">{label}</span>
         <span className="shrink-0 flex items-baseline gap-3">
           {figures && <span className="data-readout text-ink-caption">{figures}</span>}
@@ -251,7 +251,7 @@ export function BarList({ rows, label, share = true, emptyText, className }: {
     // WIDEST figure, so every bar starts and ends at the same x. A grid per row sized its `auto`
     // column to that row's own figure, so "141" and "89" moved the bar's track by a few pixels and
     // two bars of the same value were drawn at different lengths.
-    <ol aria-label={label} className={cn('grid gap-x-3 gap-y-2.5 text-xs', share ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto_2.75rem]' : 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto]', className)}>
+    <ol aria-label={label} className={cn('grid gap-x-3 gap-y-2 text-xs', share ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto_2.75rem]' : 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto]', className)}>
       {rows.map(r => (
         <li key={r.key} className="grid grid-cols-subgrid col-span-full items-center">
           <span className={cn('min-w-0 flex items-center gap-2', r.muted ? 'text-ink-caption' : 'text-ink-secondary')}>

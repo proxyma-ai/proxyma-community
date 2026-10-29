@@ -33,7 +33,7 @@ interface Props<T extends string> {
   ariaLabel: string
   size?: 'sm' | 'md'
   /**
-   * `boxed` (the default) is a track with the choice drawn in the brand-chip pair. `text` is a row
+   * `boxed` (the default) is a sunken track with the choice LIFTED out of it. `text` is a row
    * of words with the choice in primary ink - for a chart's period picker, where a box would
    * outweigh the chart it governs.
    */
@@ -47,8 +47,10 @@ interface Props<T extends string> {
  *
  * Seven of these existed and none in the kit: a boxed track with a solid brand selection, two kit
  * Buttons primary/secondary, `bg-brand-solid/20` pills, `bg-warning/20` pills, underlined words,
- * and a radio group. The choice is drawn in the brand-chip pair rather than a solid brand fill,
- * because a solid fill is the primary BUTTON's look and read as "press this", not "this is chosen".
+ * and a radio group. The choice is never a solid brand fill, because that is the primary BUTTON's
+ * look and reads as "press this", not "this is chosen". Since 2026-10-29 (the depth review) the track
+ * is a WELL (`surface-alt`, `shadow-well`) and the choice a pill LIFTED out of it - the floating
+ * plane with `shadow-card` - in the brand's ink; it was the neutral selected fill on the page plane.
  */
 export function SegmentedControl<T extends string>({
   options, value, onChange, ariaLabel, size = 'sm', variant = 'boxed', disabled, className,
@@ -106,7 +108,7 @@ export function SegmentedControl<T extends string>({
       aria-disabled={disabled || undefined}
       className={cn(
         'inline-flex items-center',
-        variant === 'boxed' ? 'relative rounded-md border border-line bg-canvas p-0.5 gap-0.5' : 'gap-3',
+        variant === 'boxed' ? 'relative rounded-lg border border-line bg-surface-alt shadow-well p-1 gap-0.5' : 'gap-3',
         disabled && 'opacity-40 pointer-events-none',
         className,
       )}
@@ -115,9 +117,11 @@ export function SegmentedControl<T extends string>({
         <span
           aria-hidden="true"
           className={cn(
-            'absolute top-0.5 bottom-0.5 left-0 rounded-[5px] pointer-events-none',
+            // rounded-md: the track's 12px less its 4px inset, so the two corners are concentric - the
+            // same shape as SubNavTabs' well (the maintainer, 2026-10-30).
+            'absolute top-1 bottom-1 left-0 rounded-md pointer-events-none bg-surface-float shadow-card',
             placed && 'transition-[transform,width,background-color] duration-base ease-out',
-            warning ? 'bg-warning/15' : 'bg-brand-chip-bg',
+            warning && 'bg-warning/15',
           )}
           style={{ width: slot.width, transform: `translateX(${slot.left}px)` }}
         />
@@ -140,14 +144,14 @@ export function SegmentedControl<T extends string>({
               if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); move(i, -1) }
             }}
             className={cn(
-              'inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors focus-ring',
+              'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-ring tap-area',
               'disabled:opacity-40 disabled:cursor-not-allowed',
               variant === 'boxed' && cn(
                 // Above the sliding fill; the chosen one's fill IS that fill, so only its ink is here.
-                'relative rounded-[5px] font-medium touch:min-h-tap-sm',
+                'relative rounded-md font-medium touch:min-h-tap-sm',
                 size === 'sm' ? 'h-6 px-2 text-xs' : 'h-8 px-3 text-sm',
                 on
-                  ? cn(o.tone === 'warning' ? 'text-warning' : 'text-brand-chip-text', !slot && (o.tone === 'warning' ? 'bg-warning/15' : 'bg-brand-chip-bg'))
+                  ? cn(o.tone === 'warning' ? 'text-warning' : 'text-brand-chip-text', !slot && (o.tone === 'warning' ? 'bg-warning/15' : 'bg-surface-float shadow-card'))
                   : 'text-ink-caption mouse:hover:text-ink-primary',
               ),
               variant === 'text' && cn(

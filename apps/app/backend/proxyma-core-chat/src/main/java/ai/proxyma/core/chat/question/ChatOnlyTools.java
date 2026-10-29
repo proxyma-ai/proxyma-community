@@ -3,15 +3,12 @@ package ai.proxyma.core.chat.question;
 import java.util.Set;
 
 /**
- * Tools only a chat with a person in it can offer - left out of the MCP export, workflow nodes and
- * a sub-agent started outside a conversation, which have nobody to ask. (A sub-agent inside a
- * conversation is offered them: its questions go to that conversation's person - see
- * SubAgentService.toolsFor.) Here, in the chat module, because both sides need the name: the tools
+ * Tools only a chat with a person in it can offer - left out of the MCP export and workflow nodes,
+ * which have nobody to ask. Here, in the chat module, because both sides need the name: the tools
  * module (which depends on this one) declares the tool, and ChatService answers it.
  *
- * <p>{@code steerSubAgent} and {@code messageMainAgent} too: the main agent and its background
- * sub-agents talking to each other, and none of those callers has either. (No sub-agent is offered
- * the first - ChatService.refusedToSubAgents - and only a background one the second.)
+ * <p>The agent tree's tools too (AgentTools): an agent, an alarm and a background job each belong
+ * to a conversation, which none of those callers has.
  */
 public final class ChatOnlyTools {
 
@@ -19,8 +16,11 @@ public final class ChatOnlyTools {
     public static final String ASK_USER = "askUser";
 
     public static final Set<String> ALL = Set.of(ASK_USER,
-            ai.proxyma.core.chat.service.SubAgentService.DelegateToolNames.STEER,
-            ai.proxyma.core.chat.service.SubAgentService.DelegateToolNames.MESSAGE_MAIN);
+            // The agent tree, alarms and background work (AgentTools): each belongs to a conversation.
+            "deployAgent", "tellAgent", "awaitAgents", "controlAgent", "alarm", "background",
+            "deployAgents", "readAgentReport", "verifyReport", "deliberate", "recordDecision", "handFile",
+            // A shell command runs in a conversation's workspace (RunCommandTool).
+            "runCommand");
 
     private ChatOnlyTools() {}
 }

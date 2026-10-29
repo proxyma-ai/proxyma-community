@@ -37,7 +37,7 @@ interface Props {
   // nesting the backend set up so this needed no new plumbing.
   //
   // Only live calls carry that link: the persisted transcript has no parentCallId column (the same
-  // limitation a delegated sub-agent's rows already have on reload), so a run read back from the
+  // limitation a delegated deployed agent's rows already have on reload), so a run read back from the
   // server shows its steps without their tool calls, and those calls appear in the flat list above
   // the final answer instead. Nothing is hidden either way - only the grouping is lost.
   toolCalls?: ToolCallInfo[]
@@ -102,8 +102,8 @@ function StepRow({ step, toolCalls }: { step: WorkflowRunStep; toolCalls: ToolCa
   return (
     <div className="border-b border-line/20 last:border-b-0">
       {hasDetail ? (
-        <Disclosure summary={line} summaryClassName="px-4 sm:px-5 py-2 rounded-none">
-          <div className="px-4 sm:px-5 pb-3 pl-10 sm:pl-11 space-y-2">
+        <Disclosure summary={line} summaryClassName="px-4 sm:px-6 py-2 rounded-none">
+          <div className="px-4 sm:px-6 pb-3 pl-10 sm:pl-11 space-y-2">
             {step.instruction && <Caption className="whitespace-pre-wrap">{step.instruction}</Caption>}
             {toolCalls.length > 0 && <ToolCallList toolCalls={toolCalls} />}
             {/* The step's own answer, rendered HERE rather than as its own bubble in the thread.
@@ -119,7 +119,7 @@ function StepRow({ step, toolCalls }: { step: WorkflowRunStep; toolCalls: ToolCa
           </div>
         </Disclosure>
       ) : (
-        <div className="px-4 sm:px-5 py-2">{line}</div>
+        <div className="px-4 sm:px-6 py-2">{line}</div>
       )}
     </div>
   )

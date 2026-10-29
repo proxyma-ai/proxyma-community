@@ -12,14 +12,10 @@ import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { IconMenu } from './IconMenu'
 import { menuRow } from './menu'
 import { APPEARANCE_PREFERENCES, type AppearancePreference } from './appearance'
-import { Logo } from './Logo'
 
 /**
- * The glyph for each appearance, shared by the header control here and each app's menu row.
- *
- * <p>Dark (`black`) is the moon and Proxyma (`gray`) is the Proxyma mark: the neutral dark is the
- * one people mean by "dark", and the teal one is the brand's own. Changed 2026-09-26 from a moon
- * for Proxyma and a filled circle for Dark.
+ * The glyph for each appearance, shared by the header control here and each app's menu row: a
+ * monitor for System, a sun for Light, a moon for Dark.
  */
 export function AppearanceIcon({ preference, size = 16, className }: {
   preference: AppearancePreference
@@ -30,16 +26,15 @@ export function AppearanceIcon({ preference, size = 16, className }: {
   switch (preference) {
     case 'system': return <Monitor {...props} />
     case 'light':  return <Sun {...props} />
-    case 'black':  return <Moon {...props} />
-    case 'gray':   return <Logo markOnly size={size} className={className} />
+    case 'dark':   return <Moon {...props} />
   }
 }
 
 /**
- * Appearance - System, Light, Dark or Proxyma - as the header's round icon button and its panel.
+ * Appearance - System, Light or Dark - as the header's round icon button and its panel.
  *
  * <p>REPLACED `ThemeToggle` in 0.13.0. A one-click flip works with exactly two choices and cannot
- * say which one you are on; with four it cannot work at all. This is the language control's shape
+ * say which one you are on, and System makes three. This is the language control's shape
  * for the same reason that control has it: every choice listed, the current one checked, on the
  * shared `IconMenu` shell.
  *
@@ -74,8 +69,8 @@ export function AppearanceMenu({ current, onChoose, names, label, className }: A
         const isCurrent = p === current
         const content = (
           <>
-            <span className="flex items-center gap-2.5">
-              <AppearanceIcon preference={p} size={15} className="shrink-0" />
+            <span className="flex items-center gap-2">
+              <AppearanceIcon preference={p} size={16} className="shrink-0" />
               <span>{names[p]}</span>
             </span>
             {isCurrent && <Check size={14} className="shrink-0 text-brand-legible" aria-hidden="true" />}

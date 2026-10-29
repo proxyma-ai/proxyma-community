@@ -4,7 +4,7 @@ import type { CostSource } from '../utils/callCost'
 
 // ---- the per-call ledger -------------------------------------------------------------------
 // One row per model call, and the same window grouped. Written at the gateway since 2026-09-16,
-// so what this returns is every call the deployment made - chat, sub-agent, embedding, rerank,
+// so what this returns is every call the deployment made - chat, deployed agent, embedding, rerank,
 // graph extraction, OCR, guardrail and the rest - rather than the four platform activities the
 // older per-call table covered.
 

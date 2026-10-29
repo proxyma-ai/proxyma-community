@@ -46,7 +46,7 @@ export function ForgotPasswordPage() {
   return (
     // The kit's sign-in card; the lockup ONCE (app UI review, F11).
     <AuthLayout
-      logo={<Logo />}
+      logo={<Logo size={22} />}
       title={t('Reset your password')}
       // Starts at the form's left edge on a phone - nothing to tap mid-screen.
       footer={<Link to="/login" className={textLink()}>{t('Back to sign in')}</Link>}

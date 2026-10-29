@@ -121,7 +121,7 @@ export function DropOverlay({ active, label, icon: Icon = Upload, portal = true 
   if (!active) return null
   const layer = (
     <div className={cn(portal ? 'fixed' : 'absolute', 'inset-0 z-dropzone pointer-events-none flex items-center justify-center dropzone-active rounded-none')}>
-      <div className="flex flex-col items-center gap-3 surface-float border border-line/45 rounded-lg shadow-card px-6 py-5">
+      <div className="flex flex-col items-center gap-3 surface-float border rounded-lg shadow-float px-6 py-6">
         <Icon size={32} className="text-brand-legible" aria-hidden="true" />
         <span className="text-sm font-medium text-ink-secondary">{label}</span>
       </div>

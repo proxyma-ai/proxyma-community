@@ -37,8 +37,28 @@ test('an aside follows a dash; a direct object follows the verb', () => {
   assert.equal(toolActivity(call('addJiraComment', { issueKey: 'PROJ-9', body: 'x' }), t), 'Commented on PROJ-9')
 })
 
-test('a delegation is named by the title the agent gave it', () => {
+test('a stored delegation is named by the title the agent gave it', () => {
   assert.equal(toolActivity(call('delegate', { title: 'SAI project review' }), t), 'SAI project review')
+})
+
+test('deploying an agent and telling it something name it', () => {
+  assert.equal(toolActivity(call('deployAgent', { title: 'Price check', task: 'x', lifetime: 'SHORT' }, '{}', false), t), 'Deploying an agent - Price check')
+  assert.equal(toolActivity(call('deployAgent', { title: 'Price check' }), t), 'Deployed an agent - Price check')
+  assert.equal(toolActivity(call('tellAgent', { to: 'a1', message: 'Prices in EUR' }), t), 'Messaged an agent - Prices in EUR')
+  assert.equal(toolActivity(call('awaitAgents', { agentIds: ['a1'] }, '{}', false), t), 'Waiting for its agents')
+})
+
+test('controlling an agent says what was done to it', () => {
+  assert.equal(toolActivity(call('controlAgent', { action: 'pause', agentId: 'a1' }), t), 'Paused an agent')
+  assert.equal(toolActivity(call('controlAgent', { action: 'stop', agentId: 'a1' }, '{}', false), t), 'Stopping an agent')
+  assert.equal(toolActivity(call('controlAgent', { action: 'list' }), t), 'Checked its agents')
+})
+
+test('alarms and background work say what they did', () => {
+  assert.equal(toolActivity(call('alarm', { action: 'set', inMinutes: 30, note: 'Check the build' }), t), 'Set an alarm - Check the build')
+  assert.equal(toolActivity(call('alarm', { action: 'cancel', alarmId: 'x' }), t), 'Canceled an alarm')
+  assert.equal(toolActivity(call('background', { action: 'run', tool: 'searchJiraIssues', arguments: '{}' }), t), 'Started background work - Search Jira issues')
+  assert.equal(toolActivity(call('background', { action: 'list' }, '{}', false), t), 'Checking its background work')
 })
 
 test('a memory entry corrected or deleted by its id is not called remembered', () => {
@@ -48,12 +68,12 @@ test('a memory entry corrected or deleted by its id is not called remembered', (
   assert.equal(toolActivity(call('remember', { id: 'e1', forget: 'true' }), t), 'Forgot a memory')
 })
 
-test('directing a sub-agent says what it was told, or that it was stopped', () => {
+test('a stored steer of handed-off work says what it was told, or that it was stopped', () => {
   assert.equal(toolActivity(call('steerSubAgent', { agentId: 'a1', message: 'Prices in EUR' }), t), 'Updated a sub-task - Prices in EUR')
   assert.equal(toolActivity(call('steerSubAgent', { agentId: 'a1', stop: true }), t), 'Stopped a sub-task')
 })
 
-test('a sub-agent asks the main agent, or tells it and carries on', () => {
+test('stored handed-off work asks the main agent, or tells it and carries on', () => {
   assert.equal(toolActivity(call('messageMainAgent', { message: 'EUR or USD?', waitForReply: true }), t), 'Asked the main agent - EUR or USD?')
   assert.equal(toolActivity(call('messageMainAgent', { message: 'EUR or USD?', waitForReply: true }, '{}', false), t), 'Asking the main agent - EUR or USD?')
   assert.equal(toolActivity(call('messageMainAgent', { message: 'Prices are in EUR' }), t), 'Told the main agent - Prices are in EUR')
@@ -74,6 +94,8 @@ test('display names are sentence case, with product names kept', () => {
   assert.equal(toolDisplayName('read_text_file'), 'Read text file')
   assert.equal(toolDisplayName('getBitbucketPr'), 'Get Bitbucket pull request')
   assert.equal(toolDisplayName('delegate'), 'Agent')
+  assert.equal(toolDisplayName('awaitAgents'), 'Wait for agents')
+  assert.equal(toolDisplayName('deployAgent'), 'Deploy agent')
 })
 
 test('a connected MCP server tool names its server, then the tool as a phrase', () => {

@@ -38,7 +38,7 @@ export function SourceChunksModal({ connector, onClose }: Props) {
           // Rows shaped like the item rows that are coming: a name each, on the rows' own padding.
           <div className="divide-y divide-line/20" aria-hidden="true">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="px-4 sm:px-6 py-3.5"><Skeleton className="h-3.5 w-2/5" /></div>
+              <div key={i} className="px-4 sm:px-6 py-3"><Skeleton className="h-3.5 w-2/5" /></div>
             ))}
           </div>
         ) : items.length === 0 ? (
@@ -65,7 +65,7 @@ function ItemChunks({ connectorId, item }: { connectorId: string; item: TrackedI
 
   return (
     <Disclosure
-      className="px-4 sm:px-6 py-2.5"
+      className="px-4 sm:px-6 py-3"
       open={open}
       onToggle={setOpen}
       summary={<span className={cn(TEXT.label, 'block truncate')}>{item.title}</span>}

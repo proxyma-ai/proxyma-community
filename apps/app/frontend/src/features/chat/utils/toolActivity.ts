@@ -69,9 +69,18 @@ const PHRASES: Record<string, Phrase> = {
   findGraphTimeline:      ['Reading the history of',        'Read the history of',         true],
   findGraphThemes:        ['Finding the main themes',       'Found the main themes'],
 
-  // Delegation. The row's own children narrate themselves, so this one only has to say that a
-  // second agent is on it - "Delegating" names the mechanism, which is our business and not the
-  // reader's.
+  // The tree of agents (since 2026-10-28). A deployAgent call is drawn as the agent's panel, but
+  // its detail dialog and a failed row still say what it did.
+  deployAgent:            ['Deploying an agent',            'Deployed an agent'],
+  tellAgent:              ['Messaging an agent',            'Messaged an agent'],
+  awaitAgents:            ['Waiting for its agents',        'Heard from its agents'],
+  deployAgents:           ['Deploying agents over a list',  'Deployed agents over a list'],
+  readAgentReport:        ['Reading a report in full',      'Read a report in full'],
+  verifyReport:           ['Having a report checked',       'Had a report checked'],
+  deliberate:             ['Putting a question to a panel', 'Put a question to a panel'],
+  recordDecision:         ['Recording a decision',          'Recorded a decision'],
+  handFile:               ['Handing on a file',             'Handed on a file'],
+  // A stored delegation, from before then: one line that a second agent was on it.
   delegate:               ['Working on a sub-task',         'Finished a sub-task'],
 
   webSearch:              ['Searching the web',             'Searched the web'],
@@ -273,11 +282,43 @@ function detailFrom(args: Record<string, unknown>): string | undefined {
  */
 export function toolActivity(tc: ToolCallInfo, t: Translate): string {
   const args = parse(tc.arguments)
-  // A delegation names itself: the main agent gives every sub-task a short title for exactly this
-  // line (see DelegateTool), so the row reads "Review SAI project tasks" rather than a slice of
-  // the instruction it wrote for the sub-agent. The row's own spinner and tick say running or done.
+  // A stored delegation names itself by the short title it was given, so the row reads "Review SAI
+  // project tasks" rather than a slice of the instruction behind it.
   if (tc.toolName === 'delegate' && typeof args.title === 'string' && args.title.trim()) {
     return truncate(args.title.trim())
+  }
+  // An agent deployed, or told something, names it: "Deploying an agent - Price check".
+  if (tc.toolName === 'deployAgent' || tc.toolName === 'tellAgent') {
+    const phrase = PHRASES[tc.toolName]
+    const p = tc.done ? t(phrase[1]) : t(phrase[0])
+    const detail = detailFrom(tc.toolName === 'deployAgent' ? { title: args.title } : { message: args.message })
+    return detail ? `${p} - ${detail}` : p
+  }
+  // What an agent does to the agents it deployed, by the action it took.
+  if (tc.toolName === 'controlAgent') {
+    const action = typeof args.action === 'string' ? args.action : ''
+    if (action === 'pause') return tc.done ? t('Paused an agent') : t('Pausing an agent')
+    if (action === 'resume') return tc.done ? t('Resumed an agent') : t('Resuming an agent')
+    if (action === 'stop') return tc.done ? t('Stopped an agent') : t('Stopping an agent')
+    if (action === 'dismiss') return tc.done ? t('Dismissed an agent') : t('Dismissing an agent')
+    return tc.done ? t('Checked its agents') : t('Checking its agents')
+  }
+  // An alarm set names its note; listing and canceling say so.
+  if (tc.toolName === 'alarm') {
+    const action = typeof args.action === 'string' ? args.action : 'set'
+    if (action === 'list') return tc.done ? t('Checked its alarms') : t('Checking its alarms')
+    if (action === 'cancel') return tc.done ? t('Canceled an alarm') : t('Canceling an alarm')
+    const detail = detailFrom({ note: args.note })
+    const p = tc.done ? t('Set an alarm') : t('Setting an alarm')
+    return detail ? `${p} - ${detail}` : p
+  }
+  // Work left running in the background names the tool it runs.
+  if (tc.toolName === 'background') {
+    const action = typeof args.action === 'string' ? args.action : 'run'
+    if (action === 'list') return tc.done ? t('Checked its background work') : t('Checking its background work')
+    if (action === 'cancel') return tc.done ? t('Canceled background work') : t('Canceling background work')
+    const p = tc.done ? t('Started background work') : t('Starting background work')
+    return typeof args.tool === 'string' && args.tool ? `${p} - ${toolDisplayName(args.tool, t)}` : p
   }
   // A memory entry corrected or deleted by its id says so: "Remembered" would claim a new one.
   if (tc.toolName === 'remember' && typeof args.id === 'string' && args.id.trim()) {
@@ -286,15 +327,14 @@ export function toolActivity(tc: ToolCallInfo, t: Translate): string {
     const p = tc.done ? t('Updated memory') : t('Updating memory')
     return detail ? `${p} - ${detail}` : p
   }
-  // The main agent directing a sub-agent it started: what it told it, or that it stopped it.
+  // Stored calls of two tools that no longer exist (before 2026-10-28): the agent directing work it
+  // had handed off, and that work talking back.
   if (tc.toolName === 'steerSubAgent') {
     if (isTrue(args.stop)) return tc.done ? t('Stopped a sub-task') : t('Stopping a sub-task')
     const detail = detailFrom({ message: args.message })
     const p = tc.done ? t('Updated a sub-task') : t('Updating a sub-task')
     return detail ? `${p} - ${detail}` : p
   }
-  // A sub-agent talking to the agent that started it, in its own panel: a question it waits on, or
-  // something it tells it and carries on.
   if (tc.toolName === 'messageMainAgent') {
     const detail = detailFrom({ message: args.message })
     const p = isTrue(args.waitForReply)

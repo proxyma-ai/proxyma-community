@@ -13,7 +13,8 @@ import { KeyRound } from 'lucide-react'
 import { Callout } from './Callout'
 import { cn } from './cn'
 import { CopyButton } from './CopyButton'
-import { FIELD_BASE, fieldBorder } from './field'
+import { FIELD_BASE, fieldBorder, fieldWords } from './field'
+import { FIELD_BODY, FIELD_HEAD, FIELD_STACK, FieldHint, FieldNote } from './Input'
 import { TEXT } from './typeScale'
 
 /**
@@ -33,32 +34,42 @@ export function CopyField({ value, label, copyLabel, copiedLabel, mono = true, h
   copyLabel: string
   copiedLabel: string
   mono?: boolean
-  /** A line under the field. */
+  /**
+   * What the value is for - under the label, above the field; under the field when there is no
+   * label (`fieldWords`, since 2026-10-29).
+   */
   hint?: ReactNode
   id?: string
   className?: string
 }) {
   const generated = useId()
   const fieldId = id ?? generated
-  const noteId = `${fieldId}-note`
+  const words = fieldWords(fieldId, { labelled: !!label, hint: !!hint, error: false })
   return (
-    <div className={cn('flex flex-col min-w-0', className)}>
-      {label && <label htmlFor={fieldId} className={cn(TEXT.label, 'mb-2')}>{label}</label>}
-      <div className="relative">
-        <input
-          id={fieldId}
-          readOnly
-          value={value}
-          onFocus={e => e.currentTarget.select()}
-          aria-describedby={hint ? noteId : undefined}
-          spellCheck={false}
-          className={cn(FIELD_BASE, fieldBorder(undefined), 'pl-3 pr-10 text-ink-primary', mono && 'font-mono')}
-        />
-        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-          <CopyButton getText={() => value} label={copyLabel} copiedLabel={copiedLabel} />
-        </span>
+    <div className={cn('flex flex-col min-w-0', label && FIELD_STACK, className)}>
+      {label && (
+        <div className={FIELD_HEAD}>
+          <label htmlFor={fieldId} className={cn(TEXT.label, 'block', words.hintAbove ? 'mb-1' : 'mb-2')}>{label}</label>
+          {words.hintAbove && <FieldHint id={words.hintId}>{hint}</FieldHint>}
+        </div>
+      )}
+      <div className={FIELD_BODY}>
+        <div className="relative">
+          <input
+            id={fieldId}
+            readOnly
+            value={value}
+            onFocus={e => e.currentTarget.select()}
+            aria-describedby={words.describedBy}
+            spellCheck={false}
+            className={cn(FIELD_BASE, fieldBorder(undefined), 'pl-3 pr-10 text-ink-primary', mono && 'font-mono')}
+          />
+          <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+            <CopyButton getText={() => value} label={copyLabel} copiedLabel={copiedLabel} />
+          </span>
+        </div>
+        <FieldNote id={words.noteId} hint={words.hintAbove ? undefined : hint} />
       </div>
-      {hint && <p id={noteId} className={cn(TEXT.caption, 'mt-1.5')}>{hint}</p>}
     </div>
   )
 }

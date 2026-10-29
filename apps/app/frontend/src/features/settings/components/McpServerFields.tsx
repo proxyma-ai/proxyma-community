@@ -152,6 +152,10 @@ function McpAccessBody({ state, update, tokenField, editing, signedIn }: McpAcce
               ? t('Signed in. Sign in again from the connection list to use a different account.')
               : t('Not signed in yet. Use Sign in on the connection list.')}
         </Caption>
+        {/* What the client fields are for, before them (the field rule of 2026-10-29). */}
+        <Caption>
+          {t('Most servers register Proxyma by themselves. Enter a client only if the server asks for one; its redirect URL is {url}.', { url: window.location.origin + CALLBACK_PATH })}
+        </Caption>
         <FormColumns className="items-start">
           <Field label={t('Client ID')}>
             {id => <Input id={id} value={state.oauthClientId} onChange={e => update({ oauthClientId: e.target.value })} placeholder={t('Optional')} autoComplete="off" />}
@@ -174,9 +178,6 @@ function McpAccessBody({ state, update, tokenField, editing, signedIn }: McpAcce
         <Field label={t('Scope')}>
           {id => <Input id={id} value={state.oauthScope} onChange={e => update({ oauthScope: e.target.value })} placeholder={t('Optional')} autoComplete="off" />}
         </Field>
-        <Caption>
-          {t('Most servers register Proxyma by themselves. Enter a client only if the server asks for one; its redirect URL is {url}.', { url: window.location.origin + CALLBACK_PATH })}
-        </Caption>
       </div>
     </Presence>
   </div>)

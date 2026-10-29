@@ -91,7 +91,7 @@ export function SceneControl({ state, onPause, onPlay, onReplay, labels, classNa
     <button
       type="button"
       onClick={act}
-      className={cn('inline-flex items-center gap-1.5 text-xs text-ink-caption mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm animate-fade-in', className)}
+      className={cn('inline-flex items-center gap-2 text-xs text-ink-caption mouse:hover:text-ink-primary transition-colors focus-ring rounded-sm animate-fade-in', className)}
     >
       <Icon size={13} aria-hidden="true" />
       {label}
@@ -113,12 +113,12 @@ export function FaqItem({ id, question, answer }: { id: string; question: ReactN
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-controls={`faq-answer-${id}`}
-        className="w-full text-left py-5 text-base font-semibold text-ink-primary flex items-center justify-between gap-4 mouse:hover:text-brand-legible transition-colors focus-ring rounded-sm"
+        className="w-full text-left py-6 text-base font-semibold text-ink-primary flex items-center justify-between gap-4 mouse:hover:text-brand-legible transition-colors focus-ring rounded-sm"
       >
         <span>{question}</span>
         <DisclosureChevron open={open} className="text-ink-caption" />
       </button>
-      <Collapse open={open} id={`faq-answer-${id}`} className="pb-6 -mt-1 max-w-2xl text-base leading-relaxed text-ink-secondary">{answer}</Collapse>
+      <Collapse open={open} id={`faq-answer-${id}`} className="pb-6 -mt-1 max-w-2xl text-base text-ink-secondary">{answer}</Collapse>
     </div>
   )
 }
@@ -130,7 +130,7 @@ export function FaqItem({ id, question, answer }: { id: string; question: ReactN
  * scaled ONCE here with CSS `zoom` - so no component needs a "scene" size, which is how the
  * replicas drifted. The body is `inert`: a picture, not a control.
  */
-export function SceneFrame({ chrome, header, children, scale = 'md', height, bodyClassName, caption, label, controls, className }: {
+export function SceneFrame({ chrome, header, children, scale = 'md', height, bodyClassName, caption, label, controls, lift = 'card', className }: {
   /**
    * What the picture shows, in one sentence - its text alternative. The frame is then an image to
    * a screen reader (`role="img"`), since its body is inert and cannot be explored anyway.
@@ -149,12 +149,19 @@ export function SceneFrame({ chrome, header, children, scale = 'md', height, bod
   /** The body's own layout (`flex flex-col`, so a header and a scene share its height). */
   bodyClassName?: string
   caption?: ReactNode
+  /**
+   * How far the picture stands off the page: `card` (the default) as a card does, `float` as what
+   * floats does - for the one picture a page leads with.
+   */
+  lift?: 'card' | 'float'
   className?: string
 }) {
   return (
     <figure className={cn('m-0', className)}>
       <div
-        className="rounded-lg border border-line bg-canvas overflow-hidden"
+        // The picture of an app window: the app's own page plane inside, lifted off the site's
+        // page as a card is (since 2026-10-29).
+        className={cn('rounded-lg border border-line bg-canvas overflow-hidden', lift === 'float' ? 'shadow-float' : 'shadow-card')}
         {...(label ? { role: 'img', 'aria-label': label } : {})}
       >
         {chrome}

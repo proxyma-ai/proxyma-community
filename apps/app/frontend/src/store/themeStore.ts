@@ -23,13 +23,14 @@ export const DEFAULT_BRANDING: ProductBranding = {
 }
 
 // The same key the two-way light/dark flip wrote, so an existing choice survives the upgrade:
-// parseAppearance reads its `dark` as Gray. The pre-paint script (public/appearance-init.js) reads
-// it too - keep the two in step.
+// parseAppearance reads its `dark`, and the `gray` and `black` of 0.13.0-0.36, as Dark. The pre-paint
+// script (/appearance-init.js, emitted by vite.config.ts from the kit's appearanceInitScript) reads
+// it too, under this same key - keep the two in step.
 const MODE_STORAGE_KEY = 'proxyma-theme-mode'
 
 // System, when nothing is stored: follow the operating system, as every Proxyma app and the
-// landing site do (decided 2026-09-25). A choice already stored is kept. The pre-paint script
-// (public/appearance-init.js) repeats this default; change the two together.
+// landing site do (decided 2026-09-25). A choice already stored is kept. The pre-paint script's
+// default is the same `system`.
 const DEFAULT_PREFERENCE: AppearancePreference = 'system'
 
 function readStoredPreference(): AppearancePreference {
@@ -44,8 +45,7 @@ function systemQuery(): MediaQueryList | null {
   return typeof window.matchMedia === 'function' ? window.matchMedia(SYSTEM_DARK_QUERY) : null
 }
 
-// data-mode is light or dark, and data-shade="black" is Dark's second attribute - see the kit's
-// appearance.ts. (A `data-brand` attribute was written here for token blocks keyed off it; none
+// data-mode is light or dark - see the kit's appearance.ts. (A `data-brand` attribute was written here for token blocks keyed off it; none
 // has been since the tenant skin went, and it was dropped with the other tenant leftovers.)
 // `smoothly` for a change while the page is open - one crossfade of the page (the kit's motion.ts);
 // the startup application has nothing to fade from.

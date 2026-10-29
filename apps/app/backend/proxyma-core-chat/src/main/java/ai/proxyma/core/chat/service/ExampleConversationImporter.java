@@ -4,12 +4,14 @@ import ai.proxyma.core.chat.domain.MessageRole;
 import ai.proxyma.core.chat.model.ChatMessage;
 import ai.proxyma.core.chat.model.Conversation;
 import ai.proxyma.core.chat.model.ConversationShare;
-import ai.proxyma.core.chat.model.SubAgentRun;
+import ai.proxyma.core.chat.agents.AgentInbox;
+import ai.proxyma.core.chat.agents.AgentTree;
+import ai.proxyma.core.chat.model.AgentNode;
 import ai.proxyma.core.chat.repository.ChatMessageRepository;
 import ai.proxyma.core.chat.repository.ConversationRepository;
 import ai.proxyma.core.chat.repository.ConversationShareRepository;
 import ai.proxyma.core.chat.repository.JpaChatMemoryRepository;
-import ai.proxyma.core.chat.repository.SubAgentRunRepository;
+import ai.proxyma.core.chat.repository.AgentNodeRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -68,10 +70,12 @@ import java.util.function.Supplier;
  * same message with the same tool rows. A {@code reports} entry is the marked USER row a
  * background sub-agent's report arrives in.
  *
- * <p><b>SUB-AGENTS GET NEW IDS.</b> Each recorded one is written as a SubAgentRun under a fresh id,
- * and every place that names it - its {@code delegate} call's result, which is how the transcript
- * finds the panel, and the report row - is rewritten to that id. A recorded id copied verbatim
- * would collide with itself on a second import into a database that kept the first.
+ * <p><b>A RECORDED SUB-AGENT IS WRITTEN AS A DEPLOYED AGENT</b> (AgentTree): an agent row under a
+ * fresh id, finished, with a conversation of its own holding its task and its report, and its
+ * {@code delegate} call is the {@code deployAgent} call that started it, its result naming the new
+ * agent and conversation. Its report row is the inbox message an agent's report arrives in. A
+ * recorded id copied verbatim would collide with itself on a second import into a database that
+ * kept the first.
  *
  * <p><b>THE TIMES ARE MOVED</b> so the run ended a few minutes before the import: a visitor reads an
  * example that happened today, not one dated the day it was recorded.
@@ -94,14 +98,14 @@ public class ExampleConversationImporter {
 
     private final ConversationRepository conversations;
     private final ChatMessageRepository messages;
-    private final SubAgentRunRepository subAgentRuns;
+    private final AgentNodeRepository agentNodes;
     private final ConversationShareRepository shares;
 
     public ExampleConversationImporter(ConversationRepository conversations, ChatMessageRepository messages,
-                                       SubAgentRunRepository subAgentRuns, ConversationShareRepository shares) {
+                                       AgentNodeRepository agentNodes, ConversationShareRepository shares) {
         this.conversations = conversations;
         this.messages = messages;
-        this.subAgentRuns = subAgentRuns;
+        this.agentNodes = agentNodes;
         this.shares = shares;
     }
 
@@ -133,7 +137,11 @@ public class ExampleConversationImporter {
             ChatMessage saved = messages.save(plan.rows().get(i));
             if (i == plan.finalAnswerIndex()) sharedId = saved.getId();
         }
-        subAgentRuns.saveAll(plan.subAgents());
+        for (Agent a : plan.subAgents()) {
+            agentNodes.save(a.node());
+            conversations.save(a.conversation());
+            for (ChatMessage row : a.rows()) messages.save(row);
+        }
 
         ConversationShare share = new ConversationShare();
         share.setToken(shareToken);
@@ -143,7 +151,7 @@ public class ExampleConversationImporter {
         share.setCreatedByName(ownerName);
         share.setCreatedAt(plan.conversation().getUpdatedAt());
         shares.save(share);
-        log.info("[Chat] imported example conversation '{}' ({} rows, {} sub-agent(s)), shared as {}",
+        log.info("[Chat] imported example conversation '{}' ({} rows, {} agent(s)), shared as {}",
                 plan.conversation().getTitle(), plan.rows().size(), plan.subAgents().size(), shareToken);
         return Optional.of(new Imported(plan.conversation().getId(), sharedId, plan.rows().size(),
                 plan.subAgents().size()));
@@ -152,8 +160,11 @@ public class ExampleConversationImporter {
     // -- The rows, as a function of the document -------------------------------------------------
 
     /** The rows an import writes, in order; {@code finalAnswerIndex} is the row the share ends at. */
-    record Plan(Conversation conversation, List<ChatMessage> rows, List<SubAgentRun> subAgents,
+    record Plan(Conversation conversation, List<ChatMessage> rows, List<Agent> subAgents,
                 int finalAnswerIndex) {}
+
+    /** A recorded sub-agent as a finished deployed agent: its row, its conversation and its two rows. */
+    record Agent(AgentNode node, Conversation conversation, List<ChatMessage> rows) {}
 
     static JsonNode read(String json) {
         JsonNode doc;
@@ -188,8 +199,10 @@ public class ExampleConversationImporter {
             agentIds.put(id, newIds.get());
             agentsById.put(id, agent);
         }
-        // The delegate call that started each one - SubAgentRun.callId.
-        Map<String, String> callIdByAgent = new HashMap<>();
+        // Recorded sub-agent id -> the conversation it is written as, and the task its delegate gave.
+        Map<String, String> conversationIds = new HashMap<>();
+        for (String recorded : agentIds.keySet()) conversationIds.put(recorded, newIds.get());
+        Map<String, String> taskByAgent = new HashMap<>();
 
         List<ChatMessage> rows = new ArrayList<>();
         Clock clock = new Clock(shift);
@@ -211,21 +224,16 @@ public class ExampleConversationImporter {
                     rows.add(row(conversationId, MessageRole.USER, content, clock.at(at)));
                 }
                 case "reports" -> {
-                    List<SubAgentService.Settled> settled = new ArrayList<>();
+                    List<AgentInbox.Taken> settled = new ArrayList<>();
                     for (String recorded : strings(m.path("agents"))) {
                         JsonNode agent = agentsById.get(recorded);
                         if (agent == null) continue;
-                        long started = agent.path("startedAt").asLong(0);
-                        long ended = agent.path("endedAt").asLong(started);
-                        settled.add(new SubAgentService.Settled(agentIds.get(recorded),
-                                agent.path("title").asText("Sub-agent"),
-                                agent.path("status").asText("COMPLETED").toUpperCase(Locale.ROOT),
-                                agent.path("report").asText(""),
-                                Math.max(0, (ended - started) / 1000)));
+                        settled.add(new AgentInbox.Taken(null, AgentInbox.Kind.REPORT,
+                                UUID.fromString(agentIds.get(recorded)), agent.path("title").asText("Agent"),
+                                agent.path("report").asText(""), clock.at(at)));
                     }
                     if (!settled.isEmpty()) {
-                        rows.add(row(conversationId, MessageRole.USER,
-                                SubAgentService.reportMessage(settled, null), clock.at(at)));
+                        rows.add(row(conversationId, MessageRole.USER, AgentInbox.render(settled), clock.at(at)));
                     }
                 }
                 case "assistant" -> {
@@ -240,14 +248,17 @@ public class ExampleConversationImporter {
                             String id = call.path("id").asText(null);
                             String name = call.path("name").asText(null);
                             if (id == null || name == null) continue;
-                            asked.add(new ToolCall(id, "function", name, call.path("arguments").asText("{}")));
+                            String arguments = call.path("arguments").asText("{}");
                             String result = call.path("result").isNull() ? null : call.path("result").asText(null);
                             String recordedAgent = call.path("agentId").asText(null);
                             if (recordedAgent == null) recordedAgent = agentIdIn(result);
                             if (recordedAgent != null && agentIds.containsKey(recordedAgent)) {
-                                result = withAgentId(result, agentIds.get(recordedAgent));
-                                callIdByAgent.put(recordedAgent, id);
+                                // The delegate that started it is the deployAgent that would have.
+                                name = DEPLOY;
+                                result = deployResult(agentIds.get(recordedAgent), conversationIds.get(recordedAgent));
+                                taskByAgent.put(recordedAgent, taskIn(arguments));
                             }
+                            asked.add(new ToolCall(id, "function", name, arguments));
                             if (call.path("done").asBoolean(result != null)) {
                                 answered.add(new ToolResponse(id, name, result == null ? "" : result));
                             }
@@ -287,10 +298,10 @@ public class ExampleConversationImporter {
             }
         }
 
-        List<SubAgentRun> runs = new ArrayList<>();
+        List<Agent> runs = new ArrayList<>();
         for (Map.Entry<String, JsonNode> e : agentsById.entrySet()) {
-            runs.add(subAgentRun(e.getValue(), agentIds.get(e.getKey()), conversationId,
-                    callIdByAgent.get(e.getKey()), shift));
+            runs.add(agent(e.getValue(), agentIds.get(e.getKey()), conversationIds.get(e.getKey()), conversationId,
+                    ownerUserId, taskByAgent.get(e.getKey()), shift));
         }
 
         Conversation conversation = new Conversation();
@@ -316,49 +327,80 @@ public class ExampleConversationImporter {
         return new Plan(conversation, rows, runs, finalAnswer);
     }
 
-    private static SubAgentRun subAgentRun(JsonNode agent, String id, String conversationId, String callId,
-                                           long shift) {
-        SubAgentRun run = new SubAgentRun(id, conversationId, callId, agent.path("title").asText("Sub-agent"),
-                agent.path("mode").asText("ASYNC").toUpperCase(Locale.ROOT));
-        run.setStatus(agent.path("status").asText("COMPLETED").toUpperCase(Locale.ROOT));
+    static final String DEPLOY = "deployAgent";
+
+    private static Agent agent(JsonNode agent, String id, String agentConversationId, String parentConversationId,
+                               String ownerUserId, String task, long shift) {
         long started = agent.path("startedAt").asLong(0);
-        long ended = agent.path("endedAt").asLong(0);
-        if (started > 0) run.setStartedAt(Instant.ofEpochMilli(started + shift));
-        if (ended > 0) run.setEndedAt(Instant.ofEpochMilli(ended + shift));
-        run.setReport(agent.path("report").isNull() ? null : agent.path("report").asText(null));
-        run.setItemsJson(shiftedItems(agent.path("items"), shift));
+        long ended = agent.path("endedAt").asLong(started);
+        Instant startedAt = Instant.ofEpochMilli((started > 0 ? started : ended) + shift);
+        Instant endedAt = Instant.ofEpochMilli((ended > 0 ? ended : started) + shift);
+        String title = agent.path("title").asText("Agent");
+        String report = agent.path("report").isNull() ? "" : agent.path("report").asText("");
+
+        AgentNode n = new AgentNode();
+        n.setId(UUID.fromString(id));
+        n.setConversationId(agentConversationId);
+        n.setParentConversationId(parentConversationId);
+        n.setRootConversationId(parentConversationId);
+        n.setUserId(ownerUserId);
+        n.setDepth(1);
+        n.setLifetime(AgentNode.SHORT);
+        n.setTitle(title.length() <= AgentNode.TITLE_MAX ? title : title.substring(0, AgentNode.TITLE_MAX));
+        n.setTask(task == null || task.isBlank() ? title : task);
+        n.setModel(agent.path("model").asText(null));
+        n.setStatus(switch (agent.path("status").asText("COMPLETED").toUpperCase(Locale.ROOT)) {
+            case "FAILED" -> AgentNode.FAILED;
+            case "STOPPED" -> AgentNode.STOPPED;
+            default -> AgentNode.DONE;
+        });
         // Its report reached the conversation when it was recorded; nothing is owed for it now.
-        run.setDelivered(true);
-        run.setProvider(agent.path("provider").asText(null));
-        run.setModel(agent.path("model").asText(null));
-        run.setInputTokens(agent.path("inputTokens").asLong(0));
-        run.setOutputTokens(agent.path("outputTokens").asLong(0));
-        run.setCacheReadTokens(agent.path("cacheReadTokens").asLong(0));
-        run.setCacheWriteTokens(agent.path("cacheWriteTokens").asLong(0));
-        run.setCostUsd(agent.path("costUsd").asDouble(0));
-        run.setContextTokens(agent.path("contextTokens").asLong(0));
-        run.setContextWindow(agent.path("contextWindow").asLong(0));
-        return run;
+        n.setReportOwed(false);
+        n.setLastReport(report);
+        n.setCreatedAt(startedAt);
+        n.setEndedAt(endedAt);
+
+        Conversation c = new Conversation();
+        c.setId(agentConversationId);
+        c.setUserId(ownerUserId);
+        c.setTitle(n.getTitle());
+        c.setSurface(AgentTree.SURFACE);
+        c.setPinned(true);
+        c.setCreatedAt(startedAt);
+        c.setUpdatedAt(endedAt);
+        c.setMessageCount(2);
+        c.setInputTokens(agent.path("inputTokens").asLong(0));
+        c.setOutputTokens(agent.path("outputTokens").asLong(0));
+        c.setCacheReadTokens(agent.path("cacheReadTokens").asLong(0));
+        c.setCacheWriteTokens(agent.path("cacheWriteTokens").asLong(0));
+        c.setContextTokens((int) Math.min(Integer.MAX_VALUE, agent.path("contextTokens").asLong(0)));
+        c.setEstimatedCostUsd(agent.path("costUsd").asDouble(0));
+
+        List<ChatMessage> rows = List.of(
+                row(agentConversationId, MessageRole.USER, n.getTask(), startedAt),
+                row(agentConversationId, MessageRole.ASSISTANT, report.isBlank() ? "(no report)" : report, endedAt));
+        return new Agent(n, c, rows);
     }
 
-    // The sub-agent's steps, as SubAgentView.Item JSON, with their times moved like everything else.
-    private static String shiftedItems(JsonNode items, long shift) {
-        if (!items.isArray()) return null;
-        ArrayNode out = JSON.createArrayNode();
-        for (JsonNode item : items) {
-            if (!item.isObject()) continue;
-            ObjectNode copy = ((ObjectNode) item).deepCopy();
-            for (String field : List.of("startedAt", "endedAt")) {
-                if (copy.path(field).canConvertToLong() && copy.path(field).asLong() > 0) {
-                    copy.put(field, copy.path(field).asLong() + shift);
-                }
-            }
-            out.add(copy);
+    // What deployAgent returns, naming the agent and its conversation.
+    static String deployResult(String agentId, String conversationId) {
+        return json(Map.of("success", true, "agentId", agentId, "conversationId", conversationId,
+                "status", AgentNode.DONE));
+    }
+
+    // The task a recorded delegate call gave, from its arguments.
+    static String taskIn(String arguments) {
+        try {
+            JsonNode a = JSON.readTree(arguments);
+            String task = a.path("task").asText(null);
+            String instructions = a.path("instructions").asText(null);
+            if (task == null) return instructions;
+            return instructions == null || instructions.isBlank() ? task : instructions + "\n\n" + task;
+        } catch (Exception e) {
+            return null;
         }
-        return out.toString();
     }
 
-    // The latest time the document mentions, which is when the recorded run ended.
     private static long recordedEnd(JsonNode doc) {
         long end = Math.max(doc.path("updatedAt").asLong(0), doc.path("createdAt").asLong(0));
         for (JsonNode m : doc.path("messages")) {

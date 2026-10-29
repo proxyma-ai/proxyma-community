@@ -29,7 +29,7 @@ package ai.proxyma.core.system.legal;
 // it, so a change to it is a change to what consent means, exactly as for the other two.
 public final class LegalDocuments {
 
-    public static final String CURRENT_VERSION = "2026-10-26";
+    public static final String CURRENT_VERSION = "2026-10-29";
 
     /**
      * Whether an account holding {@code versionAccepted} still needs to accept the documents in

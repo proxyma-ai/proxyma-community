@@ -56,7 +56,7 @@ class PermissionModeTest {
                 mock(ToolSkillGating.class), mock(SystemPromptService.class), mock(FeedbackRepository.class),
                 mock(ConversationShareRepository.class), mock(ChatEventSink.class),
                 mock(ConversationTitleService.class), mock(ModelPricingService.class),
-                mock(SubAgentService.class), mock(WorkflowRunService.class), mock(WorkflowService.class),
+                mock(WorkflowRunService.class), mock(WorkflowService.class),
                 mock(WorkflowRunner.class), mock(GuardrailService.class));
     }
 
@@ -110,62 +110,6 @@ class PermissionModeTest {
         assertThat(decide(SAVE_NOTE)).isEqualTo(ChatService.READ_ONLY_REFUSAL);
         chatService.setPermissionMode(CONV, PermissionMode.AUTO);
         assertThat(decide(SAVE_NOTE)).isNull();
-    }
-
-    // -- The same gate, when the call is a sub-agent's -------------------------------------------
-
-    /** A sub-agent, as the tool path sees one: an id, and somewhere to say it is waiting. */
-    private static final class Scope implements AgentHost.AgentScope {
-        final java.util.List<Boolean> waits = new java.util.ArrayList<>();
-        @Override public String agentId() { return "agent-1"; }
-        @Override public String stopNote() { return "Stopped by the user."; }
-        @Override public void toolStarted(String callId, String toolName, String arguments, long seq, long at) {}
-        @Override public void toolFinished(String callId, String result, long seq, long at) {}
-        @Override public void waitingForUser(boolean waiting) { waits.add(waiting); }
-    }
-
-    private String decide(ToolCall call, Scope scope) {
-        return chatService.awaitApprovalIfNeeded(CONV, call, call.id(), new AtomicBoolean(true), scope);
-    }
-
-    @Test
-    @DisplayName("a sub-agent's write pauses for the user exactly as the main agent's does")
-    void aSubAgentsWritePauses() {
-        Scope scope = new Scope();
-
-        assertThat(decide(WRITE, scope))
-                .isEqualTo("{\"success\":false,\"error\":\"" + ChatService.STOPPED_BEFORE_ANSWER + "\"}");
-        // It reached the pause - the user was asked, and the wait was the user's, not its own.
-        assertThat(scope.waits).containsExactly(true, false);
-    }
-
-    @Test
-    @DisplayName("Read-only refuses a sub-agent's write before any prompt")
-    void readOnlyRefusesASubAgentToo() {
-        chatService.setPermissionMode(CONV, PermissionMode.READ_ONLY);
-        Scope scope = new Scope();
-
-        assertThat(decide(WRITE, scope)).isEqualTo(ChatService.READ_ONLY_REFUSAL);
-        assertThat(scope.waits).as("nobody was asked").isEmpty();
-    }
-
-    @Test
-    @DisplayName("a switch that is off refuses a sub-agent's write, in Auto as well")
-    void theSwitchesRefuseASubAgentToo() {
-        chatService.setPermissionMode(CONV, PermissionMode.AUTO);
-        when(guard.checkWriteAllowed(any(), any())).thenReturn("Write is off for this connection.");
-
-        assertThat(decide(WRITE, new Scope())).contains("Write is off for this connection.");
-    }
-
-    @Test
-    @DisplayName("a sub-agent may not delegate or switch the conversation's server; everything else it may call")
-    void whatASubAgentIsRefused() {
-        assertThat(ChatService.refusedToSubAgents("delegate")).contains("cannot delegate");
-        assertThat(ChatService.refusedToSubAgents("useServer")).contains("cannot switch the conversation's server");
-        assertThat(ChatService.refusedToSubAgents("createJiraIssue")).isNull();
-        assertThat(ChatService.refusedToSubAgents("searchIndexedSources")).isNull();
-        assertThat(ChatService.refusedToSubAgents("askUser")).isNull();
     }
 
     @Test

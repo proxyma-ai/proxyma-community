@@ -35,6 +35,14 @@ public class RememberTool {
         this.agentMemoryService = agentMemoryService;
     }
 
+    // Set by Spring; absent in a test that builds the tool by hand, which then searches as before.
+    private ai.proxyma.core.chat.module.AgentProfiles agentProfiles;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentProfiles(ai.proxyma.core.chat.module.AgentProfiles agentProfiles) {
+        this.agentProfiles = agentProfiles;
+    }
+
     @Tool(description = "Save one fact for future conversations, or change one already saved. One per call. "
             + "Without id: a new entry, and a near-duplicate replaces the old one. With an id from recall: "
             + "fact replaces that entry, or forget=true deletes it. If success is false, say the save failed.")
@@ -50,7 +58,8 @@ public class RememberTool {
             @ToolParam(required = false, description = "An entry id from recall, to replace or delete that "
                     + "entry instead of adding one") String id,
             @ToolParam(required = false, description = "true with id: delete that entry") Boolean forget) {
-        String userId = ToolUserContext.resolveUserId(multiUser);
+        // The user's own memory, or the saved agent's when this conversation is one of its.
+        String userId = ToolUserContext.resolveMemoryOwner(multiUser, agentProfiles);
         if (userId == null) {
             return Map.of("success", false, "error", "No persistent identity for this session.");
         }

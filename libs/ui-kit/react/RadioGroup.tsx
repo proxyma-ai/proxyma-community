@@ -23,7 +23,7 @@ export function ChoiceMark({ checked, multi = false, indeterminate = false, clas
       <span
         aria-hidden="true"
         className={cn(
-          'w-4 h-4 shrink-0 rounded border flex items-center justify-center transition-all',
+          'w-4 h-4 shrink-0 rounded-sm border flex items-center justify-center transition-all',
           checked || indeterminate ? 'bg-brand-solid border-brand-solid' : 'border-line bg-transparent group-hover:border-ink-disabled',
           className,
         )}
@@ -51,7 +51,7 @@ export function ChoiceMark({ checked, multi = false, indeterminate = false, clas
 export interface RadioOption<T extends string = string> {
   value: T
   label: ReactNode
-  /** A caption under the label. */
+  /** A caption directly under the label, 4px below it (the field rule of 2026-10-29). */
   hint?: ReactNode
   disabled?: boolean
 }
@@ -80,12 +80,15 @@ export function RadioGroup<T extends string>({ value, onChange, options, horizon
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn(horizontal ? 'flex flex-wrap gap-x-4 gap-y-2' : 'space-y-2', 'animate-fade-in', disabled && 'opacity-50')}
+      // On glass every option is a 44px target already, so the rows touch rather than adding 8px
+      // over that, and a one-line option's words sit in the middle of its target - top-aligned they
+      // left 32px of air under every row of a wrapped group (the UI review's phone pass, 2026-10-28).
+      className={cn(horizontal ? 'flex flex-wrap gap-x-4 gap-y-2 touch:gap-y-0' : 'space-y-2 touch:space-y-0', 'animate-fade-in', disabled && 'opacity-50')}
     >
       {options.map(o => {
         const off = disabled || o.disabled
         return (
-          <label key={o.value} className={cn('flex items-start gap-2.5 group', off ? 'cursor-not-allowed' : 'cursor-pointer')}>
+          <label key={o.value} className={cn('relative flex items-start gap-2 group touch:min-h-tap', !o.hint && 'touch:items-center', off ? 'cursor-not-allowed' : 'cursor-pointer')}>
             <input
               type="radio"
               name={groupName}
@@ -97,11 +100,11 @@ export function RadioGroup<T extends string>({ value, onChange, options, horizon
             />
             <ChoiceMark
               checked={value === o.value}
-              className="mt-0.5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-solid peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas"
+              className={cn('mt-0.5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-solid peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas', !o.hint && 'touch:mt-0')}
             />
             <span className="min-w-0">
               <span className={cn(TEXT.option, 'block', figures && 'data-readout')}>{o.label}</span>
-              {o.hint && <span className={cn(TEXT.caption, 'block mt-0.5')}>{o.hint}</span>}
+              {o.hint && <span className={cn(TEXT.caption, 'block mt-1 max-w-[60ch]')}>{o.hint}</span>}
             </span>
           </label>
         )

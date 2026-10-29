@@ -80,7 +80,7 @@ function Payload({ label, json, fit = false }: { label: string; json: string; fi
       {/* A sentence-case label over the block (it was an upper-case copy of `label-upper`), and
           the switch between fields and JSON as a quiet text action beside it. */}
       <Eyebrow
-        className="mb-1.5 shrink-0"
+        className="mb-2 shrink-0"
         action={hasFields && (
           <Button variant="quiet" onClick={() => setRaw(r => !r)} aria-pressed={raw}>
             {raw ? t('Show as fields') : t('Show raw JSON')}

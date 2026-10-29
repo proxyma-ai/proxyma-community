@@ -55,7 +55,7 @@ function SharedConversationView({ token }: { token: string }) {
   if (isError) {
     return (
       // The kit ErrorState - what failed, what to know, the one way on - in the thread's column.
-      <div className={cn(THREAD_COLUMN, 'px-2 sm:px-6 py-8')}>
+      <div className={cn(THREAD_COLUMN, 'px-3 sm:px-6 py-8')}>
         <ErrorState
           title={t('This shared conversation is no longer available')}
           action={<Link to="/" className={cn(textLink('brand'), 'text-xs')}>{t('Go to chat')}</Link>}

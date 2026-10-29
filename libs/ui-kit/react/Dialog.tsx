@@ -24,13 +24,13 @@ import { useModalLayer } from './useModalLayer'
  */
 
 /**
- * THE SCRIM UNDER EVERY DIALOG: it darkens AND blurs what is behind it - the one place backdrop
- * blur is used anywhere (maintainer's request, 2026-09-27). A dialog opened over a dialog lays a
+ * THE SCRIM UNDER EVERY DIALOG: it darkens AND blurs what is behind it (maintainer's request,
+ * 2026-09-27; `.modal-scrim`, a cool shade rather than black in an app shell's Light since the glass). A dialog opened over a dialog lays a
  * second one on top, which is what sets the lower one aside. Status screens (restart, quit) and
  * the image lightbox take the darker `MODAL_SCRIM_DARK`.
  */
-export const MODAL_SCRIM = 'fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in'
-export const MODAL_SCRIM_DARK = 'fixed inset-0 bg-black/75 backdrop-blur-sm animate-fade-in'
+export const MODAL_SCRIM = 'fixed inset-0 modal-scrim animate-fade-in'
+export const MODAL_SCRIM_DARK = 'fixed inset-0 modal-scrim modal-scrim-deep animate-fade-in'
 
 /**
  * The full-screen container. NO horizontal padding below `sm` (maintainer, 2026-10-02): the
@@ -68,17 +68,33 @@ export const DIALOG_WIDTH: Record<DialogSize, string> = {
 }
 
 /**
- * The panel itself. `fill` gives a dialog a fixed height (a list, an editor) so ONE region inside
- * it scrolls and the dialog does not change size as content loads.
+ * A dialog that needs ROOM - one with a region that scrolls (`fill` or `cap`) - is as wide as the
+ * WINDOW allows from `lg`, a margin round it, up to a width a line can still be read at (the
+ * maintainer, 2026-10-30: such dialogs "should be aware of the app size, and utilize more space").
+ * The narrow sizes keep their width: a list or a notice gains nothing from it.
+ */
+const DIALOG_ROOMY: Partial<Record<DialogSize, string>> = {
+  form: 'max-w-2xl lg:max-w-[min(80rem,calc(100vw-4rem))]',
+  wide: 'max-w-3xl lg:max-w-[min(100rem,calc(100vw-4rem))]',
+  full: 'max-w-3xl lg:max-w-[min(100rem,calc(100vw-4rem))]',
+}
+
+/**
+ * The panel itself. `fill` gives a dialog a fixed height - the window's, less a margin - so ONE
+ * region inside it scrolls (a list, an editor) and the dialog does not change size as content
+ * loads; with `cap` it is as tall as its content up to that. Either way a roomy size takes the
+ * window's width too (DIALOG_ROOMY).
  */
 export function dialogPanel(size: DialogSize, opts: { fill?: boolean; cap?: boolean; className?: string } = {}): string {
+  const roomy = (opts.fill || opts.cap) && DIALOG_ROOMY[size]
   return cn(
-    'relative surface-float border border-line/45 rounded-lg shadow-card w-full mx-4 animate-slide-up flex flex-col',
-    DIALOG_WIDTH[size],
-    opts.fill && 'h-[min(760px,calc(100dvh-2rem))] short:h-[calc(100dvh-1rem)]',
+    'relative surface-float border rounded-lg shadow-float w-full mx-4 animate-slide-up flex flex-col',
+    roomy || DIALOG_WIDTH[size],
+    // Clipped as a capped one is: nothing inside may stretch the overlay behind it and scroll the page.
+    opts.fill && 'h-[calc(100dvh-3rem)] short:h-[calc(100dvh-1rem)] overflow-hidden',
     // CAPPED, not fixed: the dialog is as tall as its content up to the window's height, and then its
     // one `DialogBody scroll` region scrolls. Five dialogs typed this cap with five values.
-    opts.cap && !opts.fill && 'max-h-[min(760px,calc(100dvh-2rem))] short:max-h-[calc(100dvh-1rem)] overflow-hidden',
+    opts.cap && !opts.fill && 'max-h-[calc(100dvh-3rem)] short:max-h-[calc(100dvh-1rem)] overflow-hidden',
     opts.className,
   )
 }
@@ -224,14 +240,14 @@ export function DialogShell({
   )
 }
 
-/** A dialog's name - the type scale's title, 18/600. One size for every dialog in four apps. */
+/** A dialog's name - the type scale's title, 18/26 600. One size for every dialog in four apps. */
 export function DialogTitle({ children, id, className }: { children: ReactNode; id?: string; className?: string }) {
   return <h2 id={id} className={cn(TEXT.title, className)}>{children}</h2>
 }
 
 /**
- * The paragraph under a title. `body` (14px secondary) for a confirmation, where it IS the content;
- * `caption` (13px) for a form, where it only introduces the fields.
+ * The paragraph under a title. `body` (16/26 secondary, `TEXT.body`) for a confirmation, where it
+ * IS the content; `caption` (13/18) for a form, where it only introduces the fields.
  */
 export function DialogDescription({ children, tone = 'body', className }: { children: ReactNode; tone?: 'body' | 'caption'; className?: string }) {
   return <div className={cn(tone === 'body' ? TEXT.body : TEXT.caption, className)}>{children}</div>
@@ -253,7 +269,7 @@ export function DialogHeader({ title, icon, subtitle, actions, titleId, wrapTitl
   className?: string
 }) {
   return (
-    <div className={cn('flex items-start gap-3 px-4 sm:px-6 py-4 short:py-2.5 border-b border-line/45 shrink-0', className)}>
+    <div className={cn('flex items-start gap-3 px-4 sm:px-6 py-4 short:py-2 border-b border-line/45 shrink-0', className)}>
       {icon && <div className="shrink-0 h-7 flex items-center [&>svg]:w-5 [&>svg]:h-5">{icon}</div>}
       <div className="flex-1 min-w-0">
         <DialogTitle id={titleId} className={wrapTitle ? 'break-words' : 'truncate'}>{title}</DialogTitle>
@@ -280,7 +296,7 @@ export function DialogBody({ children, scroll, centered, flush, className }: {
     <div
       data-dialog-body=""
       className={cn(
-        !flush && (centered ? 'px-4 sm:px-6 pt-6 pb-5' : 'px-4 sm:px-6 py-5 short:py-3'),
+        !flush && (centered ? 'px-4 sm:px-6 py-6' : 'px-4 sm:px-6 py-6 short:py-3'),
         centered && 'flex flex-col items-center text-center',
         scroll && 'flex-1 min-h-0 overflow-y-auto',
         className,
@@ -300,7 +316,7 @@ export function DialogBody({ children, scroll, centered, flush, className }: {
 export function DialogFooter({ children, start, wrap, className }: { children: ReactNode; start?: ReactNode; wrap?: boolean; className?: string }) {
   return (
     // Fades in: a dialog that moves through steps swaps its footer, and the new one should arrive.
-    <div className={cn('flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2.5 border-t border-line/45 shrink-0 animate-fade-in', wrap && 'flex-wrap gap-y-2', className)}>
+    <div className={cn('flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2 border-t border-line/45 shrink-0 animate-fade-in', wrap && 'flex-wrap gap-y-2', className)}>
       {/* A status line comes and goes by fading (Presence), keeping its place at the left. */}
       <Presence show={!!start} collapse={false} className="mr-auto min-w-0">
         <div className="min-w-0 flex items-center gap-3 text-xs">{start}</div>
@@ -328,7 +344,7 @@ export function DialogNotice({ children, title, detail, action, icon: Icon = Ale
   return (
     <div className="flex flex-col items-center text-center gap-4 py-2">
       <Icon size={28} className={cn(tone === 'warning' && 'text-warning', tone === 'danger' && 'text-danger', tone === 'brand' && 'text-brand-legible', tone === 'neutral' && 'text-ink-caption')} aria-hidden="true" />
-      <div className="text-sm text-ink-secondary leading-relaxed max-w-sm space-y-2">
+      <div className="text-sm text-ink-secondary max-w-sm space-y-2">
         {title && <p className={TEXT.label}>{title}</p>}
         {children}
         {detail && <p className={cn(TEXT.caption, 'break-words')}>{detail}</p>}
@@ -400,9 +416,9 @@ export function ConfirmDialog({
         <DialogTitle id={titleId}>{title}</DialogTitle>
         {(description || subject !== undefined) && <DialogDescription className="mt-2">{description}{subject !== undefined && <> <strong className="font-semibold text-ink-primary break-words">{subject}</strong></>}</DialogDescription>}
         {consequences && consequences.length > 0 && (
-          <ul className="mt-3 space-y-1.5 text-left self-stretch">
+          <ul className="mt-3 space-y-2 text-left self-stretch">
             {consequences.map((c, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-ink-secondary">
+              <li key={i} className="flex items-start gap-2 text-xs text-ink-secondary">
                 <span className={cn('mt-1.5 w-1.5 h-1.5 rounded-full shrink-0', tone === 'danger' ? 'bg-danger' : 'bg-warning')} aria-hidden="true" />
                 <span>{c}</span>
               </li>

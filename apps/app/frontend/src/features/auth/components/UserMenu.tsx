@@ -8,6 +8,7 @@ import {
   MenuGroup,
   MenuIdentity,
   menuRow,
+  initialsOf,
 } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 import { AppearanceMenuRow, LanguageMenuRow } from '@/components/layout/PreferenceMenuRows'
@@ -24,7 +25,11 @@ import { AppearanceMenuRow, LanguageMenuRow } from '@/components/layout/Preferen
  * `hidden sm:block`, so below that width `MobileMenu` is the phone menu and this does not exist.
  * The consoles have no separate phone menu and pass `withMenuIcon` for that reason.
  */
-export function UserMenu() {
+export function UserMenu({ inSidebar = false, folded = false }: {
+  /** At the foot of the glass shell's sidebar (2026-10-29): the account row, opening upward. */
+  inSidebar?: boolean
+  folded?: boolean
+} = {}) {
   const { user } = useAuth()
   const { t } = useTranslation()
 
@@ -43,8 +48,21 @@ export function UserMenu() {
     <div data-tour-id="tour-account-menu">
       {/* w-64, wider than the kit's 14rem: the preference rows wrapped onto two lines at 14rem,
           Vietnamese most of all, and a row that wraps reads as two rows. */}
-      <KitUserMenu label={t('Account menu')} name={user.displayName || user.email} panelClassName="w-64">
-        {close => (
+      <KitUserMenu label={t('Account menu')} name={user.displayName || user.email} panelClassName={inSidebar ? 'w-56' : 'w-64'}
+        variant={inSidebar ? 'sidebar' : 'bar'} caption={user.displayName ? user.email : undefined}
+        initials={initialsOf(user.displayName || user.email)} folded={folded}>
+        {close => inSidebar ? (
+          // At the foot of the sidebar the menu is the ACCOUNT and nothing else (the maintainer,
+          // 2026-10-30): Settings, feedback, appearance and language are rows of the panel above it.
+          <>
+            <MenuIdentity>{user.email}</MenuIdentity>
+            <MenuGroup>
+              <button onClick={() => logout.mutate()} className={menuRow('danger')}>
+                <LogOut size={15} className="shrink-0" /> {t('Sign out')}
+              </button>
+            </MenuGroup>
+          </>
+        ) : (
           <>
             <MenuIdentity>{user.email}</MenuIdentity>
 

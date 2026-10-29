@@ -62,6 +62,11 @@ function EmbeddingFields({ trackChange, pending }: TabProps) {
   const maxConcurrentRequests = useResolved('embedding', 'max-concurrent-requests', pending, '4')
   return (
     <>
+      {/* Before the fields it warns about, as the Knowledge Graph section's does (the field rule of
+          2026-10-29) - it was the section's last line. */}
+      <Caption tone="warning">
+        {t('Changing the embedding model requires a full re-index of all connectors.')}
+      </Caption>
       <ProviderModelRow
         role="embedding"
         providerLabel="Embedding provider"
@@ -72,16 +77,13 @@ function EmbeddingFields({ trackChange, pending }: TabProps) {
       />
       <ChoiceField
         label={t('Max concurrent embedding requests')}
-        hint={t("How many batch-embed requests run at once; match your provider's capacity (e.g. Ollama's NUM_PARALLEL).")}
+        hint={t("How many embedding requests run at once; match your provider's capacity.")}
         value={maxConcurrentRequests}
         onChange={v => trackChange('embedding', 'max-concurrent-requests', v)}
         options={EMBEDDING_CONCURRENCY_OPTIONS}
         horizontal
         figures
       />
-      <Caption tone="warning">
-        {t('Changing the embedding model requires a full re-index of all connectors.')}
-      </Caption>
     </>
   )
 }
@@ -131,7 +133,7 @@ function KnowledgeGraphFields({ trackChange, pending }: TabProps) {
   return (
     <>
       <Caption tone="warning">
-        {t('Costs one LLM call per chunk on top of embedding, which can double or triple indexing cost. Use a cheap model.')}
+        {t('A model call per chunk can triple indexing cost; use a cheap model.')}
       </Caption>
       <ProviderModelRow
         role="graph"
@@ -160,7 +162,7 @@ function KnowledgeGraphFields({ trackChange, pending }: TabProps) {
           still applies and shows no choice selected. */}
       <ChoiceField
         label={t('Extraction timeout')}
-        hint={t('How long one chunk may take before it is given up on. Raise it for local or reasoning models; timed-out sources are retried later.')}
+        hint={t('How long one chunk may take; raise it for local or reasoning models.')}
         value={kgTimeout}
         onChange={v => trackChange('graph', 'call-timeout-seconds', v)}
         // "2 minutes", in the reader's language - it was "2m".
@@ -197,13 +199,13 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
     <SettingsSections>
       {/* INDEXING. First because nothing below it can return anything until documents have been
           embedded, and because changing the model here invalidates everything downstream. */}
-      <SettingsSection title={t('Embedding')} caption={t('The model that turns documents and questions into vectors')}>
+      <SettingsSection title={t('Embedding')} caption={t('The model that turns documents and questions into vectors.')}>
         <EmbeddingFields trackChange={trackChange} pending={pending} />
       </SettingsSection>
 
       <SettingsSection
         title={t('Query expansion')}
-        caption={t('Generate alternative phrasings to improve recall')}
+        caption={t('Generates alternative phrasings to improve recall.')}
         toggle={{ checked: qeEnabled, onChange: v => trackChange('query-expansion', 'enabled', String(v)) }}
       >
         <Presence show={qeEnabled}><div className="space-y-6"><QueryExpansionFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -211,7 +213,7 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
 
       <SettingsSection
         title={t('Reranking')}
-        caption={t('LLM cross-encoder scoring for improved precision')}
+        caption={t('Scores results with a model for better precision.')}
         toggle={{ checked: rrEnabled, onChange: v => trackChange('reranking', 'enabled', String(v)) }}
       >
         <Presence show={rrEnabled}><div className="space-y-6"><RerankingFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -224,7 +226,7 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
           row will assume they cost alike unless told otherwise. */}
       <SettingsSection
         title={t('Knowledge graph')}
-        caption={t('Extract entities and relations while indexing, for questions whose answer spans documents')}
+        caption={t('Links facts across documents by extracting entities and relations.')}
         toggle={{ checked: kgEnabled, onChange: v => trackChange('graph', 'enabled', String(v)) }}
       >
         <Presence show={kgEnabled}><div className="space-y-6"><KnowledgeGraphFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -237,7 +239,7 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
           under its heading for fields that never come). */}
       <SignpostSection
         title={t('Knowledge graph in search')}
-        caption={t('Also rank passages by how the things they name connect. Try it on your own questions before leaving it on: it helps questions about connections and can crowd out plain lookups.')}
+        caption={t('Also ranks passages by how the things they name connect.')}
         action={
           <ToggleSwitch
             checked={kgInSearch}
@@ -292,7 +294,7 @@ const EMBEDDING_CONCURRENCY_OPTIONS = [
 
 // How long one search may run, in minutes (ChatSettings.searchTimeoutMinutes) - the agent's
 // searches of the indexed sources, the knowledge graph, earlier conversations and its memory.
-// Every other tool keeps its fixed minute. Numbers, like the sub-agent's time limit.
+// Every other tool keeps its fixed minute. Numbers, like the deployed agent's time limit.
 const SEARCH_TIMEOUT_OPTIONS = [
   { key: '1', label: '1' },
   { key: '2', label: '2' },
@@ -309,7 +311,7 @@ function SearchTimeoutField({ trackChange, pending }: TabProps) {
   return (
     <ChoiceField
       label={t('Search time limit (minutes)')}
-      hint={t('How long one search of your sources may take before the agent is told it timed out. Other tools stop after one minute.')}
+      hint={t('How long one search may run before the agent is told it timed out.')}
       value={minutes}
       onChange={v => trackChange('chat', 'search-timeout-minutes', v)}
       options={SEARCH_TIMEOUT_OPTIONS}
@@ -379,7 +381,7 @@ const WEB_SEARCH_GROUP: CredentialGroup = {
   // search endpoint (see KeylessWebSearch). Filling them in swaps that for Google Custom Search,
   // which is worth doing on a deployment that leans on search, because the keyless path scrapes
   // result markup and can be rate-limited or broken by a redesign.
-  description: 'Lets the chat agent search the web and fetch URLs, with nothing configured. A Google Custom Search API key and Search Engine ID make search more reliable.',
+  description: 'Works without setup; a Google Custom Search key makes it more reliable.',
   fields: [
     { key: 'api-key', label: 'API key', placeholder: 'AIza...', type: 'password' },
     { key: 'search-engine-id', label: 'Search engine ID', placeholder: 'a1b2c3d4e5f6g7h8i' },

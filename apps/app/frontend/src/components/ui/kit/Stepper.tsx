@@ -47,7 +47,7 @@ export function Stepper({ steps, orientation = 'vertical', label, className }: {
       <ol aria-label={label} className={cn('flex items-center gap-2 min-w-0', className)}>
         {steps.map((s, i) => (
           <li key={s.key} aria-current={s.state === 'current' || s.state === 'running' ? 'step' : undefined} className="flex items-center gap-2 min-w-0">
-            {i > 0 && <span aria-hidden="true" className={cn('h-px w-6 shrink-0', s.state === 'pending' ? 'bg-line' : 'bg-brand-solid/60')} />}
+            {i > 0 && <span aria-hidden="true" className={cn('h-px w-6 shrink-0', s.state === 'pending' ? 'bg-line' : 'bg-brand-accent')} />}
             <StepMark index={i} state={s.state} />
             <span className={cn('text-xs truncate', s.state === 'pending' ? 'text-ink-caption' : 'text-ink-primary', s.state === 'current' && 'font-medium')}>{s.label}</span>
           </li>

@@ -14,7 +14,7 @@ import { extendTailwindMerge } from 'tailwind-merge'
 /**
  * twMerge, TAUGHT THE PRESET (2026-10-14). Out of the box it knows Tailwind's own scales only, so a
  * class from the kit's preset fell in no group: `cn('duration-fast', 'duration-base')` kept both,
- * as did `z-float`/`z-dialog`, `shadow-card`/`shadow-sm` and `min-h-tap`/`min-h-0`, and CSS order
+ * as did `z-float`/`z-dialog`, a preset shadow and Tailwind's own, and `min-h-tap`/`min-h-0`, and CSS order
  * decided - the override `cn` exists to make. Each group below is a preset key
  * (tokens/tailwind-preset.ts); add one here when the preset gains a scale.
  */
@@ -23,7 +23,7 @@ const twMerge = extendTailwindMerge({
     classGroups: {
       'font-size': [{ text: ['2xs'] }],
       duration: [{ duration: ['fast', 'base', 'slow'] }],
-      shadow: [{ shadow: ['card', 'card-lg'] }],
+      shadow: [{ shadow: ['card', 'float', 'well'] }],
       z: [{ z: ['raised', 'sticky', 'header', 'dropzone', 'dialog', 'toast', 'float', 'tooltip', 'alert', 'tour', 'status'] }],
       'min-h': [{ 'min-h': ['tap', 'tap-sm'] }],
       'min-w': [{ 'min-w': ['tap', 'tap-sm'] }],

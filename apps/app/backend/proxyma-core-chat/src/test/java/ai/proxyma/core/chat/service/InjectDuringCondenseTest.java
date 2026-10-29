@@ -47,7 +47,7 @@ class InjectDuringCondenseTest {
                 mock(ToolSkillGating.class), mock(SystemPromptService.class), mock(FeedbackRepository.class),
                 mock(ConversationShareRepository.class), mock(ChatEventSink.class),
                 mock(ConversationTitleService.class), mock(ModelPricingService.class),
-                mock(SubAgentService.class), mock(WorkflowRunService.class), mock(WorkflowService.class),
+                mock(WorkflowRunService.class), mock(WorkflowService.class),
                 mock(WorkflowRunner.class), mock(GuardrailService.class));
     }
 

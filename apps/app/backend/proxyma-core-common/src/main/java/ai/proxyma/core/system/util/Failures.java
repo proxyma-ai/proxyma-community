@@ -61,6 +61,12 @@ public final class Failures {
                 boolean alreadySaid = parts.stream().anyMatch(p -> p.contains(trimmed));
                 if (!alreadySaid) parts.add(trimmed);
             }
+            // A streamed provider call's error (Spring's WebClientResponseException) says only
+            // "400 Bad Request from POST http://localhost:11434/api/chat": the reason is in the
+            // response BODY, which its message leaves out. An Ollama model that cannot use tools
+            // reached the user as that line and nothing else (2026-10-27).
+            String body = bodyReason(current);
+            if (body != null && parts.stream().noneMatch(p -> p.contains(body))) parts.add(body);
             current = current.getCause();
         }
         // A network fault's own words describe the socket, not the situation. "failure when
@@ -68,6 +74,7 @@ public final class Failures {
         // told when that proxy stopped connecting (seen 2026-09-24 in a feedback log) - accurate,
         // and useless. The detail stays, after a sentence saying what it probably means.
         String lead = networkLead(err);
+        if (lead == null) lead = providerLead(String.join("\n", parts));
         // A chain with no message at all still has a lead to give: the class name is what was said
         // before, and "WebClientRequestException" tells a person nothing.
         if (parts.isEmpty()) return lead != null ? lead : err.getClass().getSimpleName();
@@ -136,6 +143,56 @@ public final class Failures {
         return "No complete answer arrived within " + wait
                 + ", so this was stopped. The server may be overloaded or unreachable - try again, "
                 + "or pick another model.";
+    }
+
+    private static final int MAX_BODY_CHARS = 500;
+    private static final java.util.regex.Pattern JSON_REASON = java.util.regex.Pattern.compile(
+            "\"(?:error|message|detail)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+
+    /**
+     * What an HTTP error's response body says, or null: its {@code error}, {@code message} or
+     * {@code detail} string when it is JSON (Ollama answers {"error":"..."}, OpenAI-style servers
+     * nest it as {"error":{"message":"..."}}), else the text itself, bounded. An HTML page is no
+     * reason. Read by DUCK TYPING - any exception with a public {@code getResponseBodyAsString()},
+     * which Spring's client and server exceptions both have - so this module needs no Spring Web.
+     */
+    static String bodyReason(Throwable t) {
+        String body;
+        try {
+            java.lang.reflect.Method m = t.getClass().getMethod("getResponseBodyAsString");
+            if (m.getReturnType() != String.class) return null;
+            body = (String) m.invoke(t);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+        if (body == null || body.isBlank()) return null;
+        String text = body.trim();
+        if (text.startsWith("<")) return null;
+        java.util.regex.Matcher m = JSON_REASON.matcher(text);
+        if (m.find()) {
+            text = m.group(1).replace("\\\"", "\"").replace("\\n", " ").replace("\\\\", "\\").trim();
+        }
+        if (text.isEmpty()) return null;
+        return text.length() > MAX_BODY_CHARS ? text.substring(0, MAX_BODY_CHARS) + "..." : text;
+    }
+
+    /**
+     * A plain sentence for a model server's refusal a user can do something about, or null. Ollama
+     * words a model it cannot run the request on in two ways: a chat model without tool support
+     * ("... does not support tools") - and every Proxyma conversation offers tools - and an
+     * embedding model picked as a chat model ("... does not support chat"). Listing models works in
+     * both cases, so Test says nothing is wrong while every chat answers 400.
+     */
+    static String providerLead(String said) {
+        if (said.contains("does not support tools")) {
+            return "This model cannot use tools, and every Proxyma conversation offers them. Pick a model "
+                    + "that can - in Ollama, one whose 'ollama show' lists tools under Capabilities, such as "
+                    + "qwen3 or llama3.1.";
+        }
+        if (said.contains("does not support chat")) {
+            return "This is an embedding model, not a chat model. Pick a chat model for the agent.";
+        }
+        return null;
     }
 
     /**

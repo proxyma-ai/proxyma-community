@@ -36,7 +36,10 @@ export interface ComboboxProps {
   onCreate?: (value: string) => void
   placeholder?: string
   disabled?: boolean
-  /** The line under the field, when there is no error. */
+  /**
+   * The line under the field, when there is no error - for a combobox with NO label. Inside a
+   * labelled `Field`, give the hint to the `Field`, which puts it under the label (2026-10-29).
+   */
   hint?: React.ReactNode
   error?: string
   shake?: boolean
@@ -46,7 +49,9 @@ export interface ComboboxProps {
   ariaLabel?: string
 }
 
-const ROW = 'flex items-center gap-2 w-full text-left px-3 py-1.5 touch:min-h-tap text-xs transition-colors'
+// 14/20 on `py-2`: a 36px row, the field's own size and text (44px on glass).
+// Rounded and inset 4px, as a menu's rows (2026-10-30); the text stays 12px in, under the field's.
+const ROW = 'flex items-center gap-2 w-[calc(100%-0.5rem)] mx-1 rounded-md text-left px-2 py-2 touch:min-h-tap text-sm transition-colors'
 
 /**
  * FREE TEXT WITH A FETCHED LIST OF SUGGESTIONS - a model name, a folder. It moved into the kit
@@ -172,7 +177,7 @@ export function Combobox({
           {...exitingProps(exiting)}
           data-side={floating.side}
           style={floating.style}
-          className={cn('fixed z-float surface-float border border-line/45 rounded-lg shadow-card overflow-hidden max-h-48 overflow-y-auto animate-dropdown', exiting && 'animate-pop-out')}
+          className={cn('fixed z-float surface-float border rounded-lg shadow-float overflow-hidden max-h-60 overflow-y-auto py-1 animate-dropdown', exiting && 'animate-pop-out')}
         >
           {status === 'loading' && (
             <div className={cn(ROW, 'text-ink-caption')} role="presentation"><Spinner size="sm" />{labels.loading}</div>

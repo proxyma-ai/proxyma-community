@@ -109,6 +109,50 @@ export default {
       mouse: { raw: '(pointer: fine) and (hover: hover)' },
       stylus: { raw: '(pointer: fine) and (hover: none)' },
     },
+    /**
+     * RADIUS BY ROLE (since 2026-10-28; 8/12/6 since 2026-10-29, the depth review - it was 6/10/4).
+     * Set on `theme`, not `extend`, so Tailwind's own steps are gone and a stray `rounded-xl` or
+     * `rounded-3xl` compiles to nothing rather than to a sixth radius:
+     *
+     *   rounded-sm    6px  a tiny chip only (a kbd)
+     *   rounded       8px  \ every CONTROL - buttons, fields, badges, chips, menu rows
+     *   rounded-md    8px  /
+     *   rounded-lg   12px  every SURFACE - panels, dialogs, popovers, menus, cards, the composer
+     *   rounded-full       a genuine circle or pill - avatars, status dots, switches
+     */
+    borderRadius: {
+      none: '0px',
+      sm: '6px',
+      DEFAULT: '8px',
+      md: '8px',
+      lg: '12px',
+      // xl and up were lost when this scale replaced Tailwind's on 2026-10-29, and every `rounded-xl`
+      // and `rounded-2xl` in four apps silently drew square (the maintainer's review the same day).
+      xl: '16px',
+      '2xl': '20px',
+      '3xl': '24px',
+      full: '9999px',
+    },
+
+    /**
+     * THREE SHADOWS, one per plane above or below the page (since 2026-10-29, the depth review),
+     * each mode-aware through its token in proxyma-tokens.css:
+     *
+     *   shadow-card   a card, a panel, a bar on the canvas; a selected pill lifted out of its well
+     *   shadow-float  what floats - menus, popovers, a Select's list, tooltips, dialogs, toasts
+     *   shadow-well   inset - a sunken well: a rail, a segmented control's track, a code block
+     *
+     * On `theme`, so `shadow-sm` and the rest of Tailwind's steps do not exist; no hand-written
+     * `shadow-[...]`, and no colored drop shadows - on a light page they have nowhere to fade to
+     * and read as a halo.
+     */
+    boxShadow: {
+      none: 'none',
+      card: 'var(--shadow-card)',
+      float: 'var(--shadow-float)',
+      well: 'var(--shadow-well)',
+    },
+
     extend: {
       /**
        * TOUCH TARGETS, as named sizes rather than remembered numbers.
@@ -175,37 +219,49 @@ export default {
         status: '99999',
       },
 
-      // Ten steps, each with the leading that keeps the smaller sizes readable rather than
-      // merely smaller. Body default is 14/1.6.
+      // THE TYPE SCALE, ten steps (since 2026-10-28, the UI review: the app rendered 31 size,
+      // leading and weight combinations and the site 64, with 15px and 17px roles and 13px at four
+      // line heights). Each step has ONE leading; the kit's `TEXT` roles (typeScale.ts) name what
+      // each is for, and nothing sets a size by hand:
       //
-      // NOTHING A PERSON READS IS UNDER 12px (readability pass, 2026-10-15 - maintainer: "improve
-      // the text readiness (font size, thickness, text color) in all apps as well as docs"). The
-      // two bottom steps each went up: `2xs` 10 -> 12 is the FLOOR, for what sits inside a small
-      // shape (a compact or status badge, a chart's axis, a count in a mark, a 24px avatar's
-      // initials, a step number); `xs` 12 -> 13 is the kit's dense UI text - captions, fields,
-      // small buttons, the Settings rail, menus' second lines - about two thirds of every
-      // Settings window. Measured in Edge at 1280: 65% of a Settings tab's characters were 12px
-      // and 5% were 10px. The line heights did not move, so no row, rail or dialog got taller:
-      // the Settings rail still fits 1280x720 (its rows are `py-1` around an 18px line).
+      //   2xs  12/16  badges and kbd ONLY - what sits inside a small shape
+      //   xs   13/18  caption (and 13/20 code, `TEXT.code`)
+      //   sm   14/20  UI text - rows, labels (500), field text (400), buttons (600)
+      //   base 16/26  reading body - a chat answer, a manual, a paragraph (section: 16/24, 600)
+      //   lg   18/26  a dialog's or a Settings tab's title (600)
+      //   xl   20/28
+      //   2xl  24/32  a page's title (600)
+      //   3xl  30/38, 4xl 36/44, 5xl 48/56 - display, the landing site's
+      //
+      // NOTHING A PERSON READS IS UNDER 12px (the 2026-10-15 readability pass), and 12 is for a
+      // badge or a key cap, not running text. The odd steps the 2026-10-15 pass left (21, 25, 29,
+      // 37, 49) moved to the clear scale above.
       fontSize: {
         '2xs':  ['12px', { lineHeight: '16px' }],
         xs:     ['13px', { lineHeight: '18px' }],
-        sm:     ['14px', { lineHeight: '22px' }],
+        sm:     ['14px', { lineHeight: '20px' }],
         base:   ['16px', { lineHeight: '26px' }],
-        lg:     ['18px', { lineHeight: '28px' }],
-        xl:     ['21px', { lineHeight: '30px' }],
-        '2xl':  ['25px', { lineHeight: '34px' }],
-        '3xl':  ['29px', { lineHeight: '38px' }],
-        '4xl':  ['37px', { lineHeight: '44px', letterSpacing: '-0.01em' }],
-        '5xl':  ['49px', { lineHeight: '56px', letterSpacing: '-0.02em' }],
+        lg:     ['18px', { lineHeight: '26px' }],
+        xl:     ['20px', { lineHeight: '28px' }],
+        '2xl':  ['24px', { lineHeight: '32px' }],
+        '3xl':  ['30px', { lineHeight: '38px', letterSpacing: '-0.01em' }],
+        '4xl':  ['36px', { lineHeight: '44px', letterSpacing: '-0.01em' }],
+        '5xl':  ['48px', { lineHeight: '56px', letterSpacing: '-0.01em' }],
       },
 
       colors: {
         // --- Semantic. Re-map per mode for free. Reach for these first. ---
-        canvas:        'rgb(var(--canvas) / <alpha-value>)',
-        surface:       'rgb(var(--surface) / <alpha-value>)',
-        'surface-alt': 'rgb(var(--surface-alt) / <alpha-value>)',
-        line:          'rgb(var(--line) / <alpha-value>)',
+        // The four planes (proxyma-tokens.css): the page, a card on it, a well sunk into a card,
+        // and what floats. `field` is a text control's fill - white in Light, a well in Dark.
+        canvas:          'rgb(var(--canvas) / <alpha-value>)',
+        surface:         'rgb(var(--surface) / <alpha-value>)',
+        'surface-alt':   'rgb(var(--surface-alt) / <alpha-value>)',
+        'surface-float': 'rgb(var(--surface-float) / <alpha-value>)',
+        // A text control's fill is GLASS in an app shell (since 2026-10-29): `--field-alpha` is 0.72 in
+        // Light and 0.22 in Dark there, and 1 everywhere else, so `bg-field` is frosted on a glass card
+        // and solid on the landing site with one class.
+        field:           'rgb(var(--field) / calc(var(--field-alpha, 1) * <alpha-value>))',
+        line:            'rgb(var(--line) / <alpha-value>)',
         ink: {
           primary:   'rgb(var(--ink-primary) / <alpha-value>)',
           secondary: 'rgb(var(--ink-secondary) / <alpha-value>)',
@@ -226,15 +282,13 @@ export default {
           // near-black on a dark fill. A var() fallback keeps that failure mode legible.
           'on-solid': 'rgb(var(--brand-on-solid, 255 255 255) / <alpha-value>)',
           // Text-only variants. brand-coloured TEXT on the page's own background needs a
-          // much lighter step than a brand FILL does; see the token file.
+          // different step than a brand FILL does; see the token file.
           legible:          'rgb(var(--brand-legible) / <alpha-value>)',
           'accent-legible': 'rgb(var(--brand-accent-legible) / <alpha-value>)',
-          // The flat pale chip pairing: active nav pill, open account-menu trigger,
-          // selected filter chip. chip-text resolves through --brand-legible, NOT
-          // --brand-solid: the ramp flips per mode (pale is p50 light / p900 dark; solid
-          // is p900 light / p700 dark), so pairing them directly collapses from 8.6:1 in
-          // light to 1.6:1 in dark - two adjacent ramp steps, effectively unreadable,
-          // while looking perfectly correct in light mode.
+          // THE SELECTED PAIR: an active nav pill, the open account-menu trigger, a selected filter
+          // chip or row. chip-bg is NEUTRAL since 2026-10-28 (--brand-pale is the surface-alt grey in
+          // both modes) and chip-text is brand-legible, so a selection is teal ink on grey - never a
+          // teal fill, which the review measured failing contrast in Dark.
           'chip-bg':   'rgb(var(--brand-pale) / <alpha-value>)',
           'chip-text': 'rgb(var(--brand-legible) / <alpha-value>)',
         },
@@ -287,39 +341,14 @@ export default {
         },
       },
 
-      // The UI face (Space Grotesk), the brand face (Orbitron - the wordmark and display numerals
-      // only) and the code face. The `font-grotesk` / `font-orbitron` class aliases had no call
+      // The UI face (Space Grotesk - every word and every number, its tabular figures for a
+      // readout), the brand face (Orbitron - the wordmark ONLY) and the code face (code only). The `font-grotesk` / `font-orbitron` class aliases had no call
       // site left and went on 2026-10-14; the landing site's next/font variables of those names
       // are CSS variables the token file reads, not these classes.
       fontFamily: {
         ui:    ['var(--font-ui)'],
         brand: ['var(--font-brand)'],
         mono:  ['var(--font-mono)'],
-      },
-
-      // Tighter than Tailwind's own scale: panels, cards, inputs and buttons read as crisp
-      // rather than soft-bubbled, and nothing reaches past 14px. `rounded-full` means "this
-      // shape is genuinely a circle or a pill" - avatars, status dots, toggles, icon
-      // buttons - and nothing else.
-      borderRadius: {
-        xs:    '2px',
-        sm:    '4px',
-        md:    '6px',   // buttons, inputs, badges - THE control radius
-        lg:    '8px',   // cards, panels, dropdowns - the surface radius
-        xl:    '10px',   // the chat composer
-        '2xl': '12px',
-        '3xl': '14px',   // the desktop splash, as the native launcher draws it
-      },
-
-      // All mode-aware via the token file: `shadow-sm` a tooltip, `shadow-card` every floating
-      // panel (menus, dialogs, toasts), `shadow-card-lg` the lightbox. ONE name per step: the
-      // `shadow-panel` alias of `shadow-card` went on 2026-10-14. No hand-written `shadow-[...]`,
-      // and no coloured drop shadows - on a light page they have nowhere to fade to and read as a
-      // halo rather than depth.
-      boxShadow: {
-        sm:        'var(--shadow-sm)',
-        card:      'var(--shadow-card)',
-        'card-lg': 'var(--shadow-card-lg)',
       },
 
       keyframes: {

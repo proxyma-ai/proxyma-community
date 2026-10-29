@@ -111,7 +111,7 @@ const registry = createInstanceRegistry<ChatInstance>({
 
 // A TAB HIDDEN FOR HALF A MINUTE LETS GO OF ITS CHAT STREAMS (the 0.36.0 feedback). A browser keeps
 // six HTTP/1.1 connections per site across ALL its tabs - and Desktop's http://127.0.0.1 is never
-// spoken HTTP/2 - while a chat stream holds one for as long as a turn or a background sub-agent
+// spoken HTTP/2 - while a chat stream holds one for as long as a turn or a background deployed agent
 // runs. A few tabs left in the background used the pool up, and the next page's requests waited
 // for ever. Shown again, each chat picks up where it was (useChat's `resume`); the turn itself never
 // stopped, server-side.

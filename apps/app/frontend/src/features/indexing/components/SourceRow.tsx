@@ -307,12 +307,14 @@ export const SourceRow = memo(function SourceRow({ connector, onOpenDetail, onDr
       items={items}
       synced={synced ?? t('Not synced yet')}
       // The column truncates, so the whole of it - each phrase with its detail - is the tooltip.
+      // A HEALTHY SOURCE SAYS SO, in words and the caption's ink (the UI review, 2026-10-28: the
+      // column was empty for every healthy row) - never the green check on every row it once was.
       status={!state.healthy && status.length > 0 ? (
         <Tooltip label={statusTooltip(status)} fullWidth>
           <MetaList items={statusSpans(status)} className="truncate" />
         </Tooltip>
-      ) : undefined}
-      healthMark={<SourceHealthMark connector={connector} busy={state.processing} graphReading={state.graphReading} size={14} />}
+      ) : state.healthy ? t('Up to date') : undefined}
+      healthMark={state.healthy ? undefined : <SourceHealthMark connector={connector} busy={state.processing} graphReading={state.graphReading} size={14} />}
       healthyMark={state.healthy ? <HealthyMark connector={connector} size={14} /> : undefined}
       // Phone: items, last sync and status on ONE line, truncated rather than wrapped.
       phoneMeta={[

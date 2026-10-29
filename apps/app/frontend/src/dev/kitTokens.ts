@@ -6,14 +6,13 @@
  * drift from the file that defines them.
  */
 
-export type Appearance = 'light' | 'gray' | 'black'
+export type Appearance = 'light' | 'dark'
 
-/** The four appearances a person picks; System resolves to Light or Dark. */
+/** The three appearances a person picks; System resolves to Light or Dark (since 2026-10-28). */
 export const APPEARANCES: { id: Appearance | 'system'; name: string; note: string }[] = [
   { id: 'system', name: 'System', note: 'Follows the operating system: Light on a light OS, Dark on a dark one.' },
-  { id: 'light', name: 'Light', note: 'White canvas, neutral grays; the brand only on controls and the logo.' },
-  { id: 'gray', name: 'Proxyma', note: 'The product\'s own dark: teal-tinted planes, near-white headings. The bare :root block.' },
-  { id: 'black', name: 'Dark', note: 'A neutral VS Code-style dark gray; brand, status and chart tokens stay Proxyma\'s.' },
+  { id: 'light', name: 'Light', note: 'White canvas, neutral greys; the brand only where it acts. The bare :root block - what paints before any script.' },
+  { id: 'dark', name: 'Dark', note: 'Neutral dark greys, no teal or blue tint; :root[data-mode="dark"]. A stored gray or black (older builds) reads as Dark.' },
 ]
 
 export interface ColorToken {
@@ -26,40 +25,40 @@ export interface ColorToken {
   role: string
 }
 
-/** The brand ramp (constant hue 196.4) and the mono ramp - MODE-INVARIANT, brand fills only. */
+/** The brand ramp (constant hue 196.4) and the neutral mono ramp - MODE-INVARIANT, not page chrome. */
 export const RAMPS: { title: string; note: string; steps: ColorToken[] }[] = [
   {
     title: 'Brand ramp (proxima)',
     note: 'Generated from the primary #164E63 (p900). Mode-invariant: for the logo mark, never for page chrome.',
     steps: [
-      { name: 'p50', swatch: 'bg-proxima-50', classes: 'proxima-50', role: 'Light mode\'s brand-pale.' },
+      { name: 'p50', swatch: 'bg-proxima-50', classes: 'proxima-50', role: '' },
       { name: 'p100', swatch: 'bg-proxima-100', classes: 'proxima-100', role: '' },
       { name: 'p200', swatch: 'bg-proxima-200', classes: 'proxima-200', role: '' },
       { name: 'p300', swatch: 'bg-proxima-300', classes: 'proxima-300', role: 'Dark brand-legible.' },
-      { name: 'p400', swatch: 'bg-proxima-400', classes: 'proxima-400', role: 'Dark brand-accent; the mark\'s disc.' },
+      { name: 'p400', swatch: 'bg-proxima-400', classes: 'proxima-400', role: 'Dark brand-accent and focus line; the mark\'s disc.' },
       { name: 'p500', swatch: 'bg-proxima-500', classes: 'proxima-500', role: 'The mark\'s spokes.' },
       { name: 'p600', swatch: 'bg-proxima-600', classes: 'proxima-600', role: 'The mark\'s gap arcs.' },
-      { name: 'p700', swatch: 'bg-proxima-700', classes: 'proxima-700', role: 'Dark brand-solid; the mark\'s outer arcs.' },
+      { name: 'p700', swatch: 'bg-proxima-700', classes: 'proxima-700', role: 'Dark brand-solid (its ONLY fill step); Light accent and focus line; the mark\'s outer arcs.' },
       { name: 'p800', swatch: 'bg-proxima-800', classes: 'proxima-800', role: 'Light brand-legible.' },
-      { name: 'p900', swatch: 'bg-proxima-900', classes: 'proxima-900', role: 'The primary. Light brand-solid.' },
+      { name: 'p900', swatch: 'bg-proxima-900', classes: 'proxima-900', role: 'The primary. Light brand-solid (its ONLY fill step).' },
       { name: 'p950', swatch: 'bg-proxima-950', classes: 'proxima-950', role: '' },
     ],
   },
   {
     title: 'Mono ramp (mono)',
-    note: 'The neutral counterpart at the brand hue: every plane, line and ink of the Proxyma appearance.',
+    note: 'NEUTRAL since 2026-10-28 (a zinc-like grey; it was the brand hue at low saturation). The names stayed; pages use the semantic tokens.',
     steps: [
       { name: 'n50', swatch: 'bg-mono-50', classes: 'mono-50', role: '' },
-      { name: 'n100', swatch: 'bg-mono-100', classes: 'mono-100', role: 'Proxyma ink-primary; light surface.' },
-      { name: 'n200', swatch: 'bg-mono-200', classes: 'mono-200', role: 'Light surface-alt.' },
-      { name: 'n300', swatch: 'bg-mono-300', classes: 'mono-300', role: 'Proxyma ink-secondary; light line.' },
-      { name: 'n400', swatch: 'bg-mono-400', classes: 'mono-400', role: 'Proxyma ink-caption.' },
-      { name: 'n500', swatch: 'bg-mono-500', classes: 'mono-500', role: 'Proxyma ink-disabled.' },
+      { name: 'n100', swatch: 'bg-mono-100', classes: 'mono-100', role: '' },
+      { name: 'n200', swatch: 'bg-mono-200', classes: 'mono-200', role: '' },
+      { name: 'n300', swatch: 'bg-mono-300', classes: 'mono-300', role: '' },
+      { name: 'n400', swatch: 'bg-mono-400', classes: 'mono-400', role: '' },
+      { name: 'n500', swatch: 'bg-mono-500', classes: 'mono-500', role: '' },
       { name: 'n600', swatch: 'bg-mono-600', classes: 'mono-600', role: '' },
       { name: 'n700', swatch: 'bg-mono-700', classes: 'mono-700', role: '' },
-      { name: 'n800', swatch: 'bg-mono-800', classes: 'mono-800', role: 'Proxyma surface-alt and line.' },
-      { name: 'n900', swatch: 'bg-mono-900', classes: 'mono-900', role: 'Proxyma surface.' },
-      { name: 'n950', swatch: 'bg-mono-950', classes: 'mono-950', role: 'Proxyma canvas.' },
+      { name: 'n800', swatch: 'bg-mono-800', classes: 'mono-800', role: '' },
+      { name: 'n900', swatch: 'bg-mono-900', classes: 'mono-900', role: '' },
+      { name: 'n950', swatch: 'bg-mono-950', classes: 'mono-950', role: '' },
     ],
   },
 ]
@@ -69,10 +68,24 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
   {
     title: 'Planes and lines',
     tokens: [
-      { name: 'canvas', swatch: 'bg-canvas', classes: 'bg-canvas', role: 'The page; every field (a field is a hole in the surface); every floating panel.' },
-      { name: 'surface', swatch: 'bg-surface', classes: 'bg-surface, bg-surface/40', role: 'A card or row plane on the canvas (cards use it at 40%).' },
-      { name: 'surface-alt', swatch: 'bg-surface-alt', classes: 'bg-surface-alt', role: 'A raised plane - a neutral badge.' },
-      { name: 'line', swatch: 'bg-line', classes: 'border-line, border-line/40', role: 'Hairlines and borders, usually at an opacity.' },
+      { name: 'canvas', swatch: 'bg-canvas', classes: 'bg-canvas', role: 'The page, behind everything: a cool gray in Light, near black in Dark. In an app shell (the glass) the solid color the glass sheet composites to - for what must hide what is under it, like the pinned question\'s fade.' },
+      { name: 'surface', swatch: 'bg-surface', classes: 'bg-surface shadow-card', role: 'The card plane: white in Light, a step up in Dark. In an app shell a card is GLASS (.surface-card) and this is its solid equivalent - a sticky row or bar inside a card.' },
+      { name: 'surface-alt', swatch: 'bg-surface-alt', classes: 'bg-surface-alt shadow-well', role: 'A SUNKEN well: a rail, a segmented control\'s track, a code block; a hover or SELECTED row fill (with a teal indicator or ink), a neutral badge.' },
+      { name: 'surface-float', swatch: 'bg-surface-float', classes: '.surface-float shadow-float', role: 'What floats: menus, popovers, dialogs, toasts, tooltips; a pill lifted out of a well. White in Light, the lightest plane in Dark.' },
+      { name: 'field', swatch: 'bg-field', classes: 'bg-field (FIELD_BASE)', role: 'A text control\'s fill: white in Light, so a field on a white card is drawn by its line; a well in Dark.' },
+      { name: 'line', swatch: 'bg-line', classes: 'border-line, border-line/40', role: 'Hairlines and borders - a card\'s at full strength, rules usually at an opacity. Decorative - not held to 3:1.' },
+    ],
+  },
+  {
+    title: 'Glass (an app shell)',
+    tokens: [
+      { name: 'field-base', swatch: 'app-field', classes: '.app-field (the shell\'s body; ProxymaBackground)', role: 'THE FIELD behind the glass: one flat cool color - airy in Light, #101011 in Dark. The only light is the sheet light, in its bottom-right corner. No text sits on it.' },
+      { name: 'glass', swatch: 'app-glass', classes: '.app-glass', role: 'The FRAME from `lg` holding the sidebar: --glass at --glass-alpha (0.64 Light, 0.6 Dark), a 24px blur, the --glass-edge and --shadow-frame.' },
+      { name: 'sheet', swatch: 'app-sheet', classes: '.app-sheet', role: 'The PAGE: --sheet at --sheet-alpha (white 0.85 Light, near black 0.85 Dark), a 16px blur, and --sheet-accent light in its bottom-right corner (6.5% / 5%).' },
+      { name: 'card', swatch: 'surface-card', classes: '.surface-card shadow-card (Card, cardClass)', role: 'A card on the sheet: --card at --card-alpha (white 0.62 Light, white 0.025 Dark), the --card-edge and the card shadow\'s top highlight. NO blur. In a card it is a well (--well).' },
+      { name: 'float', swatch: 'surface-float', classes: '.surface-float border rounded-lg shadow-float', role: 'What floats - menus, popovers, lists, tooltips, toasts, dialogs, the composer: --float at 0.86, a 20px blur, the --float-edge. Never give it a border color; the class decides.' },
+      { name: 'bar', swatch: 'header-bar', classes: '.header-bar (AppHeader)', role: 'The header below `lg`, both consoles\' header: --bar at 0.72, a 16px blur.' },
+      { name: 'scrim', swatch: 'modal-scrim', classes: '.modal-scrim (MODAL_SCRIM)', role: 'Behind a dialog: a cool shade at 0.32 in Light, black at 0.5 in Dark, a 6px blur.' },
     ],
   },
   {
@@ -80,19 +93,19 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
     tokens: [
       { name: 'ink-primary', swatch: 'bg-ink-primary', classes: 'text-ink-primary', role: 'Headings, names, values.' },
       { name: 'ink-secondary', swatch: 'bg-ink-secondary', classes: 'text-ink-secondary', role: 'Body text (the default).' },
-      { name: 'ink-caption', swatch: 'bg-ink-caption', classes: 'text-ink-caption', role: 'Captions, labels of facts, icon buttons at rest.' },
-      { name: 'ink-disabled', swatch: 'bg-ink-disabled', classes: 'text-ink-disabled', role: 'Placeholders, disabled controls, the dot between facts.' },
+      { name: 'ink-caption', swatch: 'bg-ink-caption', classes: 'text-ink-caption', role: 'Captions, labels of facts, icon buttons at rest. 4.5:1 on all four planes.' },
+      { name: 'ink-disabled', swatch: 'bg-ink-disabled', classes: 'text-ink-disabled', role: 'UI only, 3:1: placeholders, disabled controls, a switch\'s off track, the dot between facts. Never text that must be read.' },
     ],
   },
   {
     title: 'Brand',
     tokens: [
-      { name: 'brand-solid', swatch: 'bg-brand-solid', classes: 'bg-brand-solid', role: 'A FILL: the primary button, a switch that is on, the chosen day.' },
+      { name: 'brand-solid', swatch: 'bg-brand-solid', classes: 'bg-brand-solid', role: 'A FILL, ONE ramp step per mode (p900 Light, p700 Dark): the primary button, a switch that is on, the chosen day. Never a background.' },
       { name: 'brand-on-solid', swatch: 'bg-brand-on-solid', classes: 'text-brand-on-solid', role: 'Text on a brand-solid fill.' },
       { name: 'brand-legible', swatch: 'bg-brand-legible', classes: 'text-brand-legible', role: 'Brand TEXT: links, the wordmark, work done.' },
       { name: 'brand-accent', swatch: 'bg-brand-accent', classes: 'bg-brand-accent', role: 'DECORATIVE only: meter fills, dots, a reveal. Never behind a label.' },
       { name: 'brand-accent-legible', swatch: 'bg-brand-accent-legible', classes: 'text-brand-accent-legible', role: 'A brand glyph beside text.' },
-      { name: 'brand-pale', swatch: 'bg-brand-pale', classes: 'bg-brand-pale, bg-brand-chip-bg', role: 'The pale chip fill, paired with brand-legible text.' },
+      { name: 'brand-pale', swatch: 'bg-brand-pale', classes: 'bg-brand-pale, bg-brand-chip-bg', role: 'NEUTRAL since 2026-10-28 (= surface-alt): the selected chip or pill fill, with brand-legible ink. Never a teal fill.' },
     ],
   },
   {
@@ -122,58 +135,59 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
 
 /** The type roles (typeScale.ts `TEXT`), largest first, with the component that draws each. */
 export const TYPE_ROLES: { role: string; spec: string; component: string; use: string }[] = [
-  { role: 'title', spec: '18/28, 600, ink-primary', component: 'Title, PageTitle, DialogTitle', use: 'A page\'s, a Settings tab\'s or a dialog\'s own name.' },
+  { role: 'pageTitle', spec: '24/32, 600, ink-primary', component: 'PageHeader, PageTitle', use: 'A page\'s own name.' },
+  { role: 'title', spec: '18/26, 600, ink-primary', component: 'Title, DialogTitle, PageTitle level="tab"', use: 'A dialog\'s or a Settings tab\'s name; a card\'s heading.' },
+  { role: 'lead', spec: '18/28, 400, ink-secondary', component: 'Paragraph size="lead"', use: 'The paragraph that opens a page or a site section.' },
   { role: 'section', spec: '16/24, 600, ink-primary', component: 'SectionHeading', use: 'A sub-section of a page, tab or dialog.' },
-  { role: 'lead', spec: '17, 400, relaxed, ink-secondary', component: 'Paragraph size="lead"', use: 'The paragraph that opens a page or a site section.' },
-  { role: 'body', spec: '15, 400, relaxed, ink-secondary', component: 'Paragraph, DialogDescription, PROSE_CHAT', use: 'Running text in a dialog or a card; a chat message; a manual.' },
-  { role: 'label', spec: '14/20, 500, ink-primary', component: 'FieldLabel', use: 'The name of a field, a switch row, a list item.' },
-  { role: 'option', spec: '14/20, 400, ink-secondary', component: 'RadioGroup, Checkbox', use: 'A choice; the quieter line of a row.' },
-  { role: 'caption', spec: '13, 400, relaxed, ink-caption', component: 'Caption', use: 'Everything that explains.' },
+  { role: 'body', spec: '16/26, 400, ink-secondary', component: 'Paragraph, DialogDescription, PROSE_CHAT, .prose-doc', use: 'Reading text: a chat answer, a manual, a paragraph read rather than scanned. At most about 70ch a line.' },
+  { role: 'label', spec: '14/20, 500, ink-primary', component: 'FieldLabel, ListRow', use: 'The name of a field, a switch row, a list item.' },
+  { role: 'option', spec: '14/20, 400, ink-secondary', component: 'RadioGroup, Checkbox, field text', use: 'UI text: a choice, a field\'s value, the quieter line of a row. Buttons are 14/20 600.' },
+  { role: 'caption', spec: '13/18, 400, ink-caption', component: 'Caption', use: 'Everything that explains.' },
   { role: 'eyebrow', spec: '13/18, 500, ink-caption, sentence case', component: 'Eyebrow', use: 'The label inside a card naming what it shows.' },
+  { role: 'code', spec: '13/20, 400, the mono face', component: 'CodeBlock, InlineCode (0.9em)', use: 'Code only - a block, a command, a key.' },
 ]
 
 /** The faces. */
 export const FACES: { name: string; token: string; family: string; use: string; sample: string; className: string }[] = [
-  { name: 'UI', token: '--font-ui', family: 'Space Grotesk 400-700', use: 'Everything.', sample: 'The quick brown fox jumps over the lazy dog', className: 'font-ui' },
-  { name: 'Brand', token: '--font-brand', family: 'Orbitron 700 (900 on the splash)', use: 'The wordmark and display numerals only.', sample: 'Proxyma', className: 'font-brand font-bold tracking-wider' },
-  { name: 'Readout', token: '--font-readout', family: 'Proxyma Figures (Consolas digits) + the UI face', use: 'Anything carrying figures - counts, costs, dates, ids (.data-readout).', sample: 'input 12.3k - 10/5/2026, 7:25 AM - $0.012', className: 'data-readout' },
-  { name: 'Code', token: '--font-mono', family: 'Consolas, Cascadia Code, Space Mono', use: 'Code only - a block, a command, a key.', sample: 'docker compose up -d', className: 'font-mono' },
+  { name: 'UI', token: '--font-ui', family: 'Space Grotesk 400-600', use: 'Every word and every number. No 700 below the 24px page title.', sample: 'The quick brown fox jumps over the lazy dog', className: 'font-ui' },
+  { name: 'Brand', token: '--font-brand', family: 'Orbitron 700 (900 on the splash)', use: 'The wordmark ONLY.', sample: 'Proxyma', className: 'font-brand font-bold tracking-wider' },
+  { name: 'Readout', token: '--font-readout', family: 'The UI face, tabular figures (tnum)', use: 'Anything carrying figures - counts, costs, dates, ids (.data-readout). Digits keep their width; a figure and its word are one face.', sample: 'input 12.3k - 10/5/2026, 7:25 AM - $0.012', className: 'data-readout' },
+  { name: 'Code', token: '--font-mono', family: 'Consolas, Cascadia Code, Space Mono', use: 'Code only - a block, a command, a key. Never a number.', sample: 'docker compose up -d', className: 'font-mono' },
 ]
 
-/** The size steps of the preset (fontSize), for anything not a TEXT role (the site's display type). */
+/** The size steps of the preset (fontSize), each with its one leading. */
 export const FONT_SIZES: { cls: string; spec: string }[] = [
-  { cls: 'text-2xs', spec: '12/16' }, { cls: 'text-xs', spec: '13/18' }, { cls: 'text-sm', spec: '14/22' },
-  { cls: 'text-base', spec: '16/26' }, { cls: 'text-lg', spec: '18/28' }, { cls: 'text-xl', spec: '21/30' },
-  { cls: 'text-2xl', spec: '25/34' }, { cls: 'text-3xl', spec: '29/38' }, { cls: 'text-4xl', spec: '37/44' }, { cls: 'text-5xl', spec: '49/56' },
+  { cls: 'text-2xs', spec: '12/16' }, { cls: 'text-xs', spec: '13/18' }, { cls: 'text-sm', spec: '14/20' },
+  { cls: 'text-base', spec: '16/26' }, { cls: 'text-lg', spec: '18/26' }, { cls: 'text-xl', spec: '20/28' },
+  { cls: 'text-2xl', spec: '24/32' }, { cls: 'text-3xl', spec: '30/38' }, { cls: 'text-4xl', spec: '36/44' }, { cls: 'text-5xl', spec: '48/56' },
 ]
 
-/** Spacing: the steps the spacing table names (Tailwind's 4px scale), plus the touch targets. */
+/** Spacing: the 4-point rhythm every kit component keeps (since 2026-10-28), plus the control sizes. */
 export const SPACING: { cls: string; px: number; use: string }[] = [
-  { cls: '1', px: 4, use: 'Glyph to word in a chip.' },
-  { cls: '1.5', px: 6, use: 'A field\'s line to its note (mt-1.5).' },
-  { cls: '2', px: 8, use: 'A label to its field (mb-2); an inline action cluster.' },
+  { cls: '1', px: 4, use: 'Glyph to word in a chip; a label to its caption.' },
+  { cls: '2', px: 8, use: 'A label to its field (mb-2); a field to its note (mt-2); an inline action cluster.' },
   { cls: '3', px: 12, use: 'A form\'s action row; a stat grid; the phone gutter.' },
   { cls: '4', px: 16, use: 'Fields in a form (space-y-4); a card\'s padding on a phone.' },
-  { cls: '5', px: 20, use: 'A card\'s padding from sm; a dialog body\'s vertical padding.' },
-  { cls: '6', px: 24, use: 'Between page blocks (space-y-6); the gutter from sm; a dialog\'s side padding.' },
-  { cls: '8', px: 32, use: 'Between a page\'s sections on a site.' },
-  { cls: 'tap-sm', px: 36, use: 'A control under a mouse.' },
-  { cls: 'tap', px: 44, use: 'A control on glass (touch:).' },
+  { cls: '6', px: 24, use: 'Between page blocks (space-y-6); the gutter and a card\'s padding from sm; a dialog body.' },
+  { cls: '8', px: 32, use: 'A large card\'s padding; between a site page\'s sections.' },
+  { cls: '12', px: 48, use: 'A site page\'s larger gaps. (Settings sections are cards 24px apart since 2026-10-29.)' },
+  { cls: '16', px: 64, use: 'A site section\'s vertical rhythm.' },
+  { cls: 'h-8', px: 32, use: 'A small button (sm).' },
+  { cls: 'tap-sm', px: 36, use: 'A field and a default button (h-9) under a mouse.' },
+  { cls: 'tap', px: 44, use: 'Every control on glass (touch:).' },
 ]
 
 export const RADII: { cls: string; px: string; use: string }[] = [
-  { cls: 'rounded-sm', px: '4px', use: 'A skeleton bar; a checkbox square (rounded).' },
-  { cls: 'rounded-md', px: '6px', use: 'THE control radius: buttons, fields, badges, chips, code.' },
-  { cls: 'rounded-lg', px: '8px', use: 'THE surface radius: cards, panels, dialogs, menus.' },
-  { cls: 'rounded-xl', px: '10px', use: 'The chat composer.' },
-  { cls: 'rounded-3xl', px: '14px', use: 'The desktop splash card.' },
-  { cls: 'rounded-full', px: '9999px', use: 'Only what is round by nature: dots, switches, avatars, the play button.' },
+  { cls: 'rounded-sm', px: '6px', use: 'A tiny chip only: a kbd, a checkbox square, a skeleton bar; a pill inside an 8px track (concentric).' },
+  { cls: 'rounded-md', px: '8px', use: 'THE control radius (bare rounded is the same): buttons, fields, badges, chips, menu rows, code.' },
+  { cls: 'rounded-lg', px: '12px', use: 'THE surface radius: cards, panels, dialogs, popovers, menus, the composer.' },
+  { cls: 'rounded-full', px: '9999px', use: 'Only what is round by nature: dots, switches, avatars, pills.' },
 ]
 
 export const SHADOWS: { cls: string; use: string }[] = [
-  { cls: 'shadow-sm', use: 'A tooltip.' },
-  { cls: 'shadow-card', use: 'Every floating panel: menus, popovers, dialogs, toasts.' },
-  { cls: 'shadow-card-lg', use: 'The lightbox.' },
+  { cls: 'shadow-card', use: 'A card, a panel, a bar on the canvas; a pill lifted out of its well. Dark adds a 5% highlight along the top - and in an app shell both appearances do, the glass\'s light edge. A card inside a card drops it.' },
+  { cls: 'shadow-float', use: 'What floats: menus, popovers, lists, tooltips, dialogs, toasts. In an app shell with a highlight along the top.' },
+  { cls: 'shadow-well', use: 'INSET: a sunken well - a rail, a segmented control\'s track, a code block.' },
 ]
 
 export const MOTION: { token: string; cls: string; value: string; use: string }[] = [
@@ -230,7 +244,7 @@ export const BREAKPOINTS: { cls: string; query: string; use: string }[] = [
 export const LAYOUT: { name: string; value: string; use: string }[] = [
   { name: 'PAGE_COLUMN', value: 'max-w-5xl 2xl:max-w-7xl mx-auto', use: 'The header\'s width - every page.' },
   { name: 'PAGE_GUTTER', value: 'px-3 sm:px-6', use: '12px on a phone, 24px from sm.' },
-  { name: 'PROSE_MEASURE', value: 'lg:max-w-[calc(66.6667%-1rem)]', use: 'Marketing prose.' },
+  { name: 'PROSE_MEASURE', value: 'max-w-[70ch] lg:max-w-[min(70ch,calc(66.6667%-1rem))]', use: 'Marketing prose - at most about 70 characters a line.' },
   { name: 'THREAD_COLUMN', value: 'max-w-3xl 2xl:max-w-4xl mx-auto w-full', use: 'The chat thread.' },
   { name: 'LIST_PAGE_SIZE', value: '20', use: 'Every list of records pages at twenty (ListPager).' },
 ]

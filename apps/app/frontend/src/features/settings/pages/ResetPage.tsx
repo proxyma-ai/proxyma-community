@@ -69,7 +69,7 @@ export function ResetPage() {
       <List>
         <ListRow
           title={t('Reset settings')}
-          caption={t('AI provider, agent, conversion, search, embedding, network, retention and cost settings go back to their defaults. Your connectors, indexed documents and chat history are left alone.')}
+          caption={t('Settings return to their defaults; sources, indexed documents and chat history are kept.')}
           action={
             <Button variant="secondary" onClick={() => setSettingsOpen(true)}>
               {t('Reset settings')}
@@ -79,7 +79,7 @@ export function ResetPage() {
 
         <ListRow
           title={t('Reset everything')}
-          caption={t('Every connector, all indexed content and chat history, plus the settings above. Files on your disk are not touched.')}
+          caption={t('Every source, all indexed content and chat history, plus the settings. Files on your disk are kept.')}
           action={
             // Quiet danger, like every other destructive action in Settings: the typed
             // confirmation it opens is where the danger fill belongs.

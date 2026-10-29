@@ -86,7 +86,7 @@ public class SmartChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(SmartChatMemory.class);
 
-    private static final double CONDENSE_THRESHOLD = 0.8;
+    static final double CONDENSE_THRESHOLD = 0.8;
     private static final int MIN_RANGE_SIZE = 3;
     private static final int AUTO_TITLE_MAX_CHARS = 60;
 
@@ -596,6 +596,15 @@ public class SmartChatMemory implements ChatMemory {
         return conversationRepository.findById(conversationId);
     }
 
+    // The conversations of `ids` that exist, whoever owns them - for a module totalling what a set of
+    // conversations cost (Constellations: an agent's spend across every member who talked to it).
+    // Read only, and the caller decides who may see the total.
+    @Transactional(value = "chatTransactionManager", readOnly = true)
+    public java.util.List<Conversation> findConversations(java.util.Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) return java.util.List.of();
+        return conversationRepository.findAllById(ids);
+    }
+
     // The ids of the skills whose instructions are already in this conversation's history, so a
     // re-pick can be answered with a pointer instead of a second copy (see
     // ChatService.applyPickedSkills). Null/blank clears it.
@@ -637,16 +646,6 @@ public class SmartChatMemory implements ChatMemory {
     public boolean messageBelongs(String conversationId, Long messageId) {
         return messageId != null && messageRepository.findById(messageId)
                 .filter(m -> conversationId.equals(m.getConversationId())).isPresent();
-    }
-
-    /** Every row's role and time, oldest first - when the main agent worked (ConversationAgents.turnsOf). */
-    @Transactional(value = "chatTransactionManager", readOnly = true)
-    public List<ai.proxyma.core.chat.dto.ConversationAgents.Stamp> messageStamps(String conversationId) {
-        return messageRepository.findStampsByConversationId(conversationId).stream()
-                .map(row -> new ai.proxyma.core.chat.dto.ConversationAgents.Stamp(
-                        (ai.proxyma.core.chat.domain.MessageRole) row[0], (java.time.Instant) row[1],
-                        Boolean.TRUE.equals(row[2])))
-                .toList();
     }
 
     /**

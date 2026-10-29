@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { useLocation, NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { FeatureGuard } from '@/components/guards/FeatureGuard'
 import { UserMenu } from '@/features/auth/components/UserMenu'
 import { AppMenu } from '@/components/layout/AppMenu'
@@ -10,33 +10,13 @@ import { AppHeader, BRAND_LINK, Button, Presence, WorkingBadge, headerNavLink, u
 import { Logo } from '@/components/ui/Logo'
 import { useAuthStore } from '@/store/authStore'
 import { useWorkingAgents, type WorkingAgent } from '@/hooks/useWorkingAgents'
-import { useKeyAccountsShown } from '@edition'
+import { useNavItems } from './navItems'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/utils/cn'
 
-type NavMinRole = false | 'viewer' | 'admin'
-
-// Settings is in a MENU in both editions and not in this list - UserMenu on server, AppMenu on
-// desktop. It is account-level configuration, not a workspace destination people jump to
-// repeatedly during a session, unlike Sources/Administration which stay top-level nav. Desktop
-// carried it as a nav word until 2026-09-01; the two editions now have the same shape in the same
-// corner. Sources is 'viewer' (any logged-in role, not just ADMIN/SUPER_ADMIN) - VIEWERs register
-// and manage their own sources too.
-//
-// "Sources", not "Connectors": Settings has a Connections tab now, and two destinations with one
-// name is one too many. The split is real rather than cosmetic - a connector is the TYPE (one
-// Jira server, one token, one set of permissions), a source is a registered instance of it.
-//
-// Key accounts (docs/architecture.html#spec-11) is an Enterprise Server page: signed in, and only
-// while the license status says `keyAccountsAllowed`. `licensed` names that gate; like the role
-// gates it is a convenience - the route and every endpoint refuse without it.
-const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; auth: NavMinRole; licensed?: 'keyAccounts' }> = [
-  { to: '/',             label: 'Chat',           auth: false    },
-  { to: '/sources',      label: 'Sources',        auth: 'viewer' },
-  { to: '/key-accounts', label: 'Key accounts',   auth: 'viewer', licensed: 'keyAccounts' },
-  { to: '/admin',        label: 'Administration', auth: 'admin'  },
-]
+// The pages this reader may open come from useNavItems (navItems.ts), shared with the phone menu and,
+// from `lg`, the sidebar of the glass shell (2026-10-29).
 
 // A nav word on the bar is the kit's headerNavLink: primary ink for the page you are on, caption
 // ink otherwise, primary under a MOUSE only (on glass a bare hover fires on tap and then STICKS
@@ -45,11 +25,8 @@ const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; auth: NavMinRole; li
 
 export function Topbar() {
   const navigate = useNavigate()
-  const location = useLocation()
   const user = useAuthStore(s => s.user)
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
   const { t } = useTranslation()
-  const keyAccountsAllowed = useKeyAccountsShown()
 
   // The mark's idle turn - the kit's loop, shared with both consoles.
   const iconRef = useRef<SVGSVGElement>(null)
@@ -66,29 +43,7 @@ export function Topbar() {
   const navFits = useFitsBesideBrand(brandRef, navRef)
   const workingAgents = useWorkingAgents()
 
-  const visibleNavItems = NAV_ITEMS.filter(item => {
-    // Administration is server-only. Desktop's copy showed two tabs, both of which have a
-    // better home now (Settings > Feedback, Settings > Usage & Cost), and the rest of the
-    // page was empty there because its endpoints only build under the server Maven profile.
-    // Hidden here AND guarded on the route (RequireServerMode in Router) - a nav item is a
-    // convenience, not an access control.
-    if (item.auth === 'admin' && !FEATURES.auth) return false
-    if (item.auth === 'admin' && FEATURES.auth && !isAdmin) return false
-    if (item.auth === 'viewer' && FEATURES.auth && !user) return false
-    if (item.licensed === 'keyAccounts' && !keyAccountsAllowed) return false
-    return true
-  }).map(item => ({
-    ...item,
-    // Translated HERE rather than at each render site, because there are two of them: the words
-    // in this row above lg, and MobileMenu's rows below it. `to` is the key and the identity;
-    // `label` is only ever displayed, so replacing it costs nothing and a second call site cannot
-    // drift from this one.
-    label: t(item.label),
-    isActive:
-      item.to === '/'
-        ? location.pathname === '/' || location.pathname.startsWith('/chat')
-        : location.pathname.startsWith(item.to),
-  }))
+  const visibleNavItems = useNavItems()
 
   return (
     <AppHeader
@@ -126,7 +81,7 @@ export function Topbar() {
           // conversation on screen, and other conversations run on while you are in Chat.
           const working = workingAgentFor(workingAgents, item.to)
           return (
-            <span key={item.to} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span key={item.to} className="inline-flex items-center gap-2 whitespace-nowrap">
               <NavLink to={item.to} className={() => headerNavLink(item.isActive)}>
                 {item.label}
               </NavLink>

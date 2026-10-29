@@ -31,7 +31,9 @@ export function List({ children, className, as: As = 'div', ariaLabel }: {
  *
  * A row that OPENS something is a `<button>` (`onClick`) - the history list's rows were a `div`
  * with a click handler, which a keyboard could not reach - with colour-only hover and, with
- * `chevron`, the affordance of a row that opens a dialog. `selected` is the row you are on.
+ * `chevron`, the affordance of a row that opens a dialog. `selected` is the row you are on: the
+ * NEUTRAL selected fill with a 2px brand bar at its left edge (`SELECTED_ROW`, since 2026-10-28 -
+ * it was a teal-tinted fill, which in Dark failed contrast under a caption).
  * `meta` sits beside the title (badges, chips); `trailing` beside the action (a readout).
  *
  * A row that opens AND has its own action (a skill with Delete, a conversation with pin and
@@ -39,6 +41,15 @@ export function List({ children, className, as: As = 'div', ariaLabel }: {
  * unreachable. Its text becomes the button and the action sits beside it, while the whole row
  * still takes the hover fill, so it reads as one row.
  */
+/**
+ * A SELECTED ROW: the neutral selected fill (surface-alt) and a 2px bar of the brand at its left
+ * edge - the brand marks the choice, it does not fill it. For a row of any list that is not a
+ * `ListRow` (a table row, a picker's line); the element must not be `static`-only - this sets
+ * `relative` for the bar.
+ */
+export const SELECTED_ROW =
+  'relative bg-surface-alt before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-brand-solid'
+
 export function ListRow({ title, caption, meta, leading, action, trailing, onClick, selected, chevron, disabled, titleClamp, inset, className, ariaLabel }: {
   title?: ReactNode
   caption?: ReactNode
@@ -88,7 +99,7 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
       <div className={cn(
         base,
         'group rounded-md transition-colors', inset ? 'px-2' : '-mx-2 px-2',
-        selected ? 'bg-brand-chip-bg/40' : 'mouse:hover:bg-ink-caption/5 focus-within:bg-ink-caption/5',
+        selected ? SELECTED_ROW : 'mouse:hover:bg-ink-caption/5 focus-within:bg-ink-caption/5',
         disabled && 'opacity-50',
       )}>
         <button
@@ -115,8 +126,10 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
         aria-current={selected || undefined}
         className={cn(
           base,
-          'w-full text-left transition-colors focus-ring rounded-md disabled:opacity-50', inset ? 'px-2' : '-mx-2 px-2',
-          selected ? 'bg-brand-chip-bg/40' : 'mouse:hover:bg-ink-caption/5',
+          // Not inset, the row bleeds 8px past the list on BOTH sides: `w-full` with `-mx-2` only moved
+          // it left, so its chevron sat 16px short of the right edge every other row ends on.
+          'text-left transition-colors focus-ring rounded-md disabled:opacity-50', inset ? 'w-full px-2' : 'w-[calc(100%+1rem)] -mx-2 px-2',
+          selected ? SELECTED_ROW : 'mouse:hover:bg-ink-caption/5',
         )}
       >
         {text}
@@ -124,11 +137,13 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
       </button>
     )
   }
-  return <div className={cn(base, selected && 'bg-brand-chip-bg/40', disabled && 'opacity-50')}>{text}{right}</div>
+  return <div className={cn(base, selected && SELECTED_ROW, disabled && 'opacity-50')}>{text}{right}</div>
 }
 
 /**
- * A row whose action is a switch - on the title's line, the `ListRow` geometry. `size="sm"` is the
+ * A row whose action is a switch - on the title's line, the `ListRow` geometry, its caption directly
+ * under the title at 4px (the field rule of 2026-10-29: a setting's description sits under its
+ * name, a step apart, never under the control). `size="sm"` is the
  * inline one over a list ("Show shared sources from other users"): caption-sized words, the small
  * switch, no row padding.
  */
@@ -146,8 +161,10 @@ export function SwitchRow({ title, caption, checked, onChange, disabled, footnot
 }) {
   if (size === 'sm') {
     return (
-      <label className={cn('inline-flex items-center gap-2 text-xs text-ink-caption cursor-pointer select-none animate-fade-in', disabled && 'opacity-50 cursor-not-allowed', className)}>
-        <ToggleSwitch id={id} size="sm" checked={checked} onChange={onChange} disabled={disabled} />
+      // The kit's ONE switch size and 14px words (the maintainer, 2026-10-30: the small switch was
+      // "too small, not following the UI kit"); only the row's frame is inline.
+      <label className={cn('inline-flex items-center gap-2 text-sm text-ink-secondary cursor-pointer select-none animate-fade-in', disabled && 'opacity-50 cursor-not-allowed', className)}>
+        <ToggleSwitch id={id} checked={checked} onChange={onChange} disabled={disabled} />
         <span>{title}</span>
       </label>
     )
@@ -158,7 +175,7 @@ export function SwitchRow({ title, caption, checked, onChange, disabled, footnot
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <label htmlFor={id} className={cn(TEXT.label, 'block')}>{title}</label>
-          {caption && <div className={cn(TEXT.caption, 'mt-0.5')}>{caption}</div>}
+          {caption && <div className={cn(TEXT.caption, 'mt-1 max-w-[60ch]')}>{caption}</div>}
         </div>
         <ToggleSwitch id={id} checked={checked} onChange={onChange} disabled={disabled} ariaLabel={typeof title === 'string' ? title : undefined} />
       </div>
@@ -246,7 +263,7 @@ export function LinkRow({ icon: Icon, title, description, href }: {
 
 /**
  * The bar shown while rows are selected: how many, and what can be done to them. A brand border
- * on a pale fill, `px-4 py-2.5` - Memory's and the telemetry console's feedback list.
+ * on the neutral selected fill, `px-4 py-2` - Memory's and the telemetry console's feedback list.
  */
 export function BulkActionBar({ countText, children, ariaLabel, className }: {
   countText: ReactNode
@@ -256,7 +273,7 @@ export function BulkActionBar({ countText, children, ariaLabel, className }: {
   className?: string
 }) {
   return (
-    <div role="region" aria-label={ariaLabel ?? (typeof countText === 'string' ? countText : undefined)} className={cn('flex flex-wrap items-center gap-3 rounded-lg border border-brand-solid/40 bg-brand-pale/40 px-4 py-2.5 animate-fade-in', className)}>
+    <div role="region" aria-label={ariaLabel ?? (typeof countText === 'string' ? countText : undefined)} className={cn('flex flex-wrap items-center gap-3 rounded-lg border border-brand-solid/40 bg-surface-alt px-4 py-2 animate-fade-in', className)}>
       <span className="text-xs font-medium text-ink-primary data-readout">{countText}</span>
       <div className="ml-auto flex items-center gap-3">{children}</div>
     </div>

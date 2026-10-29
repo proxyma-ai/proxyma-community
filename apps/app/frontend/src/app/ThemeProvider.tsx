@@ -9,7 +9,7 @@ function applyFavicon(faviconUrl: string) {
 
 // Hydrates the deployment-wide tenant branding from /api/v1/config - the one public,
 // unauthenticated bootstrap endpoint already fetched before login resolves, so branding is
-// correct on the Login/Setup pages too (those routes sit outside AppShell, see Router.tsx).
+// correct on the Login/Setup pages too, which a visitor reaches before any session.
 // Mode is already applied synchronously at module load in themeStore.ts from localStorage;
 // this only ever updates the branding half of the two-attribute scheme.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

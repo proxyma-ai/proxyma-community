@@ -29,7 +29,7 @@ export function PickBox({ children, maxHeight = 'max-h-40', fill, className }: {
   className?: string
 }) {
   return (
-    <div className={cn('overflow-y-auto rounded-md border border-line/45 px-3', maxHeight, fill && 'lg:max-h-none lg:flex-1 lg:min-h-0', className)}>
+    <div className={cn('relative overflow-y-auto rounded-md border border-line/45 px-3', maxHeight, fill && 'lg:max-h-none lg:flex-1 lg:min-h-0', className)}>
       {children}
     </div>
   )
@@ -121,7 +121,7 @@ export function StepList({ intro, children, className }: { intro?: ReactNode; ch
 export function StepItem({ text, children }: { text: ReactNode; children?: ReactNode }) {
   return (
     <li className="space-y-2 [counter-increment:step]">
-      <p className="before:content-[counter(step)_'.'] before:mr-1.5">{text}</p>
+      <p className="before:content-[counter(step)_'.'] before:mr-2">{text}</p>
       {children}
     </li>
   )

@@ -75,17 +75,32 @@ REM matched. The argument is copied into a variable first because only a variabl
 REM !ARG:~0,2! is its first two characters, and that needs the delayed expansion this script already
 REM enables.
 REM
-REM IT MUST BE QUOTED BY THE CALLER: "-Dfoo=bar", not -Dfoo=bar. Batch treats = as an argument
-REM DELIMITER, exactly like a space, so an unquoted property arrives here as two arguments and the
-REM value half then falls through to "Unknown argument: bar". That is confusing enough to be worth
-REM the line in the usage text.
+REM Batch treats = as an argument DELIMITER, exactly like a space, so an UNQUOTED -Dfoo=bar arrives
+REM here as two arguments, -Dfoo and bar - and the value used to fall through to "Unknown argument:
+REM bar" (2026-10-27, -Dproxyma.license.trial.enabled=true). So an unquoted -D argument takes the
+REM next one back as its value. Unquoted is told apart by %1 against %~1: only a quoted argument
+REM loses something to the tilde. A quoted "-Dfoo=bar" is whole already and is passed as it is - and
+REM is still the form to use for a value holding a space or a second = sign.
 set "ARG=%~1"
-if "!ARG:~0,2!"=="-D" ( set "EXTRA_JAVA_ARGS=!EXTRA_JAVA_ARGS! !ARG!" & shift & goto :parse )
+set "RAW=%1"
+if "!ARG:~0,2!"=="-D" goto :property
 if /i "%~1"=="-h"           ( goto :usage )
 if /i "%~1"=="--help"       ( goto :usage )
 if /i "%~1"=="/?"           ( goto :usage )
 echo [ERROR] Unknown argument: %~1
 goto :usage
+
+:property
+if "!RAW!"=="!ARG!" (
+    set "NEXT=%~2"
+    if defined NEXT if not "!NEXT:~0,1!"=="-" if /i not "!NEXT!"=="desktop" if /i not "!NEXT!"=="server" (
+        set "ARG=!ARG!=!NEXT!"
+        shift
+    )
+)
+set "EXTRA_JAVA_ARGS=!EXTRA_JAVA_ARGS! !ARG!"
+shift
+goto :parse
 
 :usage
 echo.
@@ -100,8 +115,8 @@ echo     -NoRuntime            do not copy the bundled Python/ChromaDB runtime
 echo     -NoBrowser            do not open a browser when the app starts serving
 echo     -StartDb              server: start a throwaway PostgreSQL+pgvector container
 echo     -DbUrl ^| -DbUser ^| -DbPassword    server: point at a database you already run
-echo     "-Dname=value"        any JVM system property, passed through to the app.
-echo                           QUOTE it - batch splits an unquoted argument at the = sign.
+echo     -Dname=value          any JVM system property, passed through to the app. Quote it
+echo                           ("-Dname=value"^) when the value holds a space or another =.
 echo.
 exit /b 1
 

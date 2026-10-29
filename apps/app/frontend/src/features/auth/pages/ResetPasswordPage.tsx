@@ -53,7 +53,7 @@ export function ResetPasswordPage() {
   return (
     // The kit's sign-in card; the lockup ONCE (app UI review, F11).
     <AuthLayout
-      logo={<Logo />}
+      logo={<Logo size={22} />}
       title={t('Choose a new password')}
       // Starts at the form's left edge on a phone - nothing to tap mid-screen.
       footer={!token && <Link to="/forgot-password" className={textLink()}>{t('Request a new link')}</Link>}
