@@ -1,6 +1,7 @@
 package ai.proxyma.contracts.license;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * The license server's answer to an activation attempt.
@@ -10,8 +11,9 @@ import java.time.Instant;
  * the {@code activationKey} signature against the public keys embedded in its own build before
  * storing it, so a forged response buys nothing.
  *
- * <p>ENTERPRISE is the only tier issued, since 2026-10-14; a trial is a 30-day Enterprise license
- * whose signed claims say {@code trial: true}. A license carries its own expiry in its signature,
+ * <p>Two kinds are issued: ENTERPRISE, since 2026-10-14 (a trial is a 30-day Enterprise license
+ * whose signed claims say {@code trial: true}), and since 2026-10-30 ADD-ON licenses for Desktop and
+ * Home Server - tier COMMUNITY with an {@code addons} claim ({@link Addons}). A license carries its own expiry in its signature,
  * and the installation acts on that expiry itself, online or not.
  */
 public class LicenseActivationResponse {
@@ -48,6 +50,9 @@ public class LicenseActivationResponse {
     /** The license is a trial (from /trial or a trial key), which ends at {@code expiresAt}. */
     private boolean trial;
 
+    /** The add-ons the license grants (Addons); empty for none. Absent from an older license server. */
+    private List<String> addons;
+
     public LicenseActivationResponse() {}
 
     public boolean isActivated() { return activated; }
@@ -78,4 +83,6 @@ public class LicenseActivationResponse {
     public void setMessage(String message) { this.message = message; }
     public boolean isTrial() { return trial; }
     public void setTrial(boolean trial) { this.trial = trial; }
+    public List<String> getAddons() { return addons; }
+    public void setAddons(List<String> addons) { this.addons = addons; }
 }

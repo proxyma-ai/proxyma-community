@@ -6,7 +6,7 @@
     <parent>
         <groupId>ai.proxyma</groupId>
         <artifactId>proxyma-parent</artifactId>
-        <version>0.39.0</version>
+        <version>0.40.1</version>
     </parent>
 
     <artifactId>proxyma-desktop</artifactId>
@@ -22,6 +22,11 @@
              (e.g. repeated backend-only dev iterations) instead of rebuilding it every time. -->
         <skip.frontend.build>false</skip.frontend.build>
         <frontend.dir>${project.basedir}/../../frontend</frontend.dir>
+        <!-- The application jar the installer, the .deb and the parts carry: this module's own -exec
+             jar unless a build names another with -Dproxyma.app.jar=<path> - one built on top of
+             this module, carrying more than it does. Whatever it is, the launcher runs it as
+             proxyma-desktop.jar. -->
+        <proxyma.app.jar>${project.build.directory}/${project.artifactId}-${project.version}-exec.jar</proxyma.app.jar>
     </properties>
 
     <dependencies>
@@ -407,7 +412,7 @@
                             <target>
                                 <exec executable="python" failonerror="true">
                                     <arg value="${project.basedir}/../../../../tools/build/trim-playwright-driver.py"/>
-                                    <arg value="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"/>
+                                    <arg value="${proxyma.app.jar}"/>
                                     <arg value="--keep"/><arg value="win32_x64"/>
                                 </exec>
                             </target>
@@ -479,7 +484,7 @@
                                 <delete dir="${parts.dir}" quiet="true"/>
                                 <copy file="${project.build.directory}/${project.artifactId}-${project.version}-launcher.jar"
                                       tofile="${parts.dir}/launcher/proxyma-launcher.jar"/>
-                                <copy file="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"
+                                <copy file="${proxyma.app.jar}"
                                       tofile="${parts.dir}/app/proxyma-desktop.jar"/>
                                 <!-- The window's own small files ride in the app part, so a change to
                                      main.js does not download Electron again (ProxymaLauncher.useWindowOf). -->
@@ -635,7 +640,7 @@
                                     <target>
                                         <exec executable="python3" failonerror="true">
                                             <arg value="${project.basedir}/../../../../tools/build/trim-playwright-driver.py"/>
-                                            <arg value="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar"/>
+                                            <arg value="${proxyma.app.jar}"/>
                                             <arg value="--keep"/><arg value="linux"/>
                                         </exec>
                                     </target>
@@ -660,6 +665,7 @@
                                             <!-- Maven's own runtime classpath, so the script never
                                                  has to guess where the local repository lives. -->
                                             <env key="PW_CLASSPATH" path="${pw.classpath}"/>
+                                            <env key="APP_JAR" value="${proxyma.app.jar}"/>
                                         </exec>
                                     </target>
                                 </configuration>

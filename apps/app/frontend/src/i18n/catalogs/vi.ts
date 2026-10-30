@@ -124,6 +124,7 @@ export const vi: Record<string, string> = {
   'Usage & Cost': 'Mức sử dụng & Chi phí',
   'Feedback': 'Góp ý',
   'Import & Export': 'Nhập & Xuất dữ liệu',
+  'Add-ons': 'Tiện ích bổ sung',
   'Updates': 'Cập nhật',
   'Reset': 'Đặt lại',
 

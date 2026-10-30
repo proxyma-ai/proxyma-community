@@ -72,6 +72,10 @@ if (!app.requestSingleInstanceLock()) {
     // A page whose process died is a black window; bring it back loaded, not as it was left.
     if (win.webContents.isCrashed()) loadWhenReady(win)
     if (win.isMinimized()) win.restore()
+    if (maximizeOnShow) {
+      maximizeOnShow = false
+      win.maximize()
+    }
     win.show()
     win.focus()
   })
@@ -83,6 +87,9 @@ if (!app.requestSingleInstanceLock()) {
 // Set once the app is really going - the owner exited, or Electron is quitting for any other
 // reason - so the close handler below stops turning a close into a hide.
 let quitting = false
+
+// A window started hidden by an update (restartWindow) that was maximized is maximized when opened.
+let maximizeOnShow = false
 
 function argValue(name, argv = process.argv) {
   const prefix = name + '='
@@ -198,6 +205,12 @@ function createWindow() {
   const reveal = () => {
     if (shown || win.isDestroyed()) return
     shown = true
+    // Started again by an update while it was hidden (restartWindow): it stays in the tray until
+    // opened, as it was, and is maximized then.
+    if (process.argv.includes(HIDDEN_ARG)) {
+      maximizeOnShow = state.maximized === true
+      return
+    }
     if (state.maximized) win.maximize()
     win.show()
   }
@@ -271,11 +284,58 @@ function followBuild(win) {
     if (quitting || win.isDestroyed() || loaded === null) return
     const now = await versionNow()
     if (now === null || now === loaded) return
+    if (shellChanged()) {
+      logWindow(`backend is ${now}, and the update changed the window's own files; starting the window again`)
+      restartWindow(win)
+      return
+    }
     logWindow(`backend is ${now}, the page was loaded from ${loaded}; loading it again`)
     loaded = now
     win.webContents.reloadIgnoringCache()
   }, BUILD_CHECK_MS)
 }
+
+// AN UPDATE THAT CHANGES THIS FILE OR preload.js STARTS THE WINDOW AGAIN (2026-10-30). The launcher
+// copies the new files into the window before the new backend starts (ProxymaLauncher.useWindowOf),
+// but a running window keeps the main.js it started with, while a reload reads preload.js afresh -
+// so after the update to the borderless window the page drew its own buttons in a window that
+// still had the title bar and no handler behind them. The maintainer's report. A reload is enough
+// only while both files are the ones this process started with.
+const SHELL_FILES = [__filename, path.join(__dirname, 'preload.js')]
+const shellAtStart = shellFingerprint()
+
+function shellFingerprint() {
+  try {
+    return SHELL_FILES.map(f => fs.readFileSync(f, 'utf8')).join('\0')
+  } catch {
+    return null
+  }
+}
+
+function shellChanged() {
+  const now = shellFingerprint()
+  return shellAtStart !== null && now !== null && now !== shellAtStart
+}
+
+// Started again as it is now: shown if it was shown, still hidden in the tray if it was hidden. The
+// new process is started as this one exits, so it takes the single-instance lock this one held.
+// The access code goes back into the environment for it alone - the new window reads it and takes
+// it out again, as this one did.
+function restartWindow(win) {
+  quitting = true
+  saveState(win)
+  const args = process.argv.slice(1).filter(a =>
+    !a.startsWith('--url=') && !a.startsWith('--owner-pid=') && a !== HIDDEN_ARG)
+  args.push('--url=' + url.href)
+  if (ownerPid) args.push('--owner-pid=' + ownerPid)
+  if (!win.isVisible()) args.push(HIDDEN_ARG)
+  if (accessCode) process.env.PROXYMA_WINDOW_ACCESS = accessCode
+  app.relaunch({ args })
+  app.exit(0)
+}
+
+// Set only by restartWindow, for a window that was hidden when an update restarted it.
+const HIDDEN_ARG = '--hidden'
 
 // A PAGE THAT DIES IS LOADED AGAIN (2026-09-29). The window has outlived its page since closing
 // became a hide: a renderer that crashed mid-conversation left a black window, and every reopen from

@@ -1,6 +1,6 @@
 import {
   Archive, ArrowDownUp, BadgeCheck, Bot, Brain, Cpu, DollarSign, FileText, Globe, Info, KeyRound, ListChecks,
-  MessageSquare, History, Plug, RefreshCw, RotateCcw, ScanText, Search, ShieldCheck, User,
+  MessageSquare, History, Plug, Puzzle, RefreshCw, RotateCcw, ScanText, Search, ShieldCheck, User,
   type LucideIcon,
 } from 'lucide-react'
 import type { TabKey } from '../components/SettingsModal'
@@ -44,6 +44,9 @@ export const TAB_ICONS: Record<TabKey, LucideIcon> = {
   'Usage & Cost':            DollarSign,
   'Logs':                    History,
   'Import & Export':         ArrowDownUp,
+  // The add-ons a Desktop or Home Server built with them can activate, each with its own key - a
+  // piece that fits into the product. Only that build lists the tab (index.addons.tsx in ee/).
+  'Add-ons':                 Puzzle,
   // The same arrow the desktop app's own restart uses. Not Download: this tab is about the
   // version you run, and downloading is one step in the middle of it.
   'Updates':                 RefreshCw,

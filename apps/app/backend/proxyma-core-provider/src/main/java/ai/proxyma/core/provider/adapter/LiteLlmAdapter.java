@@ -66,7 +66,10 @@ public class LiteLlmAdapter implements LlmProviderAdapter {
     @Override
     public ChatModel buildChatModel(ResolvedProvider provider, String model, Tone tone, int maxTokens) {
         return messages(provider)
-                ? anthropic.buildChatModel(withKey(provider), model, tone, maxTokens)
+                // Each tool call of the stream handed over whole: LiteLLM closes a block late
+                // (AnthropicToolUseBlocks, 0.39.0 feedback).
+                ? anthropic.buildChatModel(withKey(provider), model, tone, maxTokens,
+                        List.of(AnthropicToolUseBlocks.streamFilter()))
                 : openAi.buildChatModel(provider, model, tone, maxTokens);
     }
 

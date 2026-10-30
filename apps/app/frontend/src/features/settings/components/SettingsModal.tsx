@@ -72,7 +72,7 @@ const WorkflowsTab = lazy(() => import('./WorkflowsTab').then(m => ({ default: m
 // at the tab that absorbed it in MarkdownRenderer's SETTINGS_TAB_BY_SLUG rather than dropped -
 // an unrecognized slug degrades to plain text, so dropping one turns an old button into the
 // breadcrumb it was introduced to replace.
-export type TabKey = 'Account' | 'About' | 'Connections' | 'Skills' | 'Memory' | 'Workflows' | 'API Tokens' | 'AI Assistants' | 'AI Providers' | 'Agents' | 'Conversion' | 'Search' | 'Network' | 'Data Retention' | 'License' | 'Guardrails' | 'Usage & Cost' | 'Logs' | 'Import & Export' | 'Updates' | 'Reset'
+export type TabKey = 'Account' | 'About' | 'Connections' | 'Skills' | 'Memory' | 'Workflows' | 'API Tokens' | 'AI Assistants' | 'AI Providers' | 'Agents' | 'Conversion' | 'Search' | 'Network' | 'Data Retention' | 'License' | 'Guardrails' | 'Usage & Cost' | 'Logs' | 'Import & Export' | 'Add-ons' | 'Updates' | 'Reset'
 
 // SYSTEM CONFIGURATION: the deployment-wide knobs, as opposed to the personal settings. ADMIN and
 // SUPER_ADMIN both SEE these; only SUPER_ADMIN can change them (see SettingsController.checkAccess

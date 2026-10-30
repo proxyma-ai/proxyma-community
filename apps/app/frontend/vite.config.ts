@@ -105,6 +105,11 @@ function appearanceInit(storageKey: string): Plugin {
 // closed source, in the private repository only (docs/architecture.html#oss-boundary). Server mode IS the Enterprise
 // build, so it needs them; desktop mode (Desktop and the Home Server) never reads them, and a tree
 // without ee/ - the public Community repository - builds it unchanged.
+//
+// ADDONS MODE (since 2026-10-30) is the third build: the OFFICIAL Desktop and Home Server, which is
+// desktop mode in every respect (.env.addons) plus the add-ons sold for it, each activated by its own
+// key - Constellations first. Their pages are in ee/ too, so it needs them as server mode does; the
+// public AGPL build stays desktop mode, unchanged.
 const EE_SRC = path.resolve(__dirname, '../../../ee/frontend/src')
 
 // The Enterprise files import react, recharts and the rest like any page here, but sit outside this
@@ -156,9 +161,18 @@ export default defineConfig(({ mode }) => {
   // The same alias, and two more (`@edition`, `@edition-i18n` - src/edition/types.ts), now decide
   // the whole edition: the server one resolves into ee/ (Proxyma Enterprise), the desktop one into
   // this app's own src/edition and settings pages.
+  //
+  // Addons mode resolves the same aliases into ee/ as well, to the add-ons edition: Desktop's
+  // settings with an Add-ons tab, and the add-ons' pages.
   const enterprise = mode === 'server'
+  const addons = mode === 'addons'
+  const readsEe = enterprise || addons
   if (enterprise && !existsSync(EE_SRC)) {
     throw new Error('Server mode builds Proxyma Enterprise, whose pages (ee/frontend) are not in this tree. '
+      + 'Desktop and the Home Server build with `npm run build`.')
+  }
+  if (addons && !existsSync(EE_SRC)) {
+    throw new Error('Addons mode builds Desktop with its add-ons, whose pages (ee/frontend) are not in this tree. '
       + 'Desktop and the Home Server build with `npm run build`.')
   }
   const editionAliases: Record<string, string> = enterprise
@@ -168,13 +182,20 @@ export default defineConfig(({ mode }) => {
         '@edition': path.join(EE_SRC, 'edition.tsx'),
         '@ee': EE_SRC,
       }
+    : addons
+    ? {
+        '@settings-pages': path.join(EE_SRC, 'features/settings/pages/index.addons.tsx'),
+        '@edition-i18n': path.join(EE_SRC, 'i18n/index.ts'),
+        '@edition': path.join(EE_SRC, 'edition.addons.tsx'),
+        '@ee': EE_SRC,
+      }
     : {
         '@settings-pages': path.resolve(__dirname, './src/features/settings/pages/index.desktop.tsx'),
         '@edition-i18n': path.resolve(__dirname, './src/edition/community.i18n.ts'),
         '@edition': path.resolve(__dirname, './src/edition/community.tsx'),
       }
   return {
-    plugins: enterprise
+    plugins: readsEe
       ? [enterpriseBareImports(), react(), appearanceInit('proxyma-theme-mode')]
       : [react(), appearanceInit('proxyma-theme-mode')],
     build: {
@@ -199,8 +220,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      // The dev server serves the Enterprise pages from outside this directory in server mode.
-      ...(enterprise ? { fs: { allow: [__dirname, EE_SRC] } } : {}),
+      // The dev server serves the Enterprise pages from outside this directory in server and addons mode.
+      ...(readsEe ?{ fs: { allow: [__dirname, EE_SRC] } } : {}),
       // THE ORIGIN IS REWRITTEN TO THE BACKEND'S OWN, as well as the Host. The backend lets in a
       // CORS origin only when it is its own page (WebConfig.isOwnOrigin, swx-03 - it used to allow
       // every localhost port), and through this proxy the page's origin is the dev server's.

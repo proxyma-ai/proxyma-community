@@ -85,6 +85,11 @@ const CONSTANT_MODULES = [
   join(ROOT, 'apps', 'app', 'backend', 'proxyma-core-connector'),
   join(ROOT, 'ee', 'backend', 'proxyma-ee-connector-microsoft365'),
 ].map(dir => dir + (process.platform === 'win32' ? '\\' : '/'))
+// And single files whose constants are refusals thrown by name - Constellations' guard
+// (`new ConstellationException.Unlicensed(UNLICENSED)`), whose sentences no other rule can see.
+const CONSTANT_FILES = [
+  join(ROOT, 'ee', 'backend', 'proxyma-ee-constellations', 'src', 'main', 'java', 'ai', 'proxyma', 'ee', 'constellations', 'service', 'ConstellationGuard.java'),
+]
 
 function javaFiles(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -262,7 +267,7 @@ export function extract(backend = SIDES[0].backend) {
         for (const start of expressionStarts(src, from, to)) record(readExpression(src, start), file, src, start)
       }
     }
-    if (CONSTANT_MODULES.some(dir => file.startsWith(dir))) {
+    if (CONSTANT_MODULES.some(dir => file.startsWith(dir)) || CONSTANT_FILES.includes(file)) {
       CONSTANT_ANCHOR.lastIndex = 0
       for (let m; (m = CONSTANT_ANCHOR.exec(src));) {
         // A constant is a sentence only when it ends like one; a name ("your OneDrive") or a header

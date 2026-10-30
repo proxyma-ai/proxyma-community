@@ -1,5 +1,6 @@
 package ai.proxyma.desktop.config.datasource;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -13,6 +14,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -57,15 +60,20 @@ public class ChatDataSourceConfig {
         return H2EnumColumns.relaxed(p.initializeDataSourceBuilder().build());
     }
 
+    // A module this build does not name adds its entity packages through ChatEntityPackages, and
+    // its repositories with an @EnableJpaRepositories of its own against the two beans below.
     @Bean
     public LocalContainerEntityManagerFactoryBean chatEntityManagerFactory(
-            EntityManagerFactoryBuilder builder, @Qualifier("chatDataSource") DataSource ds) {
+            EntityManagerFactoryBuilder builder, @Qualifier("chatDataSource") DataSource ds,
+            ObjectProvider<ChatEntityPackages> extra) {
+        List<String> packages = new ArrayList<>(List.of("ai.proxyma.core.chat.model", "ai.proxyma.core.settings.pricing",
+                "ai.proxyma.core.settings.global", "ai.proxyma.core.settings.usage",
+                "ai.proxyma.core.settings.provider",
+                "ai.proxyma.core.settings.connection",
+                "ai.proxyma.core.settings.audit"));
+        extra.orderedStream().forEach(e -> packages.addAll(e.packages()));
         return builder.dataSource(ds)
-                .packages("ai.proxyma.core.chat.model", "ai.proxyma.core.settings.pricing",
-                          "ai.proxyma.core.settings.global", "ai.proxyma.core.settings.usage",
-                          "ai.proxyma.core.settings.provider",
-                          "ai.proxyma.core.settings.connection",
-                          "ai.proxyma.core.settings.audit")
+                .packages(packages.toArray(String[]::new))
                 .persistenceUnit("chat")
                 .properties(Map.of("hibernate.hbm2ddl.auto", "update",
                                    "hibernate.dialect", "org.hibernate.dialect.H2Dialect"))

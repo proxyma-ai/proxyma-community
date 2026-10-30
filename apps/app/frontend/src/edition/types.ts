@@ -3,11 +3,14 @@ import type { ComponentType, LazyExoticComponent, ReactNode } from 'react'
 /**
  * THE EDITION SEAM - what the app asks of the edition it was built as, and nothing else.
  *
- * Two implementations, chosen at BUILD time by the `@edition` alias (vite.config.ts, tsconfig.json):
+ * Three implementations, chosen at BUILD time by the `@edition` alias (vite.config.ts, tsconfig.json):
  *
  *   src/edition/community.tsx          Desktop and the Home Server (`npm run build`). Open source.
  *   ee/frontend/src/edition.tsx         Proxyma Enterprise (`npm run build:server`). Closed source,
  *                                       in the private repository only (docs/architecture.html#oss-boundary).
+ *   ee/frontend/src/edition.addons.tsx  the official Desktop and Home Server (`npm run build:addons`):
+ *                                       the Community app plus its add-ons, each activated by its own
+ *                                       key. Closed source, as above.
  *
  * The Community code never imports the Enterprise code; it imports `@edition`, and a tree without
  * ee/ resolves that to the Community file. So key accounts and Administration are not dead chunks
@@ -17,15 +20,24 @@ import type { ComponentType, LazyExoticComponent, ReactNode } from 'react'
  * exists. A new Enterprise page is a route below, not a new member.
  */
 
-/** A page only the Enterprise edition has, mounted inside the app shell. */
+/** A page only the edition has, mounted inside the app shell. */
 export interface EditionRoute {
   path: string
   /** The page, loaded when its route is first visited. */
   page: LazyExoticComponent<ComponentType>
   /** Shaped like the page, shown while its chunk loads. */
   fallback: ReactNode
-  /** Who may open it. Every edition route is also server-mode only. */
-  access: 'signed-in' | 'admin'
+  /**
+   * Who may open it.
+   *
+   *   'signed-in', 'admin'   Enterprise Server's pages: server mode only (RequireServerMode), then a
+   *                          session (RequireAuth) or an administrator's (RequireAdmin).
+   *   'anyone'               a page that also opens on Desktop and the Home Server - an add-on's
+   *                          (ee/frontend/src/edition.addons.tsx). No guard at all: those editions
+   *                          have no sign-in, and their access code is checked by the server on
+   *                          every request the page makes, as for every other page there.
+   */
+  access: 'signed-in' | 'admin' | 'anyone'
 }
 
 /** Translations the edition adds to the app's own, by locale (source text -> translation). */

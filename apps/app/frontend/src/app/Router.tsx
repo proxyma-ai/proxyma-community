@@ -112,15 +112,21 @@ export function Router() {
                 not sit in history and trap the back button on it. */}
             <Route path="/connectors" element={<Navigate to="/sources" replace />} />
             {/* THE EDITION'S OWN PAGES (src/edition/types.ts): key accounts and Administration on
-                Enterprise, none on Desktop and the Home Server, whose build does not carry them at
-                all. Each is server-mode only, and signed-in or admin only. */}
+                Enterprise, an add-on's pages on Desktop and the Home Server built with their add-ons,
+                none in the Community build, which does not carry them at all. A signed-in or admin
+                page is server-mode only; an 'anyone' page has no guard - those editions have no
+                sign-in, and the server checks the access code on every request. */}
             {EDITION_ROUTES.map(r => (
               <Route key={r.path} path={r.path} element={
-                <RequireServerMode>
-                  {r.access === 'admin'
-                    ? <RequireAdmin><LazyRoute fallback={r.fallback}><r.page /></LazyRoute></RequireAdmin>
-                    : <RequireAuth><LazyRoute fallback={r.fallback}><r.page /></LazyRoute></RequireAuth>}
-                </RequireServerMode>
+                r.access === 'anyone'
+                  ? <LazyRoute fallback={r.fallback}><r.page /></LazyRoute>
+                  : (
+                    <RequireServerMode>
+                      {r.access === 'admin'
+                        ? <RequireAdmin><LazyRoute fallback={r.fallback}><r.page /></LazyRoute></RequireAdmin>
+                        : <RequireAuth><LazyRoute fallback={r.fallback}><r.page /></LazyRoute></RequireAuth>}
+                    </RequireServerMode>
+                  )
               } />
             ))}
             {/* Anything else lands on chat rather than a blank page - which is what a desktop user

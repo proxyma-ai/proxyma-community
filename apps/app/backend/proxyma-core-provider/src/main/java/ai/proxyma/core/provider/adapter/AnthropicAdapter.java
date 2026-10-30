@@ -54,6 +54,15 @@ public class AnthropicAdapter implements LlmProviderAdapter {
 
     @Override
     public ChatModel buildChatModel(ResolvedProvider provider, String model, Tone tone, int maxTokens) {
+        return buildChatModel(provider, model, tone, maxTokens, java.util.List.of());
+    }
+
+    /**
+     * The same, with stream filters of a gateway's own on top of Anthropic's - a gateway that speaks
+     * Anthropic's API with deviations of its own (LiteLlmAdapter). The native protocol passes none.
+     */
+    ChatModel buildChatModel(ResolvedProvider provider, String model, Tone tone, int maxTokens,
+                             java.util.List<org.springframework.web.reactive.function.client.ExchangeFilterFunction> gatewayStreamFilters) {
         if (!provider.hasApiKey()) {
             throw new IllegalStateException("Provider '" + provider.name() + "' has no API key configured");
         }
@@ -86,6 +95,7 @@ public class AnthropicAdapter implements LlmProviderAdapter {
                 .filter(AnthropicCacheTail.streamFilter())
                 .filter(WireUsage.streamFilter(WireUsage.Shape.ANTHROPIC))
                 .filter(AnthropicStreamErrors.streamFilter());
+        gatewayStreamFilters.forEach(webClientBuilder::filter);
         AnthropicApi.Builder apiBuilder = AnthropicApi.builder()
                 .apiKey(provider.apiKey())
                 .restClientBuilder(restClientBuilder)

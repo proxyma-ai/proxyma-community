@@ -156,6 +156,8 @@ const SETTINGS_TAB_BY_SLUG: Record<string, TabKey> = {
   'retrieval':            'Search',
   'network':              'Network',
   'license':              'License',
+  // Only the build with add-ons lists the tab; elsewhere the modal falls back to its default tab.
+  'add-ons':              'Add-ons',
   'usage-and-cost':       'Usage & Cost',
   'logs':                 'Logs',
   // The tab was Audit Logs until 2026-10-14; a link written before then still lands on it.

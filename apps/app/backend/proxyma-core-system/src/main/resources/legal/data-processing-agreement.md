@@ -1,8 +1,8 @@
 # Proxyma Data Processing Agreement
 
-**Document version:** 2026-10-29
+**Document version:** 2026-10-30
 **Effective date:** 2026-08-04
-**Last updated:** 2026-10-29
+**Last updated:** 2026-10-30
 
 ---
 
@@ -34,8 +34,12 @@ is sent from inside Proxyma: feedback a person submits; answer ratings; and, fro
 diagnostics report of aggregate counts, durations, error types and settings, keyed to a random
 installation identifier and containing no document content, file names or paths, queries,
 conversation content or account details. Proxyma Desktop and Proxyma Home Server do not contact
-our license server, except installations at version 0.35 or earlier, which ask for the trial
-those versions offer and check the license they hold, as Privacy Policy section 3.2 describes. A rating sends the rated answer and the question it replies to. Ratings and diagnostics are sent only from Proxyma Desktop and Proxyma Home Server, and only
+our license server unless an add-on is activated or its trial started (which sends the add-on's key
+or name, a random installation identifier, at activation the computer's name, which we do not store,
+and for a trial a one-way hash of the operating system's identifier; an installed add-on license is
+re-checked every few hours with the license and that identifier), and except installations at
+version 0.35 or earlier, which ask for the trial those versions offer and check the license they
+hold, as Privacy Policy section 3.2 describes. A rating sends the rated answer and the question it replies to. Ratings and diagnostics are sent only from Proxyma Desktop and Proxyma Home Server, and only
 when "Send diagnostics to Proxyma" is turned on in Settings -> About -> Privacy; Proxyma Enterprise
 Server never sends either, whatever its license or settings. What we
 receive that way is our own processing under section 2, described in Privacy Policy sections 3.3

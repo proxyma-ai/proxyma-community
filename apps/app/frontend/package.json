@@ -9,6 +9,8 @@
     "dev:server": "vite --mode server",
     "build": "tsc -b && vite build --mode desktop",
     "build:server": "tsc -b tsconfig.server.json && vite build --mode server",
+    "dev:addons": "vite --mode addons",
+    "build:addons": "tsc -b tsconfig.addons.json && vite build --mode addons",
     "preview": "vite preview"
   },
   "dependencies": {

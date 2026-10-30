@@ -14,9 +14,13 @@ import jakarta.validation.constraints.Size;
  * again on the same host or cluster is not a new trial either. Each is SHA-256 hex of
  * {@code "proxyma-trial-v1:"} and the identifier - never the identifier itself.
  *
- * <p>{@code edition = "desktop"}: the retired desktop trial, still asked for by builds 0.33-0.35 of
- * Proxyma Desktop and Home Server, keyed on {@code osIdHash} (the operating system's own
- * identifier, hashed the same way). Current builds of those editions need no license and never ask.
+ * <p>{@code edition = "desktop"} WITH {@code addon}: an ADD-ON trial for Proxyma Desktop or Home
+ * Server ({@link Addons}), once per add-on per device, keyed on {@code osIdHash} (the operating
+ * system's own identifier, hashed the same way) and that add-on. Asked for only when the person
+ * starts it.
+ *
+ * <p>{@code edition = "desktop"} WITHOUT {@code addon}: the retired desktop trial, still asked for by
+ * builds 0.33-0.35 of Proxyma Desktop and Home Server, keyed on {@code osIdHash}.
  *
  * <p>Which fields an edition needs is the server's rule; the fields themselves are all optional so
  * that either side may deploy first. The answer is a {@link LicenseActivationResponse}: a granted
@@ -52,7 +56,18 @@ public class LicenseTrialRequest {
     @Pattern(regexp = "[0-9a-f]{64}")
     private String clusterIdHash;
 
+    /** The add-on a desktop trial is for (Addons); absent for every other trial. */
+    @Size(max = 32)
+    private String addon;
+
     public LicenseTrialRequest() {}
+
+    /** A Desktop or Home Server installation's trial of one add-on. */
+    public static LicenseTrialRequest forAddon(String machineId, String osIdHash, String addon) {
+        LicenseTrialRequest r = new LicenseTrialRequest(machineId, osIdHash, "desktop");
+        r.setAddon(addon);
+        return r;
+    }
 
     public LicenseTrialRequest(String machineId, String osIdHash, String edition) {
         this.machineId = machineId;
@@ -73,6 +88,8 @@ public class LicenseTrialRequest {
     public void setMachineId(String machineId) { this.machineId = machineId; }
     public String getOsIdHash() { return osIdHash; }
     public void setOsIdHash(String osIdHash) { this.osIdHash = osIdHash; }
+    public String getAddon() { return addon; }
+    public void setAddon(String addon) { this.addon = addon; }
     public String getEdition() { return edition; }
     public void setEdition(String edition) { this.edition = edition; }
     public String getDeploymentId() { return deploymentId; }

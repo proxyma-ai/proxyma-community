@@ -44,9 +44,23 @@ public class FeatureGateService {
     }
 
     public void refresh(LicenseTier tier, boolean trial) {
-        features = Features.forTier(tier);
+        refresh(tier, trial, Features.forTier(tier).addons());
+    }
+
+    /** A license is in force with these add-ons (its addons claim - Addons.granted). */
+    public void refresh(LicenseTier tier, boolean trial, java.util.Collection<String> addons) {
+        features = Features.of(tier, addons);
         effective = new Effective(tier, trial && tier != LicenseTier.COMMUNITY);
         if (tier == LicenseTier.ENTERPRISE) lapse = Lapse.NONE;
+    }
+
+    /**
+     * The add-ons the keys installed on Desktop or Home Server grant now - each add-on its own key
+     * (Proxyma's add-on licensing, ai.proxyma.ee.license.addons). The tier stays COMMUNITY and nothing
+     * else changes; an empty set takes every add-on away again.
+     */
+    public void grantAddons(java.util.Collection<String> addons) {
+        features = Features.of(LicenseTier.COMMUNITY, addons);
     }
 
     /**

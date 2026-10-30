@@ -48,13 +48,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // the bar.
 class SplashWindow extends JFrame implements Splash {
 
-    // -- tokens, mirroring the Dark appearance of proxyma-tokens.css (re-stepped 2026-10-29) ------
-    // The window floats on the desktop, so its fill is --surface-float, as the SplashScreen card's is.
-    private static final Color FILL         = new Color(0x1F, 0x22, 0x26); // --surface-float #1f2226
-    private static final Color LINE         = new Color(0x2A, 0x2E, 0x33); // --line         #2a2e33
-    private static final Color INK_PRIMARY  = new Color(0xFF, 0xFF, 0xFF); // --ink-primary
-    private static final Color INK_CAPTION  = new Color(0x9B, 0xA2, 0xAC); // --ink-caption  #9ba2ac
-    private static final Color INK_DISABLED = new Color(0x6B, 0x72, 0x7B); // --ink-disabled #6b727b
+    // -- tokens, mirroring the Dark appearance of proxyma-tokens.css (neutral since 2026-10-30) ---
+    // The fill is the app window's own dark gray (--field-base, desktop-shell's backgroundColor), so
+    // the splash and the window it hands over to are one color - no teal tint in either.
+    private static final Color FILL         = new Color(0x10, 0x10, 0x11); // --field-base   #101011
+    private static final Color LINE         = new Color(0x2A, 0x2A, 0x2D); // --line         #2a2a2d
+    private static final Color INK_PRIMARY  = new Color(0xF5, 0xF6, 0xF7); // --ink-primary  #f5f6f7
+    private static final Color INK_CAPTION  = new Color(0xA0, 0xA1, 0xA4); // --ink-caption  #a0a1a4
+    private static final Color INK_DISABLED = new Color(0x70, 0x71, 0x74); // --ink-disabled #707174
     private static final Color BRAND_LEGIBLE= new Color(0xA6, 0xD6, 0xE7); // --brand-legible p300
     private static final Color BRAND_ACCENT = new Color(0x78, 0xBE, 0xD9); // --brand-accent   p400
     private static final Color DANGER       = new Color(0xF8, 0x71, 0x71); // --danger

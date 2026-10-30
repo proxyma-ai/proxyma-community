@@ -144,16 +144,44 @@ public class RunCommandTool {
                 finished = false;
             }
             if (!finished) {
-                process.descendants().forEach(ProcessHandle::destroyForcibly);
+                java.util.List<ProcessHandle> tree = process.descendants().toList();
+                tree.forEach(ProcessHandle::destroyForcibly);
                 process.destroyForcibly();
+                // A kill is asynchronous, and on Windows a process holds its redirected files until
+                // it has gone: reading or deleting them a moment too early failed the whole call with
+                // "being used by another process" instead of reporting the timeout.
+                awaitExit(process.toHandle());
+                tree.forEach(RunCommandTool::awaitExit);
             }
             return result(finished ? process.exitValue() : -1, SandboxFiles.tail(out, PythonSandbox.Limits.MAX_STREAM_CHARS),
                     SandboxFiles.tail(err, PythonSandbox.Limits.MAX_STREAM_CHARS), !finished, timeout);
         } finally {
-            Files.deleteIfExists(out);
-            Files.deleteIfExists(err);
+            deleteQuietly(out);
+            deleteQuietly(err);
         }
     }
+
+    private static void awaitExit(ProcessHandle handle) {
+        try {
+            handle.onExit().get(KILL_WAIT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            // Still going after the wait: the files are left for deleteQuietly to try.
+        }
+    }
+
+    // The temporary output files are this tool's own; failing to delete one is never the command's
+    // failure, so it is left to the JVM's exit rather than reported.
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (java.io.IOException e) {
+            file.toFile().deleteOnExit();
+        }
+    }
+
+    private static final long KILL_WAIT_SECONDS = 5;
 
     private static Map<String, Object> result(int exitCode, String stdout, String stderr, boolean timedOut, Duration timeout) {
         Map<String, Object> result = new LinkedHashMap<>();

@@ -42,37 +42,47 @@ public record LicenseStatusResponse(
          * growing, and the pages word their notices for that rather than for "not licensed yet".
          */
         boolean lapsed,
-        /** Constellations' projects and agents may be changed: Enterprise only (Features#isConstellationsAllowed). */
-        boolean constellationsAllowed) {
+        /** Constellations' projects and agents may be changed: its add-on is in force (Features#isConstellationsAllowed). */
+        boolean constellationsAllowed,
+        /** The add-ons in force, by name (Features#addons). */
+        java.util.List<String> addons) {
 
     public static LicenseStatusResponse of(LicenseTier tier, Instant expiresAt, boolean valid) {
         Features f = Features.forTier(tier);
         return new LicenseStatusResponse(tier, expiresAt, valid,
                 f.isOrgModeAllowed(), f.isMicrosoft365Allowed(), f.isKeyAccountsAllowed(),
-                null, false, null, "NONE", false, f.isConstellationsAllowed());
+                null, false, null, "NONE", false, f.isConstellationsAllowed(), java.util.List.copyOf(f.addons()));
+    }
+
+    /** Same status, with the add-ons actually in force - a license's addons claim decides them, not its tier. */
+    public LicenseStatusResponse withAddons(java.util.Collection<String> inForce) {
+        Features f = Features.of(tier, inForce);
+        return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
+                keyAccountsAllowed, recheck, trial, trialEndedAt, trialState, lapsed, f.isConstellationsAllowed(),
+                java.util.List.copyOf(f.addons()));
     }
 
     /** Same status, carrying the re-check snapshot the controller just read. */
     public LicenseStatusResponse withRecheck(RecheckSnapshot snapshot) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, snapshot, trial, trialEndedAt, trialState, lapsed, constellationsAllowed);
+                keyAccountsAllowed, snapshot, trial, trialEndedAt, trialState, lapsed, constellationsAllowed, addons);
     }
 
     /** Same status, marked as a trial or not. */
     public LicenseStatusResponse withTrial(boolean isTrial) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, isTrial, trialEndedAt, trialState, lapsed, constellationsAllowed);
+                keyAccountsAllowed, recheck, isTrial, trialEndedAt, trialState, lapsed, constellationsAllowed, addons);
     }
 
     /** Same status, saying when this deployment's trial ended. */
     public LicenseStatusResponse withTrialEndedAt(Instant endedAt) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, trial, endedAt, trialState, lapsed, constellationsAllowed);
+                keyAccountsAllowed, recheck, trial, endedAt, trialState, lapsed, constellationsAllowed, addons);
     }
 
     /** Same status, with the trial's state and whether a license has lapsed. */
     public LicenseStatusResponse withTrialState(String state, boolean hasLapsed) {
         return new LicenseStatusResponse(tier, expiresAt, valid, orgModeAllowed, microsoft365Allowed,
-                keyAccountsAllowed, recheck, trial, trialEndedAt, state, hasLapsed, constellationsAllowed);
+                keyAccountsAllowed, recheck, trial, trialEndedAt, state, hasLapsed, constellationsAllowed, addons);
     }
 }

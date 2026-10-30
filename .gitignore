@@ -20,6 +20,7 @@ __pycache__/
 !.env.example
 !/apps/app/frontend/.env.server
 !/apps/app/frontend/.env.desktop
+!/apps/app/frontend/.env.addons
 *.pem
 *.key
 !**/src/main/resources/keys/*-public.pem

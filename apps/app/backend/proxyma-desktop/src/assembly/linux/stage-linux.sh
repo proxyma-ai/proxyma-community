@@ -66,7 +66,8 @@ mkdir -p "$APPDIR/jre" "$PARTS/launcher" "$PARTS/app" "$PARTS/python/wheels"
 # Boot prefers once a newer release is installed.
 cp "$TARGET_DIR/proxyma-desktop-$VERSION-launcher.jar" "$APPDIR/proxyma-launcher.jar"
 cp "$TARGET_DIR/proxyma-desktop-$VERSION-launcher.jar" "$PARTS/launcher/proxyma-launcher.jar"
-cp "$TARGET_DIR/proxyma-desktop-$VERSION-exec.jar"     "$PARTS/app/proxyma-desktop.jar"
+# APP_JAR: the application jar to carry (the pom's proxyma.app.jar), this module's own by default.
+cp "${APP_JAR:-$TARGET_DIR/proxyma-desktop-$VERSION-exec.jar}" "$PARTS/app/proxyma-desktop.jar"
 
 # --strip-components=1 drops the "jdk-21.0.10+7-jre/" wrapper directory, so the JRE lands as
 # jre/bin/java - the path the .deb's launcher script expects.

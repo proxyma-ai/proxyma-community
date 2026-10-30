@@ -1,0 +1,23 @@
+// THE ADD-ONS BUILD'S TYPE CHECK (`npm run build:addons`) - the official Desktop and Home Server build:
+// Desktop in every respect, plus the add-ons sold for it (Constellations), whose pages are in
+// ee/frontend/src at the repository root - closed source, private repository only
+// (docs/architecture.html#oss-boundary). The same program as tsconfig.server.json, with the edition
+// aliases pointing at the add-ons edition, as vite.config.ts points them in addons mode.
+//
+// The "*" path is for the ee/ files alone, as in tsconfig.server.json: they sit outside this package,
+// so a bare import from them is sent to this app's node_modules, @types first.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ee/*": ["../../../ee/frontend/src/*"],
+      "@settings-pages": ["../../../ee/frontend/src/features/settings/pages/index.addons.tsx"],
+      "@edition": ["../../../ee/frontend/src/edition.addons.tsx"],
+      "@edition-i18n": ["../../../ee/frontend/src/i18n/index.ts"],
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
+    }
+  },
+  "include": ["src", "../../../ee/frontend/src"],
+  "exclude": ["src/**/*.test.ts", "../../../ee/frontend/src/**/*.test.ts"]
+}
