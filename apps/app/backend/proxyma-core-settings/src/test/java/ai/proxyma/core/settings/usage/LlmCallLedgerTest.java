@@ -137,7 +137,7 @@ class LlmCallLedgerTest {
         void setUp() {
             repository = mock(LlmCallRepository.class);
             controller = new LlmCallsController(repository, mock(ModelPricingService.class));
-            when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(Page.empty());
             when(repository.totalsByProvider(any(), any(), any())).thenReturn(List.of());
             when(repository.totalsByModel(any(), any(), any())).thenReturn(List.of());
@@ -148,7 +148,7 @@ class LlmCallLedgerTest {
 
         private Map<String, Object> callAs(boolean multiUser, String user, String role) {
             ReflectionTestUtils.setField(controller, "multiUser", multiUser);
-            var call = controller.calls(30, 0, 50, null, null, null, null, null, null, null, null);
+            var call = controller.calls(30, 0, 50, null, null, null, null, null, null, null, null, null);
             if (user != null) {
                 var auth = new UsernamePasswordAuthenticationToken(user, null,
                         List.of(new SimpleGrantedAuthority(role)));
@@ -164,7 +164,7 @@ class LlmCallLedgerTest {
             Map<String, Object> body = callAs(true, "u-42", "ROLE_USER");
 
             assertEquals("mine", body.get("scope"));
-            verify(repository).search(any(), any(), eq("u-42"), any(), any(), any(), any(), any(Pageable.class));
+            verify(repository).search(any(), any(), eq("u-42"), any(), any(), any(), any(), any(), any(Pageable.class));
             // The chart is drawn from the same scope as the table - it cannot be everyone's.
             verify(repository).costPoints(any(), any(), eq("u-42"));
             // The by-subject breakdown is the "who spent it" view, and it is not theirs to see.
@@ -180,7 +180,7 @@ class LlmCallLedgerTest {
             Map<String, Object> body = callAs(true, "admin-1", "ROLE_ADMIN");
 
             assertEquals("all", body.get("scope"));
-            verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(Pageable.class));
+            verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(), any(Pageable.class));
             assertTrue(body.containsKey("bySubject"));
             assertTrue(body.containsKey("costCenters"));
         }
@@ -191,17 +191,17 @@ class LlmCallLedgerTest {
             Map<String, Object> body = callAs(false, null, null);
 
             assertEquals("all", body.get("scope"));
-            verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(Pageable.class));
+            verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(), any(Pageable.class));
         }
 
         @Test
         @DisplayName("the window is clamped, so nobody can ask for an unbounded scan")
         void windowIsClamped() {
             ReflectionTestUtils.setField(controller, "multiUser", false);
-            controller.calls(100000, 0, 50, null, null, null, null, null, null, null, null).block();
+            controller.calls(100000, 0, 50, null, null, null, null, null, null, null, null, null).block();
 
             ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
-            verify(repository).search(from.capture(), any(), isNull(), any(), any(), any(), any(), any(Pageable.class));
+            verify(repository).search(from.capture(), any(), isNull(), any(), any(), any(), any(), any(), any(Pageable.class));
             assertTrue(from.getValue().isAfter(Instant.now().minusSeconds(366L * 24 * 3600)));
         }
     }

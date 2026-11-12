@@ -190,7 +190,7 @@ public class DefaultLlmGateway implements LlmGateway {
                 .map(ResolvedProvider::streams).orElse(true);
         // The cache clock's line: the conversation or run the caller names, else its role and subject.
         String line = options.cacheLine() != null ? options.cacheLine() : defaultLine(role, caller.subject());
-        return new AdapterSession(role, binding, buildOptions(binding, options), caller.subject(), longCache,
+        return new AdapterSession(role, binding, buildOptions(binding, options), caller, longCache,
                 streams, line);
     }
 
@@ -225,7 +225,7 @@ public class DefaultLlmGateway implements LlmGateway {
                 ? settingsService.getSettings(SubAgentSettings.PREFIX, SubAgentSettings.class).contextMaxTokens(chat)
                 : chat.getMemoryMaxTokens();
         if (set > 0) return set;
-        // The model the role actually resolves to - a sub-agent's own, where it has one.
+        // The model the role actually resolves to.
         Binding binding = bindingFor(role);
         Integer stated = binding == null ? null
                 : providerFactory.modelLimits(binding.providerId(), binding.modelName()).contextWindow();
@@ -261,7 +261,7 @@ public class DefaultLlmGateway implements LlmGateway {
         PromptCacheClock.Observation seen = cacheClock.observe(defaultLine(role, caller.subject()),
                 binding.provider(), binding.modelName(), PromptFingerprint.of(messages, List.of()), at,
                 result.usage(), false);
-        recordSpend(role, binding, caller.subject(), result.usage(), seen);
+        recordSpend(caller, binding, result.usage(), seen);
         return result;
     }
 
@@ -303,8 +303,7 @@ public class DefaultLlmGateway implements LlmGateway {
                         adapter.rerank(provider, query, documents, settings.getModel());
                 // Recorded here rather than not at all. This branch spent money and reached no
                 // ledger until 2026-09-16, while recordSpend's own comment said it could not.
-                recordSpend(role, provider.name(), settings.getModel(),
-                        caller.subject(), response.usage());
+                recordSpend(caller, provider.name(), settings.getModel(), response.usage(), null);
                 List<LlmProviderAdapter.RerankResult> results = response.results();
                 List<Ranked> ranked = new ArrayList<>(results.size());
                 for (LlmProviderAdapter.RerankResult r : results) ranked.add(new Ranked(r.index(), r.score()));
@@ -354,17 +353,11 @@ public class DefaultLlmGateway implements LlmGateway {
      * Written from the same numbers in the same breath, they cannot come to disagree about what
      * happened - which is precisely what the four ledgers that grew up separately did.
      *
-     * <p>The subject arrives with the call, in its {@link LlmCaller} - see that record for why it
-     * stopped being read from the thread.
+     * <p>The subject and the conversation arrive with the call, in its {@link LlmCaller} - see that
+     * record for why they stopped being read from the thread.
      */
-    void recordSpend(LlmRole role, Binding binding, SpendSubject subject, TokenUsage usage) {
-        recordSpend(role, binding.provider(), binding.modelName(), subject, usage, null);
-    }
-
-    /** The same, with what the call did with the provider's cache. */
-    void recordSpend(LlmRole role, Binding binding, SpendSubject subject, TokenUsage usage,
-                     PromptCacheClock.Observation seen) {
-        recordSpend(role, binding.provider(), binding.modelName(), subject, usage, seen);
+    void recordSpend(LlmCaller caller, Binding binding, TokenUsage usage, PromptCacheClock.Observation seen) {
+        recordSpend(caller, binding.provider(), binding.modelName(), usage, seen);
     }
 
     /**
@@ -373,13 +366,10 @@ public class DefaultLlmGateway implements LlmGateway {
      * <p>Takes the provider's DISPLAY NAME, never an instance id: {@code ModelPricingService} keys
      * rates on the name, so an id here prices every row at $0 while looking recorded.
      */
-    void recordSpend(LlmRole role, String providerName, String modelName,
-                     SpendSubject subject, TokenUsage usage) {
-        recordSpend(role, providerName, modelName, subject, usage, null);
-    }
-
-    void recordSpend(LlmRole role, String providerName, String modelName,
-                     SpendSubject subject, TokenUsage usage, PromptCacheClock.Observation seen) {
+    void recordSpend(LlmCaller caller, String providerName, String modelName,
+                     TokenUsage usage, PromptCacheClock.Observation seen) {
+        LlmRole role = caller.service();
+        SpendSubject subject = caller.subject();
         ModelPricingService.Priced priced = pricing.price(providerName, modelName, usage);
         if (priced == null) priced = new ModelPricingService.Priced(0, ai.proxyma.core.common.usage.CostSource.NONE);
         double cost = priced.costUsd();
@@ -387,12 +377,10 @@ public class DefaultLlmGateway implements LlmGateway {
         // rerank endpoint that answers with scores alone still happened and still cost something.
         // The monthly rollup keeps ignoring zero-token calls, which is what makes its averages
         // mean anything.
-        if (seen == null || seen.outcome() == PromptCacheClock.Outcome.NONE) {
-            callLog.record(subject, role.name(), providerName, modelName, usage, cost, priced.source());
-        } else {
-            callLog.record(subject, role.name(), providerName, modelName, usage, cost, priced.source(),
-                    seen.outcome().name(), seen.warmUntil());
-        }
+        boolean cached = seen != null && seen.outcome() != PromptCacheClock.Outcome.NONE;
+        callLog.record(subject, role.name(), providerName, modelName, usage, cost, priced.source(),
+                cached ? seen.outcome().name() : null, cached ? seen.warmUntil() : null,
+                caller.conversationId());
         if (usage == null || usage == TokenUsage.EMPTY) return;
         attributedSpend.record(subject, role.name(), providerName, modelName, usage, cost);
     }
@@ -413,15 +401,9 @@ public class DefaultLlmGateway implements LlmGateway {
      */
     private Binding bindingFor(LlmRole role) {
         return switch (role) {
-            case CHAT, CONDENSATION, WORKFLOW -> mainChat();
-            // Title generation borrows the sub-agent model: short, undemanding work that should not
-            // tie up the deployment's best model. Both run on the agent's model when sub-agents
-            // have none of their own, which is also why a title is not a settings role of its own.
-            case TITLE, SUB_AGENT -> {
-                SubAgentSettings s = settingsService.getSettings(SubAgentSettings.PREFIX, SubAgentSettings.class);
-                ChatSettings agent = settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class);
-                yield dedicatedOrMain(providerFactory.getSubAgentChatModel(), s.provider(agent), s.getModel());
-            }
+            // Titles and SUB_AGENT run on the agent's model since 2026-11-02, when deployed agents lost
+            // the model of their own that a title used to borrow (SubAgentSettings).
+            case CHAT, CONDENSATION, WORKFLOW, TITLE, SUB_AGENT -> mainChat();
             // The space fact rides the query-expansion model for the same reason, and deliberately
             // has no role of its own: a settings toggle nobody asked for is one nobody understands.
             case QUERY_EXPANSION, SPACE_FACT -> {
@@ -634,20 +616,23 @@ public class DefaultLlmGateway implements LlmGateway {
         /**
          * From the caller that opened the session - never read from a thread. A ReAct loop hands
          * its model call to another thread more than once (a bounded future for the timeout, a
-         * scheduler for the stream), and a ThreadLocal read over there would find nothing.
+         * scheduler for the stream), and a ThreadLocal read over there would find nothing. Carries
+         * the conversation the session is for, which every call it makes is filed under.
          */
+        private final LlmCaller caller;
         private final SpendSubject subject;
         private final boolean longCache;
         private final boolean streams;
         private final String cacheLine;
 
-        AdapterSession(LlmRole role, Binding binding, ToolCallingChatOptions options, SpendSubject subject,
+        AdapterSession(LlmRole role, Binding binding, ToolCallingChatOptions options, LlmCaller caller,
                        boolean longCache, boolean streams, String cacheLine) {
             this.cacheLine = cacheLine;
             this.role = role;
             this.binding = binding;
             this.options = options;
-            this.subject = subject;
+            this.caller = caller;
+            this.subject = caller.subject();
             this.longCache = longCache;
             this.streams = streams;
         }
@@ -680,7 +665,7 @@ public class DefaultLlmGateway implements LlmGateway {
             TokenUsage spent = priced(result.usage());
             PromptCacheClock.Observation seen = cacheClock.observe(cacheLine, binding.provider(), binding.modelName(),
                     PromptFingerprint.of(messages, tools), at, spent, longCache);
-            recordSpend(role, binding, subject, spent, seen);
+            recordSpend(caller, binding, spent, seen);
             return result;
         }
 
@@ -741,25 +726,24 @@ public class DefaultLlmGateway implements LlmGateway {
                             PromptCacheClock.Observation seen = observed.get() != null ? observed.get()
                                     : cacheClock.observe(cacheLine, binding.provider(), binding.modelName(),
                                             fingerprint, at, spent, longCache);
-                            recordSpendOffLoop(role, binding, subject, spent, seen);
+                            recordSpendOffLoop(binding, spent, seen);
                         })
                         .contextWrite(wire::into);
             });
         }
 
         // See spendRecorder. Never allowed to fail the stream that already ended.
-        private void recordSpendOffLoop(LlmRole role, Binding binding, SpendSubject subject, TokenUsage spent,
-                                        PromptCacheClock.Observation seen) {
+        private void recordSpendOffLoop(Binding binding, TokenUsage spent, PromptCacheClock.Observation seen) {
             try {
                 spendRecorder.execute(() -> {
                     try {
-                        recordSpend(role, binding, subject, spent, seen);
+                        recordSpend(caller, binding, spent, seen);
                     } catch (RuntimeException e) {
                         log.warn("[LlmGateway] could not record a stream's spend: {}", e.toString());
                     }
                 });
             } catch (RuntimeException rejected) {
-                recordSpend(role, binding, subject, spent, seen);
+                recordSpend(caller, binding, spent, seen);
             }
         }
 
@@ -801,7 +785,7 @@ public class DefaultLlmGateway implements LlmGateway {
             TokenUsage usage = response == null || response.getMetadata() == null
                     ? TokenUsage.EMPTY
                     : TokenUsageExtractor.extract(response.getMetadata().getUsage());
-            recordSpend(caller.service(), providerName, modelName, caller.subject(), usage);
+            recordSpend(caller, providerName, modelName, usage, null);
             return response;
         }
 

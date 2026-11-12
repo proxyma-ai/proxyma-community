@@ -1,5 +1,6 @@
 package ai.proxyma.core.chat.agents;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.event.ConversationsDeletedEvent;
 import ai.proxyma.core.chat.model.AgentEvent;
 import ai.proxyma.core.chat.model.AgentFanOut;
@@ -127,7 +128,7 @@ public class AgentFanOuts {
         if (record != null) {
             record.write(saved.getRootConversationId(), parentConversationId,
                     tree.node(parentConversationId).map(AgentNode::getId).orElse(null), AgentEvent.FAN_OUT, AgentFanOut.RUNNING,
-                    null, saved.getTitle() + " (" + saved.getTotal() + " items)");
+                    null, saved.getTitle());
         }
         log.info("[Agents] fan-out {} of {} items under conversation={}", saved.getId(), saved.getTotal(), parentConversationId);
         pump(saved.getId());
@@ -200,7 +201,7 @@ public class AgentFanOuts {
         if (record != null) {
             record.write(f.getRootConversationId(), f.getParentConversationId(),
                     tree.node(f.getParentConversationId()).map(AgentNode::getId).orElse(null), AgentEvent.FAN_OUT,
-                    f.getStatus(), null, f.getTitle() + (stopped ? " stopped" : " done"));
+                    f.getStatus(), null, f.getTitle());
         }
         AgentDeliberations d = f.getDeliberationId() == null || deliberations == null ? null : deliberations.getIfAvailable();
         if (d != null) {
@@ -343,7 +344,7 @@ public class AgentFanOuts {
 
     static String clipTitle(String t) {
         String one = t.replaceAll("\\s+", " ").strip();
-        return one.length() <= 80 ? one : one.substring(0, 77) + "...";
+        return one.length() <= 80 ? one : Utf16.cut(one, 77) + "...";
     }
 
     static UUID uuid(String raw) {

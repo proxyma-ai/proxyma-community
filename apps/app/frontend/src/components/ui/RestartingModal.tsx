@@ -20,10 +20,10 @@ import { useTranslation } from '@/i18n'
 // IT IS THE DESKTOP SPLASH, as a card the size of the launcher's splash window (kit SplashScreen,
 // since 2026-10-10 - it covered the whole window for a day, and before that it was the kit's status
 // card). On a desktop restart the launcher's own splash is on screen at the same time, so the two
-// are drawn alike: the mark turning at the splash's rate (one turn in 12 s -
-// SplashWindow.MARK_DEG_PER_MS, 30 deg/s), the name, ONE phase line in sentence case, and the
+// are drawn alike: the mark turning at the one speed every mark turns at (one turn in 12 s, the kit's
+// `--mark-turn` - SplashWindow.MARK_DEG_PER_MS, 30 deg/s), the name, ONE phase line in sentence case, and the
 // 200x4 wave bar. The phase is read off the health endpoint rather than told by the caller:
-// "Restarting" while the old process still answers, "Starting" from the first request it does not.
+// "Restarting Proxyma" while the old process still answers, "Starting Proxyma" from the first request it does not.
 //
 // A RESTART THAT IS TAKING LONGER THAN USUAL SAYS SO, after a minute (maintainer's request,
 // 2026-10-10), in the line under the bar - the same sentence, at the same moment, as the launcher's
@@ -75,11 +75,11 @@ export function RestartingModal() {
     <StatusLayer
       // No onClose: nothing may dismiss this - see above.
       level={2}
-      ariaLabel={t('Restarting')}
+      ariaLabel={t('Restarting Proxyma')}
       panelProps={{ 'aria-live': 'assertive' }}
       splash
       busy
-      title={<FadeSwap swapKey={phase}>{phase === 'stopping' ? t('Restarting') : t('Starting')}</FadeSwap>}
+      title={<FadeSwap swapKey={phase}>{phase === 'stopping' ? t('Restarting Proxyma') : t('Starting Proxyma')}</FadeSwap>}
     >
       {slow ? t('This is taking a little longer than usual. Please wait.') : null}
     </StatusLayer>

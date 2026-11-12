@@ -38,7 +38,7 @@ class LlmCallLogHalvesTest {
         repository = mock(LlmCallRepository.class);
         controller = new LlmCallsController(repository, mock(ModelPricingService.class));
         ReflectionTestUtils.setField(controller, "multiUser", false);
-        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
         when(repository.totalsByProvider(any(), any(), any())).thenReturn(List.of());
         when(repository.totalsByModel(any(), any(), any())).thenReturn(List.of());
@@ -49,7 +49,7 @@ class LlmCallLogHalvesTest {
 
     private Map<String, Object> call(String include) {
         ResponseEntity<Map<String, Object>> response =
-                controller.calls(30, 0, 50, "CHAT", null, null, null, null, null, null, include).block();
+                controller.calls(30, 0, 50, "CHAT", null, null, null, null, null, null, include, null).block();
         return response == null ? Map.of() : response.getBody();
     }
 
@@ -58,7 +58,7 @@ class LlmCallLogHalvesTest {
     void logAloneSkipsTheSummary() {
         Map<String, Object> body = call("log");
 
-        verify(repository).search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
+        verify(repository).search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
         verify(repository, never()).costPoints(any(), any(), any());
         verify(repository, never()).totalsByProvider(any(), any(), any());
         verify(repository, never()).totalsByModel(any(), any(), any());
@@ -72,7 +72,7 @@ class LlmCallLogHalvesTest {
     void summaryAloneSkipsTheLog() {
         Map<String, Object> body = call("summary");
 
-        verify(repository, never()).search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
+        verify(repository, never()).search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
         verify(repository).costPoints(any(), any(), any());
         assertFalse(body.containsKey("items"));
         assertTrue(body.containsKey("byModel"));

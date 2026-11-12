@@ -284,6 +284,18 @@ class FailuresTest {
         }
 
         @Test
+        @DisplayName("a spent credit is one sentence the page translates, never the provider's words and address")
+        void spentCredit() {
+            String anthropic = "400 Bad Request from POST https://api.anthropic.com/v1/messages";
+            assertEquals(Failures.NO_CREDIT, Failures.describe(new StreamedHttpError(anthropic,
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":"
+                            + "\"Your credit balance is too low to access the Anthropic API.\"}}")));
+            assertEquals(Failures.NO_CREDIT, Failures.describe(new RuntimeException(
+                    "429 - {\"error\":{\"code\":\"insufficient_quota\"}}")));
+            assertTrue(!Failures.describe(new RuntimeException("400 - bad request")).equals(Failures.NO_CREDIT));
+        }
+
+        @Test
         @DisplayName("a body the message already quotes is not said twice")
         void notTwice() {
             String body = "{\"error\":\"bad thing\"}";

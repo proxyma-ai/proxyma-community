@@ -44,7 +44,7 @@ public class AsanaConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.ASANA)
             .protocol(ConnectionProtocol.ASANA)
             .displayName("Asana")
-            .description("Asana tasks with their notes, comments and subtasks, from the projects you choose.")
+            .description("Asana tasks with comments, from the projects you choose.")
             .noun("Asana source", "Asana sources")
             .addTitle("Add Asana tasks")
             .order(59)
@@ -53,8 +53,7 @@ public class AsanaConnectorPlugin implements ConnectorPlugin {
             .fields(FieldSpec.text(WORKSPACE, "Workspace").asRequired().placeholder("Acme")
                             .help("The workspace's name as Asana shows it, or its ID."),
                     FieldSpec.text(PROJECTS, "Projects").placeholder("1201234567890123, Launch plan")
-                            .help("Project IDs or names, separated by commas. Every project the connection can see "
-                                    + "in the workspace when empty."))
+                            .help("Project IDs or names, comma-separated. Empty for all."))
             .capabilities(Capabilities.builder().incremental().cursor().shareable().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("asana")

@@ -44,6 +44,8 @@ public class JpaChatMemoryRepository implements ChatMemoryRepository {
     // ChatService.announceStepLimit), so the notice under that row survives a reload too.
     public static final String TOOL_TIMINGS = "toolTimings";
     public static final String STEP_LIMIT = "stepLimit";
+    /** Why a turn failed, on the last row it wrote - so a reload shows the error the stream showed live. */
+    public static final String TURN_ERROR = "turnError";
 
     private static final ObjectMapper NOTES = new ObjectMapper();
 
@@ -252,6 +254,31 @@ public class JpaChatMemoryRepository implements ChatMemoryRepository {
             return limit.isInt() ? limit.asInt() : null;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /** Why the turn this row ended failed, or null. */
+    public static String readTurnError(String metadataJson) {
+        if (metadataJson == null || !metadataJson.contains(TURN_ERROR)) return null;
+        try {
+            var why = NOTES.readTree(metadataJson).path(TURN_ERROR);
+            return why.isTextual() ? why.asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** {@code metadataJson} with why its turn failed added - whatever else it holds is kept. */
+    public static String withTurnError(String metadataJson, String why) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode node =
+                    metadataJson == null || metadataJson.isBlank()
+                            ? NOTES.createObjectNode()
+                            : (com.fasterxml.jackson.databind.node.ObjectNode) NOTES.readTree(metadataJson);
+            node.put(TURN_ERROR, why);
+            return NOTES.writeValueAsString(node);
+        } catch (Exception e) {
+            return metadataJson;
         }
     }
 

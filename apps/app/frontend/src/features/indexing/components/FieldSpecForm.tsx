@@ -1,9 +1,11 @@
 import {
   Checkbox, Disclosure, Field, FormStack, Input, ListEditor, SecretInput, Select, SwitchRow, Textarea,
 } from '@/components/ui/kit'
+import { EditableText } from '@/components/ui/EditableText'
+import { EditableRows, SecretAutosave } from '@/components/ui/AutosaveFields'
 import { useTranslation } from '@/i18n'
 import type { FieldSpec } from '../services/catalogApi'
-import { splitAdvanced, type FieldProblem, type FieldValues } from '../utils/fieldForm'
+import { fieldProblems, splitAdvanced, type FieldProblem, type FieldValues } from '../utils/fieldForm'
 
 type Translate = ReturnType<typeof useTranslation>['t']
 
@@ -34,11 +36,20 @@ export function fieldProblemText(problem: FieldProblem | undefined, t: Translate
  *
  * <p>Owns no state: the dialog around it holds the values, checks them (fieldForm.ts) and sends
  * them, so the source dialog and the connection dialog share every rule.
+ *
+ * <p>TWO WAYS (the maintainer, 2026-11-02): ADDING something it is a form, each control reporting to
+ * `onChange` and the dialog's Add sending them all. Given `onCommit`, it is an EXISTING item's
+ * fields, each saved on its own: a text, number, address or list is click-to-edit (EditableText) and
+ * saved when it is left, checked first by the same rules; a switch, a choice or a box saves as it
+ * changes; a secret keeps its masked box and is saved when it is left, a blank one never sent.
+ * `onCommit` may return a promise - a refusal puts the field back (the dialog says why).
  */
-export function FieldSpecForm({ fields, values, onChange, problems = {}, disabled, storedSecrets = {}, advancedOpen }: {
+export function FieldSpecForm({ fields, values, onChange, onCommit, problems = {}, disabled, storedSecrets = {}, advancedOpen }: {
   fields: FieldSpec[]
   values: FieldValues
-  onChange: (key: string, value: string) => void
+  onChange?: (key: string, value: string) => void
+  /** An existing item: each field saved on its own, as it is left or changed. */
+  onCommit?: (key: string, value: string) => void | Promise<unknown>
   problems?: Record<string, FieldProblem>
   disabled?: boolean
   /** A secret already held, by key - what its masked box shows until it is typed over. */
@@ -48,12 +59,22 @@ export function FieldSpecForm({ fields, values, onChange, problems = {}, disable
 }) {
   const { t } = useTranslation()
   const { main, advanced } = splitAdvanced(fields)
-  const one = (f: FieldSpec) => (
+  const one = (f: FieldSpec) => onCommit ? (
+    <SavedFieldControl
+      key={f.key}
+      field={f}
+      value={values[f.key] ?? ''}
+      onCommit={v => onCommit(f.key, v)}
+      error={fieldProblemText(problems[f.key], t)}
+      disabled={disabled}
+      storedSecret={storedSecrets[f.key]}
+    />
+  ) : (
     <FieldControl
       key={f.key}
       field={f}
       value={values[f.key] ?? ''}
-      onChange={v => onChange(f.key, v)}
+      onChange={v => onChange?.(f.key, v)}
       error={fieldProblemText(problems[f.key], t)}
       disabled={disabled}
       storedSecret={storedSecrets[f.key]}
@@ -219,6 +240,85 @@ function FieldControl({ field: f, value, onChange, error, disabled, storedSecret
           autoComplete="off"
           onChange={e => onChange(e.target.value)}
         />
+      )
+  }
+}
+
+/**
+ * One field of an EXISTING item, saved on its own (FieldSpecForm's `onCommit`). A value the form's
+ * rules refuse is not sent: its sentence shows under it as it is typed, and leaving it puts the saved
+ * value back.
+ */
+function SavedFieldControl({ field: f, value, onCommit, error, disabled, storedSecret }: {
+  field: FieldSpec
+  value: string
+  onCommit: (value: string) => void | Promise<unknown>
+  error?: string
+  disabled?: boolean
+  storedSecret?: string
+}) {
+  const { t } = useTranslation()
+  const label = t(f.label)
+  const help = f.help ? t(f.help) : undefined
+  const placeholder = f.placeholder ?? undefined
+  // The form's own rules, for this field alone - a required one emptied is EditableText's `required`.
+  const problem = (text: string) => fieldProblemText(fieldProblems([f], { [f.key]: text })[f.key], t)
+  const checked = (text: string) => {
+    const refused = text.trim() === '' ? undefined : problem(text)
+    return refused ? Promise.reject(new Error(refused)) : onCommit(text)
+  }
+
+  switch (f.type) {
+    case 'BOOLEAN':
+    case 'SELECT':
+    case 'MULTISELECT':
+      // Saved as it changes: the form's own control, its change sent at once.
+      return <FieldControl field={f} value={value} onChange={v => { void Promise.resolve(onCommit(v)).catch(() => undefined) }} error={error} disabled={disabled} storedSecret={storedSecret} />
+    case 'SECRET':
+      return (
+        <Field label={label} hint={help}>
+          {id => (
+            <SecretAutosave
+              id={id}
+              serverValue={storedSecret}
+              onCommit={onCommit}
+              placeholder={placeholder}
+              error={error}
+              labels={{ reveal: t('Reveal value'), hide: t('Hide value'), show: t('Show value') }}
+            />
+          )}
+        </Field>
+      )
+    case 'LIST': {
+      const rows = value === '' ? [] : value.split('\n').filter(r => r.trim() !== '')
+      return (
+        <Field label={label} hint={help} error={error}>
+          <EditableRows
+            items={rows}
+            label={label}
+            placeholder={placeholder}
+            editable={!disabled}
+            addLabel={t('Add')}
+            removeLabel={t('Remove')}
+            onCommit={next => onCommit(next.map(r => r.trim()).filter(Boolean).join('\n'))}
+          />
+        </Field>
+      )
+    }
+    default:
+      return (
+        <Field label={label} hint={help} error={error}>
+          <EditableText
+            value={value}
+            label={label}
+            placeholder={placeholder}
+            editable={!disabled}
+            multiline={f.type === 'TEXTAREA'}
+            required={f.required ? t('Required') : undefined}
+            validate={text => (text.trim() === '' ? undefined : problem(text))}
+            onCommit={checked}
+          />
+        </Field>
       )
   }
 }

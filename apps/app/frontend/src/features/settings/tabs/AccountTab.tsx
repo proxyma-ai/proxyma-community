@@ -102,7 +102,7 @@ export function AccountTab() {
       setConfirmingDelete(false)
       addToast(res.mode === 'sso-data-only'
         ? t('Your data has been deleted.')
-        : t('Deletion requested. Your account will be permanently deleted in {days} days unless you recover it.',
+        : t('Your account will be deleted in {days} days unless you recover it.',
             { days: res.graceDays }),
         'success')
       queryClient.invalidateQueries({ queryKey: ['me'] })
@@ -227,7 +227,7 @@ export function AccountTab() {
           className="py-0"
           title={ssoEnabled ? t('Delete my data') : t('Delete account')}
           caption={ssoEnabled
-            ? t('Permanently delete your data. Your account stays open since it is managed by SSO.')
+            ? t('Delete your data. Your SSO account stays.')
             : t('Permanently delete your account and all associated data.')}
           action={
             <Button variant="danger-quiet" onClick={() => setConfirmingDelete(true)}>

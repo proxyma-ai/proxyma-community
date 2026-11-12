@@ -33,6 +33,17 @@ class ModuleMemoryTest {
     }
 
     @Test
+    @DisplayName("what changed since is a context note, never a second copy: the memory still counts as given, or not, by the memory alone")
+    void changesAreANote() {
+        Message note = ChatService.memoryChangesMessage("Your workspace changed since you were given it:\n- shared/x.md updated");
+        String text = ((UserMessage) note).getText();
+        assertThat(text).startsWith("[Context]\n").contains("shared/x.md updated");
+        assertThat(ChatService.isScaffolding(text)).isTrue();
+        // A note left in view after a condensation took the memory does not stand in for it.
+        assertThat(ChatService.hasMemoryInView(List.of(new SystemMessage("You are Proxyma."), note))).isFalse();
+    }
+
+    @Test
     @DisplayName("due while no copy is in view: a new conversation, and one whose copy went into a summary")
     void dueWhileNoneInView() {
         Message memory = ChatService.memoryMessage("notes");

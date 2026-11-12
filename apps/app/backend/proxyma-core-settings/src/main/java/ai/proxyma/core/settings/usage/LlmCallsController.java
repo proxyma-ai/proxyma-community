@@ -57,6 +57,16 @@ import java.util.function.BiPredicate;
  * to. Desktop has no security filter chain at all, so {@code multiUser} is what tells the two
  * apart; see SettingsController, which documents that bypass at length.
  *
+ * <h2>Which agent a call was for</h2>
+ *
+ * <p>Every call made for a conversation carries its id (LlmCall.conversationId), and every agent - the
+ * one the user talks to, a deployed one, a saved agent of a Constellations team - is a conversation of
+ * its own. The log is filtered by it ({@code conversation}), and each call is named after its agent
+ * when it has one ({@code agent}, {@code trigger}): looked up when READ, through {@link LlmCallLabels},
+ * once per page or download for its distinct conversations - never stored, so a renamed agent reads as
+ * it is called now. The download can be grouped by conversation ({@code groupBy=conversation}): one
+ * row per agent's conversation, which is how one hourly pass of a team reads at a glance.
+ *
  * <h2>Who sees whose calls</h2>
  *
  * <ul>
@@ -105,6 +115,20 @@ public class LlmCallsController {
         this.userSpendPort = userSpendPort;
     }
 
+    // Which agent a conversation's calls were for - the chat's answer; absent in tests and wherever
+    // nothing implements it, and then no call has an agent label.
+    private LlmCallLabels callLabels;
+
+    @Autowired(required = false)
+    void setCallLabels(LlmCallLabels callLabels) {
+        this.callLabels = callLabels;
+    }
+
+    /** How many conversations the summary lists for the log's conversation filter. */
+    static final int CONVERSATIONS_LISTED = 50;
+    /** How many conversations are labelled per request to the label port. */
+    static final int LABEL_BATCH = 500;
+
     @GetMapping
     public Mono<ResponseEntity<Map<String, Object>>> calls(
             @RequestParam(defaultValue = "30") int days,
@@ -117,7 +141,8 @@ public class LlmCallsController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String dir,
-            @RequestParam(required = false) String include) {
+            @RequestParam(required = false) String include,
+            @RequestParam(required = false) String conversation) {
 
         boolean wantLog = !"summary".equals(include);
         boolean wantSummary = !"log".equals(include);
@@ -137,12 +162,16 @@ public class LlmCallsController {
             if (wantLog) {
                 Page<LlmCall> found = repository.search(from, to, subjectId,
                         blankToNull(role), blankToNull(provider), blankToNull(model), likePattern(q),
+                        conversationFilter(conversation),
                         PageRequest.of(Math.max(0, page), Math.max(1, Math.min(MAX_PAGE_SIZE, size)),
                                 order(sort, dir)));
 
+                Map<String, LlmCallLabels.Label> labels = labelsFor(found.getContent().stream()
+                        .map(LlmCall::getConversationId).toList());
                 List<Map<String, Object>> items = new ArrayList<>(found.getNumberOfElements());
                 for (LlmCall c : found.getContent()) {
-                    items.add(toMap(c, isPriced(priced, c.getProvider(), c.getModel())));
+                    items.add(withLabel(toMap(c, isPriced(priced, c.getProvider(), c.getModel())),
+                            labels.get(c.getConversationId())));
                 }
                 out.put("items", items);
                 out.put("page", found.getNumber());
@@ -160,6 +189,14 @@ public class LlmCallsController {
             out.put("byProvider", group(repository.totalsByProvider(from, to, subjectId)));
             out.put("byModel", groupModels(repository.totalsByModel(from, to, subjectId), priced));
             out.put("byService", group(repository.totalsByRole(from, to, subjectId)));
+            // The costliest conversations of the period, for the log's conversation filter - one per
+            // agent's conversation, named after its agent where it has one. Calls made for none are not
+            // a conversation to filter by.
+            List<Object[]> costliest = new ArrayList<>(nonNull(repository.totalsByConversation(
+                    from, to, subjectId, null, null, null, null, null, PageRequest.of(0, CONVERSATIONS_LISTED + 1))));
+            costliest.removeIf(r -> r[0] == null);
+            out.put("byConversation", conversationRows(costliest.size() > CONVERSATIONS_LISTED
+                    ? costliest.subList(0, CONVERSATIONS_LISTED) : costliest));
             boolean monthly = window >= MONTHLY_FROM_DAYS;
             out.put("seriesUnit", monthly ? "month" : "day");
             List<Map<String, Object>> series = series(repository.costPoints(from, to, subjectId), from,
@@ -199,18 +236,25 @@ public class LlmCallsController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String dir,
-            @RequestParam(required = false) String format) {
+            @RequestParam(required = false) String format,
+            @RequestParam(required = false) String conversation,
+            @RequestParam(required = false) String groupBy) {
         String fmt = LogExport.format(format);
+        boolean byConversation = "conversation".equals(groupBy);
         return viewer().flatMap(viewer -> Mono.fromCallable(() -> {
             int window = Math.max(1, Math.min(365, days));
             Instant from = Instant.now().minus(Duration.ofDays(window));
             Instant to = Instant.now().plus(Duration.ofMinutes(1));
             String subjectId = viewer.seesEveryone() ? null : viewer.subjectId();
+            if (byConversation) {
+                return exportByConversation(viewer, fmt, window, from, to, subjectId, role, provider, model, q,
+                        conversation);
+            }
             List<LlmCall> rows = new ArrayList<>();
             boolean truncated = false;
             for (int page = 0; ; page++) {
                 Page<LlmCall> found = repository.search(from, to, subjectId, blankToNull(role),
-                        blankToNull(provider), blankToNull(model), likePattern(q),
+                        blankToNull(provider), blankToNull(model), likePattern(q), conversationFilter(conversation),
                         PageRequest.of(page, 500, order(sort, dir)));
                 for (LlmCall c : found.getContent()) {
                     if (rows.size() == LogExport.MAX_ROWS) { truncated = true; break; }
@@ -224,11 +268,13 @@ public class LlmCallsController {
                             .filter(c -> c.getSubjectKind() == SpendSubject.Kind.USER)
                             .map(LlmCall::getSubjectId).distinct().toList())
                     : Map.of();
+            Map<String, LlmCallLabels.Label> labels = labelsFor(rows.stream().map(LlmCall::getConversationId).toList());
             String body;
             if ("json".equals(fmt)) {
                 List<Map<String, Object>> items = new ArrayList<>(rows.size());
                 for (LlmCall c : rows) {
-                    Map<String, Object> m = new LinkedHashMap<>(toMap(c, isPriced(priced, c.getProvider(), c.getModel())));
+                    Map<String, Object> m = withLabel(new LinkedHashMap<>(toMap(c, isPriced(priced, c.getProvider(), c.getModel()))),
+                            labels.get(c.getConversationId()));
                     if (names.containsKey(c.getSubjectId())) m.put("subjectName", names.get(c.getSubjectId()));
                     items.add(m);
                 }
@@ -245,15 +291,16 @@ public class LlmCallsController {
             } else {
                 List<List<Object>> cells = new ArrayList<>(rows.size());
                 for (LlmCall c : rows) {
+                    LlmCallLabels.Label label = labels.get(c.getConversationId());
                     cells.add(java.util.Arrays.asList(c.getRecordedAt().toString(), c.getRole(), c.getProvider(),
                             c.getModel(), LogExport.who(c.getSubjectKind().name(), c.getSubjectId(), names.get(c.getSubjectId())),
                             c.getSubjectKind().name(),
                             c.getInputTokens(), c.getOutputTokens(), c.getCacheWriteTokens(), c.getCacheReadTokens(),
-                            c.getCostUsd(), isPriced(priced, c.getProvider(), c.getModel())));
+                            c.getCostUsd(), isPriced(priced, c.getProvider(), c.getModel()),
+                            orEmpty(c.getConversationId()), label == null ? "" : orEmpty(label.agent()),
+                            label == null ? "" : orEmpty(label.trigger())));
                 }
-                body = LogExport.csv(List.of("Time (UTC)", "Service", "Provider", "Model", "Who", "Who (kind)",
-                        "Input tokens", "Output tokens", "Cache write tokens", "Cache hit tokens", "Cost (USD)",
-                        "Priced"), cells);
+                body = LogExport.csv(CALL_COLUMNS, cells);
             }
             AuditEntry.of(AuditCategory.DATA, "llm-calls.exported")
                     .user(multiUser ? viewer.subjectId() : null)
@@ -265,6 +312,135 @@ public class LlmCallsController {
                     .record();
             return LogExport.file("proxyma-llm-calls", fmt, body, truncated);
         }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    /** The download's columns, one row per call. The last three name the conversation and its agent. */
+    static final List<String> CALL_COLUMNS = List.of("Time (UTC)", "Service", "Provider", "Model", "Who", "Who (kind)",
+            "Input tokens", "Output tokens", "Cache write tokens", "Cache hit tokens", "Cost (USD)",
+            "Priced", "Conversation", "Agent", "Trigger");
+
+    /** The download's columns grouped by conversation, one row per conversation. */
+    static final List<String> CONVERSATION_COLUMNS = List.of("Conversation", "Agent", "Trigger", "Calls",
+            "Input tokens", "Output tokens", "Cache write tokens", "Cache hit tokens", "Cost (USD)",
+            "First call (UTC)", "Last call (UTC)");
+
+    /**
+     * The download grouped by conversation: one row per conversation under the same scope and filters
+     * as the log, costliest first, with its agent - so one pass of a team reads as a row per agent. The
+     * calls made for no conversation are one row with no conversation. At most LogExport.MAX_ROWS rows.
+     */
+    private ResponseEntity<byte[]> exportByConversation(Viewer viewer, String fmt, int window, Instant from, Instant to,
+                                                        String subjectId, String role, String provider, String model,
+                                                        String q, String conversation) throws Exception {
+        List<Object[]> found = nonNull(repository.totalsByConversation(from, to, subjectId, blankToNull(role),
+                blankToNull(provider), blankToNull(model), likePattern(q), conversationFilter(conversation),
+                PageRequest.of(0, LogExport.MAX_ROWS + 1)));
+        boolean truncated = found.size() > LogExport.MAX_ROWS;
+        List<Map<String, Object>> rows = conversationRows(truncated ? found.subList(0, LogExport.MAX_ROWS) : found);
+        String body;
+        if ("json".equals(fmt)) {
+            Map<String, Object> doc = new LinkedHashMap<>();
+            doc.put("exportedAt", Instant.now().toString());
+            doc.put("windowDays", window);
+            doc.put("scope", viewer.seesEveryone() ? "all" : "mine");
+            doc.put("groupBy", "conversation");
+            doc.put("truncated", truncated);
+            doc.put("conversations", rows);
+            body = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writerWithDefaultPrettyPrinter().writeValueAsString(doc);
+        } else {
+            List<List<Object>> cells = new ArrayList<>(rows.size());
+            for (Map<String, Object> r : rows) {
+                cells.add(java.util.Arrays.asList(orEmpty(r.get("conversationId")), orEmpty(r.get("agent")),
+                        orEmpty(r.get("trigger")), r.get("calls"), r.get("inputTokens"), r.get("outputTokens"),
+                        r.get("cacheWriteTokens"), r.get("cacheReadTokens"), r.get("costUsd"),
+                        orEmpty(r.get("firstAt")), orEmpty(r.get("lastAt"))));
+            }
+            body = LogExport.csv(CONVERSATION_COLUMNS, cells);
+        }
+        AuditEntry.of(AuditCategory.DATA, "llm-calls.exported")
+                .user(multiUser ? viewer.subjectId() : null)
+                .summary("LLM call log downloaded by conversation: " + rows.size() + " conversations as "
+                        + fmt.toUpperCase(java.util.Locale.ROOT))
+                .detail("conversations", rows.size())
+                .detail("format", fmt)
+                .detail("groupBy", "conversation")
+                .detail("windowDays", window)
+                .detail("truncated", truncated)
+                .record();
+        return LogExport.file("proxyma-llm-calls-by-conversation", fmt, body, truncated);
+    }
+
+    /**
+     * Rows of totalsByConversation as maps, each conversation named after its agent where it has one.
+     * The labels are asked once, for the distinct conversations among them.
+     */
+    private List<Map<String, Object>> conversationRows(List<Object[]> rows) {
+        List<String> ids = new ArrayList<>(rows.size());
+        for (Object[] r : rows) if (r[0] != null) ids.add(String.valueOf(r[0]));
+        Map<String, LlmCallLabels.Label> labels = labelsFor(ids);
+        List<Map<String, Object>> out = new ArrayList<>(rows.size());
+        for (Object[] r : rows) {
+            String id = r[0] == null ? null : String.valueOf(r[0]);
+            LlmCallLabels.Label label = id == null ? null : labels.get(id);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("conversationId", id);
+            m.put("agent", label == null ? null : label.agent());
+            m.put("trigger", label == null ? null : label.trigger());
+            m.put("calls", asLong(r[1]));
+            m.put("inputTokens", asLong(r[2]));
+            m.put("outputTokens", asLong(r[3]));
+            m.put("cacheReadTokens", asLong(r[4]));
+            m.put("cacheWriteTokens", asLong(r[5]));
+            m.put("costUsd", asDouble(r[6]));
+            m.put("firstAt", r[7] instanceof Instant at ? at.toString() : null);
+            m.put("lastAt", r[8] instanceof Instant at ? at.toString() : null);
+            out.add(m);
+        }
+        return out;
+    }
+
+    /**
+     * Agent labels for these conversations, each distinct one asked once and in batches - a page or a
+     * download names its conversations in a few queries, never one per call. Empty without a port, and
+     * what was named so far on any failure: a label is decoration, the calls are not.
+     */
+    Map<String, LlmCallLabels.Label> labelsFor(java.util.Collection<String> conversationIds) {
+        if (callLabels == null || conversationIds == null || conversationIds.isEmpty()) return Map.of();
+        List<String> distinct = conversationIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        Map<String, LlmCallLabels.Label> out = new HashMap<>();
+        for (int i = 0; i < distinct.size(); i += LABEL_BATCH) {
+            try {
+                Map<String, LlmCallLabels.Label> got = callLabels.labels(
+                        distinct.subList(i, Math.min(distinct.size(), i + LABEL_BATCH)));
+                if (got != null) out.putAll(got);
+            } catch (RuntimeException e) {
+                return out;
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, Object> withLabel(Map<String, Object> m, LlmCallLabels.Label label) {
+        m.put("agent", label == null ? null : label.agent());
+        m.put("trigger", label == null ? null : label.trigger());
+        return m;
+    }
+
+    /** The conversation filter: an id, matched exactly - never a pattern. */
+    static String conversationFilter(String conversation) {
+        if (conversation == null || conversation.isBlank()) return null;
+        String id = conversation.strip();
+        // A conversation id is a UUID; anything past the column's width matches nothing anyway.
+        return id.length() > LlmCall.CONVERSATION_ID_MAX ? id.substring(0, LlmCall.CONVERSATION_ID_MAX) : id;
+    }
+
+    private static List<Object[]> nonNull(List<Object[]> rows) {
+        return rows == null ? List.of() : rows;
+    }
+
+    private static String orEmpty(Object v) {
+        return v == null ? "" : String.valueOf(v);
     }
 
     /**
@@ -432,6 +608,8 @@ public class LlmCallsController {
         // null for no cache activity or an older row.
         m.put("cacheOutcome", c.getCacheOutcome());
         m.put("cacheWarmUntil", c.getCacheWarmUntil() == null ? null : c.getCacheWarmUntil().toString());
+        // The conversation the call was made for - an agent's - or null for none.
+        m.put("conversationId", c.getConversationId());
         // Whether the model has a rate at all. A costUsd of 0 means either "priced at zero" or
         // "never priced", and only the second is something the reader can fix.
         m.put("priced", priced || "REPORTED".equals(c.getCostSource()) || "LIST".equals(c.getCostSource()));

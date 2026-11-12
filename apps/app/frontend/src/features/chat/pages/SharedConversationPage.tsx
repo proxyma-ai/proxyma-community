@@ -62,7 +62,7 @@ function SharedConversationView({ token }: { token: string }) {
         >
           {/* One literal on one line - this was wrapped across two source lines, which the
               catalog checker cannot match. */}
-          {t('The link may be incorrect, or the conversation it pointed to has been deleted. Share links stop working as soon as their conversation is removed.')}
+          {t('The link is wrong, or the conversation was deleted.')}
         </ErrorState>
       </div>
     )

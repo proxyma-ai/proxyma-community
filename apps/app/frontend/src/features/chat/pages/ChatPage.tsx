@@ -6,7 +6,10 @@ import { ChatWindow } from '../components/ChatWindow'
 import { ChatHistoryModal } from '../components/ChatHistoryModal'
 import { ChatComposer } from '../components/ChatComposer'
 import { ChatStartLinks } from '../components/ChatStartLinks'
-import { AgentStrip } from '../components/AgentStrip'
+import { useAgentTranscript } from '../components/AgentTranscriptDialog'
+import { AgentTranscriptContext } from '../components/agentTranscriptContext'
+import { useAgentTree } from '../hooks/useAgentTree'
+import { deployedAgentRedirect } from '../utils/agentTranscript'
 import { ToastDock } from '@/components/ui/ToastDock'
 import { QuotaMilestoneFeedbackModal } from '@/features/feedback/components/QuotaMilestoneFeedbackModal'
 import { useChat } from '../hooks/useChat'
@@ -249,6 +252,30 @@ export function ChatPage() {
     if (tourActive && location.pathname === '/') setView('hero')
   }, [tourActive, location.pathname])
 
+  // A DEPLOYED AGENT IS READ, NEVER TALKED TO (2026-11-04): its transcript opens in a dialog over the
+  // page (AgentTranscriptDialog) - from its panel in the thread and from the agents map - and a link to
+  // its conversation (an old one, a bookmark) brings the page to the conversation the person opened,
+  // with the transcript over it. The server refuses a message into it either way.
+  const transcript = useAgentTranscript()
+  const tree = useAgentTree(conversationId)
+  const redirect = deployedAgentRedirect({
+    conversationId: params.conversationId, self: tree.data?.self, rootConversationId: tree.data?.rootConversationId,
+  })
+  const deployedHere = !!tree.data?.self && tree.data.self.conversationId === conversationId
+  const openTranscript = useRef(transcript.open)
+  openTranscript.current = transcript.open
+  useEffect(() => {
+    if (!redirect) return
+    navigate(`/chat/${redirect.to}`, { replace: true, state: { agentTranscript: redirect.transcript } })
+  }, [redirect?.to, redirect?.transcript, navigate])
+  // Arrived here from such a link: the transcript it named, once.
+  const arrivedFor = (location.state as { agentTranscript?: unknown } | null)?.agentTranscript
+  useEffect(() => {
+    if (typeof arrivedFor !== 'string' || !arrivedFor) return
+    openTranscript.current(arrivedFor)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [arrivedFor, location.pathname, navigate])
+
   // Keeps the URL in sync with the live conversation id (first hero send, history selection, New
   // chat) - both are plain string/undefined comparisons so this can safely depend on them without
   // any loop risk once the navigate below makes them equal.
@@ -271,6 +298,8 @@ export function ChatPage() {
   const hadConversationRef = useRef(false)
   useEffect(() => {
     if (tourActive) return
+    // A deployed agent's conversation is never the URL: the page is leaving it for its tree's root.
+    if (deployedHere) return
     const cleared = hadConversationRef.current && !conversationId
     hadConversationRef.current = !!conversationId
     if (conversationId && hasMessages && conversationId !== params.conversationId) {
@@ -281,7 +310,7 @@ export function ChatPage() {
       // transition: / -> /chat the moment a brand-new conversation actually starts).
       navigate('/', { replace: true })
     }
-  }, [conversationId, hasMessages, params.conversationId, navigate, tourActive])
+  }, [conversationId, hasMessages, params.conversationId, navigate, tourActive, deployedHere])
 
   // Resumes a conversation named directly in the URL (a fresh load, or a refresh mid-turn - see
   // ../proxyma-docs/architecture/chat-reactivity.md). Reads conversationId/resumeConversation through a ref
@@ -365,7 +394,9 @@ export function ChatPage() {
   })
 
   return (
+    <AgentTranscriptContext.Provider value={transcript.open}>
     <div
+      data-page-fill
       className="flex flex-col h-full overflow-hidden relative"
       {...pageDrop.handlers}
     >
@@ -384,8 +415,6 @@ export function ChatPage() {
       <FadeSwap swapKey={view} className="flex-1 min-h-0 flex flex-col">
         {view === 'conversation' ? (
           <div key="conversation" className="flex flex-col flex-1 min-h-0">
-            {/* Over a deployed agent's own conversation: which agent this is, and the way back. */}
-            <AgentStrip conversationId={conversationId} className="px-3 sm:px-6 pt-2" />
             <ChatWindow
               messages={messages}
               streaming={streaming}
@@ -409,7 +438,10 @@ export function ChatPage() {
               <ToastDock className={THREAD_COLUMN} />
               {/* No shared-element animation between the hero and conversation views - the
                   composer is placed directly in each view's own layout, and the view fades in. */}
-              <div className={THREAD_COLUMN}>
+              {/* Never under a deployed agent: the page is on its way to the conversation the person
+                  opened (above), and the server would refuse what was typed. */}
+              <div className={cn(THREAD_COLUMN, 'transition-opacity duration-200', deployedHere && 'opacity-0 pointer-events-none')}
+                {...(deployedHere ? { inert: '' } : {})}>
                 <ChatComposer
                   value={convInput}
                   onChange={setConvInput}
@@ -429,6 +461,7 @@ export function ChatPage() {
                   conversationId={conversationId}
                   onNewConversation={handleNew}
                   onHistoryClick={() => setHistoryOpen(true)}
+                  newFromSidebar
                   condensing={condensing}
                   condenseTokensFreed={condenseTokensFreed}
                   onCondense={condense}
@@ -535,6 +568,8 @@ export function ChatPage() {
           onClose={() => setHistoryOpen(false)}
         />
       )}
+      {transcript.dialog}
     </div>
+    </AgentTranscriptContext.Provider>
   )
 }

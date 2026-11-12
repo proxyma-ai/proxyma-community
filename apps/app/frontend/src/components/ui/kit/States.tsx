@@ -78,7 +78,7 @@ export type NoticeTone = 'neutral' | 'info' | 'progress' | 'done' | 'success' | 
  * ONE LINE OF STATUS - under a field, in a dialog body, in a prompt card's action row: a test
  * result, a save result, "Uploading 3 files", a refusal. The tone picks the glyph (the kit Spinner
  * for `progress`) and the ink. About 25 of these were hand-made at two sizes, with and without an
- * icon. `size="md"` (14px) for a body notice, `sm` (13px) under a field.
+ * icon. `size="md"` (14px) for a body notice, `sm` (12px) under a field.
  *
  * THE KIT'S TONES, as every part names them (2026-10-14): `neutral` caption ink (the default - a
  * plain note), `info` the brand's ink (as in Callout, Toast and FormAlert; it was caption ink here

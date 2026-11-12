@@ -49,6 +49,14 @@ public class ConnectorCatalogController {
         this.multiUser = multiUser;
     }
 
+    // Desktop's built-in OAuth clients (BuiltInOAuthClients); optional, so a test can build this without them.
+    private ai.proxyma.core.settings.connection.BuiltInOAuthClients builtIn;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBuiltInClients(ai.proxyma.core.settings.connection.BuiltInOAuthClients builtIn) {
+        this.builtIn = builtIn;
+    }
+
     @GetMapping("/catalog")
     public Mono<ResponseEntity<Map<String, Object>>> catalog() {
         return Mono.fromCallable(() -> ResponseEntity.ok(describe())).subscribeOn(Schedulers.boundedElastic());
@@ -123,6 +131,9 @@ public class ConnectorCatalogController {
             // administrator - so the person adding a connection is asked for nothing but the sign-in.
             boolean deploymentClient = multiUser && a.kind() == AuthKind.OAUTH2_CODE;
             am.put("fields", deploymentClient ? List.of() : a.fields().stream().map(ConnectorCatalogController::field).toList());
+            // On Desktop a service with a built-in client signs in with none typed: the form shows the client's fields
+            // only behind "Use my own Google app" (BuiltInOAuthClients).
+            am.put("builtInClient", a.kind() == AuthKind.OAUTH2_CODE && builtIn != null && builtIn.available(p.protocol()));
             // What a connection signed in this way serves - fewer than the service's where the
             // sign-in reaches less (a Data Center token, one product's server).
             am.put("sourceTypes", catalog.sourceTypes(p.protocol(), a.kind()).stream().map(t -> t.wireName())

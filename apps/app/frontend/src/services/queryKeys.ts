@@ -52,6 +52,9 @@ export const keys = {
   // since what it leaves out is listed locked.
   connectorCatalog:  ()          => ['connector-catalog'] as const,
   connections:       ()          => ['connections'] as const,
+  // The sources reading through one connection, for its Delete warning - under the list's key, so
+  // anything that re-reads the list re-reads it too.
+  connectionUsage:   (id: string) => ['connections', 'usage', id] as const,
   connectionProtocols: ()        => ['connection-protocols'] as const,
   mcpTokens:        ()          => ['mcp-tokens'] as const,
   modelPricing:     ()          => ['model-pricing'] as const,

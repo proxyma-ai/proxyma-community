@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Brain, SatelliteDish } from 'lucide-react'
 import { ActivityLine, Caption } from '@/components/ui/kit'
 import { useAgentModel } from '../hooks/useAgentModel'
+import { modelWords } from '../utils/conversationModel'
 import { AgentSettingsLink } from './AgentSettingsLink'
 import { useEscalatingMessage } from '../hooks/useEscalatingMessage'
 import { useScrambleText } from '../hooks/useScrambleText'
@@ -54,12 +55,13 @@ function useSecondsSinceMount(running = true): number {
 
 function WaitingForModel() {
   const { t } = useTranslation()
-  const agent = useAgentModel()
+  // The model the open conversation runs on - an agent's own, in a lead chat - not always the chat's.
+  const agent = useAgentModel(useChatStore(s => s.conversationId))
   const retryAttempt = useChatStore(s => s.retryAttempt)
   const seconds = useSecondsSinceMount()
   // A reader who may not see the chat settings (a user on Enterprise Server) gets the unnamed form.
   const label = agent
-    ? t('Waiting for {model}', { model: agent.provider ? `${agent.provider} / ${agent.model}` : agent.model })
+    ? t('Waiting for {model}', { model: modelWords(agent) })
     : t('Waiting for the model')
   return (
     // The kit's ActivityLine, as the thinking line and a tool group's header are: the mark in the
@@ -68,7 +70,7 @@ function WaitingForModel() {
     // second, and a screen reader was told each one (CHAT-06). The thread says when an answer is
     // ready (ChatWindow's status line).
     <div>
-      <NamesModel named={!!agent}>
+      <NamesModel named={!!agent && !agent.own}>
         <ActivityLine
           icon={SatelliteDish}
           state="running"
@@ -84,19 +86,19 @@ function WaitingForModel() {
 
 function ThinkingTokens({ count }: { count: number }) {
   const { t } = useTranslation()
-  const agent = useAgentModel()
+  const agent = useAgentModel(useChatStore(s => s.conversationId))
   // Mounted when thinking starts, so mount time is when it started. Stops ticking once there is a
   // count to show instead.
   const seconds = useSecondsSinceMount(count === 0)
   // A reader who may not see the chat settings (a user on Enterprise Server) gets the unnamed form.
   const label = agent
-    ? t('{model} is thinking', { model: agent.provider ? `${agent.provider} / ${agent.model}` : agent.model })
+    ? t('{model} is thinking', { model: modelWords(agent) })
     : t('Thinking')
   return (
     // The kit's ActivityLine: the mark and the words are one line, one color, a wave across the words.
     // Not a live region, for the reason above.
     <div>
-      <NamesModel named={!!agent}>
+      <NamesModel named={!!agent && !agent.own}>
       <ActivityLine
         icon={Brain}
         state="running"
@@ -108,12 +110,41 @@ function ThinkingTokens({ count }: { count: number }) {
           : seconds > 0 ? t('{seconds}s', { seconds }) : undefined}
       />
       </NamesModel>
+      <ThinkingStream />
     </div>
   )
 }
 
-// A row that names the model opens Settings > Agents on a click (AgentSettingsLink); one that does
-// not - the reader may not see those settings - is the row alone.
+/**
+ * WHAT THE MODEL THINKS, as it streams (2026-11-11): its newest lines under the thinking row, the box following the end
+ * while the reader has not scrolled it up. Nothing while the provider sends no thinking text (most models other than
+ * Claude's, which the server asks for its summary - AnthropicThinkingDisplay).
+ */
+function ThinkingStream() {
+  const { t } = useTranslation()
+  const text = useChatStore(s => s.thinkingText)
+  const box = useRef<HTMLDivElement>(null)
+  const follow = useRef(true)
+  useEffect(() => {
+    const el = box.current
+    if (el && follow.current) el.scrollTop = el.scrollHeight
+  }, [text])
+  if (!text) return null
+  return (
+    <div ref={box} aria-label={t('What the model is thinking')}
+      onScroll={e => {
+        const el = e.currentTarget
+        follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+      }}
+      className="mt-1.5 ml-6 max-h-28 overflow-y-auto whitespace-pre-wrap break-words border-l-2 border-line pl-3 text-xs leading-5 text-ink-caption">
+      {text}
+    </div>
+  )
+}
+
+// A row that names the chat's model opens Settings > Agents on a click (AgentSettingsLink); one that
+// does not - the reader may not see those settings, or the model is an agent's own, chosen elsewhere -
+// is the row alone.
 function NamesModel({ named, children }: { named: boolean; children: ReactNode }) {
   return named ? <AgentSettingsLink>{children}</AgentSettingsLink> : <>{children}</>
 }

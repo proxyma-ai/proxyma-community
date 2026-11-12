@@ -166,7 +166,7 @@ export function SourceDialog({ type, onClose }: { type: string; onClose: () => v
               {/* One sentence with the name in its slot, so a language can put the name where it goes. */}
               <p>
                 <Rich
-                  text={t('This matches {name}, already shared by another user. Skipping uses that copy at no cost; registering your own uses your own sync and storage capacity.')}
+                  text={t('Another user already shares {name}. Skip to use their copy for free.')}
                   parts={{ name: <span className="text-ink-primary">{duplicateMatch.matchedConnectorName}</span> }}
                 />
               </p>

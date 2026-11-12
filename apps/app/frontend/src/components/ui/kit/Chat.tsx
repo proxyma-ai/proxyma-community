@@ -16,6 +16,7 @@ import { Collapse, DisclosureChevron } from './Disclosure'
 import { iconButton } from './iconButton'
 import { Logo } from './Logo'
 import { Presence } from './Presence'
+import { ProxymaIcon } from './ProxymaIcon'
 import { ChoiceMark } from './RadioGroup'
 import { Skeleton } from './Skeleton'
 import { StateMark, type WorkState } from './StateMark'
@@ -42,18 +43,23 @@ export const THREAD_COLUMN = 'max-w-[45rem] mx-auto w-full'
 type Glyph = ComponentType<{ size?: number | string; className?: string }>
 
 /**
- * One message. A user's is right-aligned, primary ink, medium weight, at most 78% wide, with no
- * bubble (maintainer, 2026-09-14); the assistant's runs the column's full width in secondary ink;
- * an error is danger ink. `actions` is the row under it (copy, rewind, rate), which always takes
- * its height and only fades its buttons in - so nothing in the thread moves under the pointer -
- * and is always shown on a touch screen.
+ * One message. A user's is a BUBBLE at the column's RIGHT, its text left-aligned inside it (the
+ * maintainer, 2026-10-31: "user message bubble aligned on the right, its text aligned on the left of
+ * the bubble"), at most 78% wide, in primary ink on `bg-lift` - one step up from the plane it sits on,
+ * so it is continuous on the page and in a panel alike. The assistant's runs the column's full width
+ * with no bubble, in secondary ink; an error is danger ink. `actions` is the row under it (copy,
+ * rewind, rate), at the message's own side, which always takes its height and only fades its buttons
+ * in under a mouse - so nothing in the thread moves under the pointer - unless `actionsShown`: the
+ * latest question and the latest answer keep theirs in view (2026-10-30). Always shown on a touch screen.
  */
-export function ChatMessage({ role, children, footer, actions, queued, error, className }: {
+export function ChatMessage({ role, children, footer, actions, actionsShown, queued, error, className }: {
   role: 'user' | 'assistant'
   children: ReactNode
   /** Under the text: attachments, citations, a queued note, a retry link. */
   footer?: ReactNode
   actions?: ReactNode
+  /** The actions stay in view rather than fading in under the pointer - the latest of each side. */
+  actionsShown?: boolean
   queued?: boolean
   error?: boolean
   className?: string
@@ -63,17 +69,17 @@ export function ChatMessage({ role, children, footer, actions, queued, error, cl
     <div className={cn('flex mb-1 group', user ? 'justify-end' : 'justify-start', className)}>
       <div className={cn(
         // A queued message brightens as the agent takes it, rather than in one frame.
-        // The thread's reading size, TEXT.body's 16/26 (PROSE_CHAT) - a question as much as an answer.
-        'text-base py-2 transition-opacity duration-base',
-        // A user's lines are RIGHT-ALIGNED too (the maintainer, 2026-10-30): its wrapped lines ended
-        // short of the column's edge, so the message did not read as right-aligned.
-        user ? 'max-w-[78%] text-right' : 'w-full',
-        user ? cn('text-ink-primary font-medium', queued && 'opacity-60') : error ? 'text-danger' : 'text-ink-secondary',
+        // The thread's reading size, TEXT.body (PROSE_CHAT) - a question as much as an answer.
+        'text-base transition-opacity duration-base',
+        user ? 'max-w-[78%] min-w-0 flex flex-col items-end pt-2' : 'w-full py-2',
+        user ? cn('text-ink-primary', queued && 'opacity-60') : error ? 'text-danger' : 'text-ink-secondary',
       )}>
-        {children}
+        {user
+          ? <div className="rounded-lg bg-lift px-3 py-2 text-left break-words">{children}</div>
+          : children}
         {footer}
         {actions && (
-          <div data-message-actions="" className="mouse:opacity-0 mouse:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-fast">
+          <div data-message-actions="" className={cn(!actionsShown && 'mouse:opacity-0 mouse:group-hover:opacity-100 focus-within:opacity-100', 'transition-opacity duration-fast')}>
             <div className={cn('flex items-center gap-1 pt-1 min-h-7', user ? 'justify-end' : 'justify-start')}>{actions}</div>
           </div>
         )}
@@ -415,7 +421,9 @@ export function ChoiceRow({ checked, multi, label, description, disabled, onTogg
   )
   if (children) {
     return (
-      <div className={cn(box, 'items-center py-1')}>
+      // The field inside draws no ring of its own - in a row this tight it landed on the row's border
+      // (the maintainer, 2026-11-04) - so the ROW shows where focus is: its border takes the brand.
+      <div className={cn(box, 'items-center py-1 focus-within:border-brand-solid')}>
         <button type="button" role={multi ? 'checkbox' : 'radio'} aria-checked={checked} aria-label={ariaLabel} disabled={disabled} onClick={onToggle} className="focus-ring rounded-sm">
           <ChoiceMark checked={checked} multi={multi} />
         </button>
@@ -469,12 +477,41 @@ export function NoticeCard({ icon: Icon, title, caption, children, inline }: {
 }
 
 /**
+ * The composer's light on a send - keyed by the send, so each runs from the start: one light charges at
+ * the top-left corner and shoots along the top edge to the top-right one, fading as it goes. Nothing
+ * before the first send.
+ */
+function ComposerLights({ pulse }: { pulse: number }) {
+  if (pulse <= 0) return null
+  return <span key={`run-${pulse}`} className="composer-spot" />
+}
+
+/** A press on the frame outside any control puts the caret in the editor, at its end. */
+function focusEditor(e: React.MouseEvent<HTMLDivElement>) {
+  const target = e.target as HTMLElement
+  if (target.closest('button, a, input, textarea, select, label, [contenteditable="true"], [role="button"], [role="menu"], [role="listbox"]')) return
+  const editor = e.currentTarget.querySelector<HTMLElement>('[contenteditable="true"], textarea')
+  if (!editor) return
+  e.preventDefault()
+  editor.focus()
+  if (editor.isContentEditable) {
+    const range = document.createRange()
+    range.selectNodeContents(editor)
+    range.collapse(false)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  }
+}
+
+/**
  * THE PROMPT BOX's frame: attachments over the editor, the editor, and a toolbar of controls
  * at the start and the end. `rounded-lg`, the card radius. A raised card (the float shadow,
- * `.composer-sweep` in proxyma-primitives.css), lit by a soft teal light turning round its edge
- * when focused, and faster while `working` - see `.composer-light`.
+ * `.composer-sweep` in proxyma-primitives.css) with no border and no light at rest or focused; each
+ * send charges a light at the top-left corner and shoots it along the top edge to the top-right - see `.composer-light`. A press anywhere on the frame that is not a control puts the caret in the
+ * editor, so the whole box reads as one text field.
  */
-export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, working, lit = true, alwaysLit, className, after }: {
+export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, working, lit = true, alwaysLit, pulse = 0, className, after }: {
   attachments?: ReactNode
   editor: ReactNode
   toolbarStart?: ReactNode
@@ -487,15 +524,21 @@ export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, w
    * focus, so the site's scenes say so here (`.is-lit` in proxyma-primitives.css).
    */
   alwaysLit?: boolean
+  /**
+   * A count of the messages sent: each new value runs the light once along the top edge, from the
+   * top-left corner to the top-right one (0, the default, runs nothing).
+   */
+  pulse?: number
   className?: string
   /** Outside the frame, inside the light's box - a hidden file input. */
   after?: ReactNode
 }) {
   return (
     <div className={cn('relative', lit && 'composer-light', lit && working && 'is-working', lit && alwaysLit && 'is-lit', className)}>
-      {lit && <span aria-hidden="true" className="composer-light-glow" />}
-      {lit && <span aria-hidden="true" className="composer-light-ring" />}
-      <div className="relative flex flex-col rounded-lg border surface-float focus-border composer-sweep">
+      {/* The one light, drawn twice: blurred behind the frame (the halo) and sharp in a band on its edge. */}
+      {lit && <span aria-hidden="true" className="composer-halo"><ComposerLights pulse={pulse} /></span>}
+      {lit && <span aria-hidden="true" className="composer-band"><ComposerLights pulse={pulse} /></span>}
+      <div className="relative flex flex-col rounded-lg border surface-float focus-border composer-sweep" onMouseDown={focusEditor}>
         {attachments && <div className="flex flex-wrap gap-2 px-4 pt-3">{attachments}</div>}
         <div className="px-4 pt-3 pb-1 short:pt-2">{editor}</div>
         <div className="flex items-center justify-between gap-2 px-2 pb-2 short:pb-1">
@@ -511,73 +554,148 @@ export function ComposerShell({ attachments, editor, toolbarStart, toolbarEnd, w
 /**
  * THE NEW CHAT'S HERO. Two headings, by edition (maintainer's review, 2026-10-15):
  *
- * - COMMUNITY (Desktop, Home Server): the Proxyma logo with the name centered UNDER the mark - the
- *   kit `Logo`'s stacked lockup, the one place it stacks. The screen opens on the product.
- * - ENTERPRISE SERVER: `greeting` - "Hi, {name}" for a signed-in person, the question for a guest -
- *   at display size, as `PageHero` draws it. A signed-in person is greeted by name, not shown the
- *   product they already chose. It was the logo for half a day; the maintainer restored it.
+ * - COMMUNITY (Desktop, Home Server): the kit `Logo`, the mark with the name BESIDE it, centered
+ *   (since 2026-11-09, when the app went back to its centered new chat - the maintainer: "Bring the
+ *   original chat interface back with the Proxyma logo and Proxyma title on the right of the logo
+ *   instead of below the logo"). It was the stacked lockup until 2026-11-08, then for a day the
+ *   wordmark alone on the stage; `onStage` still draws that, for the stage's own pictures.
+ * - ENTERPRISE SERVER: `greeting` - "Hi, {name}" for a signed-in person, the question for a guest. A
+ *   signed-in person is greeted by name, not shown the product they already chose.
+ *
+ * `onStage` (the new chat, on `ChatStartStage`): left-aligned, as the draft sets its words left of
+ * the mark - the wordmark at the headline's size (36px on a phone, 48px, 64px on a wide pane via
+ * `.chat-stage-title`), the greeting a step under it in semibold secondary ink (the maintainer found
+ * the greeting "too harsh" in primary ink, 2026-10-29), the fact a lead paragraph. Off the stage - the app's new chat since
+ * 2026-11-09 - it is centered.
  *
  * Under either, the astronomy fact when the reader has it on. The heading is the page's heading
- * (`as`; `p` in a picture of the page on the site) and rises in on mount; the lockup is named by
- * its wordmark's text, the mark being decorative. The fact arrives late (a query) and eases in under
- * it with `Presence`, so nothing below jumps; it is the kit's body text, narrower than the column,
- * and its own markup decides its alignment - left on a phone, where it carries a link to tap,
- * centered from `sm`. The space from here to the composer is the page's (ChatPage), not the hero's.
+ * (`as`; `p` in a picture of the page on the site) and rises in on mount. The fact arrives late (a
+ * query) and eases in under it with `Presence`, so nothing below jumps; its own markup decides its
+ * alignment. The space from here to the composer is the page's, not the hero's.
  */
-export function ChatStartHero({ fact, greeting, as: As = 'h1', productName, className }: {
+export function ChatStartHero({ fact, greeting, as: As = 'h1', productName = 'Proxyma', onStage = false, className }: {
   /** The astronomy fact, with its source linked; absent while it is off or not yet loaded. */
   fact?: ReactNode
-  /** Enterprise Server's greeting, drawn instead of the logo. */
+  /** Enterprise Server's greeting, drawn instead of the name. */
   greeting?: ReactNode
   as?: 'h1' | 'h2' | 'p'
   productName?: string
+  /** Drawn on the new chat's stage: left-aligned, at the headline's size. */
+  onStage?: boolean
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col items-center', className)}>
+    <div className={cn('flex flex-col', onStage ? 'items-start text-left' : 'items-center', className)}>
       {greeting ? (
-        <PageHero as={As} centered title={greeting} className="w-full animate-fade-up" />
+        onStage ? (
+          <As className="text-3xl sm:text-4xl font-semibold text-ink-secondary text-balance animate-fade-up">{greeting}</As>
+        ) : (
+          <PageHero as={As} centered title={greeting} className="w-full animate-fade-up" />
+        )
+      ) : onStage ? (
+        // The wordmark's own rules (Logo.tsx): Orbitron 700, tracking 0.05em, brand-legible ink,
+        // never upper case.
+        <As className="font-brand font-bold text-brand-legible tracking-wider animate-fade-up text-4xl sm:text-5xl chat-stage-title">
+          {productName}
+        </As>
       ) : (
+        // THE LOGO WITH THE NAME BESIDE IT (the maintainer, 2026-11-09: "Bring the original chat
+        // interface back with the Proxyma logo and Proxyma title on the right of the logo instead of
+        // below the logo"): the horizontal lockup every other surface uses, at the hero's size - a
+        // 56px mark beside the 30px name (Logo sizes the name from the mark), the mark turning as
+        // every mark does.
         <As className="flex justify-center animate-fade-up">
-          {/* THE MARK TURNS, the name does not (maintainer's request on 0.36.0, 2026-10-16: "make
-              this logo rotate"): the mark's own idle turn, one turn in twelve seconds - the
-              header's pace - and still under reduced motion. Logo's className reaches the mark. */}
-          <Logo size={HERO_MARK} stacked productName={productName} className="motion-safe:animate-mark-idle" />
+          <Logo size={HERO_MARK} productName={productName} />
         </As>
       )}
       <Presence show={!!fact} className="w-full">
-        {/* The greeting's own bottom margin is its space to the fact, as it always was. */}
-        <div className={cn('max-w-2xl mx-auto', !greeting && 'pt-6 short:pt-3', TEXT.body)}>{fact}</div>
+        {onStage ? (
+          <div className={cn('pt-4 short:pt-2', TEXT.lead)}>{fact}</div>
+        ) : (
+          // The greeting's own bottom margin is its space to the fact, as it always was.
+          <div className={cn('sm:max-w-md mx-auto', !greeting && 'pt-6 short:pt-3', TEXT.body)}>{fact}</div>
+        )}
       </Presence>
     </div>
   )
 }
 
-// The hero's mark: 72px, with the 29px name under it (Logo sizes the name from the mark). 64px
-// over 25px was tried first and read as a large header logo rather than the screen's opening.
-const HERO_MARK = 72
+// The hero's mark: 56px beside the 30px name - about the header's own ratio (28 beside 16).
+const HERO_MARK = 56
+
+/**
+ * THE NEW CHAT'S STAGE (since 2026-11-08 - the maintainer: "based on shot-b-dark.png, redesign the
+ * chat home as well", the landing hero's "B - Stage"; reshaped the same day: "Light must be real
+ * light", and the draft's rounded screen is "the entire screen", not a card). The stage IS the chat
+ * pane - its full width and height, no margin, corner, border or background of its own - and its
+ * layers are drawn on the page sheet in the reader's appearance. Behind the content, aria-hidden:
+ *
+ * - THE NAME, "PROXYMA", huge in Orbitron across the top, in the primary ink at a few percent and
+ *   fading downward - the one place the name is written in capitals, because it is texture here,
+ *   not the wordmark;
+ * - THE MARK at the pane's right edge, its left half whole and its right half fading out (a mask
+ *   from 50% to 100%), in its own colors, turning at the one speed every mark turns at (the kit's
+ *   `.mark-turn`, `--mark-turn`; once in two minutes until the maintainer, 2026-11-08: "the same
+ *   speed everywhere");
+ * - A SOFT WASH of the accent behind the mark.
+ *
+ * `children` are the content, in the pane's padding: on the left the title (`ChatStartHero
+ * onStage`), the fact, the composer, and the links along the bottom (`ChatStartLinks onStage`).
+ * Wrap the title, the fact and the composer in `.chat-stage-column`: from an 880px pane it stops
+ * 24px short of the mark, which is as large as the room right of a 480px column allows (up to
+ * 760px); narrower, the mark is small and faint in the top right corner, behind the text. The pane
+ * is a size container (`chat-pane`), so a scaled picture on the site composes as the app does. It
+ * fills its parent's column (`flex-1`); `bodyClassName` reaches the content's box.
+ */
+export function ChatStartStage({ children, className, bodyClassName }: {
+  children?: ReactNode
+  className?: string
+  bodyClassName?: string
+}) {
+  return (
+    <div className={cn('chat-stage-pane', className)}>
+      <div aria-hidden="true" className="chat-stage">
+        <div className="chat-stage-wash" />
+        <div className="chat-stage-word">PROXYMA</div>
+        <div className="chat-stage-mark">
+          <ProxymaIcon className="chat-stage-mark-turn mark-turn" />
+        </div>
+      </div>
+      <div className={cn('chat-stage-body', bodyClassName)}>{children}</div>
+    </div>
+  )
+}
 
 /**
  * The links of the new-chat screen: the one conditional action first (in the brand ink, with its
- * glyph), then the fixed links in caption ink. Under the composer from `sm`; on a phone under the
- * hero and its fact, above the docked composer. Left-aligned on a phone, centered from `sm` -
- * nothing to tap sits in the middle of a phone screen.
+ * glyph), then the fixed links in caption ink. Off the stage: under the composer from `sm`, on a
+ * phone under the hero, left-aligned on a phone and centered from `sm` - nothing to tap sits in the
+ * middle of a phone screen. `onStage`: along the bottom of the stage from `sm` (where the draft
+ * has its row of facts), on a phone under the title - left-aligned at every width, at the body
+ * size. Text links, the kit's own (`textLink`), never pills: the draft's pill-shaped chips are not
+ * Proxyma's shape (the maintainer, 2026-11-08).
  */
-export function ChatStartLinks({ primary, links }: {
+export function ChatStartLinks({ primary, links, onStage = false }: {
   primary?: { label: ReactNode; icon?: Glyph; render: (className: string, body: ReactNode) => ReactNode }
   links: { key: string; render: (className: string) => ReactNode }[]
+  /** On the new chat's stage: left-aligned, a step larger. */
+  onStage?: boolean
 }) {
   // The kit's text link (textLink), at the caption size: quiet for the fixed links, the brand's for
   // the one conditional action. They were hand-written at another weight than every other link.
   // On glass each is a 44px target (the UI review measured 18px): the line keeps its look and the
   // box around it grows, so the rows touch rather than leaving a gap.
   const tap = 'inline-flex items-center touch:min-h-tap'
-  const quiet = cn(textLink('quiet'), 'text-xs', tap)
+  const size = onStage ? 'text-sm' : 'text-xs'
+  const quiet = cn(textLink('quiet'), size, tap)
   const P = primary?.icon
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 touch:gap-y-0 justify-start sm:justify-center">
+    <div className={cn(
+      'flex flex-wrap items-center gap-y-2 touch:gap-y-0 justify-start',
+      onStage ? 'gap-x-6' : 'gap-x-4 sm:justify-center',
+    )}>
       {primary && primary.render(
-        cn(textLink('brand'), 'text-xs', tap),
+        cn(textLink('brand'), size, tap),
         <>{P && <P size={14} aria-hidden="true" />}{primary.label}</>,
       )}
       {links.map(l => <span key={l.key}>{l.render(quiet)}</span>)}
@@ -628,15 +746,14 @@ export function CitationRow({ mark, name, typeLabel, score }: {
 }
 
 /**
- * A MESSAGE STILL LOADING, on `ChatMessage`'s own geometry: a short right-aligned line for the
- * question, three lines of the column's width for the answer - so a conversation that opens does
+ * A MESSAGE STILL LOADING, on `ChatMessage`'s own geometry: a short bubble at the right for the question, three lines of the column's width for the answer - so a conversation that opens does
  * not jump when its words arrive. The thread's placeholder was app-local and matched neither.
  */
 export function ChatMessageSkeleton({ role }: { role: 'user' | 'assistant' }) {
   if (role === 'user') {
     return (
       <div className="flex justify-end mb-1 py-2" aria-hidden="true">
-        <Skeleton className="h-4 w-48 max-w-[78%]" />
+        <Skeleton className="h-9 w-48 max-w-[78%] rounded-lg" />
       </div>
     )
   }

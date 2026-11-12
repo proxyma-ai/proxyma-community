@@ -1,12 +1,13 @@
 import {
-  Caption, Field, FieldSkeleton, Input, Presence, RadioGroupSkeleton, SecretInput, SettingsSection,
+  Caption, FieldSkeleton, Presence, RadioGroupSkeleton, SettingsSection,
   SettingsSections, SwitchRowSkeleton, ToggleSwitch,
 } from '@/components/ui/kit'
 import { useSettings } from '../hooks/useSettings'
-import { SignpostSection, useResolved } from '../pages/shared'
+import { SignpostSection, useResolved, useSaveSetting } from '../pages/shared'
 import { useTranslation } from '@/i18n'
 import type { TabProps } from '../pages/shared'
-import { ChoiceField, ProviderModelRow, useSecretLabels } from '../components/settingsParts'
+import { ChoiceField, ProviderModelRow } from '../components/settingsParts'
+import { SettingSecret, SettingText } from '../components/SettingFields'
 
 // Search tab: the embedding block always renders (provider radio group, model input, the
 // concurrency group), then three toggle sections - Query Expansion, Reranking, Knowledge Graph -
@@ -65,7 +66,7 @@ function EmbeddingFields({ trackChange, pending }: TabProps) {
       {/* Before the fields it warns about, as the Knowledge Graph section's does (the field rule of
           2026-10-29) - it was the section's last line. */}
       <Caption tone="warning">
-        {t('Changing the embedding model requires a full re-index of all connectors.')}
+        {t('Changing the embedding model means re-indexing every source.')}
       </Caption>
       <ProviderModelRow
         role="embedding"
@@ -77,7 +78,7 @@ function EmbeddingFields({ trackChange, pending }: TabProps) {
       />
       <ChoiceField
         label={t('Max concurrent embedding requests')}
-        hint={t("How many embedding requests run at once; match your provider's capacity.")}
+        hint={t('Embedding requests sent at once.')}
         value={maxConcurrentRequests}
         onChange={v => trackChange('embedding', 'max-concurrent-requests', v)}
         options={EMBEDDING_CONCURRENCY_OPTIONS}
@@ -133,7 +134,7 @@ function KnowledgeGraphFields({ trackChange, pending }: TabProps) {
   return (
     <>
       <Caption tone="warning">
-        {t('A model call per chunk can triple indexing cost; use a cheap model.')}
+        {t('Can triple indexing cost. Use a cheap model.')}
       </Caption>
       <ProviderModelRow
         role="graph"
@@ -145,7 +146,7 @@ function KnowledgeGraphFields({ trackChange, pending }: TabProps) {
       />
       <ChoiceField
         label={t('Gleaning rounds')}
-        hint={t('Extra passes asking the model what it missed. 1 roughly doubles the cost above and 2 triples it.')}
+        hint={t('Extra passes for what was missed. Each adds about the same cost again.')}
         value={kgGleanings}
         onChange={v => trackChange('graph', 'gleanings', v)}
         options={GRAPH_GLEANINGS_OPTIONS}
@@ -162,7 +163,7 @@ function KnowledgeGraphFields({ trackChange, pending }: TabProps) {
           still applies and shows no choice selected. */}
       <ChoiceField
         label={t('Extraction timeout')}
-        hint={t('How long one chunk may take; raise it for local or reasoning models.')}
+        hint={t('Time limit per chunk. Raise it for slow models.')}
         value={kgTimeout}
         onChange={v => trackChange('graph', 'call-timeout-seconds', v)}
         // "2 minutes", in the reader's language - it was "2m".
@@ -199,13 +200,13 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
     <SettingsSections>
       {/* INDEXING. First because nothing below it can return anything until documents have been
           embedded, and because changing the model here invalidates everything downstream. */}
-      <SettingsSection title={t('Embedding')} caption={t('The model that turns documents and questions into vectors.')}>
+      <SettingsSection title={t('Embedding')} caption={t('The model that indexes documents for search.')}>
         <EmbeddingFields trackChange={trackChange} pending={pending} />
       </SettingsSection>
 
       <SettingsSection
         title={t('Query expansion')}
-        caption={t('Generates alternative phrasings to improve recall.')}
+        caption={t('Also searches with other wordings.')}
         toggle={{ checked: qeEnabled, onChange: v => trackChange('query-expansion', 'enabled', String(v)) }}
       >
         <Presence show={qeEnabled}><div className="space-y-6"><QueryExpansionFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -213,7 +214,7 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
 
       <SettingsSection
         title={t('Reranking')}
-        caption={t('Scores results with a model for better precision.')}
+        caption={t('A model reorders results by relevance.')}
         toggle={{ checked: rrEnabled, onChange: v => trackChange('reranking', 'enabled', String(v)) }}
       >
         <Presence show={rrEnabled}><div className="space-y-6"><RerankingFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -226,7 +227,7 @@ export function RetrievalTab({ trackChange, pending }: TabProps) {
           row will assume they cost alike unless told otherwise. */}
       <SettingsSection
         title={t('Knowledge graph')}
-        caption={t('Links facts across documents by extracting entities and relations.')}
+        caption={t('Links facts across documents.')}
         toggle={{ checked: kgEnabled, onChange: v => trackChange('graph', 'enabled', String(v)) }}
       >
         <Presence show={kgEnabled}><div className="space-y-6"><KnowledgeGraphFields trackChange={trackChange} pending={pending} /></div></Presence>
@@ -311,7 +312,7 @@ function SearchTimeoutField({ trackChange, pending }: TabProps) {
   return (
     <ChoiceField
       label={t('Search time limit (minutes)')}
-      hint={t('How long one search may run before the agent is told it timed out.')}
+      hint={t('How long one search may run.')}
       value={minutes}
       onChange={v => trackChange('chat', 'search-timeout-minutes', v)}
       options={SEARCH_TIMEOUT_OPTIONS}
@@ -333,40 +334,19 @@ interface CredentialGroup {
   prefix: string
 }
 
-function CredentialField({ prefix, field, label, placeholder, type, trackChange, pending, focused }: {
-  prefix: string; field: string; label: string; placeholder: string; type?: string; focused?: boolean
+// A secret keeps its masked input and saves when it is left, a blank one never sent; anything else
+// is a text edited where it is read (the click-to-edit rule, 2026-11-02) - SettingFields.tsx.
+function CredentialField({ prefix, field, label, placeholder, type, pending }: {
+  prefix: string; field: string; label: string; placeholder: string; type?: string
 } & TabProps) {
   const { t } = useTranslation()
-  const secretLabels = useSecretLabels()
   const value = useResolved(prefix, field, pending)
-  const { data: serverData } = useSettings(prefix)
-  const serverValue = serverData?.[field] ? String(serverData[field]) : ''
+  const save = useSaveSetting(prefix, field)
   const isSecret = type === 'password' || field.includes('token') || field.includes('secret') || field.includes('credential')
 
-  return (
-    <Field label={t(label)}>
-      {id => isSecret ? (
-        <SecretInput
-          id={id}
-          value={value}
-          serverValue={serverValue}
-          onChange={v => trackChange(prefix, field, v)}
-          placeholder={placeholder}
-          autoFocus={focused}
-          labels={secretLabels}
-        />
-      ) : (
-        <Input
-          id={id}
-          type={type ?? 'text'}
-          value={value}
-          onChange={e => trackChange(prefix, field, e.target.value)}
-          placeholder={placeholder}
-          autoFocus={focused}
-        />
-      )}
-    </Field>
-  )
+  return isSecret
+    ? <SettingSecret prefix={prefix} field={field} label={t(label)} placeholder={placeholder} />
+    : <SettingText label={t(label)} value={value} onCommit={save} placeholder={placeholder} />
 }
 
 // The web search credential - the Search tab's Web search section (WebSearchSection). It was an
@@ -381,7 +361,7 @@ const WEB_SEARCH_GROUP: CredentialGroup = {
   // search endpoint (see KeylessWebSearch). Filling them in swaps that for Google Custom Search,
   // which is worth doing on a deployment that leans on search, because the keyless path scrapes
   // result markup and can be rate-limited or broken by a redesign.
-  description: 'Works without setup; a Google Custom Search key makes it more reliable.',
+  description: 'Works without setup. A Google Custom Search key makes it more reliable.',
   fields: [
     { key: 'api-key', label: 'API key', placeholder: 'AIza...', type: 'password' },
     { key: 'search-engine-id', label: 'Search engine ID', placeholder: 'a1b2c3d4e5f6g7h8i' },

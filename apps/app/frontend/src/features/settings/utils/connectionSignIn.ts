@@ -12,7 +12,7 @@
 export const CONNECTION_SIGN_IN_PARAM = 'connection-oauth'
 
 /** Every outcome the callback can report - OAuth2ConnectionService.Outcome's codes. */
-export const CONNECTION_SIGN_IN_CODES = ['connected', 'denied', 'expired', 'failed', 'not_configured'] as const
+export const CONNECTION_SIGN_IN_CODES = ['connected', 'denied', 'expired', 'failed', 'not_configured', 'incomplete'] as const
 
 export type ConnectionSignInCode = typeof CONNECTION_SIGN_IN_CODES[number]
 
@@ -22,10 +22,12 @@ export type ConnectionSignInCode = typeof CONNECTION_SIGN_IN_CODES[number]
  */
 const MESSAGES: Record<ConnectionSignInCode, string> = {
   connected: 'Signed in. The connection is ready to use.',
-  denied: 'The sign-in was declined, so the connection is not signed in.',
+  denied: 'The sign-in was declined.',
   expired: 'That sign-in link has expired. Start again.',
   failed: 'Signing in failed. Try again.',
-  not_configured: "This service's sign-in is not set up. Give the connection its OAuth client, or ask an administrator to set one up.",
+  not_configured: "This service's sign-in is not set up. Give the connection an OAuth client.",
+  // A sign-in the person allowed only part of: kept, and the connection says what was left out.
+  incomplete: 'Signed in, but a permission Proxyma needs was not allowed. Sign in again and leave every permission ticked.',
 }
 
 /**

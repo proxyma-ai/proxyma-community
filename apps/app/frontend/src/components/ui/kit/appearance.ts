@@ -109,3 +109,56 @@ export function applyAppearance(target: AppearanceTarget, resolved: ResolvedAppe
 
 /** The media query System follows. */
 export const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)'
+
+/**
+ * THE LOOK BESIDE THE APPEARANCE (the maintainer, 2026-11-09: "Make an appearance setting so we can
+ * choose. Also, allow the user to select the accent color as well"): two more per-browser choices an
+ * app shell offers next to System, Light and Dark.
+ *
+ * <p>BACKGROUND: `flat`, the app's own window as it was (one flat color, the page's faint corner light),
+ * or `gradient`, the landing site's page - near black in the lower left rising to the accent in the
+ * upper right in Dark, near white to a faint accent in Light - with the page drawn straight on it.
+ * Stamped as `data-backdrop="gradient"` on <html>, and nothing for `flat`.
+ *
+ * <p>ACCENT: the brand ramp the whole kit draws its accent from (`--p50` to `--p950` and the brand
+ * tokens built on it, proxyma-tokens.css "ACCENT COLORS"). Teal is Proxyma's own and stamps nothing;
+ * any other is `data-accent="<name>"`. The mark is drawn from the
+ * same ramp, so the logo and the chat home's mark take the chosen accent too.
+ */
+export type BackdropPreference = 'flat' | 'gradient'
+
+/** Menu order. */
+export const BACKDROP_PREFERENCES: readonly BackdropPreference[] = ['flat', 'gradient']
+
+export type AccentPreference = 'teal' | 'blue' | 'violet' | 'green' | 'amber' | 'rose'
+
+/** Menu order: Proxyma's teal first. */
+export const ACCENT_PREFERENCES: readonly AccentPreference[] = ['teal', 'blue', 'violet', 'green', 'amber', 'rose']
+
+/** Each accent's swatch in a menu: its p600, the middle of its ramp. */
+export const ACCENT_SWATCH: Record<AccentPreference, string> = {
+  teal: '#2a8cb2',
+  blue: '#2563eb',
+  violet: '#7c3aed',
+  green: '#059669',
+  amber: '#d97706',
+  rose: '#e11d48',
+}
+
+/** A stored string back to a background; anything unknown is `flat`, the app as it always was. */
+export function parseBackdrop(stored: string | null | undefined): BackdropPreference {
+  return stored === 'gradient' ? 'gradient' : 'flat'
+}
+
+/** A stored string back to an accent; anything unknown is Proxyma's teal. */
+export function parseAccent(stored: string | null | undefined): AccentPreference {
+  return (ACCENT_PREFERENCES as readonly string[]).includes(stored ?? '') ? stored as AccentPreference : 'teal'
+}
+
+/** Stamps the background and the accent on the root element: nothing at all for the defaults. */
+export function applyLook(target: AppearanceTarget, backdrop: BackdropPreference, accent: AccentPreference): void {
+  if (backdrop === 'gradient') target.setAttribute('data-backdrop', 'gradient')
+  else target.removeAttribute('data-backdrop')
+  if (accent === 'teal') target.removeAttribute('data-accent')
+  else target.setAttribute('data-accent', accent)
+}

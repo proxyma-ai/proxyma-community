@@ -1,5 +1,7 @@
 package ai.proxyma.core.chat.question;
 
+import ai.proxyma.core.system.util.Utf16;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,6 +62,6 @@ public final class QuestionAnswers {
     }
 
     private static String truncate(String s, int max) {
-        return s.length() <= max ? s : s.substring(0, max);
+        return Utf16.cut(s, max);
     }
 }

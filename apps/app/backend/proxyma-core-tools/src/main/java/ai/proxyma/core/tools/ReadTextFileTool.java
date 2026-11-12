@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.system.util.Failures;
 
 import ai.proxyma.core.tools.schema.ToolFieldType;
@@ -120,7 +121,7 @@ public class ReadTextFileTool {
     private static String truncateLine(String line, int lineNumber) {
         return line.length() <= MAX_LINE_CHARS
                 ? line
-                : line.substring(0, MAX_LINE_CHARS) + " ... [line truncated, " + line.length()
+                : Utf16.cut(line, MAX_LINE_CHARS) + " ... [line truncated, " + line.length()
                         + " chars total; read with offset=" + lineNumber + " charOffset=" + MAX_LINE_CHARS
                         + " to continue]";
     }

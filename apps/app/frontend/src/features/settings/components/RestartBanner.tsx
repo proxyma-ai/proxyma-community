@@ -66,22 +66,22 @@ export function RestartBanner({ onRestartNow, onRestartLater, message }: {
       role="status"
       actions={(
         <>
-          <Tooltip label={t('Restart the application now to apply the new settings immediately')}>
+          <Tooltip label={t('Restart Proxyma now to apply the new settings')}>
             <Button onClick={onRestartNow}>
               <RotateCw size={14} aria-hidden="true" />
-              {t('Restart now')}
+              {t('Restart Proxyma now')}
             </Button>
           </Tooltip>
-          <Tooltip label={t('Dismiss this banner. Changes will take effect on the next restart')}>
+          <Tooltip label={t('Dismiss. Changes apply the next time Proxyma restarts')}>
             <Button variant="quiet" onClick={onRestartLater}>
               <Clock size={14} aria-hidden="true" />
-              {t('Restart later')}
+              {t('Restart Proxyma later')}
             </Button>
           </Tooltip>
         </>
       )}
     >
-      {message ?? t('Settings saved. A restart is required for changes to take effect.')}
+      {message ?? t('Settings saved. Restart Proxyma to apply them.')}
     </Callout>
   )
 }

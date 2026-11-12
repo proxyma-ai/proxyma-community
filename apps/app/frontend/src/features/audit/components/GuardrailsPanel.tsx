@@ -9,7 +9,7 @@ import { useTranslation, type Translate } from '@/i18n'
 import { formatCompactCount } from '@/utils/formatters'
 import { guardrailMetricsApi, type RecentDecision } from '@/features/settings/services/guardrailMetricsApi'
 import { AuditTabBody, RankedList } from './AuditShared'
-import { words } from '../utils/auditLabels'
+import { guardrailCategoryLabel } from '../utils/auditLabels'
 import { useDates } from '@/hooks/useDates'
 
 /**
@@ -28,9 +28,9 @@ export function GuardrailsPanel({ multiUser }: { multiUser: boolean }) {
     <AuditTabBody
       tab="GUARDRAIL"
       title={t('Guardrails')}
-      caption={t('Every check, including the ones that let the text through. Rule names and categories only - never the text.')}
+      caption={t('Every check, with rule names only. Never the text.')}
       multiUser={multiUser}
-      logCaption={t('Each check in the period, newest first. Open a row to see which rules fired.')}
+      logCaption={t('Every check, newest first.')}
       extra={<MatchedTextSection />}
       summary={d => {
         const observed = d.byOutcome.OBSERVED ?? 0
@@ -50,12 +50,12 @@ export function GuardrailsPanel({ multiUser }: { multiUser: boolean }) {
             </StatGrid>
             <Presence show={observed > 0}>
               <Caption>
-                {t('{count} of those would have been withheld, but monitor mode let them through.', { count: observed })}
+                {t('{count} would have been blocked in monitor mode.', { count: observed })}
               </Caption>
             </Presence>
             <Presence show={classifierFailures > 0}>
               <Caption tone="warning">
-                {t('The classifier failed and let 1 turn through. Check that its provider is reachable.|The classifier failed and let {count} turns through. Check that its provider is reachable.', { count: classifierFailures })}
+                {t('The check failed and let 1 turn through.|The check failed and let {count} turns through.', { count: classifierFailures })}
               </Caption>
             </Presence>
             {/* A name over a group of tiles, not a control's label - a <label> here pointed at
@@ -77,7 +77,7 @@ export function GuardrailsPanel({ multiUser }: { multiUser: boolean }) {
             <RankedList
               title={t('What fired')}
               rows={d.byTarget.slice(0, 6).map(g => ({
-                key: g.target, label: words(g.target), value: g.count, figures: [g.count.toLocaleString(locale)],
+                key: g.target, label: guardrailCategoryLabel(g.target, t), value: g.count, figures: [g.count.toLocaleString(locale)],
               }))}
             />
           </>
@@ -104,7 +104,7 @@ function MatchedTextSection() {
     <Presence show={withEvidence.length > 0}>
     <section>
       <SectionHeading
-        caption={t('The text a rule objected to, kept in memory until restart and never written to the log. Turn off "Keep the matched text" in Guardrails to stop recording it.')}
+        caption={t('Text the rules matched, kept in memory until Proxyma restarts. Never written to the log.')}
       >
         {t('Matched text')}
       </SectionHeading>
@@ -132,7 +132,7 @@ function MatchedTextSection() {
                       <span className={cn('shrink-0 min-w-24 whitespace-nowrap font-semibold', r.enforced ? 'text-danger' : 'text-ink-caption')}>
                         {decisionVerdict(r, t)}
                       </span>
-                      <span className="text-ink-secondary truncate flex-1">{r.categories.join(', ') || '-'}</span>
+                      <span className="text-ink-secondary truncate flex-1">{r.categories.map(c => guardrailCategoryLabel(c, t)).join(', ') || '-'}</span>
                     </span>
                   }
                 >

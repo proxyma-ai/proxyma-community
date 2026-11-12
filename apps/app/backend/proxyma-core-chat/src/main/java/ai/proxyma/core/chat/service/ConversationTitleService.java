@@ -11,7 +11,6 @@ import ai.proxyma.core.provider.gateway.LlmCaller;
 import ai.proxyma.core.provider.gateway.LlmRole;
 import ai.proxyma.core.provider.usage.TokenUsageExtractor;
 import ai.proxyma.core.settings.dto.ChatSettings;
-import ai.proxyma.core.settings.dto.SubAgentSettings;
 import ai.proxyma.core.settings.service.SettingsService;
 
 import org.slf4j.Logger;
@@ -37,11 +36,10 @@ import java.util.regex.Pattern;
 // on an external call - a self-invoked method would silently run synchronously and add this
 // call's latency to the main ReAct loop, which is exactly what this must avoid.
 //
-// Runs on the SUB-AGENT's model whenever one is configured, falling back to the main agent's only
-// when it isn't. Naming a conversation from one short message is exactly the cheap, self-contained
-// job sub-agents exist for, and it keeps the title call off the main (usually larger, often
-// GPU-bound) model that the user's actual answer is waiting on - which is what made the earlier
-// ordering fix necessary in the first place (see ChatService's call site).
+// Runs on the agent's model. It ran on the sub-agent's model while deployed agents had one of their
+// own in Settings; that setting went on 2026-11-02, and with it the title's cheaper model. The call
+// still races the user's answer on a GPU-bound model, which costs nothing but a placeholder title for
+// a moment (see ChatService's call site).
 //
 // It only replaces that naive title when there is something to replace it WITH: a message short
 // enough to be its own title is left alone and costs no provider call at all (see
@@ -120,6 +118,15 @@ public class ConversationTitleService {
     // read and write below is its own short transaction now.
     @Async("blockingWorkExecutor")
     public void generateTitleAsync(String conversationId, String firstMessage) {
+        generateTitleAsync(conversationId, firstMessage, null);
+    }
+
+    /**
+     * The same, on {@code model} when one is given: a saved agent's own model (ChatService.titleModel), so a team whose
+     * agents run on a local model spends nothing to name its conversations.
+     */
+    @Async("blockingWorkExecutor")
+    public void generateTitleAsync(String conversationId, String firstMessage, LlmGateway.ModelOverride model) {
         // Checked before anything else, so a short message costs neither a provider call nor the
         // lookup below.
         if (!needsGeneratedTitle(firstMessage)) {
@@ -136,22 +143,24 @@ public class ConversationTitleService {
         SpendSubject subject = conversationRepository.findById(conversationId)
                 .map(c -> SpendSubject.user(c.getUserId()))
                 .orElse(SpendSubject.ANONYMOUS);
-        generateTitle(conversationId, firstMessage, subject);
+        generateTitle(conversationId, firstMessage, subject, model);
     }
 
-    private void generateTitle(String conversationId, String firstMessage, SpendSubject subject) {
+    private void generateTitle(String conversationId, String firstMessage, SpendSubject subject,
+                               LlmGateway.ModelOverride model) {
         try {
-            // TITLE resolves to the sub-agent model, falling back to the main one - see the class
-            // comment. Which of the two answered comes back on the result rather than being worked
-            // out twice.
-            if (!llmGateway.isAvailable(LlmRole.TITLE)) {
+            // TITLE resolves to the agent's model - see the class comment. What answered comes back on
+            // the result rather than being worked out twice.
+            if (model != null ? !llmGateway.isAvailable(model) : !llmGateway.isAvailable(LlmRole.TITLE)) {
                 log.debug("[ConversationTitle] no chat model configured, skipping conversationId={}", conversationId);
                 return;
             }
             List<Message> messages = List.of(new SystemMessage(TITLE_SYSTEM_PROMPT),
                     new UserMessage("Message: " + firstMessage.trim() + "\nTitle:"));
             LlmGateway.LlmResult result = CompletableFuture
-                    .supplyAsync(() -> llmGateway.chat(LlmCaller.of(LlmRole.TITLE, subject), messages),
+                    .supplyAsync(() -> model != null
+                            ? llmGateway.chat(LlmCaller.of(LlmRole.TITLE, subject).inConversation(conversationId), messages, model)
+                            : llmGateway.chat(LlmCaller.of(LlmRole.TITLE, subject).inConversation(conversationId), messages),
                             BlockingWork.executor())
                     .get(TITLE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             recordUsage(conversationId, result);

@@ -38,8 +38,14 @@ class SecurityHeadersTest {
     }
 
     @Test
-    void onlyTheMcpSignInPageMayRunItsOwnInlineScript() {
-        String csp = headersFor("/api/v1/mcp-oauth/callback").getFirst("Content-Security-Policy");
-        assertThat(csp).contains("default-src 'none'").contains("script-src 'unsafe-inline'").contains("frame-ancestors 'none'");
+    void onlyTheSignInPagesMayRunTheirOwnInlineScript() {
+        for (String path : java.util.List.of("/api/v1/mcp-oauth/callback", "/api/v1/connections/oauth/callback",
+                "/api/v1/providers/openrouter/callback")) {
+            String csp = headersFor(path).getFirst("Content-Security-Policy");
+            assertThat(csp).as(path).contains("default-src 'none'").contains("script-src 'unsafe-inline'")
+                    .contains("frame-ancestors 'none'");
+        }
+        assertThat(headersFor("/api/v1/connections/instances/x/oauth/start").getFirst("Content-Security-Policy"))
+                .contains("script-src 'self'");
     }
 }

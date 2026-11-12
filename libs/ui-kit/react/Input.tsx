@@ -23,7 +23,7 @@ interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
  *
  * WHERE THE WORDS GO, since 2026-10-29 (the maintainer's review: "Description should be placed below
  * the section title"): a field's HINT sits directly UNDER ITS LABEL and ABOVE the control
- * (`FieldHint` - the label, 4px, the hint in 13/18 caption ink, 8px, the control), so the reader
+ * (`FieldHint` - the label, 4px, the hint in 12/16 caption ink, 8px, the control), so the reader
  * meets the explanation before the box it explains. Until then it sat under the control, where a
  * swatch row or a textarea pushed it away from the name it belonged to. The ERROR stays BELOW the
  * control (`FieldNote`): it points at what is wrong in it. A field with NO label keeps its hint
@@ -89,7 +89,7 @@ export const FIELD_HEAD = 'min-w-0'
 export const FIELD_BODY = 'flex flex-1 flex-col min-w-0 min-h-0'
 
 /**
- * A field's hint UNDER ITS LABEL, above the control - 13/18 caption ink, 8px over the control (the
+ * A field's hint UNDER ITS LABEL, above the control - 12/16 caption ink, 8px over the control (the
  * label takes `mb-1` over it). About 70 characters a line at most, as every caption that explains
  * (the UI review, 2026-10-28). Give it the `id` the control names in `aria-describedby`. For a field
  * the kit does not draw, use `Field` with a `hint` - it places this for you.
@@ -100,7 +100,7 @@ export function FieldHint({ id, children, className }: { id?: string; children: 
 
 /**
  * The line UNDER a field: its error, or - for a field with no label (see `fieldWords`) - its hint,
- * 13/18, `mt-2`. A labelled field's hint is `FieldHint`, over the control (since 2026-10-29). Hints
+ * 12/16, `mt-2`. A labelled field's hint is `FieldHint`, over the control (since 2026-10-29). Hints
  * once sat in six positions across Settings, some pulled up with negative margins; this pair is the
  * one place. Give it the `id` the control names in `aria-describedby`.
  */

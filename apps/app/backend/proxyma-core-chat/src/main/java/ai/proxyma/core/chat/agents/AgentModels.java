@@ -25,8 +25,8 @@ import java.util.function.LongSupplier;
  * Deployed agents allows it (SubAgentSettings.modelRule: any listed model, only the chosen ones, or all
  * but those). It is resolved to the provider that lists it - the agent's own provider first - so the
  * deployed agent runs on that provider. Anything else is refused with the names it may use, which is
- * what an agent needs to correct itself. Naming no model is always allowed: the agent then runs on the
- * Settings default for deployed agents, else the agent's own model.
+ * what an agent needs to correct itself. Naming no model is always allowed: the agent then runs on its
+ * parent's model (AgentTree.deploy) - there is no Settings default for deployed agents since 2026-11-02.
  *
  * <p>The providers' lists are read live and kept for five minutes; a provider that cannot be asked
  * lists nothing, so its models cannot be named until it answers again.
@@ -85,7 +85,7 @@ public class AgentModels {
         List<Listed> listed = listed();
         if (listed.isEmpty()) {
             return Choice.refused("No provider's model list could be read, so no model can be named now. "
-                    + "Leave model out: the agent runs on its default model.");
+                    + "Leave model out: the agent runs on your model.");
         }
         String own = ownProvider();
         Listed match = null;
@@ -103,7 +103,23 @@ public class AgentModels {
         String first = listedButBarred
                 ? "Settings do not allow deployed agents to use " + wanted + "."
                 : "No provider lists a model named " + wanted + ".";
-        return Choice.refused(first + " Leave model out to use the default, or name one of: " + names(rule, listed) + ".");
+        return Choice.refused(first + " Leave model out to use your model, or name one of: " + names(rule, listed) + ".");
+    }
+
+    /**
+     * Every model one provider lists, in its order and spelling - what a picker offers a PERSON (a
+     * Constellations agent's Model tab, 2026-11-03: "Must query model similar to the settings"). Not
+     * narrowed by Settings > Agents' rule: that rule is for the models an agent names itself when it
+     * deploys others, and a person choosing by hand is not limited by it (the maintainer, 2026-11-03).
+     * Empty for a provider that is not configured or cannot be asked now.
+     */
+    public List<String> providerModels(String providerId) {
+        if (providerId == null || providerId.isBlank()) return List.of();
+        List<String> out = new ArrayList<>();
+        for (Listed l : listed()) {
+            if (l.providerId().equals(providerId) && !out.contains(l.model())) out.add(l.model());
+        }
+        return out;
     }
 
     /** Whether the rule allows this provider's model. */
@@ -138,6 +154,23 @@ public class AgentModels {
         }
         if (out.isEmpty()) return "none - Settings allow no listed model, so leave model out";
         return String.join(", ", out) + (more > 0 ? " and " + more + " more" : "");
+    }
+
+    /**
+     * Each configured provider instance's name by its id, and the chat's own provider under the key
+     * null - what the agents map writes beside a model (a provider null is the chat's). Empty when
+     * they cannot be read: the map then shows the model alone.
+     */
+    public Map<String, String> providerNames() {
+        Map<String, String> out = new java.util.HashMap<>();
+        try {
+            instances.list().forEach(p -> out.put(p.id().toString(), p.name()));
+            String own = ownProvider();
+            if (own != null && out.containsKey(own)) out.put(null, out.get(own));
+        } catch (RuntimeException e) {
+            log.debug("[Agents] could not read the provider names: {}", e.getMessage());
+        }
+        return out;
     }
 
     // Every configured provider's models, read at most every five minutes.

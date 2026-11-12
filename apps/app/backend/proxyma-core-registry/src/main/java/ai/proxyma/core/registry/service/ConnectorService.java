@@ -2733,6 +2733,10 @@ public class ConnectorService {
             log.info("[Registry] Refusing registration: type={} name={} reason={}", type, name, check.detail());
             throw new IllegalArgumentException(check.detail());
         }
+        // The probe may have named it after what the service calls it (SourceLabels - a YouTube
+        // channel's title and page), for a type whose name is only a label.
+        name = candidate.getName();
+        config = candidate.getConfig();
 
         RegisteredConnector connector = new RegisteredConnector();
         connector.setConnectorType(type);

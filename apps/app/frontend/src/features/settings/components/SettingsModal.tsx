@@ -1,9 +1,12 @@
-import { lazy, Suspense, useState, useCallback, useMemo, useEffect } from 'react'
+import { lazy, Suspense, useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Eye } from 'lucide-react'
-import { Callout, ConfirmDialog, SaveBar, SettingsWindow, type RailGroup } from '@/components/ui/kit'
+import { Callout, ConfirmDialog, SettingsWindow, type RailGroup } from '@/components/ui/kit'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 import { settingsApi } from '../services/settingsApi'
 import { TAB_ICONS } from '../data/tabIcons'
 import { apiErrorText } from '@/services/apiError'
+import { useToastStore } from '@/store/toastStore'
+import { changesEmbeddingModel, withPending, withoutPending } from '../utils/settingsSave'
 import { SkillsTab } from './SkillsTab'
 import { MemoryTab } from './MemoryTab'
 import { AssistantsTab } from './AssistantsTab'
@@ -12,7 +15,7 @@ import { RestartBanner, useRestartNow } from './RestartBanner'
 // pages need them too, and they cannot import this file - the modal imports the edition module
 // through the @settings-pages alias, so the edition module importing the modal back would be a
 // runtime cycle. Everything VISIBLE in this file is the kit's, since the 2026-10 rebuild.
-import { SettingsTitleSlot, TabFieldsSkeleton } from '../pages/shared'
+import { SettingsSaveProvider, SettingsTitleSlot, TabFieldsSkeleton, type SettingsSaver } from '../pages/shared'
 import { useAuthStore } from '@/store/authStore'
 import { FEATURES } from '@/config/features'
 import { queryClient } from '@/app/QueryClient'
@@ -155,30 +158,42 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
     setTab(initialTab)
     setFocusKey(initialFocus ?? null)
   }, [initialTab, initialFocus, navGroups])
+  // WHAT IS BEING SAVED, newest first - not a batch waiting for a Save button. Every field saves
+  // itself since 2026-11-02 (the maintainer's click-to-edit rule): a text when it is left, a select,
+  // switch or radio group on change, a group of fields meaningless apart when the person leaves the
+  // group (SettingFields.tsx). The shared Save/Cancel bar and the "Discard unsaved changes?" prompt
+  // went with the batch - nothing is ever left unsaved to discard.
   const [pending, setPending] = useState<PendingChange[]>([])
-  const [saving, setSaving] = useState(false)
-  const [savingField, setSavingField] = useState<string | null>(null)
-  // A STATUS, not a sentence. The save bar used to hold the translated message and pick its colour with
-  // msg.startsWith('Failed'), which never matches the Vietnamese copy - a failed save showed in the
-  // success colour. The copy is derived from the status below, and the colour from the status too.
-  const [msgStatus, setMsgStatus] = useState<'saved' | 'saveFailed' | 'restartFailed' | null>(null)
-  // Why a save failed, as the server said it - a refused role, a plan that does not cover it, a
-  // value out of range. "Failed to save." alone told the reader nothing they could act on.
-  const [msgReason, setMsgReason] = useState<string | null>(null)
-  const msg = msgStatus === 'saved' ? t('Saved.')
-    : msgStatus === 'saveFailed' ? (msgReason ? t('Failed to save: {reason}', { reason: msgReason }) : t('Failed to save.'))
-    : msgStatus === 'restartFailed' ? t('Restart failed. Please restart manually.')
-    : ''
+  const addToast = useToastStore(s => s.addToast)
+  // How many saves are in flight, and whether the last one finished in the last few seconds - the
+  // quiet "Saving..." / "Saved." beside the tab's title. A failure is a toast, with the server's reason.
+  const [inFlight, setInFlight] = useState(0)
+  const [savedFlash, setSavedFlash] = useState(0)
+  useEffect(() => {
+    if (!savedFlash) return
+    const timer = setTimeout(() => setSavedFlash(0), 2500)
+    return () => clearTimeout(timer)
+  }, [savedFlash])
   const [restartNeeded, setRestartNeeded] = useState(false)
   // The restart screen is the restart store's, not local state: this modal closes on a backdrop
   // click, which would unmount the blocking screen along with it. See store/restartStore.ts.
   const restartNow = useRestartNow()
-  // Gate shown before the save loop runs whenever `pending` includes the embedding model field -
-  // see performSave/save below. Held separately from `saving` so the confirm dialog itself never
-  // triggers a partial save.
-  const [confirmEmbeddingChange, setConfirmEmbeddingChange] = useState(false)
+  // A save that changes the embedding model waits on this confirmation first - see save below. Its
+  // answer settles the save's own promise, so cancelling puts the old model back where it was.
+  const [confirmEmbedding, setConfirmEmbedding] = useState<((ok: boolean) => void) | null>(null)
+  // A save started as the window closes (a group saved on unmount) cannot ask anything: one that
+  // would have to is not made - nor is one still waiting on the question when the window goes.
+  const mounted = useRef(true)
+  const asking = useRef<((ok: boolean) => void) | null>(null)
+  asking.current = confirmEmbedding
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      asking.current?.(false)
+    }
+  }, [])
 
-  const isDirty = pending.length > 0
   const systemConfigReadOnly = !canEditSystemConfig && SYSTEM_CONFIG_TABS.includes(tab)
 
   // The title row's action slot (TitleAction) - held here so it can be provided to the tab below it.
@@ -191,85 +206,80 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
     setFocusKey(focus ?? null)
   }, [])
 
-  const trackChange = useCallback((prefix: string, field: string, value: string) => {
-    setPending(prev => {
-      const filtered = prev.filter(p => !(p.prefix === prefix && p.field === field))
-      return [...filtered, { prefix, field, value }]
-    })
-  }, [])
-
-  const performSave = async () => {
-    setSaving(true)
-    setMsgStatus(null)
+  // THE ONE SAVE every field goes through. The values show at once (pending); the fields are written
+  // in order, an empty one cleared (the server's default then applies); every settings group touched
+  // is re-read before the pending values go, so a field never flicks back to what it was. A refusal
+  // is a toast with the server's reason, and the fields show what the server holds - which, if the
+  // second of two fields was refused, includes the first. A save not wanted (the embedding model's
+  // confirmation cancelled) rejects without a toast.
+  const save = useCallback(async (changes: PendingChange[]) => {
+    if (changes.length === 0) return
+    setPending(prev => withPending(prev, changes))
+    const prefixes = [...new Set(changes.map(c => c.prefix))]
+    const reread = () => Promise.all(prefixes.map(p => queryClient.invalidateQueries({ queryKey: keys.settings(p) })))
     try {
-      const prefixes = new Set(pending.map(p => p.prefix))
-      let needsRestart = false
-      for (const p of pending) {
-        setSavingField(`${p.prefix}.${p.field}`)
-        if (p.value === '') {
-          const result = await settingsApi.deleteField(p.prefix, p.field)
-          if (result.requiresRestart) needsRestart = true
-        } else {
-          const result = await settingsApi.saveField(p.prefix, p.field, p.value)
-          if (result.requiresRestart) needsRestart = true
+      if (changesEmbeddingModel(changes)) {
+        const ok = mounted.current && await new Promise<boolean>(resolve => setConfirmEmbedding(() => resolve))
+        if (!ok) throw new SaveNotWanted()
+      }
+      setInFlight(n => n + 1)
+      try {
+        let needsRestart = false
+        for (const c of changes) {
+          const result = c.value === ''
+            ? await settingsApi.deleteField(c.prefix, c.field)
+            : await settingsApi.saveField(c.prefix, c.field, c.value)
+          if (result?.requiresRestart) needsRestart = true
         }
-      }
-      setPending([])
-      for (const prefix of prefixes) {
-        queryClient.invalidateQueries({ queryKey: keys.settings(prefix) })
-      }
-      // A setting can change what /api/v1/config reports - an edition's own switches, such as which
-      // Microsoft 365 source types an Enterprise Server offers, which the Sources page reads to
-      // decide what Add Source offers. It is cached indefinitely, so refresh it after a save.
-      queryClient.invalidateQueries({ queryKey: ['config'] })
-      if (needsRestart) {
-        setRestartNeeded(true)
-        setMsgStatus(null)
-      } else {
-        setMsgStatus('saved')
+        await reread()
+        // A setting can change what /api/v1/config reports - an edition's own switches, such as which
+        // Microsoft 365 source types an Enterprise Server offers, which the Sources page reads to
+        // decide what Add Source offers. It is cached indefinitely, so refresh it after a save.
+        void queryClient.invalidateQueries({ queryKey: ['config'] })
+        // A setting that needs a restart still says so once it is saved (Network).
+        if (needsRestart) setRestartNeeded(true)
+        setSavedFlash(Date.now())
+      } finally {
+        setInFlight(n => n - 1)
       }
     } catch (e) {
-      setMsgReason(apiErrorText(e))
-      setMsgStatus('saveFailed')
+      if (!(e instanceof SaveNotWanted)) {
+        const reason = apiErrorText(e)
+        addToast(reason ? t('Failed to save: {reason}', { reason }) : t('Failed to save.'), 'danger')
+        await reread().catch(() => undefined)
+      }
+      throw e
     } finally {
-      setSaving(false)
-      setSavingField(null)
+      setPending(prev => withoutPending(prev, changes))
     }
-  }
+  }, [addToast, t])
 
-  // Single choke point every tab's Save button goes through. If the embedding model is among the
-  // pending changes, block on a confirmation modal first - the whole save (not just that one
-  // field) waits, so a partial save mid-confirmation can never happen and cancelling leaves every
-  // other pending change intact.
-  const save = () => {
-    const embeddingModelChanging = pending.some(p => p.prefix === 'embedding' && p.field === 'model')
-    if (embeddingModelChanging) {
-      setConfirmEmbeddingChange(true)
-      return
-    }
-    void performSave()
-  }
+  // A select, switch or radio group: saved the moment it changes. Its failure is the toast above.
+  const trackChange = useCallback((prefix: string, field: string, value: string) => {
+    save([{ prefix, field, value }]).catch(() => undefined)
+  }, [save])
 
-  const confirmEmbeddingChangeAndSave = () => {
-    setConfirmEmbeddingChange(false)
-    void performSave()
-  }
+  const saver = useMemo<SettingsSaver>(
+    () => ({ save, readOnly: systemConfigReadOnly, pending }),
+    [save, systemConfigReadOnly, pending],
+  )
 
-  const cancel = () => {
-    setPending([])
-    setMsgStatus(null)
+  const answerEmbedding = (ok: boolean) => {
+    confirmEmbedding?.(ok)
+    setConfirmEmbedding(null)
   }
 
   const handleRestartNow = async () => {
     setRestartNeeded(false)
-    if (!(await restartNow())) setMsgStatus('restartFailed')
+    if (!(await restartNow())) addToast(t('Proxyma could not restart. Restart Proxyma manually.'), 'danger')
   }
 
+  // Required by the window's shell; never asked, since nothing here is ever pending a Save.
+  const discardLabels = useDiscardLabels()
   // The rail's entries, in the reader's language and with each tab's glyph. The kit SettingsRail
   // (drawn by SettingsWindow from these groups) is a grouped column from md and a flat row
   // scrolling sideways below md and on a short screen, keeping the active entry in view on
   // whichever axis scrolls.
-  const discardLabels = useDiscardLabels()
   const railGroups = useMemo<RailGroup<TabKey>[]>(() => navGroups.map(g => ({
     label: t(g.label),
     items: g.tabs.map(key => ({ key, label: t(key), icon: TAB_ICONS[key] })),
@@ -278,14 +288,13 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
   return (
     // THE KIT'S SETTINGS WINDOW (since 2026-10-14): the dialog at the settings panel's size - nearly
     // full-screen on a phone, always with a margin of backdrop round it, an overlay CLIPPED rather
-    // than scrollable so a wheel over the rail never moves the whole window - the rail, the titled
-    // content column and the save bar. The consoles' Settings windows are the same part.
+    // than scrollable so a wheel over the rail never moves the whole window - the rail and the titled
+    // content column. The consoles' Settings windows are the same part, and keep its save bar.
+    //
+    // Closing is never refused and never asks: a field being left saves as the window goes, and a
+    // save in flight finishes (and reports a failure in a toast) after it has.
     <SettingsWindow
       onClose={onClose}
-      closable={!saving}
-      // Unsaved changes are the pending list the Save bar already holds. Closing with any of them -
-      // Escape, the backdrop - asks first rather than dropping them the way the backdrop used to.
-      dirty={isDirty}
       discardLabels={discardLabels}
       ariaLabel={t('Settings')}
       groups={railGroups}
@@ -303,20 +312,10 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
       title={t(tab)}
       titleActionsRef={setTitleSlot}
       notice={systemConfigReadOnly && <ReadOnlyConfigNotice />}
-      footer={
-        <SaveBar
-          dirty={isDirty}
-          saving={saving}
-          status={msg ? { tone: msgStatus === 'saved' ? 'success' : 'danger', text: msg } : null}
-          progressText={saving && savingField && pending.length > 1
-            ? t('Saving {field}...', { field: savingField })
-            : undefined}
-          onCancel={cancel}
-          onSave={save}
-          labels={{ cancel: t('Cancel'), save: t('Save'), saving: t('Saving...') }}
-        />
-      }
+      // The quiet word that a save happened - beside the title, where the tab's own action sits.
+      titleActions={<SaveStatus word={inFlight > 0 ? 'saving' : savedFlash ? 'saved' : null} />}
     >
+      <SettingsSaveProvider value={saver}>
       <SettingsTitleSlot.Provider value={{ slot: titleSlot, disabled: systemConfigReadOnly }}>
         {/* A real <fieldset disabled>, not per-control props: it natively disables every
             descendant input/select/textarea/button in one place, and every control these tabs
@@ -355,28 +354,32 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
           {ExtraPage && <ExtraPage trackChange={trackChange} pending={pending} focusKey={focusKey} onOpenTab={openTab} />}
         </fieldset>
       </SettingsTitleSlot.Provider>
+      </SettingsSaveProvider>
 
-      {/* Blocking confirmation gate for embedding-model changes - see save and performSave above.
-          A warning, not a deletion, so the kit ConfirmDialog in its warning tone. */}
-      {confirmEmbeddingChange && (
+      {/* Blocking confirmation gate for embedding-model changes - see save above. A warning, not a
+          deletion, so the kit ConfirmDialog in its warning tone. */}
+      {confirmEmbedding && (
         <ConfirmDialog
           tone="warning"
           title={t('Change embedding model?')}
-          description={t('Changing the embedding model does not update your existing search index by itself.')}
+          description={t('Your search index is not updated by itself.')}
           consequences={[
-            t('Every connector indexed with the old model needs a full re-index before it works correctly with the new model.'),
-            t('Re-indexing is manual, per connector. Until you do it, affected connectors silently return degraded or wrong results.'),
-            t('Re-indexing can take a long time for large connectors and consumes real embedding compute/cost.'),
+            t('Every source must be re-indexed with the new model.'),
+            t('Until then, search results may be wrong.'),
+            t('Re-indexing large sources takes time and costs money.'),
           ]}
           confirmLabel={t('Save anyway')}
           cancelLabel={t('Cancel')}
-          onConfirm={confirmEmbeddingChangeAndSave}
-          onCancel={() => setConfirmEmbeddingChange(false)}
+          onConfirm={() => answerEmbedding(true)}
+          onCancel={() => answerEmbedding(false)}
         />
       )}
     </SettingsWindow>
   )
 }
+
+// A save the person did not want (a confirmation cancelled) - rejected, but no failure to report.
+class SaveNotWanted extends Error {}
 
 // Shown above a system-config tab an ADMIN can read but not change. Says who CAN change it, so
 // the disabled controls read as a deliberate permission boundary rather than a broken page - the
@@ -385,7 +388,7 @@ function ReadOnlyConfigNotice() {
   const { t } = useTranslation()
   return (
     <Callout tone="neutral" icon={Eye}>
-      {t('View only - only a super admin can change system configuration.')}
+      {t('View only. Only a super admin can change this.')}
     </Callout>
   )
 }

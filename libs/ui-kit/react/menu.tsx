@@ -158,7 +158,7 @@ export function MenuGroup({ children, className, label }: { children: ReactNode;
  * <p>THE PADDING IS ON THE LINE, NOT THE GROUP. It was on the MenuGroup until 2026-09-30, and
  * MenuGroup's own `first:pt-0` - there so a first ROW takes the panel's rounded corner - beat it
  * for the one group that is always first. The address sat flush against the top edge of the panel
- * and read as clipped. On the line (`py-2` round a 13/18 caption) it keeps its room whatever the
+ * and read as clipped. On the line (`py-2` round a 12/16 caption) it keeps its room whatever the
  * group does at the ends.
  */
 export function MenuIdentity({ children, title }: { children: ReactNode; title?: string }) {
@@ -259,7 +259,7 @@ export function MenuSurface({ trigger, children, className, panelClassName, role
       {trigger({ open, toggle: () => setOpen(o => !o), controls: panelId })}
 
       {mounted && (
-        <div id={panelId} ref={panelRef} role={role} aria-label={role ? ariaLabel : undefined} {...exitingProps(exiting)} onKeyDown={onMenuKeyDown} className={cn(MENU_PANEL, side === 'top' && 'top-auto bottom-full mt-0 mb-2 right-auto left-0', panelClassName, exiting && 'animate-pop-out')}>
+        <div id={panelId} ref={panelRef} data-menu-panel="" role={role} aria-label={role ? ariaLabel : undefined} {...exitingProps(exiting)} onKeyDown={onMenuKeyDown} className={cn(MENU_PANEL, side === 'top' && 'top-auto bottom-full mt-0 mb-2 right-auto left-0', panelClassName, exiting && 'animate-pop-out')}>
           {children(() => setOpen(false))}
         </div>
       )}

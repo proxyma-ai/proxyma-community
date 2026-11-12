@@ -102,8 +102,8 @@ export function AccountDeletionModal(props: Props) {
             // Double quotes so the apostrophe is a literal character rather than a backslash
             // escape - the catalog key has to be the text the reader sees.
             ssoEnabled
-              ? t("Your SSO account stays open, but your data is deleted immediately. This cannot be undone.")
-              : t('This starts the deletion process. Your account is locked immediately and permanently deleted once the grace period ends.'),
+              ? t('Your data is deleted now. Your SSO account stays. This cannot be undone.')
+              : t('Your account is locked now and deleted when the grace period ends.'),
           )}
           {/* What goes, one kit list row each - the thing's glyph, its name, and what it means. */}
           <List className="mt-4 self-stretch text-left">
@@ -148,7 +148,7 @@ export function AccountDeletionModal(props: Props) {
               text={t('Your account is scheduled for deletion in {days}.')}
               parts={{ days: <span className="font-semibold text-ink-primary">{t('{count} day|{count} days', { count: remaining })}</span> }}
             />{' '}
-            {t('Access is locked until you recover the account or the deletion completes.')}
+            {t('Locked until you recover the account or it is deleted.')}
           </>,
         )}
 

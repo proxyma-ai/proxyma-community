@@ -32,7 +32,7 @@ export function Avatar({ name, kind = 'person', size = 'md', className }: {
   size?: AvatarSize
   className?: string
 }) {
-  const box = size === 'sm' ? 'w-6 h-6 text-2xs' : 'w-8 h-8 text-xs'
+  const box = size === 'sm' ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-xs'
   if (kind === 'agent') {
     return (
       <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-brand-solid/60 text-brand-legible bg-surface', box, className)}>

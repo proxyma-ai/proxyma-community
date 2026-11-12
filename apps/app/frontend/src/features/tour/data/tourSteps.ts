@@ -53,6 +53,25 @@ export interface TourStep {
   points?: string[]
   sandboxNote?: string
   sandboxAction?: { label: string; route: string }
+  /**
+   * A step the reader DOES rather than reads (2026-11-10): it has no Next, and moves on when the highlighted control is
+   * clicked ('click') or when the page says the named thing happened (`{ signal }`, tourSignal). The rest of the screen
+   * stays dimmed and the highlighted part stays usable.
+   */
+  waitFor?: 'click' | { signal: string }
+  /** The part to highlight when `targetId`'s is not on the page - the list, when its first row is not there. */
+  orTargetId?: string
+  /** How long the step waits for its target before it is passed over (ms); three seconds when unset. */
+  waitMs?: number
+  /** Passed over when an element with this tour id is on the page as the target arrives - "add one" when there is one. */
+  onlyIfAbsent?: string
+}
+
+/** One of an edition's walkthroughs: its name (the tour store's), what Settings > About calls it, and its steps. */
+export interface Walkthrough {
+  name: string
+  title: string
+  steps: TourStep[]
 }
 
 /** The demo account the Enterprise sandbox seeds (SandboxScenarioSeeder.KEY_ACCOUNT_NAME). */
@@ -64,7 +83,7 @@ export const SANDBOX_KEY_ACCOUNT_NAME = 'Harrowmere Freight Group'
 // bare array elements, one literal each, so check-catalogs.mjs sees them; index 1 is the server's.
 const FEEDBACK_POINT = [
   'Send us feedback, and replay this tour, from Settings',
-  'Send us feedback from your account menu, and replay this tour from Settings > About',
+  'Send feedback from your account menu. Replay this tour from Settings > About',
 ]
 
 export function getTourSteps(): TourStep[] {
@@ -74,7 +93,7 @@ export function getTourSteps(): TourStep[] {
       kind: 'welcome',
       route: '/',
       title: 'Welcome to Proxyma',
-      text: 'Search everything your company knows, then hand the work to agents that act on it.',
+      text: 'Search what your company knows, then let agents act on it.',
       points: [
         'A few short stops, under a minute',
         'Replay it any time from Settings > About',
@@ -85,10 +104,10 @@ export function getTourSteps(): TourStep[] {
       route: '/',
       targetId: 'tour-chat-input',
       title: 'Not a chatbot - a team of agents',
-      text: 'Give it a task, not just a question. The agent plans the work, deploys agents to do parts of it in parallel, and keeps going across your systems for as many steps as the job takes.',
+      text: 'Give it a task, not just a question. It plans the work and runs agents in parallel.',
       points: [
         'Every step, source and change stays visible in the thread',
-        'Writes to Jira, Confluence or Bitbucket wait for your approval unless you let it work alone',
+        'Writes to Jira, Confluence or Bitbucket wait for your approval',
         'Type @ to aim it at one source, / to load a skill',
       ],
     },
@@ -98,10 +117,10 @@ export function getTourSteps(): TourStep[] {
       targetId: 'tour-add-source',
       requiresRole: 'admin',
       title: 'Everything it knows, kept current',
-      text: 'Folders, Office files, scanned PDFs, websites, Jira, Confluence and Bitbucket - indexed for keyword and meaning search, plus a knowledge graph when you turn it on, and synced again as they change.',
+      text: 'Folders, Office files, scanned PDFs, websites, Jira, Confluence and Bitbucket, kept up to date.',
       points: [
         'Answers cite the passage they came from',
-        'Live systems are reached with the token of the person asking',
+        'Live systems use the token of the person asking',
         'Add a source here; chat can search it once it is indexed',
       ],
     },
@@ -110,13 +129,13 @@ export function getTourSteps(): TourStep[] {
       route: '/key-accounts',
       requiresLicense: 'keyAccounts',
       title: 'One task, many systems, many agents',
-      text: 'Key accounts puts that to work: a team reviews one important client together. Agents read the contracts, tickets, meeting minutes and client website in parallel, then propose health ratings with their evidence, risks and next moves.',
+      text: 'Key accounts: a team reviews one client together while agents read and propose.',
       points: [
         'A person confirms every rating and decides every move',
-        'Everyone on the account sees each change as it happens, and every change is logged',
+        'Everyone sees each change live, and every change is logged',
         'Ask the assistant panel on an account to run the review',
       ],
-      sandboxNote: 'This sandbox has a fictional client already reviewed: agents read its contracts, revenue, tickets and minutes. Open it to see the ratings, risks and moves they proposed.',
+      sandboxNote: 'This sandbox has a sample client already reviewed. Open it to see the results.',
       sandboxAction: { label: 'Open the demo account', route: '/key-accounts' },
     },
     {
@@ -125,9 +144,9 @@ export function getTourSteps(): TourStep[] {
       targetSelector: '[data-dialog-panel] nav',
       requiresRole: 'admin',
       title: 'You set the rules',
-      text: 'Choose the model for each role, how far the agent may go on its own, what it may say and how much it may spend.',
+      text: 'Choose the models, what the agent may do, say and spend.',
       points: [
-        'Read-only, ask before each write, or work alone - chosen in the chat box',
+        'Read-only, ask before writes, or work alone',
         'Step limits, guardrails and spending limits',
         FEEDBACK_POINT[FEATURES.auth ? 1 : 0],
       ],

@@ -64,8 +64,7 @@ public class CustomSourcePlugin implements ConnectorPlugin {
 
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.CUSTOM)
             .displayName("Custom source")
-            .description("Documents your own scripts and tools push to Proxyma through the ingestion API, "
-                    + "and notes the assistant saves. Nothing is read from elsewhere.")
+            .description("Documents your scripts push through the ingestion API, and notes the assistant saves.")
             .noun("Custom source", "Custom sources")
             .addTitle("Add a custom source")
             .order(900)

@@ -8,6 +8,7 @@ import { formatElapsed } from '../utils/formatElapsed'
 import { toolActivity } from '../utils/toolActivity'
 import { argumentRows } from '../utils/argumentRows'
 import { ToolArguments } from './ToolArguments'
+import { ApprovalContextCard } from './ApprovalContextCard'
 import type { ApprovalChoice, PendingApproval } from '../types/chat.types'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { useTranslation } from '@/i18n'
@@ -141,7 +142,12 @@ export function ToolApprovalPrompt({ approval, conversationId, onOpenDetail, fro
         </>
       )}
     >
-      {rows.length > 0 && <ToolArguments rows={rows} compact />}
+      {/* What the write is about, when the server could say - in place of the arguments, which say the same
+          less readably. A YouTube reply is the Approvals page's comment card (2026-11-05): the comment as its
+          title, when, who and which video under it, then the reply to post. */}
+      {approval.context
+        ? <ApprovalContextCard context={approval.context} />
+        : rows.length > 0 && <ToolArguments rows={rows} compact />}
     </PromptCard>
   )
 }

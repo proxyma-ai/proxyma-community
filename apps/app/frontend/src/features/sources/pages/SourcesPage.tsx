@@ -63,7 +63,7 @@ function SourcesEmpty({ onAdd }: { onAdd: () => void }) {
   )
   return (
     <EmptyState action={button}>
-      {t('No sources yet. Add a folder, a web page or a project, and what it holds becomes searchable in chat.')}
+      {t('No sources yet. Add one to search it in chat.')}
     </EmptyState>
   )
 }

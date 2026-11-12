@@ -21,7 +21,9 @@ import { extendTailwindMerge } from 'tailwind-merge'
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      'font-size': [{ text: ['2xs'] }],
+      // `text-code` is a SIZE (13/20, the code face's own); unregistered, twMerge took it for a
+      // color and dropped it beside any `text-ink-*`.
+      'font-size': [{ text: ['code'] }],
       duration: [{ duration: ['fast', 'base', 'slow'] }],
       shadow: [{ shadow: ['card', 'float', 'well'] }],
       z: [{ z: ['raised', 'sticky', 'header', 'dropzone', 'dialog', 'toast', 'float', 'tooltip', 'alert', 'tour', 'status'] }],

@@ -4,7 +4,7 @@ import { QuitButton } from '@/features/system/components/QuitButton'
 import { useSettingsModalStore } from '@/store/settingsModalStore'
 import { useFeedbackModalStore } from '@/store/feedbackModalStore'
 import { useTranslation } from '@/i18n'
-import { AppearanceMenuRow, LanguageMenuRow } from './PreferenceMenuRows'
+import { AccentMenuRow, AppearanceMenuRow, BackdropMenuRow, LanguageMenuRow } from './PreferenceMenuRows'
 
 /**
  * The desktop edition's header menu - what UserMenu is on server, for an edition with no account.
@@ -90,6 +90,8 @@ export function AppMenu() {
               them on the bar for desktop. */}
           <MenuGroup>
             <AppearanceMenuRow />
+            <BackdropMenuRow />
+            <AccentMenuRow />
           </MenuGroup>
           <MenuGroup>
             <LanguageMenuRow onChosen={close} />

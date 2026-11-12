@@ -1,25 +1,25 @@
 /**
- * THE TYPE SCALE - one for every surface in the four apps, in Space Grotesk.
+ * THE TYPE SCALE - one for every surface in the four apps, in Inter.
  *
  * It began as the Settings window's scale (`SETTINGS_TYPE`, 2026-09-30), written because one name
  * did two jobs there and a field label outranked the section it sat in, and became every surface's
- * in the 2026-10 kit rebuild. Since 2026-10-28 (the UI review: 31 rendered size/leading/weight
- * combinations in the app, 64 on the site, 66% of the app's text at 13px, 15px and 17px roles off
- * the preset's scale) every role is a step of the preset's `fontSize` with that step's one leading:
+ * in the 2026-10 kit rebuild. Since 2026-10-31 (the maintainer: "too big text size") its base is 13px,
+ * VS Code's own interface size - five sizes, 12, 13, 14, 16 and 12 for code - each role a step of the
+ * preset's `fontSize` with that step's one leading:
  *
- * - `pageTitle` 24/32 600 - a page's own name (`PageHeader`, `PageTitle`).
- * - `title`     18/26 600 - a dialog's or a Settings tab's name, a card's heading.
- * - `section`   16/24 600 - a sub-section of a page, tab or dialog.
- * - `body`      16/26 400 - READING text: a chat answer (`PROSE_CHAT`), a manual (`.prose-doc`), a
- *   paragraph a person reads rather than scans.
- * - `lead`      18/28 400 - the paragraph that opens a page or a site section, a step up from body.
- * - `label`     14/20 500 - the name of a field, a switch row, a list item.
- * - `option`    14/20 400 - UI text: a radio or checkbox choice, field text, a row's quieter line.
- * - `caption`   13/18 400 caption ink - everything that explains.
- * - `eyebrow`   13/18 500 caption ink, sentence case - the label inside a card naming what it shows.
- * - `code`      13/20 mono - a code block, a command (inline code is 0.9em of its sentence).
+ * - `pageTitle` 16/22 600 - a page's own name (`PageHeader`, `PageTitle`). The largest text.
+ * - `title`     14/20 600 - a dialog's or a Settings tab's name, a card's heading.
+ * - `section`   13/18 600 - a sub-section of a page, tab or dialog (a rule above it says the rest).
+ * - `body`      13/20 400 - READING text: a chat answer (`PROSE_CHAT`), a manual (`.prose-doc`), a
+ *   paragraph a person reads rather than scans. UI size, looser leading.
+ * - `lead`      14/20 400 - the paragraph that opens a page or a site section, a step up from body.
+ * - `label`     13/18 500 - the name of a field, a switch row, a list item.
+ * - `option`    13/18 400 - UI text: a radio or checkbox choice, field text, a row's quieter line.
+ * - `caption`   12/16 400 caption ink - everything that explains.
+ * - `eyebrow`   12/16 500 caption ink, sentence case - the label inside a card naming what it shows.
+ * - `code`      12/18 mono - a code block, a command (inline code is 0.9em of its sentence).
  *
- * Buttons are 14/20 600 (`buttonClass.ts`). NO WEIGHT 700 BELOW THE PAGE TITLE: a bold label beside
+ * Buttons are 13/18 600 (`buttonClass.ts`). NO WEIGHT 700 BELOW THE PAGE TITLE: a bold label beside
  * a semibold heading read as the heading. Numbers are the UI face with tabular figures
  * (`.data-readout`), never the code face.
  *
@@ -27,16 +27,16 @@
  * imports, so `node --test` and any app can read it.
  */
 export const TEXT = {
-  pageTitle: 'text-2xl font-semibold text-ink-primary',
+  pageTitle: 'text-xl font-semibold text-ink-primary',
   title: 'text-lg font-semibold text-ink-primary',
-  section: 'text-base leading-6 font-semibold text-ink-primary',
+  section: 'text-sm font-semibold text-ink-primary',
   body: 'text-base text-ink-secondary',
-  lead: 'text-lg leading-7 text-ink-secondary',
+  lead: 'text-lg text-ink-secondary',
   label: 'text-sm font-medium text-ink-primary',
   option: 'text-sm text-ink-secondary',
   caption: 'text-xs text-ink-caption',
   eyebrow: 'text-xs font-medium text-ink-caption',
-  code: 'font-mono text-xs leading-5',
+  code: 'font-mono text-code',
 } as const
 
 export type TextRole = keyof typeof TEXT

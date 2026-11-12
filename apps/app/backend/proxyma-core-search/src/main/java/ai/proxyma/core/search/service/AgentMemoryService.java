@@ -1,5 +1,6 @@
 package ai.proxyma.core.search.service;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.common.audit.AuditCategory;
 import ai.proxyma.core.common.audit.AuditEntry;
 import org.slf4j.Logger;
@@ -108,7 +109,7 @@ public class AgentMemoryService {
         if (userId == null || userId.isBlank() || fact == null || fact.isBlank()) return null;
         MemoryCategory cat = category != null ? category : MemoryCategory.KNOWLEDGE;
         String text = fact.strip();
-        if (text.length() > MAX_FACT_CHARS) text = text.substring(0, MAX_FACT_CHARS);
+        if (text.length() > MAX_FACT_CHARS) text = Utf16.cut(text, MAX_FACT_CHARS);
         String collectionId = memoryCollectionId(userId);
 
         // The dedup guard needs an embedding. When the embedding server is slow or down it is skipped
@@ -174,7 +175,7 @@ public class AgentMemoryService {
         java.util.Optional<MemoryEntry> current = read(userId, id);
         if (current.isEmpty()) return java.util.Optional.empty();
         String newText = text == null || text.isBlank() ? current.get().text() : text.strip();
-        if (newText.length() > MAX_FACT_CHARS) newText = newText.substring(0, MAX_FACT_CHARS);
+        if (newText.length() > MAX_FACT_CHARS) newText = Utf16.cut(newText, MAX_FACT_CHARS);
         MemoryCategory cat = category != null ? category
                 : current.get().category() != null ? MemoryCategory.valueOf(current.get().category())
                 : MemoryCategory.KNOWLEDGE;

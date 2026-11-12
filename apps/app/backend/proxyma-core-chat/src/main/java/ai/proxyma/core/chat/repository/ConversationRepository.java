@@ -112,6 +112,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, Stri
     Page<Conversation> pageAmongOfUser(@Param("userId") String userId,
                                        @Param("ids") java.util.Collection<String> ids, Pageable pageable);
 
+    // pageAmongOfUser for the single-user editions, whose conversations have no owner.
+    @Query("SELECT c FROM Conversation c WHERE (c.userId IS NULL OR c.userId IN ('_local', 'local')) "
+            + "AND c.id IN :ids ORDER BY c.pinned DESC, c.updatedAt DESC")
+    Page<Conversation> pageAmongUnowned(@Param("ids") java.util.Collection<String> ids, Pageable pageable);
+
     // Retention sweep target set - see ConversationRetentionSweep.
     List<Conversation> findAllByUpdatedAtBeforeAndPinnedFalse(Instant cutoff);
 

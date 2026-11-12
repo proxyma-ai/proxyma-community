@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 // The tool-facing half of ConnectorEndpointResolver: the part that knows the CALLER and the
 // CONVERSATION, enforces each connection's Read and Write switches, and turns an unusable
@@ -18,13 +19,17 @@ import java.util.Map;
 //
 // A tool call resolves, in order, to: the connection this conversation picked with useServer; the
 // connection of the source the call NAMED (the project, space or repository key it was given,
-// which is the same string registration stores as the source's name); the caller's default
-// connection for the service.
+// which is the same string registration stores as the source's name) when that source is the
+// caller's own; the connection the conversation's saved agent is PINNED to for the service
+// (AgentProfile.connectionPins, Constellations - a team agent tied to one of two YouTube channels);
+// the caller's default connection for the service.
 //
 // Credential rule. A caller only ever uses their own connections. A source somebody else owns
 // contributes neither its server nor its credential - lending the owner's credential would let
 // anyone the source was shared with act AS its owner on the remote server. Background sync
-// (SyncOrchestratorService) is unaffected; it legitimately indexes as the source's owner.
+// (SyncOrchestratorService) is unaffected; it legitimately indexes as the source's owner. A pin is
+// held to the same rule: one to a connection that is not the caller's own, or no longer exists, is
+// passed over for the caller's default (ActiveServers.pinned), never followed.
 //
 // READ AND WRITE ARE CHECKED HERE, ON THE CONNECTION THE CALL WILL ACTUALLY USE. Each is a switch on
 // the connection, so the check has to see the connection - and the only place that knows which
@@ -59,8 +64,7 @@ public class ToolConnectorResolver {
      * access is off.
      */
     public Endpoint resolve(ConnectorType type, String label, String sourceKey, Access access) {
-        Endpoint endpoint = activeServers.active(type)
-                .orElseGet(() -> endpointResolver.forSource(type, sourceKey, SearchContext.getUserId()));
+        Endpoint endpoint = activeServers.active(type).orElseGet(() -> unpicked(type, sourceKey));
         if (!endpoint.exists()) {
             throw new IllegalArgumentException("You have no " + label + " connection. Tell the user to add one in "
                     + link("Settings > Connections", key(type)) + ", reproducing that markdown link exactly as "
@@ -69,6 +73,15 @@ public class ToolConnectorResolver {
         if (access == Access.READ && !endpoint.allowRead()) throw denied(label, "read", endpoint);
         if (access == Access.WRITE && !endpoint.allowWrite()) throw denied(label, "write", endpoint);
         return endpoint;
+    }
+
+    // With nothing picked for the conversation: the source the call named, else the agent's pin, else the
+    // caller's default. A conversation with no pin resolves exactly as it always has (forSource).
+    private Endpoint unpicked(ConnectorType type, String sourceKey) {
+        String userId = SearchContext.getUserId();
+        Optional<Endpoint> pinned = activeServers.pinned(type);
+        if (pinned.isEmpty()) return endpointResolver.forSource(type, sourceKey, userId);
+        return endpointResolver.namedSource(type, sourceKey, userId).orElse(pinned.get());
     }
 
     /**

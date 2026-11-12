@@ -65,7 +65,7 @@ public final class CoreDescriptors {
 
             ConnectorDescriptor.builder(ConnectorType.WEB_PAGE)
                     .displayName("Web pages")
-                    .description("A website, crawled from a starting address to a depth and page count you set.")
+                    .description("A website, crawled from a starting address.")
                     .noun("Web page", "Web pages")
                     .addTitle("Add a web page")
                     .order(20)
@@ -139,7 +139,7 @@ public final class CoreDescriptors {
             ConnectorDescriptor.builder(ConnectorType.SVN)
                     .protocol(ConnectionProtocol.SVN)
                     .displayName("SVN")
-                    .description("The files of a Subversion repository, by path under the connection's server.")
+                    .description("Files of a Subversion repository.")
                     .noun("SVN repository", "SVN repositories")
                     .addTitle("Add an SVN repository")
                     .order(60)
@@ -157,7 +157,7 @@ public final class CoreDescriptors {
             ConnectorDescriptor.builder(ConnectorType.NETWORK_SHARE)
                     .protocol(ConnectionProtocol.NETWORK_SHARE)
                     .displayName("Network shares")
-                    .description("A folder on a Windows file server, read as your own domain account.")
+                    .description("A folder on a Windows file server.")
                     .noun("Network share", "Network shares")
                     .addTitle("Add a network share")
                     .order(70)
@@ -173,7 +173,7 @@ public final class CoreDescriptors {
                     .build());
 
     private static final FieldSpec TOKEN = FieldSpec.secret("token", "Personal access token").asRequired()
-            .help("A personal access token for this server. Yours alone - it is never shared with other users.");
+            .help("A personal access token. Yours alone.");
 
     private static FieldSpec serverUrl(String placeholder) {
         return FieldSpec.url("baseUrl", "Server URL").asRequired().placeholder(placeholder);
@@ -189,15 +189,13 @@ public final class CoreDescriptors {
             FieldSpec.text(AuthMethod.USERNAME, "Email address").asRequired().placeholder("you@example.com")
                     .help("The email address you sign in to Atlassian with."),
             FieldSpec.secret("token", "API token").asRequired()
-                    .help("Create one at id.atlassian.com under Security > API tokens. Yours alone - it is never "
-                            + "shared with other users."));
+                    .help("Create one at id.atlassian.com > Security > API tokens."));
 
     // An Atlassian Cloud sign-in reaches a SITE, which is Jira and Confluence at once (Confluence under
     // /wiki), so a Cloud connection of either service serves both products' sources. A Data Center or
     // Server token reaches the one server it was issued on, so it serves its own product alone.
     private static FieldSpec atlassianUrl(String placeholder) {
-        return serverUrl(placeholder).help("Data Center or Server: the address you open it at. "
-                + "Cloud: your site, https://your-site.atlassian.net");
+        return serverUrl(placeholder).help("The address you open it at. Cloud: https://your-site.atlassian.net");
     }
 
     private static final List<ProtocolDescriptor> PROTOCOLS = List.of(
@@ -229,12 +227,11 @@ public final class CoreDescriptors {
                     .displayName("SVN").mark("subversion")
                     .auth(AuthMethod.of(AuthKind.BASIC, "User name and password",
                             FieldSpec.text(AuthMethod.USERNAME, "Username").asRequired().placeholder("DOMAIN\\you")
-                                    .help("Windows Authentication takes a domain-qualified name (DOMAIN\\you); "
-                                            + "Subversion Authentication takes a name from the server's own user list."),
+                                    .help("Windows: DOMAIN\\you. Subversion: a name from the server's user list."),
                             FieldSpec.secret("password", "Password").asRequired()))
                     .baseUrl(FieldSpec.url("baseUrl", "Repository root URL").asRequired()
                             .placeholder("https://svn.example.com/svn")
-                            .help("The repository root. Each SVN source's path is added to it."))
+                            .help("The repository root URL."))
                     .sourceTypes(ConnectorType.SVN)
                     .docsAnchor("svn")
                     .build(),
@@ -242,12 +239,10 @@ public final class CoreDescriptors {
                     .displayName("Network share").mark("network")
                     .auth(AuthMethod.of(AuthKind.BASIC, "Domain account",
                             FieldSpec.text(AuthMethod.USERNAME, "Domain account").asRequired().placeholder("DOMAIN\\you")
-                                    .help("Your Windows domain account, as DOMAIN\\you or you@domain. "
-                                            + "Only files it can open are indexed."),
+                                    .help("Your Windows domain account, as DOMAIN\\you or you@domain."),
                             FieldSpec.secret("password", "Password").asRequired()))
                     .baseUrl(FieldSpec.text("baseUrl", "File server").asRequired().placeholder("fileserver.corp.local")
-                            .help("The server your network paths start with. Its folders are read as this account, "
-                                    + "and no other server is."))
+                            .help("The server your network paths start with."))
                     .sourceTypes(ConnectorType.NETWORK_SHARE)
                     .docsAnchor("network-shares")
                     .build(),

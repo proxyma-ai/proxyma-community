@@ -77,6 +77,17 @@ public class LlmCallLogService {
     public void record(SpendSubject subject, String role, String provider, String model,
                        TokenUsage usage, double costUsd, CostSource source,
                        String cacheOutcome, java.time.Instant cacheWarmUntil) {
+        record(subject, role, provider, model, usage, costUsd, source, cacheOutcome, cacheWarmUntil, null);
+    }
+
+    /**
+     * The same, with the conversation the call was made for - null for a call made for none. Its id
+     * alone: the ledger never holds a word of what was said.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(SpendSubject subject, String role, String provider, String model,
+                       TokenUsage usage, double costUsd, CostSource source,
+                       String cacheOutcome, java.time.Instant cacheWarmUntil, String conversationId) {
         try {
             if (subject == null || role == null) return;
             if (provider == null || provider.isBlank() || model == null || model.isBlank()) {
@@ -102,6 +113,8 @@ public class LlmCallLogService {
                     ? Math.min(counts.longCacheWriteTokens(), counts.cacheWriteTokens()) : null);
             row.setCacheOutcome(cacheOutcome);
             row.setCacheWarmUntil(cacheOutcome == null ? null : cacheWarmUntil);
+            row.setConversationId(conversationId == null || conversationId.isBlank()
+                    || conversationId.length() > LlmCall.CONVERSATION_ID_MAX ? null : conversationId);
             repository.save(row);
             // Per-user quotas count from here - see LlmSpendRecordedEvent - and only what the user
             // pays for: a service charged to the platform (CostCenterSettings) is logged against the

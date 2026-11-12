@@ -169,7 +169,7 @@ export function SwitchRow({ title, caption, checked, onChange, disabled, footnot
 }) {
   if (size === 'sm') {
     return (
-      // The kit's ONE switch size and 14px words (the maintainer, 2026-10-30: the small switch was
+      // The kit's ONE switch size and UI-size words (the maintainer, 2026-10-30: the small switch was
       // "too small, not following the UI kit"); only the row's frame is inline.
       <label className={cn('inline-flex items-center gap-2 text-sm text-ink-secondary cursor-pointer select-none animate-fade-in', disabled && 'opacity-50 cursor-not-allowed', className)}>
         <ToggleSwitch id={id} checked={checked} onChange={onChange} disabled={disabled} />

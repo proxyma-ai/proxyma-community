@@ -86,6 +86,7 @@ public final class ApiClient {
     private final Set<String> extraHosts;
     private final Set<Integer> retryable;
     private final RatePacing pacing;
+    private final RefusalReason refusalReason;
     private long lastRequestNanos;
     // When a budget the service reported nearly spent lets the next request go (System.nanoTime,
     // which may be negative - so a flag says whether there is one).
@@ -112,6 +113,7 @@ public final class ApiClient {
         statuses.addAll(b.extraRetryable);
         this.retryable = Set.copyOf(statuses);
         this.pacing = b.pacing;
+        this.refusalReason = b.refusalReason;
     }
 
     static Builder builder(ConnectorHttp http, String baseUrl) {
@@ -215,6 +217,11 @@ public final class ApiClient {
      * The sentence for a failed answer - written here for every connector, so the page translates a
      * handful of sentences rather than one per service. A connector with a better word for one case
      * (a repository that is not there) catches the exception and says it.
+     *
+     * <p>A refusal (a 403, or another 4xx that is neither a sign-in nor a missing address) ends with
+     * the service's own reason when the client was given a {@link RefusalReason} and the body states
+     * one - "... YouTube said: commentsDisabled (...)" - and that reason is logged at WARN, once per
+     * failure made here.
      */
     public ConnectorHttpException failure(ApiResponse response) {
         int status = response.status();
@@ -223,18 +230,39 @@ public final class ApiClient {
             return new ConnectorHttpException(service + " is limiting how often it is asked. The next sync will try again.",
                     status, path);
         }
+        String why = switch (status) {
+            case 401, 404, 410 -> null;
+            default -> status >= 400 && status < 500 ? reason(response) : null;
+        };
+        if (why != null) log.warn("[ConnectorHttp] {} refused {} ({}): {}", service, path, status, why);
         return switch (status) {
             case 401 -> new ConnectorHttpException(service + " refused the connection's credential. "
                     + "Replace it, or sign in again, in Settings > Connections.", status, path);
-            case 403 -> new ConnectorHttpException(service + " refused access with the connection's credential. "
-                    + "Check that its account may read this.", status, path);
+            case 403 -> why == null
+                    ? new ConnectorHttpException(service + " refused access with the connection's credential. "
+                            + "Check that its account may read this.", status, path)
+                    : new ConnectorHttpException(service + " refused access with the connection's credential. "
+                            + "Check that its account may read this. " + service + " said: " + why, status, path);
             case 404, 410 -> new ConnectorHttpException(service + " has nothing at that address (" + status + ").",
                     status, path);
             default -> status >= 500
                     ? new ConnectorHttpException(service + " answered with a server error (" + status
                             + "). The next sync will try again.", status, path)
-                    : new ConnectorHttpException(service + " refused the request (" + status + ").", status, path);
+                    : why == null
+                            ? new ConnectorHttpException(service + " refused the request (" + status + ").", status, path)
+                            : new ConnectorHttpException(service + " refused the request (" + status + "). "
+                                    + service + " said: " + why, status, path);
         };
+    }
+
+    // The service's own reason for a refusal, cleaned and bounded - or null without a reader or a reason.
+    private String reason(ApiResponse response) {
+        if (refusalReason == null) return null;
+        try {
+            return RefusalReason.clean(refusalReason.of(response));
+        } catch (RuntimeException unreadable) {
+            return null;
+        }
     }
 
     private ConnectorHttpException unreachable(URI uri, Exception e) {
@@ -256,6 +284,9 @@ public final class ApiClient {
         boolean refreshed = false;
         IOException lastFailure = null;
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            // A budget of the connection's own, spent: answered here, unsent, never retried.
+            ApiResponse refused = auth.refuseBeforeSending(method, uri);
+            if (refused != null) return new Raw(refused);
             pace();
             Raw raw;
             try {
@@ -517,6 +548,15 @@ public final class ApiClient {
             this.response = response;
         }
 
+        // An answer given without sending anything (ApiAuth#refuseBeforeSending).
+        Raw(ApiResponse given) {
+            this.uri = given.uri();
+            this.status = given.status();
+            this.headers = given.headers();
+            this.response = null;
+            this.buffered = given;
+        }
+
         ApiResponse buffer(URI requested) {
             if (buffered != null) return buffered;
             try (ClientHttpResponse r = response; InputStream in = r.getBody()) {
@@ -533,7 +573,7 @@ public final class ApiClient {
         }
 
         void close() {
-            response.close();
+            if (response != null) response.close();
         }
     }
 
@@ -551,6 +591,7 @@ public final class ApiClient {
         private final List<String> extraHosts = new ArrayList<>();
         private final Set<Integer> extraRetryable = new java.util.HashSet<>();
         private RatePacing pacing;
+        private RefusalReason refusalReason;
 
         private Builder(ConnectorHttp http, String baseUrl) {
             this.http = http;
@@ -586,6 +627,12 @@ public final class ApiClient {
 
         /** Slows the next request when an answer says the budget is nearly spent. */
         public Builder pacing(RatePacing value) { this.pacing = value; return this; }
+
+        /**
+         * How to read the service's own reason out of a refused answer's body, so a refusal says why
+         * ({@link RefusalReason#GOOGLE} for Google's APIs). Without one the body is never shown.
+         */
+        public Builder refusalReason(RefusalReason value) { this.refusalReason = value; return this; }
 
         /** A host besides the server's own that requests may go to WITH the credential. */
         public Builder allowHost(String host) { this.extraHosts.add(host); return this; }

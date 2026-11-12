@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools.svn;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.svn.SvnConnector;
 import ai.proxyma.core.connector.svn.SvnUrls;
@@ -203,7 +204,7 @@ class SvnToolService {
                 credential[0], credential[1], MAX_CHARS * 4);
         String content = read.text();
         boolean truncated = read.truncated() || (content != null && content.length() > MAX_CHARS);
-        if (content != null && content.length() > MAX_CHARS) content = content.substring(0, MAX_CHARS);
+        if (content != null && content.length() > MAX_CHARS) content = Utf16.cut(content, MAX_CHARS);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("path", normalize(filePath));

@@ -29,8 +29,8 @@ export function Page({ children, className, as: As = 'div' }: { children: ReactN
 }
 
 /**
- * A page's head: its title (18/600 - one size; Sources had a 30px title and Administration an
- * 18px one), the caption line under it, and the page's actions at the right. `back` is the way up
+ * A page's head: its title (20/600, `TEXT.pageTitle` - one size; Sources had a 30px title and
+ * Administration an 18px one), the caption line under it, and the page's actions at the right. `back` is the way up
  * - a `BackLink` - above the title (a key account back to the list); it was drawn by hand twice.
  */
 export function PageHeader({ title, meta, actions, back, className }: {
@@ -51,7 +51,7 @@ export function PageHeader({ title, meta, actions, back, className }: {
 }
 
 /**
- * THE WAY BACK UP - "Back to sign in", "Key accounts": the quiet text link with a left arrow, 13px.
+ * THE WAY BACK UP - "Back to sign in", "Key accounts": the quiet text link with a left arrow, 12px.
  * A function of its classes, like the router links it is drawn on (the kit cannot import a router):
  * `render` gets the class string and the content and returns the app's `Link`; `href` alone draws a
  * plain anchor (the site's legal pages). Four pages wrote it, at two sizes.
@@ -80,7 +80,7 @@ export function AuthLayout({ logo, title, subtitle, description, back, children,
   logo: ReactNode
   title: ReactNode
   subtitle?: ReactNode
-  /** A smaller note under the subtitle, 13px - the first-run line on a console's sign-in. */
+  /** A smaller note under the subtitle, 12px - the first-run line on a console's sign-in. */
   description?: ReactNode
   /** A link back, above the mark ("Back to sign in"). */
   back?: ReactNode

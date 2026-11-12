@@ -26,6 +26,9 @@ export interface Toast {
   // A quiet second action under the message that also closes the toast - "Don't show again" on a
   // notice that would otherwise come back. Dimmed on purpose: it is the way out, not the offer.
   quietAction?: { label: string; action: () => void }
+  // Where it shows: under the header (the default) for what the reader should see now, or at the window's foot for a
+  // notice that can wait, such as a tip - so it does not lie over a page's own controls (ToastContainer).
+  placement?: 'top' | 'bottom'
 }
 
 export interface AddToastOptions {
@@ -34,6 +37,7 @@ export interface AddToastOptions {
   onClose?: () => void
   onLinkClick?: () => void
   quietAction?: Toast['quietAction']
+  placement?: Toast['placement']
 }
 
 interface ToastState {
@@ -65,6 +69,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
         onClose: options?.onClose,
         onLinkClick: options?.onLinkClick,
         quietAction: options?.quietAction,
+        placement: options?.placement,
       }],
     })
     if (!options?.persist) {

@@ -83,6 +83,8 @@ export interface CatalogAuthMethod {
   fields: FieldSpec[]
   /** Wire names of the source types this way of signing in serves. */
   sourceTypes?: string[]
+  /** Desktop: a browser sign-in that needs no client typed - the built-in one is used (utils/builtInClient.ts). */
+  builtInClient?: boolean
 }
 
 export interface CatalogProtocol {

@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChatInstanceProvider } from '../instance/ChatInstanceContext'
+import { ChatInstanceProvider, useChatInstance, useChatStore } from '../instance/ChatInstanceContext'
 import { ChatWindow } from './ChatWindow'
 import { ChatComposer } from './ChatComposer'
 import { ChatHistoryModal } from './ChatHistoryModal'
+import { useAgentTranscript } from './AgentTranscriptDialog'
+import { AgentTranscriptContext } from './agentTranscriptContext'
 import { useChat } from '../hooks/useChat'
 import { useAttachmentUploader } from '../hooks/useAttachmentUploader'
 import { bindsBeforeSend, withPanelSkills } from '../utils/panelSend'
+import { STALE_TURN_MS, agentIdleAction } from '../utils/chatStream'
 import type { ChatAttachment } from '../types/chat.types'
 import type { ConversationListSource } from '../services/chatApi'
 import { useDraftState } from '@/store/composerDraftStore'
@@ -64,14 +67,45 @@ export interface ChatPanelProps {
    * the one open (a key account opens the next most recent bound one, or a fresh one).
    */
   onConversationDeleted?: (conversationId: string) => void
-  /** Above the thread: the panel's title and its actions (collapse, close). */
-  header?: ReactNode
+  /**
+   * Above the thread: the panel's title and its actions (collapse, close). A function is handed the
+   * History dialog's opener, for a header that lists the conversations itself (an agent's Chat tab).
+   */
+  header?: ReactNode | ((openHistory: () => void) => ReactNode)
   /** What the empty panel says: a title, a sentence, and up to three prompts sent on a click. */
   emptyTitle: ReactNode
   emptyDescription?: ReactNode
   suggestions?: string[]
   placeholder?: string
   className?: string
+  /**
+   * Shows the conversations and lets nobody write in them: no composer (so no send, stop or new
+   * conversation), no retry, no rewind, no prompts and no file drop. The thread still follows a turn
+   * that runs, and History still lists and opens. A Constellations agent's own Chat tab - its team is
+   * talked to through its lead (the maintainer, 2026-11-02).
+   */
+  readOnly?: boolean
+  /** Draws the words of a teammate's message or reply under its line (ChatWindow's `mailText`). */
+  mailText?: boolean
+  /**
+   * Draws what the person and the agent said and did, without its teammates' mail (ChatWindow's
+   * `personOnly`) - a Constellations project's lead chat, whose teammates' work is read in the agent's panel.
+   */
+  personOnly?: boolean
+  /**
+   * Changed by the page when it learns that words were written into the open conversation with no
+   * turn behind them (a lead telling the person from a run): the conversation is read again in place.
+   * `{ conversationId, at }`, so only the conversation it names is read, once per change.
+   */
+  refresh?: { conversationId: string; at: string } | null
+  /**
+   * Whether the open conversation's agent is at work, as a read the page makes of its own says (a
+   * Constellations project's poll of its lead) - a backstop for a stream that missed something
+   * (chatStream.ts's agentIdleAction): once the agent stops, a chat following no turn reads the
+   * conversation in place, and one still showing a turn gone quiet loads it as the server has it.
+   * Undefined: the page has no such read.
+   */
+  agentWorking?: boolean
 }
 
 /**
@@ -96,15 +130,64 @@ const MAX_SUGGESTIONS = 3
 
 function ChatPanelBody({
   instanceKey, conversationId, skillMentions, onConversationCreated, onNewConversation, onOpenConversation, history,
-  onConversationDeleted, header, emptyTitle, emptyDescription, suggestions = NO_NAMES, placeholder, className,
+  onConversationDeleted, header, emptyTitle, emptyDescription, suggestions = NO_NAMES, placeholder, className, readOnly = false,
+  mailText = false, personOnly = false, refresh = null, agentWorking,
 }: ChatPanelProps) {
   const { t } = useTranslation()
   const [historyOpen, setHistoryOpen] = useState(false)
+  // A deployed agent's transcript, read-only in a dialog - from its panel in the thread or the agents map.
+  const transcript = useAgentTranscript()
   const {
     messages, streaming, toolCalls, loadingHistory, send, retry, canRetry, stop, rewind, condense,
-    conversationId: openId, resumeConversation, pendingApprovals, pendingEnableRequests,
+    conversationId: openId, resumeConversation, refreshConversation, pendingApprovals, pendingEnableRequests,
     condensing, condenseTokensFreed, attachedToolCallCount, workflowRuns, ensureConversationId,
   } = useChat()
+
+  // Words written into the open conversation with no turn (`refresh`): read once per change, and
+  // once more when a turn or a load that held it off is over.
+  const refreshKey = refresh ? `${refresh.conversationId}@${refresh.at}` : null
+  const refreshed = useRef<string | null>(null)
+  const refreshNow = useRef(refreshConversation)
+  refreshNow.current = refreshConversation
+  useEffect(() => {
+    if (!refresh || !refreshKey || refreshed.current === refreshKey) return
+    if (refresh.conversationId !== openId || streaming || loadingHistory) return
+    refreshed.current = refreshKey
+    void refreshNow.current(refresh.conversationId)
+  }, [refresh, refreshKey, openId, streaming, loadingHistory])
+
+  // The agent stopped working, as the page's own read says (`agentWorking`): what the stream may have
+  // missed is read again - in place, or the whole conversation for a turn still shown and gone quiet.
+  const lastEventAt = useChatStore(s => s.lastEventAt)
+  const instance = useChatInstance()
+  const wasWorking = useRef(agentWorking === true)
+  const idleCalls = useRef({ refreshConversation, openId })
+  idleCalls.current = { refreshConversation, openId }
+  useEffect(() => {
+    if (agentWorking === undefined) return
+    const was = wasWorking.current
+    wasWorking.current = agentWorking
+    const decide = () => agentIdleAction({
+      wasWorking: was, working: agentWorking, streaming, loading: loadingHistory,
+      quietMs: Date.now() - lastEventAt,
+    })
+    const act = (action: ReturnType<typeof agentIdleAction>) => {
+      const { openId: id, refreshConversation: refreshIt } = idleCalls.current
+      if (!id) return
+      if (action === 'refresh') void refreshIt(id)
+      // As for events missed while a tab was hidden: the conversation whole, and what was typed meanwhile
+      // that no turn took sent again.
+      else if (action === 'reload') void instance.reload.current?.(id)
+    }
+    const action = decide()
+    if (action !== 'later') {
+      act(action)
+      return
+    }
+    // Quiet for less than the limit yet: asked again once it is not, if nothing has changed by then.
+    const timer = setTimeout(() => act(decide()), Math.max(0, STALE_TURN_MS - (Date.now() - lastEventAt)) + 50)
+    return () => clearTimeout(timer)
+  }, [agentWorking, streaming, loadingHistory, lastEventAt, instance])
 
   // The draft is the panel's own, kept while the user is elsewhere - as the chat page's is.
   const draftKey = `panel:${instanceKey}`
@@ -189,16 +272,21 @@ function ChatPanelBody({
 
   return (
     // No plane of its own: the thread is on the glass sheet it sits in (or the panel's, `className`).
-    <div className={cn('relative flex flex-col h-full min-h-0 min-w-0', className)} {...drop.handlers}>
-      <DropOverlay active={drop.active} label={t('Drop files to attach')} portal={false} />
-      {header && <div className="shrink-0 px-3 py-2 border-b border-line/45 animate-fade-in">{header}</div>}
+    <AgentTranscriptContext.Provider value={transcript.open}>
+    <div className={cn('relative flex flex-col h-full min-h-0 min-w-0', className)} {...(readOnly ? {} : drop.handlers)}>
+      <DropOverlay active={!readOnly && drop.active} label={t('Drop files to attach')} portal={false} />
+      {header && (
+        <div className="shrink-0 px-3 py-2 border-b border-line/45 animate-fade-in">
+          {typeof header === 'function' ? header(() => setHistoryOpen(true)) : header}
+        </div>
+      )}
       {/* The empty state and the thread swap by a fade (FadeSwap) as the first message goes. */}
       <FadeSwap swapKey={empty} className="flex-1 min-h-0 flex flex-col">
       {empty ? (
         <div className="flex-1 min-h-0 overflow-y-auto px-3 py-6">
           <Title>{emptyTitle}</Title>
           {emptyDescription && <Caption className="mt-1">{emptyDescription}</Caption>}
-          {suggestions.length > 0 && (
+          {!readOnly && suggestions.length > 0 && (
             <List className="mt-4" ariaLabel={t('Suggested prompts')}>
               {suggestions.slice(0, MAX_SUGGESTIONS).map(prompt => (
                 <ListRow key={prompt} title={prompt} chevron onClick={() => { void deliver(prompt) }} />
@@ -213,18 +301,20 @@ function ChatPanelBody({
           streaming={streaming}
           toolCalls={toolCalls}
           loading={loadingHistory}
-          onRetry={canRetry ? retry : undefined}
+          onRetry={canRetry && !readOnly ? retry : undefined}
           conversationId={openId}
           pendingApprovals={pendingApprovals}
           pendingEnableRequests={pendingEnableRequests}
           condensing={condensing}
-          onRewind={handleRewind}
+          onRewind={readOnly ? undefined : handleRewind}
           attachedToolCallCount={attachedToolCallCount}
           workflowRuns={workflowRuns}
+          mailText={mailText}
+          personOnly={personOnly}
         />
       )}
       </FadeSwap>
-      <div className="shrink-0 px-3 pt-2 pb-3">
+      {!readOnly && <div className="shrink-0 px-3 pt-2 pb-3">
         <ChatComposer
           value={text}
           onChange={setText}
@@ -247,7 +337,7 @@ function ChatPanelBody({
           onNewConversation={onNewConversation}
           onHistoryClick={onOpenConversation && history ? () => setHistoryOpen(true) : undefined}
         />
-      </div>
+      </div>}
       {/* Inside the instance's provider, so the list's working dot for the open conversation is
           this chat's. Picking the one already open only closes the dialog. */}
       {historyOpen && onOpenConversation && history && (
@@ -262,6 +352,8 @@ function ChatPanelBody({
           onClose={() => setHistoryOpen(false)}
         />
       )}
+      {transcript.dialog}
     </div>
+    </AgentTranscriptContext.Provider>
   )
 }

@@ -37,7 +37,14 @@ public record ConversationDetail(
     /**
      * One prompt still open, as the event that asked it: {@code type} is the event's type
      * ('tool-approval-request', 'tool-enable-request' or 'user-question'), {@code data} its
-     * payload, and {@code parentCallId} the sub-agent asking, when one is.
+     * payload, and {@code parentCallId} the sub-agent asking, when one is. {@code context}: what an
+     * approval's write is about (ApprovalContext), once its lookup answered - else null.
      */
-    public record PendingPrompt(String type, String callId, String toolName, String data, String parentCallId) {}
+    public record PendingPrompt(String type, String callId, String toolName, String data, String parentCallId,
+                                ai.proxyma.core.chat.approval.ApprovalContext context) {
+
+        public PendingPrompt(String type, String callId, String toolName, String data, String parentCallId) {
+            this(type, callId, toolName, data, parentCallId, null);
+        }
+    }
 }

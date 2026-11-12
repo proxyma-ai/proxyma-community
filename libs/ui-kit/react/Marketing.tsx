@@ -47,11 +47,12 @@ export function PageSection({ id, children, size = 'default', first, tone = 'pag
 }
 
 // Steps of the preset's scale (since 2026-10-28; they were 36/52, 32/44 and 26/34px, off it), each
-// with that step's own leading.
+// with that step's own leading. The display steps (30, 36, 48) are the marketing pages' alone; a
+// sub-heading on a phone is the app's page-title size (2026-10-30, when 24px left the scale).
 const DISPLAY_SIZE = {
   hero: 'text-4xl sm:text-5xl',
   section: 'text-3xl sm:text-4xl',
-  sub: 'text-2xl sm:text-3xl',
+  sub: 'text-xl sm:text-3xl',
 }
 
 /**
@@ -111,7 +112,7 @@ export function FeatureRow({ index, title, sentence, extra, media }: {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-x-12 lg:items-start">
       <div className="lg:col-span-5 min-w-0">
         <p aria-hidden="true" className="data-readout font-semibold text-3xl leading-none text-brand-legible">{String(index).padStart(2, '0')}</p>
-        <h3 className="mt-3 text-xl sm:text-2xl font-semibold text-ink-primary">{title}</h3>
+        <h3 className="mt-3 text-xl font-semibold text-ink-primary">{title}</h3>
         <p className={cn(TEXT.body, 'mt-3')}>{sentence}</p>
         {extra}
       </div>
@@ -150,7 +151,7 @@ export function RuledColumns({ items, variant = 'fact', columns = 3, boxed, titl
   if (!boxed) return grid
   return (
     <div className={cardClass({ variant: 'outline', padding: 'lg' })}>
-      {title && <h3 className="text-xl sm:text-2xl font-semibold text-ink-primary">{title}</h3>}
+      {title && <h3 className="text-xl font-semibold text-ink-primary">{title}</h3>}
       {grid}
     </div>
   )
@@ -202,7 +203,7 @@ export function PlanCard({ name, badge, tagline, price, priceSize = 'figure', wa
       {/* A sale's price arrives after the page (it is fetched), and fades in over the list price. */}
       <FadeSwap swapKey={wasPrice ? 'sale' : 'list'}>
         <div className="mb-0.5 flex flex-wrap items-baseline gap-x-3">
-          {wasPrice && <s className="display text-2xl text-ink-caption">{wasPrice}</s>}
+          {wasPrice && <s className="display text-xl text-ink-caption">{wasPrice}</s>}
           <span className={cn('display text-ink-primary', priceSize === 'words' ? 'text-3xl' : 'text-5xl')}>{price}</span>
         </div>
         <p className="text-xs text-ink-caption mb-6">{priceNote}</p>

@@ -119,6 +119,11 @@ public final class ResolvedCredentials {
         if (tokens != null) tokens.invalidate();
     }
 
+    /** The answer to give in place of sending a request, or null to send it (TokenSupplier#refuseBeforeSending). */
+    public ApiResponse refuseBeforeSending(org.springframework.http.HttpMethod method, java.net.URI uri) {
+        return tokens == null ? null : tokens.refuseBeforeSending(method, uri);
+    }
+
     public boolean signsIn() {
         return tokens != null;
     }

@@ -44,7 +44,7 @@ export const CHART_SERIES = [
 ] as const
 export const CHART_SERIES_OTHER = 'rgb(var(--chart-series-other))'
 
-/** The axis's labels: 12px in caption ink, the UI face - the type scale's floor (`text-2xs`); 11px until
+/** The axis's labels: 12px in caption ink, the UI face - the type scale's floor (`text-xs`); 11px until
  * the 2026-10-15 readability pass. */
 export const CHART_TICK = { fontSize: 12, fill: CHART_INK.tick } as const
 
@@ -91,7 +91,7 @@ export const CHART_GRID = { stroke: CHART_INK.line, strokeDasharray: '2 4', vert
  * which takes a class. The cursor band under the pointer is the faint caption tint.
  */
 export const CHART_TOOLTIP = {
-  contentStyle: { fontSize: 13, borderRadius: 10, backgroundColor: 'transparent', border: 'none' },
+  contentStyle: { fontSize: 12, borderRadius: 10, backgroundColor: 'transparent', border: 'none' },
   wrapperClassName: 'surface-float border rounded-lg shadow-float text-ink-secondary',
   cursor: { fill: 'rgb(var(--ink-caption) / 0.08)' },
 } as const

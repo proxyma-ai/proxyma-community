@@ -40,10 +40,10 @@ public class ClickUpConnectionPlugin implements ConnectionPlugin {
             .mark("clickup")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Personal API token",
                             FieldSpec.secret("token", "Personal API token").asRequired()
-                                    .help("Create one in ClickUp under Settings > Apps. It starts with pk_.")),
+                                    .help("Created in ClickUp > Settings > Apps. Starts with pk_.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with ClickUp",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("An app created in ClickUp under Settings > Integrations > ClickUp API."),
+                                    .help("An app created in ClickUp under Settings > Apps > Create new app."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(ClickUpApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.CLICKUP)

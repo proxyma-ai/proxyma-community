@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.graph.service.GraphNeighbourhood;
 import ai.proxyma.core.graph.service.KnowledgeGraphService;
 import ai.proxyma.core.graph.service.RelevantPassage;
@@ -612,7 +613,7 @@ public class SearchKnowledgeGraphTool {
         List<String> usable = usableChunks(doc, connectors);
         if (index < 0 || index >= usable.size()) return null;
         String text = usable.get(index).strip();
-        return text.length() <= MAX_PASSAGE_CHARS ? text : text.substring(0, MAX_PASSAGE_CHARS - 3) + "...";
+        return text.length() <= MAX_PASSAGE_CHARS ? text : Utf16.cut(text, MAX_PASSAGE_CHARS - 3) + "...";
     }
 
     /**

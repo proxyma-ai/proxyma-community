@@ -37,7 +37,8 @@ class ConnectorToolContractTest {
 
     // Verbs that name a change. A tool whose name starts with one writes.
     private static final List<String> WRITE_VERBS = List.of("create", "update", "delete", "add", "merge", "move",
-            "attach", "log", "link", "transition", "register", "remove", "review", "call", "save", "run", "download");
+            "attach", "log", "link", "transition", "register", "remove", "review", "call", "save", "run", "download",
+            "reply");
 
     // Starts with such a verb and does not change anything on a server or in an index.
     private static final Set<String> NOT_WRITES = Set.of(

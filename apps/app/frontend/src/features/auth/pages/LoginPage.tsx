@@ -113,7 +113,7 @@ export function LoginPage() {
       // Social or SSO sign-in that would have CREATED an account on an Enterprise Server with no
       // license in force - OAuthUserSyncService refuses it, and the handler bounces here with the
       // reason. Accounts that already exist keep signing in, licensed or not.
-      ? t('This server cannot add new accounts without an Enterprise license. Existing accounts sign in as before; ask your administrator.')
+      ? t('New accounts need an Enterprise license. Ask your administrator.')
       : authErrorReason === 'linked'
         // A first sign-in with a provider whose email matches an account that has a password, or
         // that the provider does not vouch for - OAuthUserSyncService.linkable refuses to join them.
@@ -316,7 +316,7 @@ export function LoginPage() {
                 {t('Forgot password?')}
               </Link>
             ) : (
-              <Caption className="text-xs">
+              <Caption>
                 {t('Forgot your password? Ask an administrator for a reset link.')}
               </Caption>
             )}

@@ -108,6 +108,14 @@ public interface TrackedDocumentRepository extends JpaRepository<TrackedDocument
     List<Object[]> findTitlesBySourceIds(@Param("connectorIds") Collection<UUID> connectorIds,
                                         @Param("sourceIds") Collection<String> sourceIds);
 
+    // (sourceId, title, status) of these documents of these sources, DELETED ones included: a YouTube video's title
+    // as its channel source indexed it (YouTubeVideoTitles, 2026-11-06). A video gone from YouTube is still best
+    // named by the title it had, so the caller prefers a live row and takes a deleted one only when there is none.
+    @Query("select d.sourceId, d.title, d.status from TrackedDocument d"
+         + " where d.connectorId in :connectorIds and d.sourceId in :sourceIds")
+    List<Object[]> findTitlesAnyStatus(@Param("connectorIds") Collection<UUID> connectorIds,
+                                       @Param("sourceIds") Collection<String> sourceIds);
+
     // The documents behind a page of search results, within what the caller can see - so the graph
     // tool can tie each result back to the graph's passages (SearchKnowledgeGraphTool). Deleted
     // rows excluded, for the reason given above.

@@ -183,17 +183,6 @@ public class ChatEventSink {
     @Async("chatEventExecutor")
     @EventListener
     public void onChatEvent(ChatEvent event) {
-        Sinks.Many<ChatEvent> sink = sinks.get(event.conversationId());
-        if (sink == null) {
-            // Said nothing at all until 2026-09-23, and a dropped event is exactly the kind of
-            // thing that has to say something: every symptom of one is an absence. It also leaves
-            // nextExpected where it is, so every later event of this turn is buffered behind a
-            // number that will never arrive - which is worth knowing from one line rather than
-            // from a stream that stops.
-            log.warn("[ChatEventSink] dropped an event with no sink: conversationId={} seq={} type={}",
-                    event.conversationId(), event.sequence(), event.streamType());
-            return;
-        }
         OrderingState state = orderingStates.computeIfAbsent(event.conversationId(), k -> new OrderingState());
         // Serializes only the tiny "is this the next number, drain the buffer" decision per
         // conversation - tool execution and LLM streaming stay fully concurrent, only the final
@@ -203,14 +192,37 @@ public class ChatEventSink {
                 state.pending.put(event.sequence(), event);
                 return;
             }
-            emit(sink, event);
+            emit(event);
             state.nextExpected.incrementAndGet();
             ChatEvent buffered;
             while ((buffered = state.pending.remove(state.nextExpected.get())) != null) {
-                emit(sink, buffered);
+                emit(buffered);
                 state.nextExpected.incrementAndGet();
             }
         }
+    }
+
+    /**
+     * Hands an event, in its turn, to the conversation's sink - or drops it when there is none.
+     *
+     * <p>A DROPPED EVENT STILL TAKES ITS NUMBER, since 2026-11-03. The no-sink branch used to return
+     * before the ordering state was touched, so nextExpected stayed below the dropped number and every
+     * later event of the conversation was buffered behind a number that would never arrive. Words a
+     * Constellations lead wrote into the person's lead chat with no turn (ChatService.writeNote) were
+     * that event: published into a conversation nobody followed yet - a new one, or one idle long
+     * enough to be reaped - and the person's next turn then reached the page with nothing at all, its
+     * "Waiting for ..." line counting for minutes over an answer the transcript already held.
+     */
+    private void emit(ChatEvent event) {
+        Sinks.Many<ChatEvent> sink = sinks.get(event.conversationId());
+        if (sink == null) {
+            // Said nothing at all until 2026-09-23, and a dropped event is exactly the kind of
+            // thing that has to say something: every symptom of one is an absence.
+            log.warn("[ChatEventSink] dropped an event with no sink: conversationId={} seq={} type={}",
+                    event.conversationId(), event.sequence(), event.streamType());
+            return;
+        }
+        emit(sink, event);
     }
 
     private void emit(Sinks.Many<ChatEvent> sink, ChatEvent event) {

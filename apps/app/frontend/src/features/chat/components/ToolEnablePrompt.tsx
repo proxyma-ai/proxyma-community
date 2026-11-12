@@ -135,7 +135,7 @@ export function ToolEnablePrompt({ request, conversationId, from }: Props) {
             its grammar wants it - it was forced first, the sentence split at the <strong> (CHAT-32). */}
         <DialogDescription>
           <Rich
-            text={t("{tool} needs {connector} write tools, which you haven't enabled yet. Enable them now, or keep this action blocked?", { connector: label })}
+            text={t('{tool} needs {connector} write tools. Turn them on, or keep this blocked?', { connector: label })}
             parts={{ tool: <strong className="text-ink-primary font-semibold">{toolDisplayName(request.toolName, t)}</strong> }}
           />
         </DialogDescription>

@@ -49,8 +49,7 @@ public class AirtableConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.AIRTABLE)
             .protocol(ConnectionProtocol.AIRTABLE)
             .displayName("Airtable")
-            .description("The records of an Airtable base, one document per record with every field, from one "
-                    + "table or all of them.")
+            .description("The records of an Airtable base.")
             .noun("Airtable base", "Airtable bases")
             .addTitle("Add an Airtable base")
             .order(64)
@@ -59,12 +58,11 @@ public class AirtableConnectorPlugin implements ConnectorPlugin {
             .fields(
                     FieldSpec.text(BASE, "Base").asRequired().placeholder("appXXXXXXXXXXXXXX")
                             .pattern(".*app[A-Za-z0-9]{14}.*")
-                            .help("The base's ID, or a link to the base, a table or a view - copied from the "
-                                    + "address bar in Airtable."),
+                            .help("The base's ID or a link to it."),
                     FieldSpec.text(TABLE, "Table").placeholder("Projects")
                             .help("Its name or ID. Leave empty for every table in the base."),
                     FieldSpec.text(VIEW, "View").placeholder("Grid view")
-                            .help("Only the records this view shows, by its name or ID. Needs a table."))
+                            .help("Only the records in this view. Needs a table."))
             .capabilities(Capabilities.builder().incremental().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("airtable")

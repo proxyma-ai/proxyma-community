@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Button, Caption, CopyField, ExternalLink, FieldLabel, FieldSkeleton, InlineCode, InlineConfirm, Input, List, ListRow,
+  Button, Caption, CopyField, ExternalLink, FieldLabel, FieldSkeleton, IconButton, InlineCode, Input, List, ListRow,
   ListRowSkeleton, MetaList, OneTimeSecret, Presence, Readout,
 } from '@/components/ui/kit'
+import { RemoveConfirm } from '@/features/settings/components/settingsParts'
 import { keys } from '@/services/queryKeys'
 import { useToastStore } from '@/store/toastStore'
 import { withReason } from '@/services/apiError'
@@ -56,10 +57,11 @@ export function IngestApiPanel({ sourceId }: { sourceId: string }) {
   const endpoint = data ? `${window.location.origin}${data.endpoint}` : ''
   const full = !!data && data.tokens.length >= data.limits.maxTokens
 
+  const revokingToken = data?.tokens.find(x => x.id === revoking) ?? null
   return (
     <div className="px-4 sm:px-6 py-4 space-y-4 border-b border-line/30 animate-fade-in">
       <Caption>
-        {t('Push documents to this source from a script, Zapier, Make or n8n. Each request carries one of its tokens, which opens this source and nothing else.')}{' '}
+        {t('Push documents here from a script, Zapier, Make or n8n.')}{' '}
         <ExternalLink href="https://proxyma.ai/docs/api/#ingest">{t('How to push documents')}</ExternalLink>
       </Caption>
 
@@ -86,19 +88,11 @@ export function IngestApiPanel({ sourceId }: { sourceId: string }) {
         ) : data && data.tokens.length > 0 ? (
           <List>
             {data.tokens.map(token => (
-              <TokenRow
-                key={token.id}
-                token={token}
-                confirming={revoking === token.id}
-                pending={revoke.isPending}
-                onRevoke={() => setRevoking(token.id)}
-                onCancel={() => setRevoking(null)}
-                onConfirm={() => revoke.mutate(token.id)}
-              />
+              <TokenRow key={token.id} token={token} onRevoke={() => setRevoking(token.id)} />
             ))}
           </List>
         ) : (
-          <Caption className="animate-fade-in">{t('No tokens yet. Create one for each script, so each can be revoked on its own.')}</Caption>
+          <Caption className="animate-fade-in">{t('No tokens yet. Make one per script.')}</Caption>
         )}
       </div>
 
@@ -125,16 +119,26 @@ export function IngestApiPanel({ sourceId }: { sourceId: string }) {
         </Button>
       </form>
       <Presence show={full}>
-        <Caption tone="warning">{t('This source has as many tokens as it may. Revoke one you no longer use to create another.')}</Caption>
+        <Caption tone="warning">{t('Token limit reached. Revoke one to create another.')}</Caption>
       </Presence>
+      {revokingToken && (
+        <RemoveConfirm
+          name={revokingToken.label}
+          title={t('Revoke token')}
+          verb={t('revoke')}
+          confirmLabel={t('Revoke')}
+          pendingLabel={t('Revoking...')}
+          consequences={[t('Anything using this token loses access now.')]}
+          pending={revoke.isPending}
+          onConfirm={() => revoke.mutate(revokingToken.id)}
+          onCancel={() => setRevoking(null)}
+        />
+      )}
     </div>
   )
 }
 
-function TokenRow({ token, confirming, pending, onRevoke, onCancel, onConfirm }: {
-  token: IngestToken; confirming: boolean; pending: boolean
-  onRevoke: () => void; onCancel: () => void; onConfirm: () => void
-}) {
+function TokenRow({ token, onRevoke }: { token: IngestToken; onRevoke: () => void }) {
   const { t, locale } = useTranslation()
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
@@ -149,21 +153,9 @@ function TokenRow({ token, confirming, pending, onRevoke, onCancel, onConfirm }:
           ? <Readout key="used">{t('last used {date}', { date: date(token.lastUsedAt) })}</Readout>
           : <span key="unused">{t('never used')}</span>,
       ]} />}
-      action={confirming ? (
-        <InlineConfirm
-          cancelLabel={t('Cancel')}
-          confirmLabel={t('Revoke')}
-          pendingLabel={t('Revoking...')}
-          pending={pending}
-          onCancel={onCancel}
-          onConfirm={onConfirm}
-        />
-      ) : (
-        <Button variant="danger-quiet" onClick={onRevoke}>
-          <Trash2 size={14} />
-          {t('Revoke')}
-        </Button>
-      )}
+      // A revoke is confirmed in a dialog of its own, as everywhere (the maintainer, 2026-11-10), and the row's action is
+      // an icon, as Settings' lists are.
+      action={<IconButton icon={Trash2} tone="danger" label={t('Revoke')} onClick={onRevoke} />}
     />
   )
 }

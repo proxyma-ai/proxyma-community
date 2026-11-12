@@ -45,8 +45,7 @@ public class BitbucketCloudConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.BITBUCKET_CLOUD)
             .protocol(ConnectionProtocol.BITBUCKET_CLOUD)
             .displayName("Bitbucket Cloud")
-            .description("A Bitbucket Cloud repository's pull requests, with their comments and reviews, and its "
-                    + "documentation files if you choose.")
+            .description("Pull requests with comments and reviews, and documentation files if you choose.")
             .noun("Bitbucket Cloud repository", "Bitbucket Cloud repositories")
             .addTitle("Add a Bitbucket Cloud repository")
             .order(52)
@@ -57,7 +56,7 @@ public class BitbucketCloudConnectorPlugin implements ConnectorPlugin {
                             .pattern("[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"),
                     FieldSpec.bool(PULL_REQUESTS, "Pull requests").defaultValue("true"),
                     FieldSpec.bool(DOCS, "Documentation files").defaultValue("false")
-                            .help("Markdown, reStructuredText and text files on the main branch."),
+                            .help("Markdown and text files on the main branch."),
                     FieldSpec.text(DOCS_PATH, "Only files under").placeholder("docs/").asAdvanced(),
                     FieldSpec.text(BRANCH, "Branch").asAdvanced().help("The repository's main branch when empty."))
             .capabilities(Capabilities.builder().incremental().cursor().shareable().liveRead().build())

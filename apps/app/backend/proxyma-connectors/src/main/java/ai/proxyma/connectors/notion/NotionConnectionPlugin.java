@@ -37,13 +37,11 @@ public class NotionConnectionPlugin implements ConnectionPlugin {
             .mark("notion")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Integration token",
                             FieldSpec.secret("token", "Integration token").asRequired().placeholder("ntn_...")
-                                    .help("From your internal integration's Configuration tab in Notion's developer "
-                                            + "portal. Share each page or database to index with the integration.")),
+                                    .help("From your internal integration's Configuration tab in Notion.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Notion",
                             FieldSpec.text("clientId", "Client ID").asRequired(),
                             FieldSpec.secret("clientSecret", "Client secret").asRequired()
-                                    .help("From your public Notion integration's Configuration tab. You choose the "
-                                            + "pages to share when you sign in.")))
+                                    .help("From your public integration's Configuration tab in Notion.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(NotionApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave as it is unless you reach Notion through a relay."))
             .sourceTypes(ConnectorType.NOTION)

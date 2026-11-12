@@ -51,7 +51,7 @@ public class ZendeskConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.ZENDESK)
             .protocol(ConnectionProtocol.ZENDESK)
             .displayName("Zendesk")
-            .description("Zendesk tickets with their comments, and Help Center articles if you choose.")
+            .description("Zendesk tickets, and Help Center articles if you choose.")
             .noun("Zendesk source", "Zendesk sources")
             .addTitle("Add Zendesk tickets or articles")
             .order(60)
@@ -61,16 +61,15 @@ public class ZendeskConnectorPlugin implements ConnectorPlugin {
                     FieldSpec.bool(TICKETS, "Tickets").defaultValue("true")
                             .help("Every ticket the agent can see, with its comments."),
                     FieldSpec.bool(INTERNAL_NOTES, "Internal notes").defaultValue("false")
-                            .help("Agents' private comments on tickets. Off: only the public conversation is read."),
+                            .help("Agents' private comments on tickets."),
                     FieldSpec.bool(ARTICLES, "Help Center articles").defaultValue("false")
                             .help("Published articles. Drafts are left out."),
                     FieldSpec.text(LOCALES, "Article languages").placeholder("en-us, de")
                             .pattern("\\s*[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*(\\s*,\\s*[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*)*\\s*")
-                            .help("Language codes, separated by commas. The Help Center's default language when empty."),
+                            .help("Language codes, comma-separated. Empty for the default."),
                     FieldSpec.text(SECTIONS, "Article sections").placeholder("360001234567")
                             .pattern("\\s*[0-9]+(\\s*,\\s*[0-9]+)*\\s*").asAdvanced()
-                            .help("Section numbers, separated by commas - the number in a section's address. "
-                                    + "Every section when empty."))
+                            .help("Section numbers, comma-separated. Empty for all."))
             .capabilities(Capabilities.builder().incremental().cursor().shareable().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("zendesk")

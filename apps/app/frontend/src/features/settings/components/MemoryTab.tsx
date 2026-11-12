@@ -1,13 +1,15 @@
+import { Trash2, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  applyClick, Badge, BulkActionBar, Button, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState,
-  FadeSwap, Field, FilterBar, FilterChips, FormStack, headerState, List, ListRow, Presence, RadioGroup, Readout,
-  RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, Textarea, toggleAllOnPage,
-  usePagedList,
+  applyClick, Badge, BulkActionBar, Button, ConfirmDialog, DialogBody, DialogHeader, EmptyState, FadeSwap, Field, FilterBar, FilterChips, FormStack, headerState, List, ListRow, Presence, RadioGroup, Readout, RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, toggleAllOnPage, usePagedList, IconButton,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
 import { ModalShell } from '@/components/ui/ModalShell'
+import { EditableText } from '@/components/ui/EditableText'
+import { quietly } from '@/components/ui/AutosaveFields'
+import { useAutosave } from '@/components/ui/useAutosave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 import { ListSkeleton } from '../pages/shared'
 import { memoryApi, type MemoryCategory, type MemoryEntry } from '../services/memoryApi'
 import { useToastStore } from '@/store/toastStore'
@@ -104,13 +106,13 @@ export function MemoryTab() {
   return (
     // The introduction is SettingsSections' intro, as on every tab that opens with one, and it is
     // there while the list loads under it.
-    <SettingsSections intro={t('What the agent saved for later; correct or delete anything out of date.')}>
+    <SettingsSections intro={t('What the agent saved. Fix or delete anything out of date.')}>
       <FadeSwap swapKey={isLoading ? 'loading' : entries.length > 0}>
       {isLoading ? (
         <ListSkeleton count={5} />
       ) : entries.length === 0 ? (
         <EmptyState>
-          {t('Nothing saved yet. The agent saves facts and your preferences here as it learns them.')}
+          {t('Nothing saved yet.')}
         </EmptyState>
       ) : (
         <div className="space-y-4">
@@ -195,12 +197,12 @@ export function MemoryTab() {
                         <RowActions
                           className="ml-auto"
                           destructive={(
-                            <Button variant="danger-quiet" disabled={busy} onClick={() => setDeleting([entry.id])}>
-                              {t('Delete')}
-                            </Button>
+                            <IconButton icon={Trash2} tone="danger" label={t('Delete')} disabled={busy}
+                              onClick={() => setDeleting([entry.id])} />
                           )}
                         >
-                          <Button variant="hyperlink" disabled={busy} onClick={() => setEditing(entry)}>{t('Edit')}</Button>
+                          {/* Row actions are icons in every Settings list (2026-11-10). */}
+                          <IconButton icon={Pencil} label={t('Edit')} disabled={busy} onClick={() => setEditing(entry)} />
                         </RowActions>
                       </div>
                     )}
@@ -219,7 +221,7 @@ export function MemoryTab() {
         <MemoryEditModal
           entry={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); refresh() }}
+          onSaved={refresh}
         />
       )}
 
@@ -241,53 +243,56 @@ export function MemoryTab() {
   )
 }
 
+interface MemoryFields {
+  text: string
+  category: MemoryCategory
+}
+
+/**
+ * ONE ENTRY, EDITED IN PLACE (the maintainer, 2026-11-02): the text is click-to-edit and saved when it
+ * is left, the category saved as it is chosen. No footer - nothing is left to save when it closes.
+ *
+ * An entry's category is read off its id, so an edit may answer with a NEW id: the next save goes to
+ * that one, and the list is read again after every save.
+ */
 function MemoryEditModal({ entry, onClose, onSaved }: {
   entry: MemoryEntry
   onClose: () => void
   onSaved: () => void
 }) {
   const { t } = useTranslation()
-  const addToast = useToastStore(s => s.addToast)
-  const [text, setText] = useState(entry.text)
-  const [category, setCategory] = useState<MemoryCategory>(entry.category ?? 'KNOWLEDGE')
   const categoryLabel = useCategoryLabel()
-  const dirty = text.trim() !== entry.text.trim() || category !== (entry.category ?? 'KNOWLEDGE')
+  const id = useRef(entry.id)
+  const [base] = useState<MemoryFields>(() => ({ text: entry.text, category: entry.category ?? 'KNOWLEDGE' }))
 
-  const save = useMutation({
-    mutationFn: () => memoryApi.edit(entry.id, text.trim(), category),
-    onSuccess: onSaved,
-    onError: (e: unknown) => addToast(withReason(t('Failed to save the memory entry'), e), 'danger'),
-  })
-  const canSave = dirty && text.trim().length > 0 && !save.isPending
+  const { value, save, status } = useAutosave<MemoryFields>(base, async next => {
+    const saved = await memoryApi.edit(id.current, next.text.trim(), next.category)
+    id.current = saved.id
+    onSaved()
+    return { text: saved.text, category: saved.category ?? next.category }
+  }, { failure: t('Failed to save the memory entry') })
+  const v = value ?? base
 
   return (
-    <ModalShell
-      onClose={onClose}
-      closable={!save.isPending}
-      dirty={dirty}
-      onSubmit={canSave ? () => save.mutate() : undefined}
-      ariaLabel={t('Edit memory entry')}
-      size="lg"
-    >
-      {requestClose => (<>
-        <DialogHeader title={t('Edit memory entry')} />
+    <ModalShell onClose={onClose} initialFocus="panel" ariaLabel={t('Edit memory entry')} size="lg">
+      {() => (<>
+        <DialogHeader title={t('Edit memory entry')} actions={<SaveStatus word={status} />} />
         <DialogBody>
           <FormStack>
             <Field label={t('What the agent remembers')}>
-              {id => (
-                <Textarea
-                  id={id}
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  rows={6}
-                  maxLength={2000}
-                />
-              )}
+              <EditableText
+                value={v.text}
+                label={t('What the agent remembers')}
+                multiline
+                maxLength={2000}
+                required={t('Required')}
+                onCommit={text => save({ text })}
+              />
             </Field>
             <Field label={t('Category')}>
               <RadioGroup<MemoryCategory>
-                value={category}
-                onChange={setCategory}
+                value={v.category}
+                onChange={category => quietly(save({ category }))}
                 horizontal
                 ariaLabel={t('Category')}
                 options={[
@@ -298,12 +303,6 @@ function MemoryEditModal({ entry, onClose, onSaved }: {
             </Field>
           </FormStack>
         </DialogBody>
-        <DialogFooter>
-          <Button variant="secondary" onClick={requestClose} disabled={save.isPending}>{t('Cancel')}</Button>
-          <Button onClick={() => save.mutate()} disabled={!canSave}>
-            {save.isPending ? t('Saving...') : t('Save')}
-          </Button>
-        </DialogFooter>
       </>)}
     </ModalShell>
   )

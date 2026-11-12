@@ -185,9 +185,17 @@ public class ChatController {
             // The surface the turn is recorded under is the STORED one once the conversation exists -
             // a later message cannot move it (see ConversationSurface) - and the request's for a
             // conversation this message creates.
+            //
+            // A DEPLOYED AGENT TAKES NO MESSAGE FROM A PERSON (the maintainer, 2026-11-04): the page
+            // shows its conversation as a read-only transcript, and a message posted into one anyway -
+            // an old link, a hand-made request - is refused here with the sentence, before any turn.
             return Mono.fromCallable(() -> named ? chatMemory.findConversation(conversationId) : Optional.<Conversation>empty())
                     .subscribeOn(Schedulers.boundedElastic())
                     .map(stored -> {
+                        if (stored.isPresent() && canAccessConversation(stored.get(), uid, guestSessionId)
+                                && chatService.isDeployedAgent(conversationId)) {
+                            return ResponseEntity.status(403).body(Map.of("error", ChatService.DEPLOYED_AGENT_REFUSAL));
+                        }
                         if (stored.isPresent() && !canAccessConversation(stored.get(), uid, guestSessionId)) {
                             log.warn("[Chat] refused a turn into conversation {} the caller may not open", conversationId);
                         } else {
@@ -336,7 +344,7 @@ public class ChatController {
                     conversationPage(page, size));
             List<ConversationResponse> dtos = result.getContent().stream()
                     .map(c -> new ConversationResponse(c.getId(), c.getTitle(),
-                            c.getCreatedAt(), c.getUpdatedAt(), c.getMessageCount(), c.isPinned()))
+                            c.getCreatedAt(), c.getUpdatedAt(), c.getMessageCount(), c.isPinned(), c.getTitleKind()))
                     .toList();
             Map<String, Object> body = new java.util.LinkedHashMap<>();
             body.put("items", dtos);
@@ -433,13 +441,49 @@ public class ChatController {
         return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
             String uid = userId.isEmpty() ? null : userId;
             String guestSessionId = resolveGuestSessionId(exchange, false);
-            Conversation conv = chatService.getConversation(id);
-            if (!canAccessConversation(conv, uid, guestSessionId))
-                return ResponseEntity.status(404).<Map<String, Object>>build();
-            Map<String, Object> usage = usageOf(conv, chatService.getContextTokenLimit());
-            ai.proxyma.core.chat.service.PromptCacheFields.put(usage, chatService.promptCache(id));
+            // getConversation throws for one not created yet - which the 404 handler answered, so the zeros below
+            // were never reached (2026-11-12: the tag pipeline's functional suite, every run).
+            Conversation conv;
+            try {
+                conv = chatService.getConversation(id);
+            } catch (java.util.NoSuchElementException e) {
+                conv = null;
+            }
+            // A conversation not created yet - a panel's chat before its first message, whose composer
+            // already asks which model it runs on - has spent nothing: zeros, not a 404 the page reports
+            // as an error (the functional suite's key-account test, 2026-11-04). One that exists is
+            // checked as the conversation itself is. One the caller may not read - somebody else's, or theirs during
+            // a moment the session is being renewed - answers the same zeros as one not created yet (2026-11-12: the
+            // functional suite's key-account test failed on that 404 one night in two), which also tells nobody
+            // whether the conversation exists.
+            boolean visible = conv != null && canAccessConversation(conv, uid, guestSessionId);
+            Map<String, Object> usage = visible ? usageOf(conv, chatService.getContextTokenLimit())
+                    : notYetUsage(chatService.getContextTokenLimit());
+            if (visible) ai.proxyma.core.chat.service.PromptCacheFields.put(usage, chatService.promptCache(id));
+            if (visible || conv == null) chatService.agentModelOf(id, uid).ifPresent(m -> putModel(usage, m,
+                    agentModels == null ? java.util.Collections.emptyMap() : agentModels.providerNames()));
             return ResponseEntity.ok(usage);
         }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    /**
+     * The model a conversation runs on when it is not the chat's own (ChatService.agentModelOf - a saved
+     * agent's): {@code model}, and {@code providerName} when its provider can be named (a provider id null
+     * is the chat's, which providerNames holds under null). Absent for an ordinary chat, whose page names
+     * the chat settings' pair. The conversation's owner reads it; it is the agent's, not the settings'.
+     */
+    static void putModel(Map<String, Object> usage, ChatService.ConversationModel model, Map<String, String> providerNames) {
+        if (model == null || model.model() == null || model.model().isBlank()) return;
+        usage.put("model", model.model());
+        String name = providerNames == null ? null : providerNames.get(model.providerId());
+        if (name != null && !name.isBlank()) usage.put("providerName", name);
+    }
+
+    /** The usage of a conversation that does not exist yet: nothing spent, no cache. */
+    static Map<String, Object> notYetUsage(long contextTokenLimit) {
+        Map<String, Object> usage = usageOf(new Conversation(), contextTokenLimit);
+        ai.proxyma.core.chat.service.PromptCacheFields.put(usage, java.util.Optional.empty());
+        return usage;
     }
 
     static Map<String, Object> usageOf(Conversation conv, long contextTokenLimit) {
@@ -468,6 +512,19 @@ public class ChatController {
         this.agentAlarms = agentAlarms;
     }
 
+    private ai.proxyma.core.chat.agents.AgentTreeModule agentTreeModule;
+    private ai.proxyma.core.chat.agents.AgentModels agentModels;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentTreeModule(ai.proxyma.core.chat.agents.AgentTreeModule agentTreeModule) {
+        this.agentTreeModule = agentTreeModule;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentModels(ai.proxyma.core.chat.agents.AgentModels agentModels) {
+        this.agentModels = agentModels;
+    }
+
     // Every agent of the tree this conversation is in - its root, every child at every depth, where
     // each stands and what it spent - for the agents map, the panels and the "back to" link of a
     // child's page. Same ownership check as the conversation itself.
@@ -490,43 +547,53 @@ public class ChatController {
         List<Map<String, Object>> agents = new java.util.ArrayList<>();
         Map<String, Conversation> convs = new java.util.HashMap<>();
         List<ai.proxyma.core.chat.model.AgentNode> nodes = agentTree.treeOf(conversationId);
-        for (Conversation c : chatMemory.findConversations(nodes.stream()
-                .map(ai.proxyma.core.chat.model.AgentNode::getConversationId).toList())) {
+        // The deployed agents' conversations and the main agent's, read together.
+        List<String> ids = new java.util.ArrayList<>(nodes.stream()
+                .map(ai.proxyma.core.chat.model.AgentNode::getConversationId).toList());
+        ids.add(rootId);
+        for (Conversation c : chatMemory.findConversations(ids)) {
             convs.put(c.getId(), c);
         }
+        // What each runs on, named, and the one window every conversation is condensed against.
+        ai.proxyma.core.chat.module.AgentProfile rootProfile = agentTreeModule == null || nodes.isEmpty() ? null
+                : agentTreeModule.rootProfile(rootId, nodes.get(0).getUserId());
+        // A HashMap, never Map.of(): the chat's own provider is under the key null.
+        Map<String, String> providerNames = agentModels == null || nodes.isEmpty()
+                ? new java.util.HashMap<>() : agentModels.providerNames();
+        int window;
+        try {
+            window = chatService.getContextTokenLimit();
+        } catch (RuntimeException e) {
+            window = 0;
+        }
         for (ai.proxyma.core.chat.model.AgentNode n : nodes) {
-            Map<String, Object> v = new java.util.LinkedHashMap<>();
-            v.put("agentId", n.getId().toString());
-            v.put("conversationId", n.getConversationId());
-            v.put("parentConversationId", n.getParentConversationId());
-            // Titles and reports the model wrote, crossing to the browser - screened as every other
-            // agent text is.
-            v.put("title", ai.proxyma.core.system.util.SensitivePaths.scrub(n.getTitle()));
-            v.put("status", n.getStatus());
-            v.put("lifetime", n.getLifetime());
-            v.put("depth", n.getDepth());
-            v.put("owesReport", n.isReportOwed());
-            v.put("lastReport", n.getLastReport() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getLastReport()));
-            v.put("model", n.getModel());
-            v.put("createdAt", n.getCreatedAt() == null ? null : n.getCreatedAt().toString());
-            v.put("endedAt", n.getEndedAt() == null ? null : n.getEndedAt().toString());
-            v.put("working", chatService.isActive(n.getConversationId()));
-            Conversation c = convs.get(n.getConversationId());
-            v.put("inputTokens", c == null ? 0 : c.getInputTokens());
-            v.put("outputTokens", c == null ? 0 : c.getOutputTokens());
-            v.put("costUsd", c == null ? 0 : c.getEstimatedCostUsd());
-            // Its limits, what checked it, and why the tree stopped it - for the agents map.
-            v.put("budgetUsd", n.getBudgetUsd());
-            v.put("deadlineAt", n.getDeadlineAt() == null ? null : n.getDeadlineAt().toString());
-            v.put("role", n.getRole());
-            v.put("verification", n.getVerification() == null ? null
-                    : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getVerification()));
-            v.put("stopNote", n.getStopNote() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(n.getStopNote()));
+            ai.proxyma.core.chat.agents.AgentTreeModule.RunsOn runs = agentTreeModule == null ? null
+                    : agentTreeModule.runsOn(n, rootProfile);
+            Map<String, Object> v = ai.proxyma.core.chat.agents.AgentTreeView.of(n, convs.get(n.getConversationId()),
+                    chatService.isActive(n.getConversationId()), window, runs,
+                    runs == null ? null : providerNames.get(runs.providerId()));
             agents.add(v);
             if (n.getConversationId().equals(conversationId)) out.put("self", v);
         }
         out.put("agents", agents);
+        out.put("main", mainAgentView(rootId, convs.get(rootId), window));
         return out;
+    }
+
+    // The main agent's row of the agents map (AgentTreeView.main): what the chat knows of its
+    // conversation in memory, and its time worked off its stored messages.
+    private Map<String, Object> mainAgentView(String rootId, Conversation root, int window) {
+        boolean working = chatService.isActive(rootId);
+        ai.proxyma.core.chat.service.ChatService.TurnState state = chatService.turnStates(List.of(rootId)).get(rootId);
+        ai.proxyma.core.chat.agents.AgentTreeView.Worked worked;
+        try {
+            worked = ai.proxyma.core.chat.agents.AgentTreeView.workedOf(chatMemory.messageStamps(rootId), working);
+        } catch (RuntimeException e) {
+            worked = null;
+        }
+        return ai.proxyma.core.chat.agents.AgentTreeView.main(root, working,
+                state != null && state.awaitingApproval(), state != null && state.rateLimited(),
+                chatService.hasBackgroundWork(rootId), window, worked);
     }
 
     // The person can do anything to any agent of a tree they own: pause, resume, stop, dismiss.
@@ -565,7 +632,9 @@ public class ChatController {
             if (approvalInbox == null || (uid == null && chatMemory.isMultiUser())) {
                 return ResponseEntity.ok(approvalPage(org.springframework.data.domain.Page.empty()));
             }
-            return ResponseEntity.ok(approvalPage(approvalInbox.forUser(uid, pending, page, size)));
+            // A draft done another way meanwhile (answered on YouTube) leaves the list - in the background, throttled.
+            if (pending) approvalInbox.recheckLater(uid);
+            return ResponseEntity.ok(approvalPage(approvalInbox.forUser(uid, show(pending), page, size)));
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 
@@ -582,13 +651,20 @@ public class ChatController {
             if (approvalInbox == null || agentTree == null
                     || !canAccessConversation(conv, uid, resolveGuestSessionId(exchange, false)))
                 return ResponseEntity.status(404).<Map<String, Object>>build();
-            return ResponseEntity.ok(approvalPage(approvalInbox.forTrees(List.of(agentTree.rootOf(id)), pending, page, size)));
+            return ResponseEntity.ok(approvalPage(approvalInbox.forTrees(List.of(agentTree.rootOf(id)), show(pending), page, size)));
         }).subscribeOn(Schedulers.boundedElastic()));
     }
 
-    // Decides up to a hundred requests at once: {ids, decision: APPROVE|DENY, note}. Each is decided
+    // Waiting only, or every one with its outcome.
+    private static ai.proxyma.core.chat.agents.ApprovalInbox.Show show(boolean pending) {
+        return pending ? ai.proxyma.core.chat.agents.ApprovalInbox.Show.PENDING : ai.proxyma.core.chat.agents.ApprovalInbox.Show.ALL;
+    }
+
+    // Decides up to a hundred requests at once: {ids, decision: APPROVE|DENY, note, edits}. Each is decided
     // only when the caller may answer that conversation's prompts - the person it works for - and only
-    // while it still waits; the answer counts what was decided and what was not.
+    // while it still waits; the answer counts what was decided and what was not. {@code edits}, for an
+    // approval: request id to {argument: text}, the person's own words for what the request's context
+    // marks editable (a reply's text). An edit a request does not offer is a 400, and nothing is decided.
     @PostMapping("/chat/approvals/decide")
     public Mono<ResponseEntity<Map<String, Object>>> decideApprovals(@RequestBody Map<String, Object> body,
                                                                     ServerWebExchange exchange) {
@@ -604,20 +680,100 @@ public class ChatController {
             }
             Object rawNote = body.get("note");
             String note = rawNote instanceof String s ? s : null;
+            Map<String, Map<String, String>> edits = edits(body.get("edits"));
+            if (edits == null) return ResponseEntity.badRequest().<Map<String, Object>>build();
             String guest = resolveGuestSessionId(exchange, false);
-            int decided = 0;
+            List<ai.proxyma.core.chat.model.ToolApprovalRequest> reachable = new java.util.ArrayList<>();
             int skipped = 0;
             for (Object raw : ids) {
                 Optional<ai.proxyma.core.chat.model.ToolApprovalRequest> r = approvalInbox.find(String.valueOf(raw));
-                if (r.isEmpty() || !r.get().isPending() || !mayReachPending(r.get().getConversationId(), uid, guest)) {
+                // A draft an agent's revision REPLACED while the person edited it is still decided when it is
+                // approved WITH their edit: their text goes to the draft now waiting (ApprovalInbox.decide).
+                boolean editOfReplaced = r.isPresent() && !r.get().isPending()
+                        && decision.get() == ai.proxyma.core.chat.agents.ApprovalInbox.Decision.APPROVE
+                        && !edits.getOrDefault(r.get().getId().toString(), Map.of()).isEmpty()
+                        && approvalInbox.successor(r.get()).isPresent();
+                if (r.isEmpty() || (!r.get().isPending() && !editOfReplaced)
+                        || !mayReachPending(r.get().getConversationId(), uid, guest)) {
                     skipped++;
                     continue;
                 }
-                if (approvalInbox.decide(r.get(), decision.get(), note, uid)) decided++;
-                else skipped++;
+                reachable.add(r.get());
             }
-            return ResponseEntity.ok(Map.<String, Object>of("decided", decided, "skipped", skipped));
+            // A project that is read-only - its add-on not in force - decides nothing (ChatModule.decisionRefused).
+            for (ai.proxyma.core.chat.model.ToolApprovalRequest r : reachable) {
+                String root = r.getRootConversationId() != null ? r.getRootConversationId() : r.getConversationId();
+                Optional<String> refused = chatService.decisionRefused(root);
+                if (refused.isPresent()) {
+                    return ResponseEntity.status(403).body(Map.<String, Object>of("error", refused.get()));
+                }
+            }
+            // Every edit is checked before anything is decided.
+            if (decision.get() == ai.proxyma.core.chat.agents.ApprovalInbox.Decision.APPROVE) {
+                for (ai.proxyma.core.chat.model.ToolApprovalRequest r : reachable) {
+                    try {
+                        approvalInbox.checkEdits(r, edits.get(r.getId().toString()));
+                    } catch (IllegalArgumentException e) {
+                        return ResponseEntity.badRequest().body(Map.<String, Object>of("error", e.getMessage()));
+                    }
+                }
+            }
+            // An approval of a write done another way meanwhile (a comment answered on YouTube) makes nothing: it is
+            // withdrawn with the reason, counted apart (ApprovalInbox.decideAll).
+            ai.proxyma.core.chat.agents.ApprovalInbox.Decided out =
+                    approvalInbox.decideAll(reachable, decision.get(), note, uid, edits);
+            return ResponseEntity.ok(Map.<String, Object>of("decided", out.decided(), "skipped", skipped + out.skipped(),
+                    "withdrawn", out.withdrawn(), "reasons", out.reasons()));
         }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // THE PERSON IS EDITING A WAITING DRAFT (ApprovalInbox.holdEditing): the Approvals page holds it while
+    // its editor is open, renewing every half minute; an agent's revision or withdrawal of it is refused
+    // meanwhile. 404 for a request that is not the caller's, 409 once it no longer waits.
+    @PutMapping("/chat/approvals/{id}/editing")
+    public Mono<ResponseEntity<Map<String, Object>>> holdApprovalEditing(@PathVariable String id, ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            Optional<ai.proxyma.core.chat.model.ToolApprovalRequest> r = approvalInbox == null ? Optional.empty()
+                    : approvalInbox.find(id);
+            if (r.isEmpty() || (uid == null && chatMemory.isMultiUser())
+                    || !mayReachPending(r.get().getConversationId(), uid, resolveGuestSessionId(exchange, false))) {
+                return ResponseEntity.status(404).<Map<String, Object>>build();
+            }
+            return switch (approvalInbox.holdEditing(r.get(), uid)) {
+                case HELD -> ResponseEntity.ok(Map.<String, Object>of("leaseSeconds",
+                        ai.proxyma.core.chat.agents.ApprovalInbox.EDIT_LEASE.toSeconds()));
+                case NOT_WAITING -> ResponseEntity.status(409).<Map<String, Object>>build();
+                case NOT_FOUND -> ResponseEntity.status(404).<Map<String, Object>>build();
+            };
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // The editor closed - left, cancelled or decided: the hold goes. Always 204, held or not.
+    @DeleteMapping("/chat/approvals/{id}/editing")
+    public Mono<ResponseEntity<Void>> releaseApprovalEditing(@PathVariable String id, ServerWebExchange exchange) {
+        return resolveUserId(exchange).flatMap(userId -> Mono.fromCallable(() -> {
+            String uid = userId.isEmpty() ? null : userId;
+            if (approvalInbox != null) approvalInbox.find(id).ifPresent(r -> approvalInbox.releaseEditing(r, uid));
+            return ResponseEntity.noContent().<Void>build();
+        }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
+    // {id: {argument: text}} as a page sends it, or null when it is not that shape. Absent is empty.
+    private static Map<String, Map<String, String>> edits(Object raw) {
+        if (raw == null) return Map.of();
+        if (!(raw instanceof Map<?, ?> byId) || byId.size() > ai.proxyma.core.chat.agents.ApprovalInbox.DECIDE_MAX) return null;
+        Map<String, Map<String, String>> out = new java.util.LinkedHashMap<>();
+        for (Map.Entry<?, ?> e : byId.entrySet()) {
+            if (!(e.getValue() instanceof Map<?, ?> fields) || fields.size() > 8) return null;
+            Map<String, String> one = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> f : fields.entrySet()) {
+                if (!(f.getValue() instanceof String text)) return null;
+                one.put(String.valueOf(f.getKey()), text);
+            }
+            out.put(String.valueOf(e.getKey()), one);
+        }
+        return out;
     }
 
     private static Map<String, Object> approvalPage(org.springframework.data.domain.Page<ai.proxyma.core.chat.agents.ApprovalInbox.View> page) {
@@ -645,6 +801,13 @@ public class ChatController {
         m.put("decidedAt", v.decidedAt() == null ? null : v.decidedAt().toString());
         m.put("note", v.note());
         m.put("result", v.result() == null ? null : ai.proxyma.core.system.util.SensitivePaths.scrub(v.result()));
+        // What the write is about (ApprovalContext) - already bounded and screened as it was read back.
+        m.put("context", v.context());
+        // The agent's own arguments when the person edited them before approving - the page shows the draft.
+        m.put("draftArguments", v.draftArguments() == null ? null
+                : ai.proxyma.core.system.util.SensitivePaths.scrub(v.draftArguments()));
+        // No context yet, and one is still being looked up: the page asks again soon.
+        m.put("contextPending", v.contextPending());
         return m;
     }
 
@@ -1001,6 +1164,8 @@ public class ChatController {
                 case ACCEPTED -> ResponseEntity.accepted().<Map<String, String>>build();
                 case NOT_RUNNING -> ResponseEntity.status(409).<Map<String, String>>build();
                 case BLOCKED -> ResponseEntity.unprocessableEntity().body(Map.of("error", result.message()));
+                // A deployed agent's conversation: read-only to a person.
+                case REFUSED -> ResponseEntity.status(403).body(Map.of("error", result.message()));
             };
         }).subscribeOn(Schedulers.boundedElastic()));
     }
@@ -1071,6 +1236,9 @@ public class ChatController {
             Conversation conv = chatService.getConversation(id);
             if (!canAccessConversation(conv, uid, guestSessionId))
                 return ResponseEntity.status(404).<Void>build();
+            // A deployed agent's conversation is read-only to a person: nothing in it is taken back either.
+            if (chatService.isDeployedAgent(id))
+                return ResponseEntity.status(403).<Void>build();
             Long messageId = body.get("messageId");
             if (messageId == null)
                 return ResponseEntity.badRequest().<Void>build();

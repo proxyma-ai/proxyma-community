@@ -74,7 +74,13 @@ public final class Failures {
         // told when that proxy stopped connecting (seen 2026-09-24 in a feedback log) - accurate,
         // and useless. The detail stays, after a sentence saying what it probably means.
         String lead = networkLead(err);
-        if (lead == null) lead = providerLead(String.join("\n", parts));
+        String said = String.join("\n", parts);
+        // A SPENT CREDIT IS SAID IN ONE SENTENCE, and only that (2026-11-11): the provider's own words - "400 Bad Request
+        // from POST https://api.anthropic.com/v1/messages: Your credit balance is too low..." - reached a Vietnamese
+        // reader's chat four times over, in English and with the address. The sentence is one the page translates whole
+        // (serverText); the provider's words stay in the log.
+        if (lead == null && noCredit(said)) return NO_CREDIT;
+        if (lead == null) lead = providerLead(said);
         // A chain with no message at all still has a lead to give: the class name is what was said
         // before, and "WebClientRequestException" tells a person nothing.
         if (parts.isEmpty()) return lead != null ? lead : err.getClass().getSimpleName();
@@ -183,6 +189,22 @@ public final class Failures {
      * embedding model picked as a chat model ("... does not support chat"). Listing models works in
      * both cases, so Test says nothing is wrong while every chat answers 400.
      */
+    /** What a failed model call says when the provider's account has no credit or quota left. */
+    public static final String NO_CREDIT = notice("The AI provider refused the request: the account has no credit left. "
+            + "Add credit with the provider, then try again.");
+
+    // A provider refusing the ACCOUNT for its balance: Anthropic's "credit balance is too low", OpenAI's insufficient_quota.
+    static boolean noCredit(String said) {
+        String m = said.toLowerCase(java.util.Locale.ROOT);
+        return m.contains("credit balance is too low") || m.contains("insufficient_quota")
+                || m.contains("exceeded your current quota");
+    }
+
+    // A sentence the page translates (tools/i18n/server-messages.mjs reads notice("...")).
+    private static String notice(String sentence) {
+        return sentence;
+    }
+
     static String providerLead(String said) {
         if (said.contains("does not support tools")) {
             return "This model cannot use tools, and every Proxyma conversation offers them. Pick a model "

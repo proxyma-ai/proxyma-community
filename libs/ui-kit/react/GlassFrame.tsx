@@ -90,20 +90,22 @@ export function AppSidebar({ head, children, foot, folded, ariaLabel }: {
 
 /**
  * A row of the sidebar - a page, a recent conversation, Settings: its icon and its words, the
- * current one LIFTED out of the glass (a glass card pill, `.surface-card`, with the card shadow, its icon in the
- * brand's ink), the rest quiet until the pointer is on them. Folded, it is the icon alone, square.
+ * current one LIFTED one step out of the frame (`bg-lift`, the page's gray, with the card shadow, its icon in
+ * the brand's ink), the rest quiet until the pointer is on them. Folded, it is the icon alone, square.
  * A class rather than a component, so a router's link and a button both take it.
  */
 export function sidebarRow({ active = false, folded = false, quiet = false }: { active?: boolean; folded?: boolean; quiet?: boolean } = {}): string {
   return cn(
-    // Medium weight throughout: Space Grotesk's regular renders soft at 14px on Windows.
+    // Medium weight throughout: a sidebar of names, each the row's label (TEXT.label, 14/500).
     'group relative flex items-center gap-2.5 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-fast focus-ring',
     folded ? 'w-10 h-10 justify-center' : 'w-full h-9 touch:h-11 px-2.5',
     active
-      ? 'surface-card text-ink-primary shadow-card [&_svg]:text-brand-legible'
+      // LIFTED ONE STEP off the frame (bg-lift - the page's own gray), never two: a card-gray row on
+      // the frame skipped the page between them (the maintainer, 2026-10-31).
+      ? 'bg-lift text-ink-primary shadow-card [&_svg]:text-brand-legible'
       : quiet
-        ? 'text-ink-secondary mouse:hover:bg-surface/60 mouse:hover:text-ink-primary'
-        : 'text-ink-secondary mouse:hover:bg-surface/60 mouse:hover:text-ink-primary',
+        ? 'text-ink-secondary mouse:hover:bg-lift/60 mouse:hover:text-ink-primary'
+        : 'text-ink-secondary mouse:hover:bg-lift/60 mouse:hover:text-ink-primary',
   )
 }
 

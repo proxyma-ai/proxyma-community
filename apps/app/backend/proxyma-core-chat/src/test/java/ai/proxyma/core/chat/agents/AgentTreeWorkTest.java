@@ -132,7 +132,7 @@ class AgentTreeWorkTest {
 
     /** Ends a turn of this agent the tree started, with this answer. */
     void answer(AgentNode n, String text) {
-        tree.turnEnded(n.getConversationId(), null, text, null);
+        tree.turnEnded(n.getConversationId(), text, null);
     }
 
     List<AgentInbox.Taken> mail(String conversationId) {
@@ -161,6 +161,9 @@ class AgentTreeWorkTest {
             assertThat(node(a).getStatus()).isEqualTo(AgentNode.STOPPED);
             assertThat(node(b).getStatus()).isEqualTo(AgentNode.STOPPED);
             assertThat(node(a).getStopNote()).contains("budget");
+            // The page's code for it, on the agent whose budget it was and on what it deployed.
+            assertThat(node(a).getStopReason()).isEqualTo(AgentNode.REASON_BUDGET);
+            assertThat(node(b).getStopReason()).isEqualTo(AgentNode.REASON_BUDGET);
             // Asked again (the other agent's next step): the same reason, and no second report.
             assertThat(tree.checkLimits(node(a).getConversationId())).isPresent();
             List<AgentInbox.Taken> got = mail(ROOT);
@@ -180,6 +183,20 @@ class AgentTreeWorkTest {
             tree.sweepDeadlines();
             assertThat(node(a).getStatus()).isEqualTo(AgentNode.STOPPED);
             assertThat(node(a).getStopNote()).contains("deadline");
+            assertThat(node(a).getStopReason()).isEqualTo(AgentNode.REASON_DEADLINE);
+        }
+
+        @Test
+        @DisplayName("a run's own limit stops the whole tree, coded as the run's, and what had ended keeps its own")
+        void runLimit() {
+            String a = deploy(ROOT, "First");
+            String b = deploy(ROOT, "Second");
+            answer(node(b), "Done.");
+            tree.stopTree(ROOT, "The run's budget is spent.");
+            assertThat(node(a).getStatus()).isEqualTo(AgentNode.STOPPED);
+            assertThat(node(a).getStopReason()).isEqualTo(AgentNode.REASON_RUN_LIMIT);
+            assertThat(node(b).getStatus()).isEqualTo(AgentNode.DONE);
+            assertThat(node(b).getStopReason()).isNull();
         }
 
         @Test

@@ -4,10 +4,12 @@ import { Button, Callout, EmptyState, FadeSwap, Field, Presence, Select } from '
 import { useTranslation } from '@/i18n'
 import { ConnectionModal } from '@/features/settings/components/ConnectionModal'
 import {
-  startConnectionSignIn, useConnections, type Connection, type ConnectionProtocol,
+  useConnections, type Connection, type ConnectionProtocol,
 } from '@/features/settings/services/connectionsApi'
 import { useServiceSetupMissing } from '@edition'
+import { useConnectionSignInWait, useStartConnectionSignIn } from '@/features/settings/hooks/useConnectionSignIn'
 import { useCatalogProtocol } from '../hooks/useConnectorCatalog'
+import { serverText } from '@/i18n/serverText'
 
 export interface ConnectionChoice {
   protocol: ConnectionProtocol | undefined
@@ -29,6 +31,12 @@ export interface ConnectionChoice {
    * ConnectorConfigModal), since adding one is the only step forward.
    */
   none: boolean
+  /**
+   * The connection the source names was deleted (ConnectorConnectionService.delete keeps its sources).
+   * Nothing is picked in its place - the default shown as chosen would read as the connection already in
+   * use, and choosing it would change nothing - so the select waits for a choice and says why.
+   */
+  missing: boolean
   /** Opens the add-connection dialog. The picker renders it; any button may ask for it. */
   startAdding: () => void
   adding: boolean
@@ -58,8 +66,10 @@ export function useConnectionChoice(
         ...data.filter(c => c.protocol !== protocol && !!sourceType && !!c.sourceTypes?.includes(sourceType)),
       ]
     : []
-  const selected = options.find(c => c.id === chosen) ?? options.find(c => c.isDefault) ?? options[0]
   const loading = !!protocol && isLoading
+  // A source's own connection, gone: no stand-in until another is chosen.
+  const missing = !!protocol && !loading && !!initial && chosen === initial && !options.some(c => c.id === initial)
+  const selected = missing ? undefined : options.find(c => c.id === chosen) ?? options.find(c => c.isDefault) ?? options[0]
   return {
     protocol,
     options,
@@ -69,6 +79,7 @@ export function useConnectionChoice(
     blocked: !!protocol && !loading
       && (!selected || (selected.authKind === 'OAUTH' && selected.status !== 'CONNECTED')),
     none: !!protocol && !loading && options.length === 0,
+    missing,
     startAdding: () => setAdding(true),
     adding,
     stopAdding: () => setAdding(false),
@@ -106,6 +117,9 @@ export function ConnectionPicker({ choice, disabled, addInFooter }: {
 
   const service = info ? t(info.displayName) : (choice.protocol ?? '')
   const signedOut = !!selected && oauth && selected.status !== 'CONNECTED'
+  // On Desktop and Home Server the sign-in opens in the browser; the picker watches for it to finish.
+  const startSignIn = useStartConnectionSignIn()
+  const browserSignIn = useConnectionSignInWait(oauth ? selected : undefined)
 
   const addLink = (
     <Button variant="hyperlink" onClick={choice.startAdding} disabled={disabled} className="inline-flex items-center gap-1">
@@ -120,7 +134,7 @@ export function ConnectionPicker({ choice, disabled, addInFooter }: {
       <FadeSwap swapKey={choice.options.length === 0 ? 'none' : 'list'}>
       {choice.options.length === 0 ? (
         <EmptyState className="py-0" action={!addInFooter ? addLink : undefined}>
-          {t('You have no {service} connection yet. A source reads through one - the server and the credential it is reached with.', { service })}
+          {t('No {service} connection yet.', { service })}
         </EmptyState>
       ) : (
         <>
@@ -135,6 +149,7 @@ export function ConnectionPicker({ choice, disabled, addInFooter }: {
                 value={selected?.id ?? ''}
                 onChange={choice.choose}
                 disabled={disabled}
+                placeholder={t('Choose...')}
                 options={choice.options.map(c => ({
                   value: c.id,
                   label: c.isDefault ? t('{name} (default)', { name: c.name }) : c.name,
@@ -142,6 +157,9 @@ export function ConnectionPicker({ choice, disabled, addInFooter }: {
               />
             )}
           </Field>
+          <Presence show={choice.missing} className="mt-3">
+            <Callout tone="warning">{t('Its connection was deleted. Choose another one to sync it again.')}</Callout>
+          </Presence>
           {/* Only a sign-in makes such a connection usable, and it is this user's to do - unless the
               deployment itself is not set up for the service, which only an administrator can fix. */}
           <Presence show={signedOut} className="mt-3">
@@ -151,18 +169,21 @@ export function ConnectionPicker({ choice, disabled, addInFooter }: {
               <Callout
                 tone="warning"
                 actions={
-                  <Button variant="secondary" onClick={() => startConnectionSignIn(selected)} disabled={disabled}>
+                  <Button variant="secondary" onClick={() => { void startSignIn(selected) }} disabled={disabled}>
                     {selected.status === 'NEEDS_RECONNECT' ? t('Sign in again') : t('Sign in')}
                   </Button>
                 }
               >
                 <p>
                   {selected.status === 'NEEDS_RECONNECT'
-                    ? t('Sign in to {name} again. This source reads as the account signed in there.', { name: selected.name })
-                    : t('Sign in to {name} first. This source reads as the account signed in there.', { name: selected.name })}
+                    ? t('Sign in to {name} again.', { name: selected.name })
+                    : t('Sign in to {name} first.', { name: selected.name })}
                 </p>
                 <Presence show={!!selected.statusDetail}>
-                  <p className="mt-1 text-ink-caption">{selected.statusDetail}</p>
+                  <p className="mt-1 text-ink-caption">{serverText(selected.statusDetail)}</p>
+                </Presence>
+                <Presence show={!!browserSignIn.wait}>
+                  <p className="mt-1 text-ink-caption">{t('Your browser opened for the sign-in.')}</p>
                 </Presence>
               </Callout>
             ))}

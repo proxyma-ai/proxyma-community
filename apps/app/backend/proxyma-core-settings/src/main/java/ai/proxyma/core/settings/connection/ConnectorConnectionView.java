@@ -42,7 +42,27 @@ public record ConnectorConnectionView(
          * and another service's where its sign-in reaches that too (an Atlassian Cloud site serves
          * Jira and Confluence). What a source's Connection field offers.
          */
-        List<String> sourceTypes) {
+        List<String> sourceTypes,
+        /**
+         * The last sign-in that came back refused or failed, since one last succeeded - null when none
+         * (OAuth2ConnectionService.SignInFailure). In memory on the server: what a page waiting on a
+         * sign-in reads to stop waiting and say why.
+         */
+        OAuth2ConnectionService.SignInFailure signInFailure) {
+
+    /** Every field but {@code signInFailure}. */
+    public ConnectorConnectionView(UUID id, String name, ConnectionProtocol protocol, String protocolLabel,
+                                   ConnectionAuthKind authKind, String baseUrl, String username,
+                                   String secretMasked, boolean secretConfigured, boolean isDefault,
+                                   boolean allowRead, boolean allowWrite, boolean supportsWrite,
+                                   ConnectionStatus status, String statusDetail, String accountLabel,
+                                   Instant connectedAt, McpView mcp, String authMethod,
+                                   java.util.Map<String, String> settings, List<String> secretsConfigured,
+                                   List<String> sourceTypes) {
+        this(id, name, protocol, protocolLabel, authKind, baseUrl, username, secretMasked, secretConfigured,
+                isDefault, allowRead, allowWrite, supportsWrite, status, statusDetail, accountLabel, connectedAt, mcp,
+                authMethod, settings, secretsConfigured, sourceTypes, null);
+    }
 
     /** Every field but {@code sourceTypes}, which the service fills in from the catalog. */
     public ConnectorConnectionView(UUID id, String name, ConnectionProtocol protocol, String protocolLabel,

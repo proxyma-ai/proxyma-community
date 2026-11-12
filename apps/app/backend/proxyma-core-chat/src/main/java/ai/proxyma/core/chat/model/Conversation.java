@@ -37,6 +37,17 @@ public class Conversation {
     private String guestSessionId;
 
     private String title;
+
+    // WHAT KIND OF CONVERSATION A MODULE OR AN AGENT OPENED, for the page to word in the reader's
+    // language (ConversationOpening, 2026-11-05): a run's ("run_schedule"), a note for a lead
+    // ("lead_note"), a teammate's message ("message") - the kinds a transcript's mail lines carry.
+    // `title` then holds only the words that are data (a run's task, a sender's name) or nothing.
+    // Null for every conversation a person opened, whose title is theirs.
+    @Column(name = "title_kind", length = TITLE_KIND_MAX)
+    private String titleKind;
+
+    public static final int TITLE_KIND_MAX = 32;
+
     private Instant createdAt;
     private Instant updatedAt;
     private int messageCount;
@@ -139,6 +150,8 @@ public class Conversation {
     public void setGuestSessionId(String guestSessionId) { this.guestSessionId = guestSessionId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public String getTitleKind() { return titleKind; }
+    public void setTitleKind(String titleKind) { this.titleKind = titleKind; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

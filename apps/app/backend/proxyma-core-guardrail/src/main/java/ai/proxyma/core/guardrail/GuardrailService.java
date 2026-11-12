@@ -16,6 +16,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The one door to the guardrails. Three of them, in fact: one after user input, one after model
@@ -428,9 +429,14 @@ public class GuardrailService {
      * with the user getting nothing and no explanation.
      */
     public String withheldToolResult(GuardrailDecision decision) {
-        List<String> categories = decision.categories();
-        String reason = categories.isEmpty() ? "" : " (" + String.join(", ", safe(categories)) + ")";
-        return "{\"success\":false,\"guardrailBlocked\":true,\"error\":\""
+        List<String> categories = safe(decision.categories());
+        String reason = categories.isEmpty() ? "" : " (" + String.join(", ", categories) + ")";
+        // The categories again, as a list: the chat page reads them to say under the answer that a
+        // source was held back and why (guardrailNotes.ts), and a list is a contract where the
+        // sentence's parenthesis is only prose. Older stored results carry the sentence alone, which
+        // the page still parses.
+        String list = categories.stream().map(c -> "\"" + c + "\"").collect(Collectors.joining(","));
+        return "{\"success\":false,\"guardrailBlocked\":true,\"categories\":[" + list + "],\"error\":\""
                 + "This result was withheld by the configured guardrails" + reason + ". "
                 + "The content is not available and calling the same tool again will not change that. "
                 + "Continue with what you have, and tell the user a source was held back if it "

@@ -26,6 +26,11 @@ public abstract class ApiAuth {
 
     void invalidate() {}
 
+    /** The answer to give in place of sending a request with this credential, or null to send it. */
+    ApiResponse refuseBeforeSending(org.springframework.http.HttpMethod method, java.net.URI uri) {
+        return null;
+    }
+
     void apply(HttpHeaders headers) {
         String value = headerValue();
         if (value != null) headers.set(headerName(), value);
@@ -51,6 +56,9 @@ public abstract class ApiAuth {
             @Override String headerValue() { return scheme + " " + credentials.accessToken(); }
             @Override boolean refreshable() { return credentials.signsIn(); }
             @Override void invalidate() { credentials.invalidateToken(); }
+            @Override ApiResponse refuseBeforeSending(org.springframework.http.HttpMethod method, java.net.URI uri) {
+                return credentials.refuseBeforeSending(method, uri);
+            }
         };
     }
 

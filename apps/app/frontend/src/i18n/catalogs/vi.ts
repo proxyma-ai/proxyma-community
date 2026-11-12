@@ -47,6 +47,17 @@ export const vi: Record<string, string> = {
   // -- language and appearance ------------------------------------------------
   'Language': 'Ngôn ngữ',
   'Appearance': 'Giao diện',
+  'Flat': 'Phẳng',
+  'Gradient': 'Chuyển sắc',
+  'Accent color': 'Màu nhấn',
+  // The accent colors (appearance.ts) - here, not in ee/, so Community has them too; Constellations' agent colors
+  // share the names.
+  'Teal': 'Xanh mòng két',
+  'Blue': 'Xanh dương',
+  'Violet': 'Tím',
+  'Green': 'Xanh lá',
+  'Amber': 'Hổ phách',
+  'Rose': 'Hồng',
   'Light': 'Sáng',
   'Proxyma': 'Proxyma',
   'Dark': 'Tối',
@@ -86,15 +97,16 @@ export const vi: Record<string, string> = {
   'Skills': 'Kỹ năng',
   'Workflows': 'Quy trình',
   'API Tokens': 'Token API',
+  'Each step is one you do yourself.': 'Mỗi bước là một việc bạn tự làm.',
+  'Your turn': 'Đến lượt bạn',
   'AI Assistants': 'Trợ lý AI',
-  'Add this to .vscode/mcp.json, or run MCP: Open User Configuration from the Command Palette for every workspace:': 'Thêm đoạn này vào .vscode/mcp.json, hoặc chạy MCP: Open User Configuration từ Command Palette để áp dụng cho mọi workspace:',
-  "Anthropic's coding assistant, in the terminal and in VS Code. It comes with a Claude Pro or Max subscription.": 'Trợ lý lập trình của Anthropic, trong terminal và trong VS Code. Có sẵn trong gói Claude Pro hoặc Max.',
-  'ChatGPT and Gemini on the web cannot reach a server on your computer. Use the apps above instead.': 'ChatGPT và Gemini trên web không kết nối được tới máy chủ trên máy tính của bạn. Hãy dùng các ứng dụng ở trên.',
-  'Claude, ChatGPT and Gemini can search your sources through Proxyma, on their own subscription.':
-    'Claude, ChatGPT và Gemini có thể tìm kiếm trong các nguồn dữ liệu của bạn thông qua Proxyma, bằng gói đăng ký của riêng chúng.',
+  'Add this to .vscode/mcp.json:': 'Thêm đoạn này vào .vscode/mcp.json:',
+  "Anthropic's coding assistant for the terminal and VS Code.": 'Trợ lý lập trình của Anthropic cho terminal và VS Code.',
+  'Web versions of ChatGPT and Gemini cannot connect. Use the apps above.': 'Bản web của ChatGPT và Gemini không kết nối được. Hãy dùng các ứng dụng ở trên.',
+  'Let Claude, ChatGPT and Gemini search your sources.': 'Cho Claude, ChatGPT và Gemini tìm trong nguồn dữ liệu của bạn.',
   'Copilot Chat in VS Code, in agent mode.': 'Copilot Chat trong VS Code, ở chế độ agent.',
-  'Each assistant needs an access token. Generate one under API Tokens and put it where the examples say {token}.': 'Mỗi trợ lý cần một token truy cập. Hãy tạo token trong mục Token API và đặt nó vào chỗ ghi {token} trong các ví dụ.',
-  "Google's assistant in the terminal. Sign in with a Google account; a Gemini subscription raises its limits.": 'Trợ lý của Google trong terminal. Đăng nhập bằng tài khoản Google; gói Gemini sẽ nâng giới hạn sử dụng.',
+  'Each assistant needs an access token from API Tokens. Put it where you see {token}.': 'Mỗi trợ lý cần một token truy cập trong mục Token API. Dán nó vào chỗ {token}.',
+  "Google's assistant for the terminal.": 'Trợ lý của Google cho terminal.',
   'In Claude, open Settings > Developer > Edit Config, and add this to the file:': 'Trong Claude, mở Settings > Developer > Edit Config, rồi thêm đoạn này vào tệp:',
   'Install Gemini CLI, then run this in a terminal:': 'Cài Gemini CLI, rồi chạy lệnh này trong terminal:',
   'Install Node.js from nodejs.org if you do not have it.': 'Cài Node.js từ nodejs.org nếu bạn chưa có.',
@@ -102,20 +114,20 @@ export const vi: Record<string, string> = {
   'MCP setup guide': 'Hướng dẫn thiết lập MCP',
   'Open API Tokens': 'Mở Token API',
   'Proxyma address for assistants': 'Địa chỉ Proxyma cho trợ lý',
-  'Proxyma now appears in the ChatGPT desktop app, the Codex CLI and the Codex extension.': 'Proxyma giờ xuất hiện trong ứng dụng ChatGPT trên máy tính, Codex CLI và tiện ích Codex.',
+  'Proxyma now shows up in ChatGPT and Codex.': 'Proxyma giờ đã có trong ChatGPT và Codex.',
   'Quit Claude completely and open it again.': 'Thoát hẳn Claude rồi mở lại.',
   'Run this in a terminal:': 'Chạy lệnh này trong terminal:',
-  'Set the environment variable PROXYMA_TOKEN to your access token, then restart the app.': 'Đặt biến môi trường PROXYMA_TOKEN là token truy cập của bạn, rồi khởi động lại ứng dụng.',
+  'Set the environment variable PROXYMA_TOKEN to your access token, then restart ChatGPT and Codex.': 'Đặt biến môi trường PROXYMA_TOKEN là token truy cập của bạn, rồi khởi động lại ChatGPT và Codex.',
   'Start Claude Code and ask it about your documents.': 'Mở Claude Code và hỏi nó về tài liệu của bạn.',
   'Start Gemini CLI and ask it about your documents.': 'Mở Gemini CLI và hỏi nó về tài liệu của bạn.',
-  'The ChatGPT desktop app, the Codex CLI and the Codex extension for VS Code share one setting. Sign in with your ChatGPT account.': 'Ứng dụng ChatGPT trên máy tính, Codex CLI và tiện ích Codex cho VS Code dùng chung một thiết lập. Đăng nhập bằng tài khoản ChatGPT của bạn.',
-  'The Claude app for Windows and macOS. It reaches Proxyma through a small bridge that needs Node.js 18 or later.': 'Ứng dụng Claude cho Windows và macOS. Nó kết nối tới Proxyma qua một cầu nối nhỏ cần Node.js 18 trở lên.',
+  'The ChatGPT desktop app and Codex share one setting.': 'Ứng dụng ChatGPT trên máy tính và Codex dùng chung một thiết lập.',
+  'The Claude desktop app. Needs Node.js 18 or later.': 'Ứng dụng Claude trên máy tính. Cần Node.js 18 trở lên.',
   'What they read from your sources goes to their provider.':
     'Những gì chúng đọc từ các nguồn dữ liệu của bạn sẽ được gửi tới nhà cung cấp của chúng.',
-  'You are on another machine. Assistants work here only if the server sets PROXYMA_EXPOSE_MCP=true, which lets anyone holding this token use its tools.': 'Bạn đang truy cập từ một máy khác. Trợ lý chỉ hoạt động ở đây nếu máy chủ đặt PROXYMA_EXPOSE_MCP=true, và khi đó bất kỳ ai có token này đều dùng được các công cụ của nó.',
+  'From another computer, assistants work only if the server sets PROXYMA_EXPOSE_MCP=true. Anyone with this token can then use its tools.': 'Từ máy khác, trợ lý chỉ hoạt động nếu máy chủ đặt PROXYMA_EXPOSE_MCP=true. Khi đó ai có token này cũng dùng được công cụ của nó.',
   'AI Providers': 'Nhà cung cấp AI',
-  'Agents': 'Tác nhân',
-  'An agent is still working - go back to it': 'Một tác nhân vẫn đang làm việc - quay lại với nó',
+  'Agents': 'Agent',
+  'An agent is still working - go back to it': 'Một agent vẫn đang làm việc - quay lại với nó',
   'Documents': 'Tài liệu',
   'Network': 'Mạng',
   'Data Retention': 'Lưu giữ dữ liệu',
@@ -144,10 +156,8 @@ export const vi: Record<string, string> = {
   'Open Settings': 'Mở Cài đặt',
   // `{product}` is substituted at runtime - it is the branding's product name, not a translatable
   // word. MCP and API are wire protocol names and stay English.
-  'Did you know you can query {product} from your IDE or scripts via MCP/API?':
-    'Bạn có biết rằng bạn có thể truy vấn {product} từ IDE hoặc script qua MCP/API không?',
-  'No AI provider is responding. Chat and search will not work until one is reachable.':
-    'Không có nhà cung cấp AI nào phản hồi. Chat và tìm kiếm sẽ không hoạt động cho tới khi kết nối được tới một nhà cung cấp.',
+  'You can use {product} from your IDE or scripts.': 'Bạn có thể dùng {product} từ IDE hoặc script.',
+  'No AI provider is responding. Chat and search are down.': 'Không có nhà cung cấp AI nào phản hồi. Trò chuyện và tìm kiếm đang không hoạt động.',
   'Account recovered.': 'Đã khôi phục tài khoản.',
   'Failed to recover account.': 'Không thể khôi phục tài khoản.',
   'Failed to delete account.': 'Không thể xóa tài khoản.',
@@ -224,8 +234,7 @@ export const vi: Record<string, string> = {
   // -- the access code (Desktop and Home Server, app/AccessGate.tsx) ---------------
   'Enter the access code': 'Nhập mã truy cập',
   'Access code': 'Mã truy cập',
-  'Proxyma prints it in its log when it starts. On the computer Proxyma runs on, its window and tray icon open it without one.':
-    'Proxyma ghi mã này vào nhật ký khi khởi động. Trên chính máy chạy Proxyma, cửa sổ và biểu tượng khay hệ thống mở ứng dụng mà không cần mã.',
+  'Proxyma prints it in its log at startup.': 'Proxyma ghi mã này vào nhật ký khi khởi động.',
   'That access code is not right.': 'Mã truy cập này không đúng.',
   'Proxyma did not answer. Try again.': 'Proxyma không phản hồi. Hãy thử lại.',
 
@@ -249,11 +258,9 @@ export const vi: Record<string, string> = {
   'Initial server setup': 'Thiết lập máy chủ lần đầu',
   'Create the super admin account': 'Tạo tài khoản quản trị viên cấp cao',
   'Setup token': 'Mã thiết lập',
-  'The server prints it in its log when it starts. Set PROXYMA_SETUP_TOKEN to choose it.':
-    'Máy chủ in mã này vào nhật ký khi khởi động. Đặt PROXYMA_SETUP_TOKEN để tự chọn mã.',
+  'Printed in the server log at startup.': 'Có trong nhật ký máy chủ khi khởi động.',
   'Enter the setup token from the server log': 'Nhập mã thiết lập trong nhật ký của máy chủ',
-  'This account has full control over the server. Choose a strong password you will remember.':
-    'Tài khoản này có toàn quyền kiểm soát máy chủ. Hãy chọn một mật khẩu mạnh mà bạn sẽ nhớ được.',
+  'This account has full control. Use a strong password.': 'Tài khoản này có toàn quyền. Hãy dùng mật khẩu mạnh.',
   'Creating...': 'Đang tạo...',
   'Super admin account created. Redirecting to login...':
     'Đã tạo tài khoản quản trị viên cấp cao. Đang chuyển tới trang đăng nhập...',
@@ -270,17 +277,14 @@ export const vi: Record<string, string> = {
   'Recover my account': 'Khôi phục tài khoản của tôi',
   'Processing...': 'Đang xử lý...',
   'Deleting...': 'Đang xóa...',
-  'This starts the deletion process. Your account is locked immediately and permanently deleted once the grace period ends.':
-    'Thao tác này bắt đầu quá trình xóa. Tài khoản của bạn sẽ bị khóa ngay lập tức và bị xóa vĩnh viễn khi hết thời gian ân hạn.',
-  'Your SSO account stays open, but your data is deleted immediately. This cannot be undone.':
-    'Tài khoản SSO của bạn vẫn được giữ, nhưng dữ liệu của bạn bị xóa ngay lập tức. Không thể hoàn tác.',
+  'Your account is locked now and deleted when the grace period ends.': 'Tài khoản bị khóa ngay và bị xóa khi hết thời gian chờ.',
+  'Your data is deleted now. Your SSO account stays. This cannot be undone.': 'Dữ liệu của bạn bị xóa ngay. Tài khoản SSO vẫn còn. Không thể hoàn tác.',
   'Deleting now is immediate and cannot be undone. Are you sure?':
     'Xóa ngay sẽ có hiệu lực tức thì và không thể hoàn tác. Bạn có chắc chắn không?',
   // Two forms on the English side, one on the Vietnamese: the language does not inflect for
   // number. Written with the separator anyway so the entry matches its key exactly.
   '{count} day|{count} days': '{count} ngày',
-  'Access is locked until you recover the account or the deletion completes.':
-    'Quyền truy cập bị khóa cho tới khi bạn khôi phục tài khoản hoặc quá trình xóa hoàn tất.',
+  'Locked until you recover the account or it is deleted.': 'Bị khóa cho đến khi bạn khôi phục tài khoản hoặc tài khoản bị xóa.',
   // The rows listing what is destroyed.
   'Uploaded files': 'Tệp tin đã tải lên',
   'Any files you uploaded are deleted, if present': 'Mọi tệp tin bạn đã tải lên sẽ bị xóa, nếu có',
@@ -302,10 +306,8 @@ export const vi: Record<string, string> = {
   'You are trying {product} as a guest.': 'Bạn đang dùng thử {product} với tư cách khách.',
   'You have used all {limit} free messages.': 'Bạn đã dùng hết {limit} tin nhắn miễn phí.',
   '{remaining} of {limit} free messages left.': 'Còn {remaining} trên {limit} tin nhắn miễn phí.',
-  'Sign in for your own conversation history and your own sources.':
-    'Đăng nhập để có lịch sử trò chuyện và nguồn dữ liệu của riêng bạn.',
-  'Sign in for your own conversation history, your own sources, and a far larger allowance.':
-    'Đăng nhập để có lịch sử trò chuyện, nguồn dữ liệu của riêng bạn và hạn mức lớn hơn nhiều.',
+  'Sign in to keep your chats and sources.': 'Đăng nhập để lưu cuộc trò chuyện và nguồn dữ liệu của bạn.',
+  'Sign in to keep your chats and sources, with a larger allowance.': 'Đăng nhập để lưu cuộc trò chuyện, nguồn dữ liệu và có hạn mức lớn hơn.',
 
   // -- chat: the composer -------------------------------------------------------
   'Hi, {name}': 'Chào {name}',
@@ -319,13 +321,12 @@ export const vi: Record<string, string> = {
   'Add files, select a skill, and more': 'Thêm tệp tin, chọn kỹ năng và nhiều hơn nữa',
   'or drop or paste them here': 'hoặc thả hay dán tệp vào đây',
   'Attach files': 'Đính kèm tệp tin',
-  'Attach one or more files to this message': 'Đính kèm một hoặc nhiều tệp tin vào tin nhắn này',
   'Drop files to attach': 'Thả tệp tin vào đây để đính kèm',
   'Remove {name}': 'Xóa {name}',
   'Upload failed': 'Tải lên thất bại',
   'Pick a skill to use for this message': 'Chọn một kỹ năng để dùng cho tin nhắn này',
   'Manage skills': 'Quản lý kỹ năng',
-  'Open Agent settings': 'Mở cài đặt tác nhân',
+  'Open Agent settings': 'Mở cài đặt agent',
   'Open skill settings': 'Mở cài đặt kỹ năng',
   'Create a new skill': 'Tạo một kỹ năng mới',
   'Create new skill': 'Tạo kỹ năng mới',
@@ -341,23 +342,21 @@ export const vi: Record<string, string> = {
   '{count} tokens freed from context window': 'Đã giải phóng {count} token khỏi cửa sổ ngữ cảnh',
   'Condense conversation - context window {pct}% full':
     'Cô đọng cuộc trò chuyện - cửa sổ ngữ cảnh (context window) đã đầy {pct}%',
-  'Context window is {pct}% full. Condense now to free up space, or start a new conversation for the best experience.':
-    'Cửa sổ ngữ cảnh (context window) đã đầy {pct}%. Hãy cô đọng ngay để giải phóng chỗ trống, hoặc bắt đầu một cuộc trò chuyện mới để có trải nghiệm tốt nhất.',
+  'Context window {pct}% full. Condense it or start a new chat.': 'Cửa sổ ngữ cảnh đã đầy {pct}%. Hãy cô đọng hoặc bắt đầu cuộc trò chuyện mới.',
   'Session (5h)': 'Phiên (5 giờ)',
   'Weekly': 'Hàng tuần',
   'Monthly': 'Hàng tháng',
   'Resets {at}': 'Đặt lại vào {at}',
   'Resets in at least {duration}': 'Đặt lại sau ít nhất {duration}',
   'Starts with your first message': 'Bắt đầu tính từ tin nhắn đầu tiên của bạn',
-  'Session usage is {pct}% of quota. Click for details.':
-    'Mức sử dụng của phiên là {pct}% hạn mức. Nhấn để xem chi tiết.',
+  'Session usage: {pct}% of quota': 'Đã dùng {pct}% hạn mức phiên',
   'Usage quota - session {pct}% full': 'Hạn mức sử dụng - phiên đã dùng {pct}%',
   // Compact badge labels. "5h" is a unit and stays.
 
   // -- chat: a message and its actions ------------------------------------------
   'Queued': 'Đang chờ',
   'Queued - read at the next step': 'Đang chờ - sẽ được đọc ở bước tiếp theo',
-  'Retry': 'Thử lại',
+  'Try again': 'Thử lại',
   'Copied': 'Đã sao chép',
   'Copy message': 'Sao chép tin nhắn',
   'Copy response': 'Sao chép câu trả lời',
@@ -365,22 +364,17 @@ export const vi: Record<string, string> = {
   'Bad response': 'Câu trả lời chưa tốt',
   'Rated helpful - click again to take it back': 'Đã đánh giá là hữu ích - nhấn lần nữa để bỏ',
   'Rated unhelpful - click again to take it back': 'Đã đánh giá là chưa hữu ích - nhấn lần nữa để bỏ',
-  'Rate this response helpful. When diagnostics are sent to Proxyma, it is sent anonymously with this reply and its question.':
-    'Đánh giá câu trả lời này là hữu ích. Khi bật gửi dữ liệu chẩn đoán tới Proxyma, đánh giá được gửi ẩn danh kèm câu trả lời này và câu hỏi của nó.',
-  'Rate this response unhelpful. When diagnostics are sent to Proxyma, it is sent anonymously with this reply and its question.':
-    'Đánh giá câu trả lời này là chưa hữu ích. Khi bật gửi dữ liệu chẩn đoán tới Proxyma, đánh giá được gửi ẩn danh kèm câu trả lời này và câu hỏi của nó.',
+  'Helpful. If diagnostics are on, this reply and its question are sent anonymously.': 'Hữu ích. Nếu bật chẩn đoán, câu trả lời này và câu hỏi được gửi ẩn danh.',
+  'Not helpful. If diagnostics are on, this reply and its question are sent anonymously.': 'Không hữu ích. Nếu bật chẩn đoán, câu trả lời này và câu hỏi được gửi ẩn danh.',
   'Rewind to this message': 'Tua lại tới tin nhắn này',
-  'Rewind the conversation to this message and put its text back in the input, so you can edit and resend it. Everything after it is removed.':
-    'Tua cuộc trò chuyện về tin nhắn này và đưa nội dung của nó trở lại ô nhập liệu, để bạn có thể sửa và gửi lại. Mọi thứ sau tin nhắn đó sẽ bị xóa.',
+  'Edit and resend this message. Everything after it is removed.': 'Sửa và gửi lại tin nhắn này. Mọi thứ sau nó sẽ bị xóa.',
 
   // -- chat: sharing a conversation ---------------------------------------------
   'Copy share link for this conversation': 'Sao chép liên kết chia sẻ cho cuộc trò chuyện này',
   'Share link copied': 'Đã sao chép liên kết chia sẻ',
-  'Copy a read-only link to this conversation, from its first message through this reply. Anyone signed in who opens it can read that much and nothing after it, and cannot reply or change anything. The link has no expiry date - it keeps working until you delete the conversation.':
-    'Sao chép một liên kết chỉ đọc tới cuộc trò chuyện này, từ tin nhắn đầu tiên cho tới câu trả lời này. Bất kỳ ai đã đăng nhập và mở liên kết đều có thể đọc tới đó và không đọc được gì sau đó, đồng thời không thể trả lời hay thay đổi bất cứ điều gì. Liên kết không có ngày hết hạn - nó vẫn hoạt động cho tới khi bạn xóa cuộc trò chuyện.',
+  'Copy a read-only link up to this reply. Anyone signed in can read it until you delete the conversation.': 'Sao chép liên kết chỉ đọc tới câu trả lời này. Ai đã đăng nhập cũng đọc được cho đến khi bạn xóa cuộc trò chuyện.',
   'This shared conversation is no longer available': 'Cuộc trò chuyện được chia sẻ này không còn khả dụng',
-  'The link may be incorrect, or the conversation it pointed to has been deleted. Share links stop working as soon as their conversation is removed.':
-    'Liên kết có thể không đúng, hoặc cuộc trò chuyện mà nó trỏ tới đã bị xóa. Liên kết chia sẻ ngừng hoạt động ngay khi cuộc trò chuyện tương ứng bị xóa.',
+  'The link is wrong, or the conversation was deleted.': 'Liên kết sai, hoặc cuộc trò chuyện đã bị xóa.',
   'Go to chat': 'Tới trang trò chuyện',
   'Shared by {who} {when}.': 'Được chia sẻ bởi {who} {when}.',
   'Shared by {who}.': 'Được chia sẻ bởi {who}.',
@@ -388,9 +382,7 @@ export const vi: Record<string, string> = {
   'start your own chat': 'bắt đầu cuộc trò chuyện của riêng bạn',
 
   // -- chat: conversation history ------------------------------------------------
-  'Your conversations are listed here, newest first, from the first question you ask.': 'Các cuộc trò chuyện của bạn được liệt kê ở đây, mới nhất ở trên, kể từ câu hỏi đầu tiên bạn đặt.',
-  'Conversations are kept for 7 days after their last activity. Pin one to keep it indefinitely.':
-    'Các cuộc trò chuyện được giữ trong 7 ngày kể từ lần hoạt động cuối. Hãy ghim để giữ lại vô thời hạn.',
+  'Kept for 7 days after last use. Pin one to keep it.': 'Lưu 7 ngày kể từ lần dùng cuối. Ghim để giữ lại.',
   'Delete': 'Xóa',
   // 'Deleting' is NOT repeated here: the conversation row's in-flight label and the tool-call
   // conjugation are the same English string, so one entry serves both. The checker caught the
@@ -403,10 +395,8 @@ export const vi: Record<string, string> = {
   'Restore': 'Khôi phục',
   'Close': 'Đóng',
   '{count} message|{count} messages': '{count} tin nhắn',
-  'Pin - keeps this conversation forever. Unpinned conversations are deleted after 7 days without activity':
-    'Ghim - giữ cuộc trò chuyện này mãi mãi. Các cuộc trò chuyện không được ghim sẽ bị xóa sau 7 ngày không hoạt động',
-  'Unpin - this conversation will then be deleted after 7 days without activity':
-    'Bỏ ghim - cuộc trò chuyện này sau đó sẽ bị xóa sau 7 ngày không hoạt động',
+  'Pin to keep it': 'Ghim để giữ lại',
+  'Unpin. Deleted after 7 days without use': 'Bỏ ghim. Sẽ bị xóa sau 7 ngày không dùng',
   'Failed to delete conversation': 'Không thể xóa cuộc trò chuyện',
   'Failed to update pin': 'Không thể cập nhật trạng thái ghim',
   'just now': 'vừa xong',
@@ -428,23 +418,22 @@ export const vi: Record<string, string> = {
   'Show only the last step': 'Chỉ hiện bước cuối',
   // A sub-agent that works while the conversation goes on, and the two places the thread speaks
   // of it outside its own panel.
-  'Background': 'Chạy nền',
+  'Background': 'Nền',
   // A chat in a panel beside a page (ChatPanel).
   'Suggested prompts': 'Câu hỏi gợi ý',
   'Could not start this conversation. Try again.': 'Không thể bắt đầu cuộc trò chuyện này. Hãy thử lại.',
   'Stopped at the limit of {count} step.|Stopped at the limit of {count} steps.': 'Đã dừng ở giới hạn {count} bước.',
   'Step limit reached': 'Đã đạt giới hạn số bước',
   'The agent has used its {count} step and is not finished.|The agent has used its {count} steps and is not finished.':
-    'Tác nhân đã dùng hết {count} bước và chưa xong việc.',
-  'Continue for up to {count} more step, or stop and get an answer from what it has found.|Continue for up to {count} more steps, or stop and get an answer from what it has found.':
-    'Tiếp tục thêm tối đa {count} bước, hoặc dừng lại và nhận câu trả lời từ những gì nó đã tìm được.',
+    'Agent đã dùng hết {count} bước và chưa xong việc.',
+  'Continue up to {count} more step, or stop and answer now.|Continue up to {count} more steps, or stop and answer now.': 'Tiếp tục thêm tối đa {count} bước, hoặc dừng và trả lời ngay.',
   'Stop here': 'Dừng ở đây',
-  'The work above may be unfinished. Send a message to continue from here. The limit is "Max agent iterations" in Settings > Agents.':
-    'Phần việc ở trên có thể chưa xong. Hãy gửi một tin nhắn để tiếp tục từ đây. Giới hạn này là "Số vòng lặp tối đa của tác nhân" trong Cài đặt > Tác nhân.',
+  'Send a message to continue.': 'Gửi tin nhắn để tiếp tục.',
   'Show raw JSON': 'Xem JSON gốc',
   'Show as fields': 'Xem theo trường',
   'Thinking': 'Đang suy nghĩ',
   '{model} is thinking': '{model} đang suy nghĩ',
+  'What the model is thinking': 'Mô hình đang nghĩ gì',
   '{count} tokens': '{count} token',
   'Accept': 'Chấp nhận',
   'Approve this change': 'Phê duyệt thay đổi này',
@@ -493,10 +482,10 @@ export const vi: Record<string, string> = {
   'Updated a sub-task': 'Đã cập nhật một tác vụ con',
   'Stopping a sub-task': 'Đang dừng một tác vụ con',
   'Stopped a sub-task': 'Đã dừng một tác vụ con',
-  'Asking the main agent': 'Đang hỏi tác nhân chính',
-  'Asked the main agent': 'Đã hỏi tác nhân chính',
-  'Telling the main agent': 'Đang báo tác nhân chính',
-  'Told the main agent': 'Đã báo tác nhân chính',
+  'Asking the main agent': 'Đang hỏi agent chính',
+  'Asked the main agent': 'Đã hỏi agent chính',
+  'Telling the main agent': 'Đang báo agent chính',
+  'Told the main agent': 'Đã báo agent chính',
   'Searching the web': 'Đang tìm kiếm trên web',
   'Searched the web': 'Đã tìm kiếm trên web',
   'Reading page': 'Đang đọc trang',
@@ -615,6 +604,88 @@ export const vi: Record<string, string> = {
   'Deleted the downloaded copy of': 'Đã xóa bản đã tải về của',
   'Linking Jira issues': 'Đang liên kết các issue Jira',
   'Linked Jira issues': 'Đã liên kết các issue Jira',
+  'Reading YouTube comments': 'Đang đọc bình luận YouTube',
+  'Read YouTube comments': 'Đã đọc bình luận YouTube',
+  'Looking up a YouTube viewer': 'Đang xem lại người xem YouTube',
+  'Looked up a YouTube viewer': 'Đã xem lại người xem YouTube',
+  'Reading YouTube replies': 'Đang đọc các câu trả lời trên YouTube',
+  'Read YouTube replies': 'Đã đọc các câu trả lời trên YouTube',
+  'Reading YouTube replies waiting for approval': 'Đang đọc các câu trả lời YouTube đang chờ duyệt',
+  'Read YouTube replies waiting for approval': 'Đã đọc các câu trả lời YouTube đang chờ duyệt',
+  'Opening YouTube video': 'Đang mở video YouTube',
+  'Opened YouTube video': 'Đã mở video YouTube',
+  'Checking on its team': 'Đang xem tình hình nhóm',
+  'Checked on its team': 'Đã xem tình hình nhóm',
+  'Saving a memory': 'Đang lưu một ghi nhớ',
+  'Saved a memory': 'Đã lưu một ghi nhớ',
+  'Noting it for the team': 'Đang ghi lại cho cả nhóm',
+  'Noted it for the team': 'Đã ghi lại cho cả nhóm',
+  'Withdrawing writes': 'Đang rút lại các thao tác ghi',
+  'Withdrew writes': 'Đã rút lại các thao tác ghi',
+  'Reading the writes waiting for approval': 'Đang đọc các thao tác ghi chờ phê duyệt',
+  'Read the writes waiting for approval': 'Đã đọc các thao tác ghi chờ phê duyệt',
+  'Taking new comments to sort': 'Đang lấy bình luận mới để phân loại',
+  'Took new comments to sort': 'Đã lấy bình luận mới để phân loại',
+  'Sorting comments': 'Đang phân loại bình luận',
+  'Sorted comments': 'Đã phân loại bình luận',
+  'Taking comments to answer': 'Đang lấy bình luận cần trả lời',
+  'Took comments to answer': 'Đã lấy bình luận cần trả lời',
+  'Asking you a question': 'Đang hỏi bạn một câu',
+  'Asked you a question': 'Đã hỏi bạn một câu',
+  'Looking through your questions': 'Đang xem các câu hỏi cho bạn',
+  'Looked through your questions': 'Đã xem các câu hỏi cho bạn',
+  'Settling questions as you said': 'Đang xử lý câu hỏi theo lời bạn',
+  'Settled questions as you said': 'Đã xử lý câu hỏi theo lời bạn',
+  'Rewording a question': 'Đang sửa một câu hỏi',
+  'Reworded a question': 'Đã sửa một câu hỏi',
+  'Reading the questions for you': 'Đang đọc các câu hỏi dành cho bạn',
+  'Read the questions for you': 'Đã đọc các câu hỏi dành cho bạn',
+  'Closing comments that get no reply': 'Đang đóng các bình luận không cần trả lời',
+  'Closed comments that get no reply': 'Đã đóng các bình luận không cần trả lời',
+  'Reading the team': 'Đang xem cấu hình nhóm',
+  'Read the team': 'Đã xem cấu hình nhóm',
+  'Adding an agent': 'Đang thêm một agent',
+  'Added an agent': 'Đã thêm một agent',
+  'Changing an agent': 'Đang sửa một agent',
+  'Changed an agent': 'Đã sửa một agent',
+  'Removing an agent': 'Đang xóa một agent',
+  'Removed an agent': 'Đã xóa một agent',
+  'Linking agents': 'Đang nối các agent',
+  'Linked agents': 'Đã nối các agent',
+  'Scheduling an agent': 'Đang đặt lịch cho một agent',
+  'Scheduled an agent': 'Đã đặt lịch cho một agent',
+  'Looking through its files': 'Đang xem các tệp của mình',
+  'Looked through its files': 'Đã xem các tệp của mình',
+  'Reading a file': 'Đang đọc một tệp',
+  'Read a file': 'Đã đọc một tệp',
+  'Writing a file': 'Đang viết một tệp',
+  'Wrote a file': 'Đã viết một tệp',
+  'Editing a file': 'Đang sửa một tệp',
+  'Edited a file': 'Đã sửa một tệp',
+  'Deleting a file': 'Đang xóa một tệp',
+  'Deleted a file': 'Đã xóa một tệp',
+  'Writing in its journal': 'Đang ghi nhật ký',
+  'Wrote in its journal': 'Đã ghi nhật ký',
+  'Posting a finding to the board': 'Đang đăng một phát hiện lên bảng',
+  'Posted a finding to the board': 'Đã đăng một phát hiện lên bảng',
+  'Reading the board': 'Đang đọc bảng',
+  'Read the board': 'Đã đọc bảng',
+  'Updating a finding': 'Đang cập nhật một phát hiện',
+  'Updated a finding': 'Đã cập nhật một phát hiện',
+  'Messaging a teammate': 'Đang nhắn cho một đồng đội',
+  'Messaged a teammate': 'Đã nhắn cho một đồng đội',
+  'Messaging {name}': 'Đang nhắn cho {name}',
+  'Messaged {name}': 'Đã nhắn cho {name}',
+  'Asking the lead of {name}': 'Đang hỏi trưởng nhóm của {name}',
+  'The lead of {name} answered': 'Trưởng nhóm của {name} đã trả lời',
+  'Asked the lead of {name} - the answer follows': 'Đã hỏi trưởng nhóm của {name} - câu trả lời sẽ đến sau',
+  'Messaged the lead of {name}': 'Đã nhắn cho trưởng nhóm của {name}',
+  'Asking a project lead': 'Đang hỏi trưởng nhóm của một dự án',
+  'A project lead answered': 'Trưởng nhóm của một dự án đã trả lời',
+  'Asked a project lead - the answer follows': 'Đã hỏi trưởng nhóm của một dự án - câu trả lời sẽ đến sau',
+  'Messaged a project lead': 'Đã nhắn cho trưởng nhóm của một dự án',
+  'Replying to a YouTube comment': 'Đang trả lời một bình luận YouTube',
+  'Replied to a YouTube comment': 'Đã trả lời một bình luận YouTube',
   'Reading the activity on pull request': 'Đang đọc hoạt động trên pull request',
   'Read the activity on pull request': 'Đã đọc hoạt động trên pull request',
   'Reading comments on pull request': 'Đang đọc bình luận trên pull request',
@@ -874,9 +945,9 @@ export const vi: Record<string, string> = {
   'Searched the web, {count} result|Searched the web, {count} results': 'Đã tìm kiếm trên web, {count} kết quả',
   'Created {key}': 'Đã tạo {key}',
   // The one tool display-name override: "Delegate" names the mechanism, "Agent" what is seen.
-  'Agent': 'Tác nhân',
-  'Direct agent': 'Điều phối tác nhân',
-  'Message main agent': 'Nhắn tác nhân chính',
+  'Agent': 'Agent',
+  'Direct agent': 'Điều phối agent',
+  'Message main agent': 'Nhắn agent chính',
 
   // -- the Sources page -----------------------------------------------------------
   'All': 'Tất cả',
@@ -893,7 +964,7 @@ export const vi: Record<string, string> = {
   'Search source title': 'Tìm theo tên nguồn dữ liệu',
   'Clear search': 'Xóa từ khóa tìm kiếm',
   'Loading more...': 'Đang tải thêm...',
-  'No sources yet. Add a folder, a web page or a project, and what it holds becomes searchable in chat.': 'Chưa có nguồn dữ liệu nào. Hãy thêm một thư mục, một trang web hoặc một dự án, và nội dung của nó sẽ tìm được trong trò chuyện.',
+  'No sources yet. Add one to search it in chat.': 'Chưa có nguồn dữ liệu. Thêm một nguồn để tìm trong trò chuyện.',
   'No sources match "{query}".': 'Không có nguồn dữ liệu nào có tên khớp với "{query}".',
   'Drop files to upload': 'Thả tệp tin vào đây để tải lên',
   'Drop a folder to index': 'Thả một thư mục vào đây để lập chỉ mục',
@@ -917,13 +988,11 @@ export const vi: Record<string, string> = {
   'Configure {name}': 'Cấu hình {name}',
   'Save': 'Lưu',
   'Saving...': 'Đang lưu...',
-  'Save and re-sync': 'Lưu và đồng bộ lại',
   'Configuration saved - re-syncing this connector':
     'Đã lưu cấu hình - đang đồng bộ lại bộ kết nối này',
   'Failed to save configuration': 'Không thể lưu cấu hình',
   'Failed to change the knowledge-graph setting': 'Không thể thay đổi cài đặt đồ thị tri thức',
-  'Saving re-syncs this connector in full and drops anything the new scope excludes.':
-    'Việc lưu sẽ đồng bộ lại toàn bộ bộ kết nối này và gỡ khỏi chỉ mục mọi thứ phạm vi mới loại trừ.',
+  'Each change syncs it again and removes what is no longer included.': 'Mỗi thay đổi sẽ đồng bộ lại nguồn và bỏ những gì không còn trong phạm vi.',
   'Scan subdirectories recursively': 'Quét cả các thư mục con',
   // Web crawl scope.
   'Starting URL': 'URL bắt đầu',
@@ -938,28 +1007,22 @@ export const vi: Record<string, string> = {
   'Render JavaScript': 'Kết xuất JavaScript',
   'Slower. Needed for client-rendered sites.':
     'Chậm hơn. Cần thiết cho các trang web kết xuất phía trình duyệt.',
-  'Crawling {pages} pages takes hours, longer with JavaScript rendering. Indexing starts with the first page found.':
-    'Thu thập {pages} trang mất vài giờ, lâu hơn nếu bật kết xuất JavaScript. Việc lập chỉ mục bắt đầu ngay từ trang đầu tiên tìm được.',
+  'Crawling {pages} pages takes hours.': 'Thu thập {pages} trang sẽ mất nhiều giờ.',
   // Per-source connection override.
   'Connection': 'Kết nối',
   // The knowledge graph opt-in - the one setting here that costs money.
   'Build a knowledge graph': 'Xây dựng đồ thị tri thức',
-  'Maps people, systems and how they connect. One AI call per passage, so indexing costs two to three times as much.':
-    'Lập bản đồ con người, hệ thống và cách chúng liên kết. Mỗi đoạn tốn một lượt gọi AI, nên chi phí lập chỉ mục tăng gấp hai đến gấp ba.',
-  'Runs in the background after you save, over what is already indexed. Search is unaffected.': 'Chạy nền sau khi bạn lưu, trên những gì đã được lập chỉ mục. Việc tìm kiếm không bị ảnh hưởng.',
-  'Knowledge-graph extraction is off for this deployment. Turn it on under Settings > Search.': 'Việc trích xuất đồ thị tri thức đang tắt trên bản triển khai này. Hãy bật nó trong Cài đặt > Tìm kiếm.',
-  'No model is set for knowledge-graph extraction, so nothing will be extracted. Choose one under Settings > Search.': 'Chưa đặt mô hình cho việc trích xuất đồ thị tri thức, nên sẽ không có gì được trích xuất. Hãy chọn một mô hình trong Cài đặt > Tìm kiếm.',
-  'Turning this off deletes what this source has contributed to the graph. Its index and search are not affected.':
-    'Tắt tùy chọn này sẽ xóa những gì nguồn dữ liệu này đã đóng góp vào đồ thị. Chỉ mục và việc tìm kiếm của nguồn không bị ảnh hưởng.',
+  'Maps people, systems and their links. Indexing costs 2 to 3 times more.': 'Vẽ bản đồ người, hệ thống và mối liên hệ. Chi phí lập chỉ mục gấp 2 đến 3 lần.',
+  'Runs in the background.': 'Chạy nền.',
+  'The knowledge graph is off. Turn it on in Settings > Search.': 'Đồ thị tri thức đang tắt. Bật trong Cài đặt > Tìm kiếm.',
+  'No knowledge graph model is set. Choose one in Settings > Search.': 'Chưa chọn mô hình cho đồ thị tri thức. Chọn trong Cài đặt > Tìm kiếm.',
+  'Turning this off removes this source from the graph.': 'Tắt mục này sẽ gỡ nguồn này khỏi đồ thị tri thức.',
   '{entities} entities, {relations} relationships': '{entities} thực thể, {relations} mối quan hệ',
   'Passages in the item being read': 'Các đoạn của mục đang đọc',
-  'The knowledge-graph model at {host} is not answering. It is asked again at {time}.':
-    'Mô hình đồ thị tri thức tại {host} không phản hồi. Hệ thống sẽ thử lại lúc {time}.',
-  'The knowledge-graph model is not answering. It is asked again at {time}.':
-    'Mô hình đồ thị tri thức không phản hồi. Hệ thống sẽ thử lại lúc {time}.',
+  'The graph model at {host} is not answering. Retrying at {time}.': 'Mô hình đồ thị tại {host} không phản hồi. Thử lại lúc {time}.',
+  'The graph model is not answering. Retrying at {time}.': 'Mô hình đồ thị không phản hồi. Thử lại lúc {time}.',
   'Last error: {reason}': 'Lỗi gần nhất: {reason}',
-  'The request went through the proxy - add the host to No proxy if it is on your network.':
-    'Yêu cầu đã đi qua proxy - nếu máy chủ này nằm trong mạng nội bộ, hãy thêm nó vào mục Không dùng proxy.',
+  'This went through the proxy. Add the host to No proxy if it is local.': 'Yêu cầu đã đi qua proxy. Thêm máy chủ vào Không dùng proxy nếu nó ở mạng nội bộ.',
 
   // -- registering a source ---------------------------------------------------------
   'Add': 'Thêm',
@@ -1014,18 +1077,16 @@ export const vi: Record<string, string> = {
   'Add folder': 'Thêm thư mục',
   'Adding...': 'Đang thêm...',
   'Folder path': 'Đường dẫn thư mục',
-  'Browse...': 'Duyệt...',
+  'Browse': 'Duyệt',
   'Waiting...': 'Đang chờ...',
   'Choose a folder first': 'Hãy chọn một thư mục trước',
   'Failed to add folder': 'Không thể thêm thư mục',
   'Folder added - indexing started': 'Đã thêm thư mục - bắt đầu lập chỉ mục',
   'Could not open the folder chooser. Type or paste a folder path below instead.':
     'Không thể mở hộp thoại chọn thư mục. Hãy gõ hoặc dán đường dẫn thư mục vào bên dưới.',
-  'Proxyma indexes these files where they are. Nothing is copied, moved, or sent anywhere.':
-    'Proxyma lập chỉ mục các tệp tin này ngay tại chỗ. Không có gì bị sao chép, di chuyển hay gửi đi đâu cả.',
+  'Files stay where they are. Nothing is copied or sent.': 'Tệp tin nằm nguyên chỗ cũ. Không có gì bị sao chép hay gửi đi.',
   'Finding that folder on this machine...': 'Đang tìm thư mục đó trên máy này...',
-  'Drop a folder rather than individual files - Proxyma indexes a whole folder where it is. Or choose one with Browse.':
-    'Hãy thả một thư mục thay vì các tệp riêng lẻ - Proxyma lập chỉ mục cả thư mục ngay tại chỗ. Hoặc chọn một thư mục bằng nút Duyệt.',
+  'Drop a folder, not files. Or choose one with Browse.': 'Hãy thả một thư mục, không phải tệp tin. Hoặc chọn bằng nút Duyệt.',
   'Could not find "{name}" on this machine. Choose it with Browse, or paste its path.':
     'Không tìm thấy "{name}" trên máy này. Hãy chọn nó bằng nút Duyệt, hoặc dán đường dẫn của nó.',
   'Could not find that folder on this machine. Choose it with Browse, or paste its path.':
@@ -1034,19 +1095,15 @@ export const vi: Record<string, string> = {
   'No folder exists at that path.': 'Không có thư mục nào ở đường dẫn đó.',
   'That path is a file, not a folder.': 'Đường dẫn đó là một tệp tin, không phải thư mục.',
   'Proxyma cannot read that folder.': 'Proxyma không thể đọc thư mục đó.',
-  'Nothing directly in this folder, but there are supported files in its subfolders.':
-    'Không có gì ngay trong thư mục này, nhưng có các tệp tin được hỗ trợ trong các thư mục con của nó.',
-  'No supported files found. Only the file types highlighted below are indexed.':
-    'Không tìm thấy tệp tin được hỗ trợ nào. Chỉ các loại tệp tin được đánh dấu bên dưới mới được lập chỉ mục.',
-  'No supported files found directly in this folder. Only the file types highlighted below are indexed.':
-    'Không tìm thấy tệp tin được hỗ trợ nào ngay trong thư mục này. Chỉ các loại tệp tin được đánh dấu bên dưới mới được lập chỉ mục.',
+  'Supported files are only in subfolders.': 'Tệp tin được hỗ trợ chỉ nằm trong thư mục con.',
+  'No supported files found.': 'Không tìm thấy tệp tin được hỗ trợ.',
+  'No supported files directly in this folder.': 'Không có tệp tin được hỗ trợ ngay trong thư mục này.',
 
   // -- the file-type picker -------------------------------------------------------------
   'File types to index': 'Các loại tệp tin cần lập chỉ mục',
   'Index every supported type': 'Lập chỉ mục mọi loại được hỗ trợ',
   'Other file types': 'Các loại tệp tin khác',
-  'Comma-separated. Anything with no dedicated converter is indexed as plain text.':
-    'Phân tách bằng dấu phẩy. Bất cứ loại nào không có bộ chuyển đổi riêng sẽ được lập chỉ mục dưới dạng văn bản thuần.',
+  'Comma-separated.': 'Phân cách bằng dấu phẩy.',
   'Office documents': 'Tài liệu văn phòng',
   'Text and data': 'Văn bản và dữ liệu',
   'Email and e-books': 'Email và sách điện tử',
@@ -1092,17 +1149,23 @@ export const vi: Record<string, string> = {
   'Could not enable {connector} write tools': 'Không thể bật công cụ ghi của {connector}',
   'Could not load the call history': 'Không thể tải lịch sử lệnh gọi',
   'Clear log': 'Xóa nhật ký',
+  'Download log': 'Tải nhật ký xuống',
   'Clear the call log?': 'Xóa nhật ký lệnh gọi?',
-  'Every model call recorded so far is deleted, in every period.': 'Mọi lệnh gọi mô hình đã ghi đến nay đều bị xóa, trong mọi khoảng thời gian.',
-  'The costs, charts and breakdowns on this page start again from nothing.': 'Chi phí, biểu đồ và các bảng phân tích trên trang này bắt đầu lại từ đầu.',
-  'The monthly spending limit counts these calls, so this month is counted again from zero.': 'Giới hạn chi tiêu hàng tháng đếm các lệnh gọi này, nên tháng này được đếm lại từ 0.',
-  "The deployment's monthly limit counts these calls, so this month is counted again from zero. Each user's own quota is not reset.": 'Giới hạn hàng tháng của hệ thống đếm các lệnh gọi này, nên tháng này được đếm lại từ 0. Hạn mức riêng của từng người dùng không bị đặt lại.',
+  'Deletes every recorded model call.': 'Xóa mọi lệnh gọi mô hình đã ghi.',
+  'Costs and charts on this page start from zero.': 'Chi phí và biểu đồ trên trang này bắt đầu lại từ 0.',
+  "This month's spending limit starts again from zero.": 'Hạn mức chi tiêu tháng này được tính lại từ 0.',
+  'The monthly limit starts again from zero. User quotas are not reset.': 'Hạn mức tháng được tính lại từ 0. Hạn mức của từng người dùng không bị đặt lại.',
   'Call log cleared': 'Đã xóa nhật ký lệnh gọi',
   'Could not clear the call log': 'Không thể xóa nhật ký lệnh gọi',
   'Could not send your decision': 'Không thể gửi quyết định của bạn',
   'Failed to save: {reason}': 'Lưu thất bại: {reason}',
   'Redacted by a guardrail': 'Đã được rào chắn che bớt',
   'Redacted by a guardrail: {reasons}': 'Đã được rào chắn che bớt: {reasons}',
+  'A source was held back by a guardrail': 'Một nguồn đã bị rào chắn chặn lại',
+  'A source was held back by a guardrail: {reasons}': 'Một nguồn đã bị rào chắn chặn lại: {reasons}',
+  'Some sources were held back by guardrails': 'Một số nguồn đã bị rào chắn chặn lại',
+  'Some sources were held back by guardrails: {reasons}': 'Một số nguồn đã bị rào chắn chặn lại: {reasons}',
+  'Held back by a guardrail': 'Bị rào chắn chặn lại',
   'This request is no longer waiting for an answer.': 'Yêu cầu này không còn chờ câu trả lời nữa.',
   'Asking you': 'Đang hỏi bạn',
   'Asked you': 'Đã hỏi bạn',
@@ -1117,8 +1180,7 @@ export const vi: Record<string, string> = {
   'Sending your answer': 'Đang gửi câu trả lời',
   'Folder': 'Thư mục',
   'Relink folder': 'Liên kết lại thư mục',
-  'Moved or renamed the folder? Choose where it is now. The source keeps its settings and is indexed again from there.':
-    'Đã di chuyển hoặc đổi tên thư mục? Hãy chọn vị trí hiện tại của nó. Nguồn dữ liệu giữ nguyên các thiết lập và được lập chỉ mục lại từ đó.',
+  'Moved the folder? Choose where it is now.': 'Đã chuyển thư mục? Chọn vị trí mới của nó.',
   'Folder relinked - re-indexing it from its new location': 'Đã liên kết lại thư mục - đang lập chỉ mục lại từ vị trí mới',
   'Failed to relink the folder': 'Không thể liên kết lại thư mục',
   'Could not open the folder chooser.': 'Không thể mở hộp thoại chọn thư mục.',
@@ -1139,8 +1201,7 @@ export const vi: Record<string, string> = {
   'Failed to delete "{title}"': 'Không thể xóa "{title}"',
   'No items yet': 'Chưa có mục nào',
   'Discovering items...': 'Đang tìm các mục...',
-  'Storage quota exceeded - processing resumes automatically once usage drops back under the limit':
-    'Đã vượt hạn mức lưu trữ - quá trình xử lý sẽ tự động tiếp tục khi mức sử dụng giảm xuống dưới giới hạn',
+  'Storage quota full. Resumes when usage drops.': 'Hết hạn mức lưu trữ. Sẽ tiếp tục khi dung lượng giảm.',
   // One tracked item's indexing status.
   'Detected': 'Đã phát hiện',
   'Downloading': 'Đang tải xuống',
@@ -1157,13 +1218,10 @@ export const vi: Record<string, string> = {
   'delete': 'xóa',
   'Are you sure you want to {verb}': 'Bạn có chắc chắn muốn {verb}',
   'Type "{value}" to confirm': 'Gõ "{value}" để xác nhận',
-  'The source and all its items will be permanently deleted from the server': 'Nguồn dữ liệu và mọi mục của nó sẽ bị xóa vĩnh viễn khỏi máy chủ',
-  'All associated vector embeddings will be removed from the vector database':
-    'Mọi vector nhúng (embeddings) liên quan sẽ bị gỡ khỏi cơ sở dữ liệu vector',
-  'Your own files and folders are NOT touched - nothing is moved, changed or deleted on your disk':
-    'Các tệp tin và thư mục của riêng bạn KHÔNG bị đụng tới - không có gì bị di chuyển, thay đổi hay xóa trên ổ đĩa của bạn',
-  'Proxyma stops indexing this source and forgets what it had indexed from it':
-    'Proxyma ngừng lập chỉ mục nguồn dữ liệu này và quên những gì đã lập chỉ mục từ nó',
+  'The source and its items are deleted from the server': 'Nguồn dữ liệu và mọi mục của nó bị xóa khỏi máy chủ',
+  'Its search index is removed': 'Chỉ mục tìm kiếm của nó bị xóa',
+  'Your files on disk are not touched': 'Tệp tin trên ổ đĩa của bạn không bị ảnh hưởng',
+  'Proxyma stops indexing it and removes its index': 'Proxyma ngừng lập chỉ mục và xóa chỉ mục của nó',
 
   // -- Administration: the tabs and the system view ------------------------------------
   'System': 'Hệ thống',
@@ -1177,15 +1235,29 @@ export const vi: Record<string, string> = {
   'Clearer costs, a faster graph view, and conversations that keep their history.': 'Chi phí rõ ràng hơn, xem đồ thị nhanh hơn, và cuộc trò chuyện giữ nguyên lịch sử.',
   'Usage & Cost charts cost over time and lists every call, cache use included.': 'Mức sử dụng & Chi phí có biểu đồ chi phí theo thời gian và liệt kê mọi lượt gọi, kể cả việc dùng bộ nhớ đệm.',
   'Condensing a conversation keeps every message on screen.': 'Thu gọn cuộc trò chuyện vẫn giữ mọi tin nhắn trên màn hình.',
-  'Settings > Agents can keep an Anthropic conversation cached for 5 minutes or 1 hour.': 'Cài đặt > Tác nhân có thể giữ cuộc trò chuyện Anthropic trong bộ nhớ đệm 5 phút hoặc 1 giờ.',
-  'Nothing to condense yet - the conversation needs a few more exchanges.': 'Chưa có gì để thu gọn - cuộc trò chuyện cần thêm vài lượt trao đổi.',
+  'Settings > Agents can keep an Anthropic conversation cached for 5 minutes or 1 hour.': 'Cài đặt > Agent có thể giữ cuộc trò chuyện Anthropic trong bộ nhớ đệm 5 phút hoặc 1 giờ.',
+  'Nothing to condense yet.': 'Chưa có gì để cô đọng.',
   'Prompt cache': 'Bộ nhớ đệm prompt',
   '5 minutes': '5 phút',
   '1 hour': '1 giờ',
   'Cache hit': 'Đọc từ cache',
   'Cache write': 'Ghi vào cache',
   'Cost per month': 'Chi phí theo tháng',
-  'Each model call in the period, newest first. A column heading sorts by that column.': 'Từng lượt gọi mô hình trong khoảng thời gian này, mới nhất trước. Bấm tiêu đề cột để sắp xếp theo cột đó.',
+  'Every model call, newest first.': 'Mọi lệnh gọi mô hình, mới nhất trước.',
+  'All conversations': 'Mọi cuộc trò chuyện',
+  'Conversation {id}': 'Cuộc trò chuyện {id}',
+  'CSV by conversation': 'CSV theo cuộc trò chuyện',
+  'One row per conversation, with its agent': 'Mỗi cuộc trò chuyện một dòng, kèm agent của nó',
+  '{agent}, started by {trigger}. Show only its calls.': '{agent}, bắt đầu bởi {trigger}. Chỉ hiện các lệnh gọi của nó.',
+  '{agent}. Show only its calls.': '{agent}. Chỉ hiện các lệnh gọi của nó.',
+  'a person in its panel': 'một người, trong khung của nó',
+  'the Run now button': 'nút Chạy ngay',
+  'a schedule': 'lịch chạy',
+  "a teammate's message": 'tin nhắn của đồng đội',
+  'a note from the server': 'ghi chú từ máy chủ',
+  'a webhook': 'webhook',
+  'new documents': 'tài liệu mới',
+  'the main chat': 'khung trò chuyện chính',
   'All services': 'Tất cả dịch vụ',
   'Sort by': 'Sắp xếp theo',
   'Newest first': 'Mới nhất trước',
@@ -1203,25 +1275,27 @@ export const vi: Record<string, string> = {
   'No rate or list price for this model, so it counts as $0.': 'Mô hình này không có đơn giá hay giá niêm yết nên được tính là $0.',
   'Reported': 'Nhà cung cấp báo',
   'The provider stated this cost in its response.': 'Nhà cung cấp đã nêu chi phí này trong phản hồi.',
+  'The AI provider refused the request: the account has no credit left. Add credit with the provider, then try again.':
+    'Nhà cung cấp AI đã từ chối yêu cầu: tài khoản đã hết tín dụng. Hãy nạp thêm tín dụng ở nhà cung cấp rồi thử lại.',
   'List price': 'Giá niêm yết',
   'No rate is set for this model, so its list price was used.': 'Mô hình này chưa có đơn giá nên đã dùng giá niêm yết.',
-  'Prompt cache warm for {time}. Each message that reads it keeps it another hour.': 'Bộ nhớ đệm lời nhắc còn lưu {time}. Mỗi tin nhắn đọc nó sẽ giữ nó thêm một giờ.',
-  'Prompt cache warm for {time}. Each message that reads it keeps it another five minutes.': 'Bộ nhớ đệm lời nhắc còn lưu {time}. Mỗi tin nhắn đọc nó sẽ giữ nó thêm năm phút.',
+  'Prompt cache warm for {time}. Each use adds an hour.': 'Bộ nhớ đệm lời nhắc còn {time}. Mỗi lần dùng thêm một giờ.',
+  'Prompt cache warm for {time}. Each use adds five minutes.': 'Bộ nhớ đệm lời nhắc còn {time}. Mỗi lần dùng thêm năm phút.',
   'Prompt cache warm for {time}': 'Bộ nhớ đệm lời nhắc còn lưu {time}',
   'Warm until {time}': 'Còn lưu đến {time}',
-  'The cache this call read stays until then unless something reads it again.': 'Bộ nhớ đệm mà lần gọi này đọc được giữ đến lúc đó, trừ khi có lần đọc khác gia hạn nó.',
+  'The cache lasts until then, longer if read again.': 'Bộ nhớ đệm còn đến lúc đó, lâu hơn nếu được đọc lại.',
   'First write': 'Ghi lần đầu',
   'Nothing was cached for this conversation yet.': 'Cuộc trò chuyện này chưa có gì trong bộ nhớ đệm.',
   'Expired': 'Đã hết hạn',
-  'The cache had run out before this call, so it was written again.': 'Bộ nhớ đệm đã hết hạn trước lần gọi này nên được ghi lại.',
+  'The cache had expired, so it was written again.': 'Bộ nhớ đệm đã hết hạn nên được ghi lại.',
   'Tools changed': 'Công cụ đã đổi',
-  'The tools offered differed from the call before, so the cached prompt could not be reused.': 'Các công cụ được cung cấp khác với lần gọi trước nên không dùng lại được lời nhắc đã lưu.',
+  'The tools changed, so the cache was not reused.': 'Công cụ đã thay đổi nên bộ nhớ đệm không được dùng lại.',
   'System prompt changed': 'Lời nhắc hệ thống đã đổi',
-  'The system prompt differed from the call before, so the cached prompt could not be reused.': 'Lời nhắc hệ thống khác với lần gọi trước nên không dùng lại được lời nhắc đã lưu.',
+  'The system prompt changed, so the cache was not reused.': 'Lời nhắc hệ thống đã thay đổi nên bộ nhớ đệm không được dùng lại.',
   'History changed': 'Lịch sử đã đổi',
-  'The conversation no longer started with the messages of the call before - condensed or edited - so the cached prompt could not be reused.': 'Cuộc trò chuyện không còn bắt đầu bằng các tin nhắn của lần gọi trước (đã được rút gọn hoặc chỉnh sửa) nên không dùng lại được lời nhắc đã lưu.',
+  'The history was condensed or edited, so the cache was not reused.': 'Lịch sử đã được cô đọng hoặc sửa nên bộ nhớ đệm không được dùng lại.',
   'Not kept': 'Không được giữ',
-  'The same prompt, within its cache lifetime, and the provider read nothing back: it did not keep what it wrote.': 'Cùng một lời nhắc, còn trong thời hạn lưu, nhưng nhà cung cấp không đọc lại được gì: họ đã không giữ những gì đã ghi.',
+  'The provider did not keep the cache it wrote.': 'Nhà cung cấp đã không giữ bộ nhớ đệm nó ghi.',
   '5 minutes and 1 hour': '5 phút và 1 giờ',
   'Peak': 'Cao nhất',
   // Presence, shown as a tooltip on the dot beside a user.
@@ -1276,10 +1350,8 @@ export const vi: Record<string, string> = {
   'Email (optional)': 'Email (không bắt buộc)',
   'Include my latest log file': 'Đính kèm tệp tin nhật ký mới nhất của tôi',
   'Include this conversation': 'Đính kèm cuộc trò chuyện này',
-  'Can contain file, folder and connector names, errors, settings and the words of searches from this machine. Not the contents of your documents.':
-    'Có thể chứa tên tệp tin, thư mục và bộ kết nối, các lỗi, thiết lập và từ khóa tìm kiếm trên máy này. Không bao gồm nội dung tài liệu của bạn.',
-  'Your questions and the answers as written, including text quoted from your documents.':
-    'Các câu hỏi của bạn và câu trả lời đúng như đã hiển thị, bao gồm cả đoạn trích từ tài liệu của bạn.',
+  'File and source names, errors, settings and search words. Not your documents.': 'Tên tệp tin và nguồn, lỗi, cài đặt và từ khóa tìm kiếm. Không gồm nội dung tài liệu.',
+  'Your questions and the answers, with any quoted text.': 'Câu hỏi và câu trả lời của bạn, kèm phần trích dẫn.',
   'How feedback data is handled': 'Cách dữ liệu góp ý được xử lý',
   'Thanks for your feedback!': 'Cảm ơn góp ý của bạn!',
   'Failed to send feedback. Please try again.': 'Không thể gửi góp ý. Vui lòng thử lại.',
@@ -1303,10 +1375,9 @@ export const vi: Record<string, string> = {
 
   // -- stopping and restarting -----------------------------------------------------------------
   'Quit Proxyma?': 'Thoát Proxyma?',
-  'Indexing and any chat in progress will stop until you start Proxyma again. Nothing already indexed is lost.':
-    'Việc lập chỉ mục và mọi cuộc trò chuyện đang diễn ra sẽ dừng cho tới khi bạn khởi động lại Proxyma. Những gì đã lập chỉ mục không bị mất.',
-  'Restarting': 'Đang khởi động lại',
-  'Starting': 'Đang khởi động',
+  'Indexing and chats stop until you start Proxyma again. Nothing indexed is lost.': 'Việc lập chỉ mục và trò chuyện dừng cho đến khi bạn mở lại Proxyma. Không mất gì đã lập chỉ mục.',
+  'Restarting Proxyma': 'Đang khởi động lại Proxyma',
+  'Starting Proxyma': 'Đang khởi động Proxyma',
   'This is taking a little longer than usual. Please wait.': 'Quá trình này lâu hơn thường lệ một chút. Vui lòng chờ.',
 
   // ===========================================================================================
@@ -1314,22 +1385,21 @@ export const vi: Record<string, string> = {
   // ===========================================================================================
 
   // -- the settings shell -----------------------------------------------------------------
-  'View only - only a super admin can change system configuration.':
-    'Chỉ xem - chỉ quản trị viên cấp cao mới có thể thay đổi cấu hình hệ thống.',
-  'Settings saved. A restart is required for changes to take effect.':
-    'Đã lưu thiết lập. Cần khởi động lại để các thay đổi có hiệu lực.',
-  'Restart now': 'Khởi động lại ngay',
-  'Restart later': 'Khởi động lại sau',
-  'Restart the application now to apply the new settings immediately':
-    'Khởi động lại ứng dụng ngay để áp dụng thiết lập mới lập tức',
-  'Dismiss this banner. Changes will take effect on the next restart':
-    'Bỏ qua thông báo này. Các thay đổi sẽ có hiệu lực ở lần khởi động lại tiếp theo',
+  'View only. Only a super admin can change this.': 'Chỉ xem. Chỉ quản trị viên cấp cao mới được thay đổi.',
+  'Settings saved. Restart Proxyma to apply them.': 'Đã lưu cài đặt. Khởi động lại Proxyma để áp dụng.',
+  'Restart Proxyma now': 'Khởi động lại Proxyma ngay',
+  'Restart Proxyma later': 'Khởi động lại Proxyma sau',
+  'Restart Proxyma now to apply the new settings': 'Khởi động lại Proxyma ngay để áp dụng cài đặt mới',
+  'Dismiss. Changes apply the next time Proxyma restarts': 'Bỏ qua. Thay đổi sẽ áp dụng ở lần Proxyma khởi động lại tiếp theo',
   'Save anyway': 'Vẫn lưu',
   'Not now': 'Để sau',
   'Next': 'Tiếp theo',
   'Loading...': 'Đang tải...',
   'Checking...': 'Đang kiểm tra...',
   'Edit': 'Sửa',
+  // A text edited where it is read (components/ui/EditableText), 2026-11-02.
+  'Click to edit': 'Bấm để sửa',
+  '{label}: {value}. Click to change it.': '{label}: {value}. Nhấn để thay đổi.',
   'Name': 'Tên',
   'Value': 'Giá trị',
   'Header': 'Header',
@@ -1347,7 +1417,7 @@ export const vi: Record<string, string> = {
   'Walkthrough': 'Hướng dẫn nhanh',
   'Display': 'Hiển thị',
   'Show a space fact on the empty chat': 'Hiện một điều thú vị về vũ trụ khi cuộc trò chuyện còn trống',
-  'A short astronomy fact under the logo on a new chat. Saved in this browser only.': 'Một điều ngắn gọn về thiên văn dưới logo của cuộc trò chuyện mới. Chỉ lưu trong trình duyệt này.',
+  'A short space fact on a new chat. This browser only.': 'Một câu về thiên văn trên trang trò chuyện mới. Chỉ trên trình duyệt này.',
   'Proxima Centauri, a small red dwarf about 4.25 light-years away, is the nearest star to the Sun. Its Latin name means the nearest star of Centaurus.': 'Proxima Centauri, một sao lùn đỏ nhỏ cách chúng ta khoảng 4,25 năm ánh sáng, là ngôi sao gần Mặt Trời nhất. Tên Latinh của nó có nghĩa là ngôi sao gần nhất của chòm Bán Nhân Mã.',
   'Active': 'Đang hoạt động',
   'Succeeded': 'Thành công',
@@ -1375,18 +1445,17 @@ export const vi: Record<string, string> = {
   'Skip tour': 'Bỏ qua hướng dẫn',
   'Open-source licenses': 'Giấy phép mã nguồn mở',
   'View licenses': 'Xem giấy phép',
-  'Each open-source part, its license, and how to get GPL and LGPL source.':
-    'Từng thành phần mã nguồn mở, giấy phép của nó, và cách lấy mã nguồn GPL và LGPL.',
-  'Every third-party component Proxyma contains or downloads, its license, and how to get the source code of the GPL and LGPL ones. The same text is THIRD-PARTY-NOTICES.txt in the installation folder.': 'Mọi thành phần của bên thứ ba mà Proxyma chứa hoặc tải về, giấy phép của từng thành phần, và cách nhận mã nguồn của các thành phần theo GPL và LGPL. Nội dung này cũng nằm trong tệp THIRD-PARTY-NOTICES.txt ở thư mục cài đặt.',
+  'Open-source parts and their licenses.': 'Các thành phần mã nguồn mở và giấy phép của chúng.',
+  'Every third-party part in Proxyma, its license, and how to get GPL and LGPL source.': 'Mọi thành phần bên thứ ba trong Proxyma, giấy phép của chúng, và cách lấy mã nguồn GPL và LGPL.',
   'Could not load the notices. Try again in a moment.': 'Không tải được thông báo giấy phép. Hãy thử lại sau giây lát.',
-  'This build does not include the open-source notices. A release build always does.': 'Bản dựng này không kèm thông báo giấy phép mã nguồn mở. Bản phát hành luôn có.',
+  'This build has no open-source notices.': 'Bản dựng này không có thông báo mã nguồn mở.',
   // The 2026-10 kit rebuild: strings the migrated dialogs gained.
   'Already in your connector "{name}"': 'Đã có trong nguồn "{name}" của bạn',
   'Create "{name}"': 'Tạo "{name}"',
   'No folders yet': 'Chưa có thư mục nào',
-  'Not enough storage remaining - selected files total {total}, only {left} left. Remove some files to continue.': 'Không đủ dung lượng lưu trữ - các tệp đã chọn tổng cộng {total}, chỉ còn {left}. Hãy bỏ bớt một số tệp để tiếp tục.',
+  'Not enough storage: {total} selected, {left} left.': 'Không đủ dung lượng: đã chọn {total}, còn {left}.',
   'Over {shown} files to index': 'Hơn {shown} tệp cần lập chỉ mục',
-  'Retry ({count})': 'Thử lại ({count})',
+  'Try again ({count})': 'Thử lại ({count})',
   'Shared by another user in "{name}"': 'Đã được người dùng khác chia sẻ trong "{name}"',
   'Upload progress': 'Tiến độ tải lên',
   '{count} done': '{count} xong',
@@ -1395,31 +1464,31 @@ export const vi: Record<string, string> = {
   '{shown} file to index|{shown} files to index': '{shown} tệp cần lập chỉ mục',
   // The walkthrough, since 2026-10-06 (tourSteps.ts).
   'Welcome to Proxyma': 'Chào mừng đến với Proxyma',
-  'Search everything your company knows, then hand the work to agents that act on it.': 'Tìm kiếm mọi thứ công ty bạn biết, rồi giao việc cho các tác nhân hành động dựa trên đó.',
+  'Search what your company knows, then let agents act on it.': 'Tìm mọi thứ công ty bạn biết, rồi để agent làm việc với nó.',
   'A few short stops, under a minute': 'Vài điểm dừng ngắn, chưa đến một phút',
   'Replay it any time from Settings > About': 'Xem lại bất cứ lúc nào từ Cài đặt > Giới thiệu',
-  'Not a chatbot - a team of agents': 'Không phải chatbot - mà là một đội tác nhân',
+  'Not a chatbot - a team of agents': 'Không phải chatbot - mà là một đội agent',
   'Every step, source and change stays visible in the thread': 'Mọi bước, nguồn và thay đổi đều hiển thị trong cuộc trò chuyện',
-  'Writes to Jira, Confluence or Bitbucket wait for your approval unless you let it work alone': 'Thao tác ghi vào Jira, Confluence hoặc Bitbucket chờ bạn phê duyệt, trừ khi bạn để nó tự làm',
+  'Writes to Jira, Confluence or Bitbucket wait for your approval': 'Thao tác ghi vào Jira, Confluence hoặc Bitbucket chờ bạn duyệt',
   'Type @ to aim it at one source, / to load a skill': 'Gõ @ để hướng vào một nguồn, / để nạp một kỹ năng',
   'Everything it knows, kept current': 'Mọi thứ nó biết, luôn được cập nhật',
-  'Folders, Office files, scanned PDFs, websites, Jira, Confluence and Bitbucket - indexed for keyword and meaning search, plus a knowledge graph when you turn it on, and synced again as they change.': 'Thư mục, tệp Office, PDF quét, trang web, Jira, Confluence và Bitbucket - được lập chỉ mục để tìm theo từ khóa và theo ý nghĩa, thêm đồ thị tri thức khi bạn bật nó, và được đồng bộ lại khi chúng thay đổi.',
+  'Folders, Office files, scanned PDFs, websites, Jira, Confluence and Bitbucket, kept up to date.': 'Thư mục, tệp Office, PDF quét, trang web, Jira, Confluence và Bitbucket, luôn được cập nhật.',
   'Answers cite the passage they came from': 'Câu trả lời trích dẫn đúng đoạn văn mà nó dựa vào',
-  'Live systems are reached with the token of the person asking': 'Các hệ thống trực tiếp được truy cập bằng token của chính người hỏi',
+  'Live systems use the token of the person asking': 'Hệ thống trực tiếp dùng token của người hỏi',
   'Add a source here; chat can search it once it is indexed': 'Thêm nguồn tại đây; trò chuyện có thể tìm trong đó sau khi được lập chỉ mục',
-  'One task, many systems, many agents': 'Một nhiệm vụ, nhiều hệ thống, nhiều tác nhân',
-  'Key accounts puts that to work: a team reviews one important client together. Agents read the contracts, tickets, meeting minutes and client website in parallel, then propose health ratings with their evidence, risks and next moves.': 'Khách hàng trọng điểm đưa điều đó vào việc thật: một nhóm cùng đánh giá một khách hàng quan trọng. Các tác nhân đọc song song hợp đồng, ticket, biên bản họp và website của khách hàng, rồi đề xuất điểm sức khỏe kèm bằng chứng, rủi ro và bước đi tiếp theo.',
+  'One task, many systems, many agents': 'Một nhiệm vụ, nhiều hệ thống, nhiều agent',
+  'Key accounts: a team reviews one client together while agents read and propose.': 'Khách hàng trọng điểm: cả nhóm cùng đánh giá một khách hàng, agent đọc và đề xuất.',
   'A person confirms every rating and decides every move': 'Mỗi điểm đánh giá đều do một người xác nhận, mỗi bước đi đều do một người quyết định',
-  'Everyone on the account sees each change as it happens, and every change is logged': 'Mọi thành viên trong nhóm phụ trách khách hàng thấy từng thay đổi ngay khi nó diễn ra, và mọi thay đổi đều được ghi lại',
+  'Everyone sees each change live, and every change is logged': 'Mọi người thấy thay đổi ngay, và mọi thay đổi đều được ghi lại',
   'Ask the assistant panel on an account to run the review': 'Nhờ bảng trợ lý trên trang khách hàng chạy đợt đánh giá',
-  'This sandbox has a fictional client already reviewed: agents read its contracts, revenue, tickets and minutes. Open it to see the ratings, risks and moves they proposed.': 'Sandbox này có sẵn một khách hàng hư cấu đã được đánh giá: các tác nhân đã đọc hợp đồng, doanh thu, ticket và biên bản họp của khách hàng đó. Hãy mở nó để xem điểm sức khỏe, rủi ro và bước đi mà chúng đề xuất.',
+  'This sandbox has a sample client already reviewed. Open it to see the results.': 'Bản thử nghiệm này có một khách hàng mẫu đã được đánh giá. Mở để xem kết quả.',
   'Open the demo account': 'Mở khách hàng mẫu',
   'You set the rules': 'Bạn đặt ra quy tắc',
-  'Choose the model for each role, how far the agent may go on its own, what it may say and how much it may spend.': 'Chọn mô hình cho từng vai trò, mức độ tác nhân được tự làm, những gì nó được nói và số tiền nó được tiêu.',
-  'Read-only, ask before each write, or work alone - chosen in the chat box': 'Chỉ đọc, hỏi trước mỗi lần ghi, hoặc tự làm - chọn ngay trong ô trò chuyện',
+  'Choose the models, what the agent may do, say and spend.': 'Chọn mô hình, và những gì agent được làm, được nói và được chi.',
+  'Read-only, ask before writes, or work alone': 'Chỉ đọc, hỏi trước khi ghi, hoặc tự làm',
   'Step limits, guardrails and spending limits': 'Giới hạn bước, rào chắn nội dung và giới hạn chi tiêu',
   'Send us feedback, and replay this tour, from Settings': 'Gửi góp ý và xem lại hướng dẫn này từ Cài đặt',
-  'Send us feedback from your account menu, and replay this tour from Settings > About': 'Gửi góp ý từ menu tài khoản, và xem lại hướng dẫn này từ Cài đặt > Giới thiệu',
+  'Send feedback from your account menu. Replay this tour from Settings > About': 'Gửi góp ý từ menu tài khoản. Xem lại hướng dẫn trong Cài đặt > Giới thiệu',
   'Show me around': 'Dẫn tôi đi xem',
   'Release notes': 'Ghi chú phát hành',
   'Other integrations': 'Các tích hợp khác',
@@ -1427,18 +1496,14 @@ export const vi: Record<string, string> = {
   'Proxyma Desktop manual': 'Hướng dẫn sử dụng Proxyma Desktop',
   'Proxyma Enterprise Server manual': 'Hướng dẫn sử dụng Proxyma Enterprise Server',
   'Proxyma Home Server manual': 'Hướng dẫn sử dụng Proxyma Home Server',
-  'Manuals, the API and MCP reference, and common questions, on proxyma.ai.':
-    'Sách hướng dẫn, tài liệu tham chiếu API và MCP, cùng các câu hỏi thường gặp, trên proxyma.ai.',
-  'Read how your data is handled, and the terms that govern your use of this service.':
-    'Đọc về cách dữ liệu của bạn được xử lý, và các điều khoản chi phối việc bạn sử dụng dịch vụ này.',
-  'Read how your data is handled, and the terms for the services Proxyma runs.':
-    'Đọc về cách dữ liệu của bạn được xử lý, và các điều khoản cho những dịch vụ Proxyma vận hành.',
+  'Manuals, API reference and FAQ on proxyma.ai.': 'Hướng dẫn sử dụng, tài liệu API và hỏi đáp trên proxyma.ai.',
+  'How your data is handled, and the terms of use.': 'Cách dữ liệu của bạn được xử lý, và điều khoản sử dụng.',
+  'How your data is handled, and the terms of the services Proxyma runs.': 'Cách dữ liệu của bạn được xử lý, và điều khoản cho các dịch vụ Proxyma vận hành.',
 
   // -- Privacy and diagnostics ------------------------------------------------------------------
   'Diagnostics': 'Dữ liệu chẩn đoán',
   'Send diagnostics to Proxyma': 'Gửi dữ liệu chẩn đoán tới Proxyma',
-  'Error types, timings and enabled features once a day, and any answer you rate with its question.':
-    'Loại lỗi, thời gian xử lý và các tính năng đang bật, mỗi ngày một lần, cùng mọi câu trả lời bạn đánh giá kèm câu hỏi của nó.',
+  'Error types, timings and features once a day, and answers you rate with their question.': 'Loại lỗi, thời gian và tính năng mỗi ngày một lần, cùng câu trả lời bạn đánh giá và câu hỏi của nó.',
   'See what would be sent': 'Xem những gì sẽ được gửi',
   'Delete collected data': 'Xóa dữ liệu đã thu thập',
   'Collected diagnostics deleted': 'Đã xóa dữ liệu chẩn đoán đã thu thập',
@@ -1446,21 +1511,15 @@ export const vi: Record<string, string> = {
   'What would be sent': 'Những gì sẽ được gửi',
   'Copy': 'Sao chép',
   'Could not build the report. Try again in a moment.': 'Không thể tạo báo cáo. Hãy thử lại sau giây lát.',
-  'Sending is on. {count} finished day is waiting to be sent.|Sending is on. {count} finished days are waiting to be sent.':
-    'Đang bật gửi. Có {count} ngày đã kết thúc đang chờ được gửi.',
-  'Proxyma Enterprise Server never sends diagnostics, so nothing here is stored or sent.':
-    'Proxyma Enterprise Server không bao giờ gửi dữ liệu chẩn đoán, nên không có gì ở đây được lưu hay gửi đi.',
-  'This installation has no diagnostics address, so nothing here is stored or sent.':
-    'Bản cài đặt này không có địa chỉ nhận dữ liệu chẩn đoán, nên không có gì ở đây được lưu hay gửi đi.',
-  'Sending is off, so nothing is stored or sent. This is what would be sent if you turned it on.':
-    'Đang tắt gửi, nên không có gì được lưu hay gửi đi. Đây là những gì sẽ được gửi nếu bạn bật lên.',
-  'Today ({day}, UTC) is still being collected and is sent only after it ends. Days are sent together, about once a day.':
-    'Hôm nay ({day}, UTC) vẫn đang được thu thập và chỉ được gửi sau khi kết thúc. Các ngày được gửi cùng nhau, khoảng mỗi ngày một lần.',
+  'Sending is on. {count} day waiting.|Sending is on. {count} days waiting.': 'Đang bật gửi. {count} ngày đang chờ.',
+  'Enterprise Server never sends diagnostics.': 'Enterprise Server không bao giờ gửi dữ liệu chẩn đoán.',
+  'No diagnostics address is set, so nothing is stored or sent.': 'Chưa có địa chỉ chẩn đoán nên không có gì được lưu hay gửi.',
+  'Sending is off. This is what would be sent.': 'Đang tắt gửi. Đây là những gì sẽ được gửi.',
+  'Today ({day}, UTC) is sent after it ends.': 'Hôm nay ({day}, UTC) sẽ được gửi sau khi kết thúc.',
   'Last sent: {time}': 'Lần gửi gần nhất: {time}',
-  'Enterprise deployments never send diagnostics outside their own infrastructure, so this cannot be turned on.':
-    'Các hệ thống Enterprise không bao giờ gửi dữ liệu chẩn đoán ra ngoài hạ tầng của chính họ, nên tùy chọn này không thể bật.',
+  'Enterprise never sends diagnostics, so this cannot be turned on.': 'Bản Enterprise không gửi dữ liệu chẩn đoán nên không thể bật mục này.',
   'Diagnostics are now sent to Proxyma': 'Dữ liệu chẩn đoán hiện được gửi tới Proxyma',
-  'Diagnostics are no longer sent, and what was waiting has been deleted': 'Dữ liệu chẩn đoán không còn được gửi đi, và những gì đang chờ gửi đã bị xóa',
+  'Diagnostics are off, and what was waiting is deleted': 'Đã tắt chẩn đoán, và dữ liệu đang chờ đã bị xóa',
   'Could not save that preference': 'Không thể lưu tùy chọn đó',
 
   // -- Connections tab -----------------------------------------------------------------------------
@@ -1485,14 +1544,12 @@ export const vi: Record<string, string> = {
   'Network share': 'Thư mục chia sẻ mạng',
   'Network path': 'Đường dẫn mạng',
   'Include subfolders': 'Bao gồm cả thư mục con',
-  'Files are read with your own domain account, so only what you can open is indexed. The source cannot be shared.':
-    'Tệp tin được đọc bằng chính tài khoản miền của bạn, nên chỉ những gì bạn mở được mới được lập chỉ mục. Nguồn dữ liệu này không thể chia sẻ.',
+  'Read with your own domain account. This source cannot be shared.': 'Đọc bằng tài khoản miền của bạn. Không thể chia sẻ nguồn này.',
   'Allowed file servers': 'Máy chủ tệp tin được phép',
 
   // A source type a deployment switch has turned off (the Connect menu), and two words the source
   // dialogs share.
-  '{names} appears here once an administrator turns it on in Settings > Network.|{names} appear here once an administrator turns them on in Settings > Network.':
-    '{names} sẽ xuất hiện ở đây khi quản trị viên bật trong Cài đặt > Mạng.',
+  'An administrator can turn {names} on in Settings > Network.|An administrator can turn {names} on in Settings > Network.': 'Quản trị viên có thể bật {names} trong Cài đặt > Mạng.',
   'Calendar': 'Lịch',
   'Failed to load': 'Không tải được',
 
@@ -1514,8 +1571,7 @@ export const vi: Record<string, string> = {
   'Failed to revoke token': 'Không thể thu hồi token',
   "Copy this token now - it won't be shown again.":
     'Hãy sao chép token này ngay - nó sẽ không được hiển thị lại.',
-  'Tokens for MCP clients and API calls; each one acts as you.':
-    'Token cho ứng dụng MCP và lệnh gọi API; mỗi token hành động với tư cách của bạn.',
+  'Tokens for MCP clients and the API. Each acts as you.': 'Token cho ứng dụng MCP và API. Mỗi token hành động thay bạn.',
 
   // -- License tab ------------------------------------------------------------------------------
   'License activated': 'Đã kích hoạt giấy phép',
@@ -1537,10 +1593,10 @@ export const vi: Record<string, string> = {
   'This provider already sends a header with that name.': 'Nhà cung cấp này đã gửi một header có tên đó.',
   'Serves /v1/rerank': 'Hỗ trợ /v1/rerank',
   'API': 'API',
-  'Anthropic Messages keeps Claude models in their own format, with prompt caching. OpenAI Chat Completions suits every other model.': 'Anthropic Messages giữ các mô hình Claude ở định dạng riêng của chúng, có bộ nhớ đệm prompt. OpenAI Chat Completions phù hợp với mọi mô hình khác.',
+  'Anthropic Messages for Claude models, OpenAI Chat Completions for the rest.': 'Anthropic Messages cho mô hình Claude, OpenAI Chat Completions cho các mô hình khác.',
   'Streaming': 'Truyền phát',
   'Wait for whole replies': 'Chờ câu trả lời trọn vẹn',
-  'For a deployment that answers with one reply instead of a stream once tools are in use. Answers then appear whole, step by step.': 'Dành cho bản triển khai trả về một câu trả lời duy nhất thay vì truyền phát khi có dùng công cụ. Câu trả lời khi đó hiện ra trọn vẹn, từng bước một.',
+  'For a deployment that does not stream when tools are used.': 'Cho bản triển khai không truyền dữ liệu dạng luồng khi dùng công cụ.',
   'Test': 'Kiểm tra',
   'Testing...': 'Đang kiểm tra...',
   'Select a provider': 'Chọn một nhà cung cấp',
@@ -1549,72 +1605,50 @@ export const vi: Record<string, string> = {
   'The provider this was set to no longer exists - choose another.':
     'Nhà cung cấp được đặt trước đây không còn tồn tại - hãy chọn nhà cung cấp khác.',
   'Add one on the AI Providers tab.': 'Hãy thêm một nhà cung cấp ở tab Nhà cung cấp AI.',
-  'Add any service that speaks a supported protocol. Two accounts on one service are two providers.':
-    'Thêm bất kỳ dịch vụ nào dùng một giao thức được hỗ trợ. Hai tài khoản trên cùng một dịch vụ là hai nhà cung cấp.',
-  'Add the service you have an API key for, or a local one such as Ollama.':
-    'Thêm dịch vụ mà bạn có khóa API, hoặc một dịch vụ cục bộ như Ollama.',
+  'Add any service that speaks a supported protocol.': 'Thêm bất kỳ dịch vụ nào dùng giao thức được hỗ trợ.',
+  'Add a service you have an API key for, or a local one like Ollama.': 'Thêm dịch vụ bạn có khóa API, hoặc dịch vụ cục bộ như Ollama.',
   'Next steps': 'Các bước tiếp theo',
-  'Agents: choose the model that answers': 'Tác nhân: chọn mô hình trả lời',
-  'Search: choose the embedding model that indexes your sources':
-    'Tìm kiếm: chọn mô hình vector nhúng (embeddings) để lập chỉ mục các nguồn của bạn',
-  'Conversion: choose a vision model to read scanned pages (optional)':
-    'Chuyển đổi: chọn mô hình thị giác để đọc trang scan (tùy chọn)',
+  'Agents: choose the model that answers': 'Agent: chọn mô hình trả lời',
+  'Search: choose the embedding model': 'Tìm kiếm: chọn mô hình nhúng',
+  'Conversion: choose a vision model for scans (optional)': 'Chuyển đổi: chọn mô hình thị giác cho bản quét (không bắt buộc)',
   'Model pricing: set rates to track cost (optional)':
     'Bảng giá mô hình: đặt đơn giá để theo dõi chi phí (tùy chọn)',
-  'Fills in the protocol and address. Anything speaking one of these protocols works, listed here or not.':
-    'Tự điền giao thức và địa chỉ. Bất cứ dịch vụ nào nói một trong các giao thức này đều dùng được, dù có trong danh sách hay không.',
-  'Sent with every request. Gateways often need one - OpenRouter uses HTTP-Referer and X-Title for attribution.':
-    'Được gửi kèm mọi yêu cầu. Các gateway thường cần header - OpenRouter dùng HTTP-Referer và X-Title để ghi nhận nguồn.',
-  'For servers with a /v1/rerank endpoint: vLLM, llama.cpp, Jina, Cohere, Together AI and others. Leave off and reranking uses embeddings instead.':
-    'Dành cho máy chủ có endpoint /v1/rerank: vLLM, llama.cpp, Jina, Cohere, Together AI và các máy chủ khác. Để tắt thì việc xếp hạng lại sẽ dùng vector nhúng thay thế.',
+  'Fills in the protocol and address.': 'Điền sẵn giao thức và địa chỉ.',
+  'Sent with every request.': 'Gửi kèm mọi yêu cầu.',
+  'For servers with a /v1/rerank endpoint. Off: reranking uses embeddings.': 'Cho máy chủ có endpoint /v1/rerank. Tắt: xếp hạng lại bằng vector nhúng.',
   // A vendor name in the quick-pick list.
   'OpenRouter': 'OpenRouter',
 
   // -- Chat, retrieval and documents ---------------------------------------------------------------
   'System prompt': 'Câu lệnh hệ thống',
-  'System prompt saved': 'Đã lưu câu lệnh hệ thống',
   'Failed to save system prompt': 'Không thể lưu câu lệnh hệ thống',
-  "Overrides the agent's entire system prompt": 'Ghi đè toàn bộ câu lệnh hệ thống của tác nhân',
+  "Overrides the agent's entire system prompt": 'Ghi đè toàn bộ câu lệnh hệ thống của agent',
   'Response tone': 'Giọng điệu câu trả lời',
   'Context window': 'Cửa sổ ngữ cảnh',
   'Max output tokens': 'Số token đầu ra tối đa',
-  'Max agent iterations': 'Số vòng lặp tối đa của tác nhân',
+  'Max agent iterations': 'Số vòng lặp tối đa của agent',
   'Same as chat': 'Giống như trò chuyện',
-  'Same as the agent': 'Giống tác nhân chính',
+  'Same as the agent': 'Giống agent chính',
   'Model default': 'Mặc định của mô hình',
   'Search time limit (minutes)': 'Giới hạn thời gian tìm kiếm (phút)',
   'Time limit': 'Giới hạn thời gian',
-  'To cache, switch {provider} to Anthropic Messages in AI Providers.':
-    'Để dùng bộ nhớ đệm, hãy chuyển {provider} sang Anthropic Messages trong Nhà cung cấp AI.',
-  'How long one search may run before the agent is told it timed out.':
-    'Thời gian tối đa của một lần tìm kiếm trước khi tác nhân được báo là đã hết thời gian.',
-  'Generates alternative phrasings to improve recall.':
-    'Tạo thêm các cách diễn đạt khác để tăng độ bao phủ kết quả.',
-  'Scores results with a model for better precision.':
-    'Chấm điểm kết quả bằng một mô hình để tăng độ chính xác.',
-  'The model that turns documents and questions into vectors.':
-    'Mô hình chuyển tài liệu và câu hỏi thành vector.',
+  'To cache, switch {provider} to Anthropic Messages.': 'Để dùng bộ nhớ đệm, chuyển {provider} sang Anthropic Messages.',
+  'How long one search may run.': 'Thời gian tối đa cho một lần tìm kiếm.',
+  'Also searches with other wordings.': 'Tìm thêm bằng các cách diễn đạt khác.',
+  'A model reorders results by relevance.': 'Một mô hình sắp xếp lại kết quả theo mức liên quan.',
+  'The model that indexes documents for search.': 'Mô hình lập chỉ mục tài liệu để tìm kiếm.',
   'Change embedding model?': 'Đổi mô hình vector nhúng?',
-  'Changing the embedding model requires a full re-index of all connectors.':
-    'Việc đổi mô hình vector nhúng yêu cầu lập chỉ mục lại toàn bộ mọi bộ kết nối.',
-  'Changing the embedding model does not update your existing search index by itself.':
-    'Việc đổi mô hình vector nhúng không tự cập nhật chỉ mục tìm kiếm hiện có của bạn.',
-  'Every connector indexed with the old model needs a full re-index before it works correctly with the new model.':
-    'Mọi bộ kết nối đã lập chỉ mục bằng mô hình cũ đều cần lập chỉ mục lại hoàn toàn trước khi hoạt động đúng với mô hình mới.',
-  'Re-indexing is manual, per connector. Until you do it, affected connectors silently return degraded or wrong results.':
-    'Lập chỉ mục lại là thao tác thủ công cho từng bộ kết nối. Cho tới khi bạn làm, các bộ kết nối bị ảnh hưởng sẽ âm thầm trả về kết quả kém hoặc sai.',
-  'Re-indexing can take a long time for large connectors and consumes real embedding compute/cost.':
-    'Việc lập chỉ mục lại có thể mất nhiều thời gian với các bộ kết nối lớn và tiêu tốn chi phí/tài nguyên tính toán vector nhúng thực tế.',
+  'Changing the embedding model means re-indexing every source.': 'Đổi mô hình nhúng nghĩa là phải lập chỉ mục lại mọi nguồn.',
+  'Your search index is not updated by itself.': 'Chỉ mục tìm kiếm không tự cập nhật.',
+  'Every source must be re-indexed with the new model.': 'Mọi nguồn phải được lập chỉ mục lại bằng mô hình mới.',
+  'Until then, search results may be wrong.': 'Trước khi làm vậy, kết quả tìm kiếm có thể sai.',
+  'Re-indexing large sources takes time and costs money.': 'Lập chỉ mục lại nguồn lớn tốn thời gian và chi phí.',
   'Max concurrent embedding requests': 'Số yêu cầu vector nhúng đồng thời tối đa',
-  "How many embedding requests run at once; match your provider's capacity.":
-    'Số yêu cầu vector nhúng chạy cùng lúc; hãy đặt theo khả năng xử lý của nhà cung cấp.',
-  'Links facts across documents by extracting entities and relations.':
-    'Liên kết thông tin giữa các tài liệu bằng cách trích xuất thực thể và mối quan hệ.',
-  'A model call per chunk can triple indexing cost; use a cheap model.':
-    'Mỗi đoạn tốn một lượt gọi mô hình, có thể làm chi phí lập chỉ mục tăng gấp ba; hãy dùng một mô hình rẻ.',
+  'Embedding requests sent at once.': 'Số yêu cầu nhúng gửi cùng lúc.',
+  'Links facts across documents.': 'Liên kết thông tin giữa các tài liệu.',
+  'Can triple indexing cost. Use a cheap model.': 'Có thể làm chi phí lập chỉ mục tăng gấp ba. Hãy dùng mô hình rẻ.',
   'Gleaning rounds': 'Số vòng rà soát bổ sung',
-  'Extra passes asking the model what it missed. 1 roughly doubles the cost above and 2 triples it.':
-    'Các lượt bổ sung hỏi mô hình xem nó đã bỏ sót gì. 1 vòng làm chi phí ở trên tăng khoảng gấp đôi và 2 vòng tăng gấp ba.',
+  'Extra passes for what was missed. Each adds about the same cost again.': 'Số lượt đọc thêm để tìm phần bị sót. Mỗi lượt tốn thêm chi phí tương đương.',
   // OCR.
   'OCR engine': 'Công cụ OCR',
   'Method': 'Phương pháp',
@@ -1623,36 +1657,27 @@ export const vi: Record<string, string> = {
   'Page resolution (DPI)': 'Độ phân giải trang (DPI)',
   'Max pages per document': 'Số trang tối đa mỗi tài liệu',
   'Tesseract languages': 'Ngôn ngữ Tesseract',
-  'How documents are turned into text. Scanned pages need OCR.':
-    'Cách tài liệu được chuyển thành văn bản. Trang được quét cần OCR.',
-  'Used for every source; Auto runs OCR only where a document has no text.':
-    'Dùng cho mọi nguồn dữ liệu; Tự động chỉ chạy OCR khi tài liệu không có lớp văn bản.',
-  'Used for chat attachments and documents the agent fetches from a URL.':
-    'Dùng cho tệp đính kèm trong cuộc trò chuyện và tài liệu tác nhân tải về từ một URL.',
-  '200 suits body text; higher is sharper but costs more with a vision model.':
-    '200 phù hợp với văn bản thường; cao hơn sẽ rõ nét hơn nhưng tốn nhiều chi phí hơn với mô hình thị giác.',
-  'A hard cap per document; pages past it are noted in the text.':
-    'Giới hạn cứng cho mỗi tài liệu; các trang vượt quá được ghi chú trong văn bản.',
-  'Tesseract language codes joined with "+", e.g. eng+deu. Each needs its traineddata file on the server.':
-    'Mã ngôn ngữ của tesseract nối bằng "+", ví dụ eng+deu. Mỗi mã cần có tệp traineddata trên máy chủ.',
+  'How documents are turned into text.': 'Cách tài liệu được chuyển thành văn bản.',
+  'For every source. Auto reads scans only where there is no text.': 'Cho mọi nguồn. Tự động chỉ nhận dạng chữ khi tài liệu không có chữ.',
+  'For chat attachments and pages the agent fetches.': 'Cho tệp đính kèm và trang agent tải về.',
+  'Higher is sharper and costs more.': 'Càng cao càng nét và càng tốn chi phí.',
+  'Pages past this are skipped.': 'Các trang vượt quá sẽ bị bỏ qua.',
+  'Language codes joined with "+", like eng+vie.': 'Mã ngôn ngữ nối bằng "+", ví dụ eng+vie.',
   'Rebuild index': 'Xây dựng lại chỉ mục',
   'Rebuilding...': 'Đang xây dựng lại...',
 
   // -- Guardrails ------------------------------------------------------------------------------------
   'How guardrails work': 'Cách rào chắn hoạt động',
   'Check what people send': 'Kiểm tra nội dung người dùng gửi',
-  'Check what the agent reads': 'Kiểm tra nội dung tác nhân đọc',
-  'Check what the agent answers': 'Kiểm tra nội dung tác nhân trả lời',
+  'Check what the agent reads': 'Kiểm tra nội dung agent đọc',
+  'Check what the agent answers': 'Kiểm tra nội dung agent trả lời',
   'Messages, before they are saved or sent to a provider.':
     'Tin nhắn, trước khi được lưu hoặc gửi tới nhà cung cấp.',
-  'Retrieved content, before the agent sees it. Pattern checks only.': 'Nội dung được truy xuất, trước khi trợ lý nhìn thấy. Chỉ kiểm tra theo mẫu.',
-  'Replies, as they are written, so nothing matching is ever shown.':
-    'Câu trả lời, ngay khi đang được viết ra, để không có nội dung khớp nào từng được hiển thị.',
+  'Checks content before the agent reads it.': 'Kiểm tra nội dung trước khi agent đọc.',
+  'Checks replies as they are written.': 'Kiểm tra câu trả lời ngay khi được viết.',
   'Also check answers': 'Kiểm tra cả câu trả lời',
-  'Hold replies to the same policy. Doubles what this adds per turn.':
-    'Áp dụng cùng chính sách cho câu trả lời. Làm tăng gấp đôi chi phí thêm vào cho mỗi lượt.',
-  'Pattern checks. They recognize shapes, not meaning.':
-    'Kiểm tra theo mẫu. Chúng nhận diện hình dạng, không phải ý nghĩa.',
+  'Checks replies too. Doubles the cost.': 'Kiểm tra cả câu trả lời. Chi phí gấp đôi.',
+  'Simple pattern checks.': 'Kiểm tra theo mẫu đơn giản.',
   'Personal data': 'Dữ liệu cá nhân',
   'Prompt injection': 'Chèn chỉ dẫn',
   'Server file paths': 'Đường dẫn tệp tin máy chủ',
@@ -1667,34 +1692,32 @@ export const vi: Record<string, string> = {
   'Checked': 'Đã kiểm tra',
   'Watch for a pattern': 'Theo dõi một mẫu',
   'Judge meaning with a model': 'Đánh giá ý nghĩa bằng mô hình',
-  'Judges the text against your rules. One model call per message.': 'Đánh giá văn bản theo các quỹ tắc của bạn. Mỗi tin nhắn tốn một lượt gọi mô hình.',
+  'A model checks each message against your rules.': 'Một mô hình kiểm tra từng tin nhắn theo quy tắc của bạn.',
   'Rules from your documents': 'Quy tắc từ tài liệu của bạn',
   'Policy documents': 'Tài liệu chính sách',
-  'Upload your policies as files. Only the clauses that bear on a message are sent.': 'Tải lên các chính sách của bạn dưới dạng tệp tin. Chỉ những điều khoản liên quan tới tin nhắn mới được gửi đi.',
+  'Upload your policies as files.': 'Tải lên chính sách của bạn dưới dạng tệp tin.',
   'Refuse when the model cannot be reached': 'Từ chối khi không kết nối được tới mô hình',
-  'A timeout or a non-verdict currently lets the message through. This refuses it instead.':
-    'Hiện tại, hết thời gian chờ hoặc không có phán quyết sẽ cho tin nhắn đi qua. Tùy chọn này sẽ từ chối thay vì cho qua.',
+  'Block the message when the check cannot finish.': 'Chặn tin nhắn khi không kiểm tra được.',
   'Slow down repeated attempts': 'Làm chậm các lần thử lặp lại',
-  'Legitimate work can trip this - pasting several logs that each contain a token is enough.':
-    'Công việc hợp lệ cũng có thể kích hoạt điều này - chỉ cần dán vài tệp tin nhật ký mà mỗi tệp đều chứa một token là đủ.',
+  'Normal work can trigger this, like pasting several logs with tokens.': 'Công việc bình thường cũng có thể kích hoạt, như dán nhiều nhật ký có chứa token.',
   'Detect a leaked system prompt': 'Phát hiện câu lệnh hệ thống bị lộ',
   'When a message matches': 'Khi một tin nhắn khớp',
-  'When something the agent read matches': 'Khi nội dung tác nhân đọc được khớp',
+  'When something the agent read matches': 'Khi nội dung agent đọc được khớp',
   'When an answer matches': 'Khi một câu trả lời khớp',
-  'Neither ends the conversation; prompt injection withholds the source.':
-    'Cả hai đều không kết thúc cuộc trò chuyện; chèn chỉ dẫn sẽ giữ lại toàn bộ nguồn.',
+  'Neither ends the chat. Prompt injection hides the source.': 'Cả hai đều không kết thúc trò chuyện. Chèn lệnh (prompt injection) sẽ ẩn nguồn.',
   'Neither reads a message.': 'Cả hai đều không đọc tin nhắn.',
-  'Monitor runs every check but applies none; results appear in Logs.':
-    'Chế độ theo dõi chạy mọi lượt kiểm tra nhưng không áp dụng lượt nào; kết quả xuất hiện ở mục Nhật ký.',
+  'Monitor checks but blocks nothing. Results are in Logs.': 'Giám sát chỉ kiểm tra, không chặn gì. Kết quả nằm trong Nhật ký.',
   'What fired': 'Quy tắc đã kích hoạt',
+  'Blocked terms': 'Từ ngữ bị chặn',
+  'Leaked system prompt': 'Câu lệnh hệ thống bị lộ',
+  'Repeated attempts': 'Thử nhiều lần liên tiếp',
+  'Guardrail unavailable': 'Rào chắn không khả dụng',
   'Nothing measured yet.': 'Chưa đo được gì.',
   'Rules that fired': 'Các quy tắc đã kích hoạt',
   ' ... (truncated)': ' ... (đã cắt bớt)',
   'Keep the matched text': 'Lưu lại phần nội dung khớp quy tắc',
-  'Also records the text each rule matched, to check its findings.':
-    'Ghi lại thêm đoạn văn bản mà mỗi quy tắc đã khớp, để kiểm tra các phát hiện.',
-  'A credential a rule finds is now recorded, in memory only, where any administrator can read it.':
-    'Thông tin xác thực mà một quy tắc tìm thấy giờ sẽ được ghi lại, chỉ trong bộ nhớ, nơi mọi quản trị viên đều có thể đọc.',
+  'Records the text each rule matched.': 'Ghi lại đoạn văn bản mà mỗi quy tắc khớp.',
+  'Found credentials are now kept in memory, readable by any administrator.': 'Thông tin đăng nhập bị phát hiện giờ được giữ trong bộ nhớ, mọi quản trị viên đều đọc được.',
 
   // -- Skills and workflows ---------------------------------------------------------------------------
   'My skills': 'Kỹ năng của tôi',
@@ -1712,18 +1735,17 @@ export const vi: Record<string, string> = {
   'Failed to delete workflow': 'Không thể xóa quy trình',
   'No workflows yet': 'Chưa có quy trình nào',
   'Short description': 'Mô tả ngắn',
-  'Shown to the agent in every system prompt': 'Hiển thị cho tác nhân trong mọi câu lệnh hệ thống',
+  'Shown to the agent in every system prompt': 'Hiển thị cho agent trong mọi câu lệnh hệ thống',
   'Variants': 'Biến thể',
-  'Step-by-step instructions the agent follows once it loads this skill...':
-    'Hướng dẫn từng bước mà tác nhân làm theo sau khi tải kỹ năng này...',
+  'Steps the agent follows with this skill...': 'Các bước agent làm theo với kỹ năng này...',
   'What this step is called': 'Tên của bước này',
-  'What the agent should do in this step, and what it should report back.':
-    'Điều tác nhân cần làm trong bước này, và điều nó cần báo cáo lại.',
+  'What to do in this step and what to report.': 'Việc cần làm ở bước này và điều cần báo lại.',
   'Check whether a release is ready to ship': 'Kiểm tra xem một bản phát hành đã sẵn sàng để giao hay chưa',
   'The release version is whatever the user named when they invoked this...':
     'Phiên bản phát hành là phiên bản mà người dùng chỉ định khi gọi quy trình này...',
   'Start from': 'Bắt đầu từ',
   'Restore default': 'Khôi phục mặc định',
+  'Default restored': 'Đã khôi phục mặc định',
   'Reset to default': 'Đặt lại về mặc định',
 
   // -- Data retention, network and updates ---------------------------------------------------------------
@@ -1732,10 +1754,8 @@ export const vi: Record<string, string> = {
   'HTTPS proxy': 'HTTPS Proxy',
   'No proxy': 'Không dùng proxy',
   'Passphrase, if the file has credentials': 'Cụm mật khẩu, nếu tệp tin có thông tin đăng nhập',
-  'Comma-separated list of hosts that should bypass the proxy.':
-    'Danh sách các host bỏ qua proxy, phân tách bằng dấu phẩy.',
-  'How outgoing traffic is routed. Changes need a restart.':
-    'Cách định tuyến lưu lượng ra ngoài. Thay đổi cần khởi động lại.',
+  'Comma-separated hosts that skip the proxy.': 'Các máy chủ không đi qua proxy, phân cách bằng dấu phẩy.',
+  'How outgoing traffic is routed. Changes apply after Proxyma restarts.': 'Cách định tuyến lưu lượng ra ngoài. Thay đổi có hiệu lực sau khi Proxyma khởi động lại.',
   'Check for updates': 'Kiểm tra cập nhật',
   'How to update': 'Cách cập nhật',
   'Download updates automatically': 'Tự động tải bản cập nhật',
@@ -1756,8 +1776,7 @@ export const vi: Record<string, string> = {
   'Reset settings': 'Đặt lại thiết lập',
   'Reset everything': 'Đặt lại tất cả',
   'Clearing...': 'Đang xóa...',
-  'Reset triggered, but the app did not come back in time. Restart it manually.':
-    'Đã kích hoạt việc đặt lại, nhưng ứng dụng không trở lại kịp thời. Hãy khởi động lại thủ công.',
+  'Reset triggered, but Proxyma did not come back in time. Restart Proxyma manually.': 'Đã kích hoạt việc đặt lại, nhưng Proxyma không trở lại kịp thời. Hãy khởi động lại Proxyma thủ công.',
 
   // -- Usage & Cost -------------------------------------------------------------------------------------
   'Model pricing': 'Bảng giá mô hình',
@@ -1765,18 +1784,15 @@ export const vi: Record<string, string> = {
   'Edit rate': 'Sửa đơn giá',
   'Delete pricing': 'Xóa bảng giá',
   'Pricing added': 'Đã thêm bảng giá',
-  'Pricing updated': 'Đã cập nhật bảng giá',
+  'Must be a number of 0 or more': 'Phải là một số từ 0 trở lên',
   'Pricing deleted': 'Đã xóa bảng giá',
   'Failed to delete pricing': 'Không thể xóa bảng giá',
   'No rates set for this provider.': 'Chưa đặt đơn giá nào cho nhà cung cấp này.',
-  'What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate is priced at its list price where one is known, else at $0.':
-    'Mức phí nhà cung cấp này tính cho mỗi triệu token, dùng cho mọi con số chi phí và hạn mức chi tiêu. Mô hình không có đơn giá được tính theo giá niêm yết nếu có, nếu không thì là $0.',
-  'Rates are set per provider; a model without one uses its list price or $0.':
-    'Đơn giá được đặt theo từng nhà cung cấp; mô hình chưa có đơn giá dùng giá niêm yết hoặc $0.',
+  'Price per million tokens, for costs and quotas. A model with no rate uses its list price or $0.': 'Giá mỗi triệu token, dùng cho chi phí và hạn mức. Mô hình chưa có giá dùng giá niêm yết hoặc $0.',
+  'Set per provider. A model with no rate uses its list price or $0.': 'Đặt theo nhà cung cấp. Mô hình chưa có giá dùng giá niêm yết hoặc $0.',
 
   // -- Feedback tab and admin actions ---------------------------------------------------------------------
-  'You choose on the form whether to attach logs, the conversation or files.':
-    'Trên biểu mẫu, bạn chọn có đính kèm nhật ký, cuộc trò chuyện hay tệp tin hay không.',
+  'You choose what to attach on the form.': 'Bạn chọn những gì đính kèm trên biểu mẫu.',
   'Add a file': 'Thêm một tệp tin',
   'Uploading...': 'Đang tải lên...',
   'What to look for': 'Cần tìm gì',
@@ -1837,12 +1853,9 @@ export const vi: Record<string, string> = {
   'Long context pricing': 'Giá ngữ cảnh dài',
   'Threshold (prompt tokens)': 'Ngưỡng (token prompt)',
   'Standard rate': 'Đơn giá tiêu chuẩn',
-  'Above this prompt size, these rates price the whole call. Empty means the standard rate.':
-    'Khi prompt vượt quá ngưỡng này, các đơn giá này áp dụng cho toàn bộ lượt gọi. Để trống là dùng đơn giá tiêu chuẩn.',
-  "Prefilled from the list price as of {date}. Check it against your provider's bill.":
-    'Đã điền sẵn theo giá niêm yết ngày {date}. Hãy đối chiếu với hóa đơn của nhà cung cấp.',
-  'A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.':
-    'Chi phí do nhà cung cấp báo về (OpenRouter, LiteLLM) được dùng thay cho các đơn giá này.',
+  'Above this prompt size, these rates apply to the whole call.': 'Khi lời nhắc lớn hơn mức này, giá này áp dụng cho cả lần gọi.',
+  'List price as of {date}. Check your bill.': 'Giá niêm yết tính đến {date}. Hãy đối chiếu với hóa đơn.',
+  'A cost the provider reports is used instead.': 'Chi phí do nhà cung cấp báo sẽ được dùng thay thế.',
   '{price} 1-hour cache write': '{price} ghi bộ đệm 1 giờ',
   'above {tokens} tokens: {input} in, {output} out': 'trên {tokens} token: {input} đầu vào, {output} đầu ra',
   'off-peak half price': 'nửa giá giờ thấp điểm',
@@ -1870,97 +1883,62 @@ export const vi: Record<string, string> = {
   'Settings > Connections lists your connections, each with its own server and token.': 'Cài đặt > Kết nối liệt kê các kết nối của bạn, mỗi kết nối có máy chủ và token riêng.',
   'Whether the assistant may read or write is set on each connection.': 'Quyền đọc hoặc ghi của trợ lý được đặt trên từng kết nối.',
   'Could not cancel the download': 'Không thể hủy việc tải xuống',
-  'Could not restart into the update. Restart Proxyma manually.': 'Không thể khởi động lại vào bản cập nhật. Hãy khởi động lại Proxyma thủ công.',
+  'Proxyma could not restart into the update. Restart Proxyma manually.': 'Proxyma không thể khởi động lại vào bản cập nhật. Hãy khởi động lại Proxyma thủ công.',
   'Development builds': 'Bản dựng phát triển',
   'Automatic updates': 'Cập nhật tự động',
   'Also offer development builds, which may be broken.':
     'Cung cấp thêm các bản dựng phát triển, vốn có thể bị lỗi.',
-  'In the install directory, set this line in .env, then run the two commands:':
-    'Trong thư mục cài đặt, đặt dòng này trong .env, rồi chạy hai lệnh:',
+  'In the install folder, set this line in .env, then run:': 'Trong thư mục cài đặt, đặt dòng này trong .env, rồi chạy:',
   'Choose file': 'Chọn tệp tin',
   'or select a folder': 'hoặc chọn một thư mục',
   'Add step': 'Thêm bước',
   'Show shared sources from other users': 'Hiện các nguồn dữ liệu được chia sẻ từ người dùng khác',
-  'Nothing selected - every supported file type will be indexed.':
-    'Chưa chọn gì - mọi loại tệp tin được hỗ trợ đều sẽ được lập chỉ mục.',
-  'Some of these only take effect after a restart.':
-    'Một số thay đổi trong đây chỉ có hiệu lực sau khi khởi động lại.',
+  'Nothing selected: every supported type is indexed.': 'Chưa chọn gì: mọi loại được hỗ trợ đều được lập chỉ mục.',
+  'Some of these only take effect after Proxyma restarts.': 'Một số thay đổi trong đây chỉ có hiệu lực sau khi Proxyma khởi động lại.',
   'paused - quota exceeded': 'đã tạm dừng - vượt hạn mức',
   // Skills and workflows: the explanatory copy on each form.
-  'Named instructions the agent loads only when a question needs them.':
-    'Các chỉ dẫn có tên mà tác nhân chỉ nạp khi một câu hỏi cần đến.',
-  'A short, memorable name - this is what the agent and other users will see.':
-    'Một cái tên ngắn gọn, dễ nhớ - đây là tên mà tác nhân và những người dùng khác sẽ nhìn thấy.',
-  'Shown to the agent in every system prompt, so keep it brief.':
-    'Được hiển thị cho tác nhân trong mọi câu lệnh hệ thống, nên hãy viết ngắn gọn.',
-  'Full instructions, loaded by the agent only when this skill is relevant.':
-    'Chỉ dẫn đầy đủ, chỉ được tác nhân tải khi kỹ năng này thực sự liên quan.',
-  'Comma-separated, used to organize your skills list.':
-    'Phân tách bằng dấu phẩy, dùng để sắp xếp danh sách kỹ năng của bạn.',
-  'Comma-separated, used to organize your workflows list.':
-    'Phân tách bằng dấu phẩy, dùng để sắp xếp danh sách quy trình của bạn.',
-  'Visible and runnable by every user, not just you.':
-    'Mọi người dùng đều nhìn thấy và chạy được, không chỉ riêng bạn.',
-  'Visible and selectable by every user, not just you.':
-    'Mọi người dùng đều nhìn thấy và chọn được, không chỉ riêng bạn.',
-  "Let this skill's instructions also make these platform tools available to the agent.":
-    'Cho phép chỉ dẫn của kỹ năng này đồng thời mở các công cụ nền tảng sau cho tác nhân.',
-  'Prefer these connectors when the agent searches for this skill - a preference, not a restriction.':
-    'Ưu tiên những bộ kết nối này khi tác nhân tìm kiếm cho kỹ năng này - là ưu tiên, không phải giới hạn.',
-  'Prefer these connectors when the agent searches during this workflow - a preference, not a restriction.':
-    'Ưu tiên những bộ kết nối này khi tác nhân tìm kiếm trong quy trình này - là ưu tiên, không phải giới hạn.',
-  'Useful when the same job recurs in the same shape, such as a release check or a weekly summary.':
-    'Hữu ích khi cùng một công việc lặp lại theo cùng một khuôn, như kiểm tra bản phát hành hay bản tóm tắt hàng tuần.',
-  'What you type after "/" in the chat box to run it. Must not match a skill\'s name.':
-    'Nội dung bạn gõ sau dấu "/" trong ô trò chuyện để chạy nó. Không được trùng với tên của một kỹ năng.',
-  'Shown in the "/" list and to the agent, so it knows this workflow exists.':
-    'Được hiển thị trong danh sách "/" và cho tác nhân, để nó biết quy trình này tồn tại.',
-  'Each step is one turn, run in order, so later steps can use earlier findings. Every step also re-reads all previous ones, adding cost.':
-    'Mỗi bước là một lượt, chạy theo thứ tự, nên bước sau có thể dùng kết quả của bước trước. Mỗi bước cũng đọc lại mọi bước trước đó, làm tăng chi phí.',
-  'That is the maximum. Split longer procedures into two workflows, since cost grows faster than the list.':
-    'Đó là mức tối đa. Hãy tách quy trình dài hơn thành hai quy trình, vì chi phí tăng nhanh hơn độ dài danh sách.',
-  'Platform tools the agent may use in every step of this workflow.':
-    'Các công cụ nền tảng tác nhân được dùng trong mọi bước của quy trình này.',
-  'Optional. Given once before the first step and kept for every step.':
-    'Không bắt buộc. Được đưa ra một lần trước bước đầu tiên và giữ cho mọi bước.',
-  'Optional. Pick a cheaper model and every step runs on it, instead of costing the main chat model once per step.':
-    'Không bắt buộc. Chọn một mô hình rẻ hơn và mọi bước sẽ chạy trên nó, thay vì tốn chi phí của mô hình trò chuyện chính cho mỗi bước.',
-  'The provider this was set to is gone - pick another, or go back to the main chat model.':
-    'Nhà cung cấp được đặt trước đây không còn nữa - hãy chọn nhà cung cấp khác, hoặc quay lại mô hình trò chuyện chính.',
+  'Instructions the agent loads when needed.': 'Hướng dẫn agent dùng khi cần.',
+  'A short name others will see.': 'Tên ngắn mà người khác sẽ thấy.',
+  'Sent with every prompt. Keep it short.': 'Gửi kèm mọi lời nhắc. Hãy viết ngắn.',
+  'Loaded only when this skill is needed.': 'Chỉ được tải khi cần kỹ năng này.',
+  'Every user can see and run it.': 'Mọi người dùng đều thấy và chạy được.',
+  'Every user can see and use it.': 'Mọi người dùng đều thấy và dùng được.',
+  'Tools this skill makes available.': 'Công cụ mà kỹ năng này mở ra.',
+  'Searched first with this skill.': 'Được tìm trước khi dùng kỹ năng này.',
+  'Searched first in this workflow.': 'Được tìm trước trong quy trình này.',
+  'For a job you repeat the same way, like a weekly summary.': 'Cho việc bạn lặp lại theo cùng một cách, như bản tóm tắt hằng tuần.',
+  'What you type after "/" in chat. Must differ from skill names.': 'Từ bạn gõ sau "/" trong trò chuyện. Không được trùng tên kỹ năng.',
+  'Shown in the "/" list and to the agent.': 'Hiện trong danh sách "/" và cho agent.',
+  'Steps run in order, one turn each. Each step adds cost.': 'Các bước chạy theo thứ tự, mỗi bước một lượt. Mỗi bước tốn thêm chi phí.',
+  'That is the maximum. Split longer ones into two workflows.': 'Đã đạt tối đa. Hãy tách quy trình dài thành hai.',
+  'Tools the agent may use in every step.': 'Công cụ agent được dùng ở mọi bước.',
+  'Optional. Given before the first step.': 'Không bắt buộc. Được đưa ra trước bước đầu tiên.',
+  'Optional. A cheaper model for every step.': 'Không bắt buộc. Một mô hình rẻ hơn cho mọi bước.',
+  'This provider is gone. Pick another, or use the chat model.': 'Nhà cung cấp này không còn. Chọn cái khác, hoặc dùng mô hình trò chuyện.',
 
   // Import, export and reset: the copy that explains what each action does.
-  'Saves the chosen settings to a file, without API tokens. Not a backup.':
-    'Lưu các cài đặt đã chọn vào một tệp, không gồm token API. Đây không phải bản sao lưu.',
-  'Configuration imported. A restart is required for some of it to take effect.': 'Đã nhập cấu hình. Cần khởi động lại để một phần có hiệu lực.',
+  'Saves settings to a file, without API tokens. Not a backup.': 'Lưu cài đặt vào tệp tin, không gồm token API. Không phải bản sao lưu.',
+  'Configuration imported. Restart Proxyma to apply some of it.': 'Đã nhập cấu hình. Khởi động lại Proxyma để áp dụng một phần.',
   'What to include': 'Nội dung đưa vào',
   'None': 'Không chọn',
-  'Takes effect after a restart': 'Có hiệu lực sau khi khởi động lại',
+  'Takes effect after Proxyma restarts': 'Có hiệu lực sau khi Proxyma khởi động lại',
   // The import report's column heading over each entry's settings group.
   'Group': 'Nhóm',
   'Include credentials, encrypted with a passphrase': 'Kèm theo thông tin đăng nhập, được mã hóa bằng một cụm mật khẩu',
-  'The passphrase cannot be recovered. Without it, nobody can read the credentials in this file.':
-    'Cụm mật khẩu không thể khôi phục. Không có nó, không ai đọc được thông tin đăng nhập trong tệp này.',
-  "Adds the file's settings without deleting any; you review them first.":
-    'Thêm các cài đặt trong tệp mà không xóa cài đặt nào; bạn sẽ xem lại trước.',
-  'Nothing in this file differs from what is already configured here.':
-    'Không có gì trong tệp này khác với những gì đã được cấu hình ở đây.',
-  'No credentials were read from this file. Anything needing one keeps the value already configured here.':
-    'Không đọc được thông tin đăng nhập nào từ tệp này. Những mục cần thông tin đăng nhập sẽ giữ nguyên giá trị đã cấu hình ở đây.',
-  'Settings return to their defaults; sources, indexed documents and chat history are kept.':
-    'Các cài đặt trở về mặc định; nguồn dữ liệu, tài liệu đã lập chỉ mục và lịch sử trò chuyện được giữ lại.',
-  'Every source, all indexed content and chat history, plus the settings. Files on your disk are kept.':
-    'Mọi nguồn dữ liệu, toàn bộ nội dung đã lập chỉ mục và lịch sử trò chuyện, cùng các cài đặt. Tệp trên ổ đĩa của bạn được giữ nguyên.',
+  'The passphrase cannot be recovered. Without it, the credentials cannot be read.': 'Không thể khôi phục cụm mật khẩu. Thiếu nó thì không đọc được thông tin đăng nhập.',
+  'Adds settings from a file. Nothing is deleted.': 'Thêm cài đặt từ tệp tin. Không xóa gì.',
+  'Nothing in this file is different.': 'Không có gì khác biệt trong tệp này.',
+  'No credentials in this file. Current ones are kept.': 'Tệp này không có thông tin đăng nhập. Giữ nguyên thông tin hiện có.',
+  'Settings go back to defaults. Sources and chats are kept.': 'Cài đặt về mặc định. Giữ nguyên nguồn dữ liệu và cuộc trò chuyện.',
+  'Deletes all sources, indexed content, chats and settings. Your files on disk are kept.': 'Xóa mọi nguồn dữ liệu, nội dung đã lập chỉ mục, cuộc trò chuyện và cài đặt. Tệp tin trên ổ đĩa được giữ nguyên.',
   'Both actions restart Proxyma when they finish.': 'Cả hai thao tác đều khởi động lại Proxyma khi hoàn tất.',
 
   // Updates, network and previews.
-  'How often to look for a newer version; checking downloads nothing.':
-    'Tần suất tìm phiên bản mới hơn; việc kiểm tra không tải xuống gì.',
-  'Download new versions when found; each installs the next time Proxyma starts.':
-    'Tải phiên bản mới ngay khi tìm thấy; phiên bản đó được cài vào lần khởi động Proxyma tiếp theo.',
+  'How often to look for a new version.': 'Bao lâu kiểm tra phiên bản mới một lần.',
+  'Installs the next time Proxyma starts.': 'Cài đặt vào lần mở Proxyma tiếp theo.',
   'No content indexed for this item yet': 'Chưa có nội dung nào được lập chỉ mục cho mục này',
   'Failed to load preview': 'Không thể tải bản xem trước',
-  'I have read this and I am responsible for reviewing every write action.':
-    'Tôi đã đọc nội dung này và tôi chịu trách nhiệm xem xét mọi hành động ghi.',
+  'I will review every write action.': 'Tôi sẽ xem xét mọi thao tác ghi.',
 
   // Empty states on the admin charts.
   // -- the last review findings -------------------------------------------------------------------
@@ -1985,8 +1963,7 @@ export const vi: Record<string, string> = {
   'Revoking...': 'Đang thu hồi...',
 
   // -- the rest of the second review ---------------------------------------------------------------
-  'Guardrails check what people send, what the agent reads and what it answers.':
-    'Rào chắn kiểm tra nội dung người dùng gửi, nội dung tác nhân đọc và nội dung tác nhân trả lời.',
+  'Check what people send, what the agent reads and what it answers.': 'Kiểm tra những gì người dùng gửi, agent đọc và trả lời.',
   'Could not record your acceptance. Please try again.':
     'Không thể ghi nhận sự chấp thuận của bạn. Vui lòng thử lại.',
   'You must accept the terms to continue.': 'Bạn phải chấp nhận các điều khoản để tiếp tục.',
@@ -2000,41 +1977,31 @@ export const vi: Record<string, string> = {
   // they belong to no named const and could not be scoped the usual way - the checker learned to
   // read a `name={[ ... ]}` attribute for these. A blanket array match had been tried first and
   // reported twenty Tailwind class lists as untranslated prose.
-  'Any client currently using this token will immediately lose access.':
-    'Mọi ứng dụng đang dùng token này sẽ mất quyền truy cập ngay lập tức.',
-  'Any model role pointing at this provider stops working until you choose another one.':
-    'Mọi vai trò mô hình đang trỏ tới nhà cung cấp này sẽ ngừng hoạt động cho tới khi bạn chọn nhà cung cấp khác.',
-  'No other provider is selected in its place - that stays your choice.':
-    'Không có nhà cung cấp nào được chọn thay thế - đó vẫn là lựa chọn của bạn.',
-  'Calls to this model will be priced at its list price where one is known, else at $0.':
-    'Các lượt gọi tới mô hình này sẽ được tính theo giá niêm yết nếu có, nếu không thì là $0.',
+  'Anything using this token loses access now.': 'Mọi thứ đang dùng token này sẽ mất quyền truy cập ngay.',
+  'Anything using this provider stops working until you choose another.': 'Mọi thứ dùng nhà cung cấp này sẽ ngừng hoạt động cho đến khi bạn chọn cái khác.',
+  'No other provider is chosen for you.': 'Không có nhà cung cấp nào được tự động chọn thay.',
+  'This model will use its list price or $0.': 'Mô hình này sẽ dùng giá niêm yết hoặc $0.',
 
   // -- the About tab's link descriptions, and the guardrail row captions ------------------------------
   // Both arrive as JSX attributes on a shared row component, so the titles were translated and the
   // descriptions beside them were not. Only a per-attribute pattern finds this shape.
   'Installing, configuring and operating Proxyma.':
     'Cài đặt, cấu hình và vận hành Proxyma.',
-  'Reaching this instance from your own tools or coding assistant.':
-    'Truy cập hệ thống này từ công cụ của riêng bạn hoặc từ trợ lý lập trình.',
+  'Use this instance from your own tools.': 'Dùng bản cài này từ công cụ của bạn.',
   'Where data goes, who can see what, and how to get help.':
     'Dữ liệu đi đâu, ai nhìn thấy được gì, và cách nhận hỗ trợ.',
-  'What changed in each version, and what needs action before you upgrade.':
-    'Những gì đã thay đổi trong từng phiên bản, và những việc cần làm trước khi nâng cấp.',
-  "What data is collected, how it's used, and your rights over it.":
-    'Dữ liệu nào được thu thập, được dùng ra sao, và quyền của bạn đối với dữ liệu đó.',
+  'What changed in each version.': 'Những thay đổi trong từng phiên bản.',
+  'What data is collected and your rights.': 'Dữ liệu nào được thu thập và quyền của bạn.',
   'The terms that govern your use of this service.':
     'Các điều khoản chi phối việc bạn sử dụng dịch vụ này.',
-  'The terms for the services Proxyma runs, such as feedback and diagnostics.':
-    'Điều khoản cho các dịch vụ Proxyma vận hành, như phản hồi và chẩn đoán.',
+  'Terms for the services Proxyma runs.': 'Điều khoản cho các dịch vụ Proxyma vận hành.',
   'API keys, tokens and private keys. All three stages.':
     'API key, token và khóa riêng tư. Cả ba giai đoạn.',
-  'Emails, phone numbers and card numbers. Messages and answers only.':
-    'Email, số điện thoại và số thẻ. Chỉ trong tin nhắn và câu trả lời.',
-  'Full paths on this machine, appearing in an answer. Answers only.':
-    'Đường dẫn đầy đủ trên máy này, xuất hiện trong một câu trả lời. Chỉ trong câu trả lời.',
-  'Attempts to talk the agent out of its instructions. A speed bump, not a lock.': 'Các nỗ lực thuyết phục trợ lý từ bỏ chỉ dẫn của nó. Là gờ giảm tốc, không phải ổ khóa.',
-  'Refuses any answer repeating a hidden marker. Catches quoting, not paraphrase.': 'Từ chối mọi câu trả lời lặp lại một dấu hiệu ẩn. Bắt được việc trích dẫn, không bắt được diễn đạt lại.',
-  'Pauses someone refused several times in a row. Forgotten on restart.': 'Tạm dừng người bị từ chối nhiều lần liên tiếp. Được xóa khi khởi động lại.',
+  'Emails, phone and card numbers. Messages and answers only.': 'Email, số điện thoại và số thẻ. Chỉ tin nhắn và câu trả lời.',
+  'Full paths on this machine. Answers only.': 'Đường dẫn đầy đủ trên máy này. Chỉ câu trả lời.',
+  'Attempts to trick the agent. Not a full guard.': 'Cố tình lừa agent. Không chặn được hết.',
+  'Blocks answers that repeat the system prompt word for word.': 'Chặn câu trả lời lặp lại nguyên văn lời nhắc hệ thống.',
+  'Pauses someone refused several times in a row.': 'Tạm dừng người bị từ chối nhiều lần liên tiếp.',
 
   // -- small words beside a readout --------------------------------------------------------------------
   'synced': 'đã đồng bộ',
@@ -2131,8 +2098,7 @@ export const vi: Record<string, string> = {
   'Failed to start re-indexing': 'Không thể bắt đầu lập chỉ mục lại',
   'Retrying failed items': 'Đang thử lại các mục bị lỗi',
   'Failed to retry items': 'Không thể thử lại các mục',
-  "Enjoy using {product}? Leave feedback - it's significant in helping us improve {product}.":
-    'Bạn thấy {product} hữu ích chứ? Hãy để lại góp ý - điều đó giúp chúng tôi cải thiện {product} rất nhiều.',
+  'Enjoy {product}? Tell us what you think.': 'Bạn thích {product}? Hãy cho chúng tôi biết ý kiến.',
   'Overall experience': 'Trải nghiệm tổng thể',
   'Search result quality': 'Chất lượng kết quả tìm kiếm',
   'Response speed': 'Tốc độ trả lời',
@@ -2145,10 +2111,8 @@ export const vi: Record<string, string> = {
   'At least 1 number': 'Ít nhất 1 chữ số',
   'At least 1 special character': 'Ít nhất 1 ký tự đặc biệt',
   'Passwords match': 'Mật khẩu trùng khớp',
-  'Your account was created before we started recording which version of our terms each user accepted. Please review and accept them to continue.':
-    'Tài khoản của bạn được tạo trước khi chúng tôi bắt đầu ghi nhận phiên bản điều khoản mà mỗi người dùng đã chấp nhận. Vui lòng xem lại và chấp nhận các điều khoản để tiếp tục.',
-  'We have updated our Terms of Service, Privacy Policy and End User License Agreement. Please review and accept the current version to continue.':
-    'Chúng tôi đã cập nhật Điều khoản dịch vụ, Chính sách bảo mật và Thỏa thuận cấp phép người dùng cuối (EULA). Vui lòng xem lại và chấp nhận phiên bản hiện hành để tiếp tục.',
+  'Please review and accept our terms to continue.': 'Vui lòng xem và chấp nhận điều khoản để tiếp tục.',
+  'Our terms have changed. Please review and accept them to continue.': 'Điều khoản đã thay đổi. Vui lòng xem và chấp nhận để tiếp tục.',
 
   // -- Administration: the system tiles, the users table, backups, maintenance and cost ------------
   'Version': 'Phiên bản',
@@ -2157,12 +2121,10 @@ export const vi: Record<string, string> = {
   'Platform': 'Nền tảng',
   // -- Settings: connectors, providers, guardrails, documents, retention and network ---------------
   'Failed to save.': 'Không thể lưu.',
-  'Restart failed. Please restart manually.': 'Khởi động lại thất bại. Vui lòng khởi động lại thủ công.',
+  'Proxyma could not restart. Restart Proxyma manually.': 'Proxyma không thể khởi động lại. Hãy khởi động lại Proxyma thủ công.',
   'Your data has been deleted.': 'Dữ liệu của bạn đã được xóa.',
-  'Deletion requested. Your account will be permanently deleted in {days} days unless you recover it.':
-    'Đã gửi yêu cầu xóa. Tài khoản của bạn sẽ bị xóa vĩnh viễn sau {days} ngày trừ khi bạn khôi phục lại.',
-  'Permanently delete your data. Your account stays open since it is managed by SSO.':
-    'Xóa vĩnh viễn dữ liệu của bạn. Tài khoản vẫn được giữ vì nó do SSO quản lý.',
+  'Your account will be deleted in {days} days unless you recover it.': 'Tài khoản sẽ bị xóa sau {days} ngày nếu bạn không khôi phục.',
+  'Delete your data. Your SSO account stays.': 'Xóa dữ liệu của bạn. Tài khoản SSO vẫn còn.',
   'Permanently delete your account and all associated data.':
     'Xóa vĩnh viễn tài khoản của bạn và toàn bộ dữ liệu liên quan.',
   'Connector Management': 'Quản lý bộ kết nối',
@@ -2181,14 +2143,13 @@ export const vi: Record<string, string> = {
   'Reachable - {count} model.|Reachable - {count} models.':
     'Kết nối được - {count} mô hình.|Kết nối được - {count} mô hình.',
   'Web search': 'Tìm kiếm web',
-  'Works without setup; a Google Custom Search key makes it more reliable.':
-    'Hoạt động mà không cần thiết lập; khóa Google Custom Search giúp tìm kiếm ổn định hơn.',
+  'Works without setup. A Google Custom Search key makes it more reliable.': 'Dùng được ngay. Khóa Google Custom Search giúp ổn định hơn.',
   'Search engine ID': 'Search Engine ID',
   'Concise': 'Súc tích',
   'Normal': 'Bình thường',
   'Creative': 'Sáng tạo',
-  'Agent provider': 'Nhà cung cấp cho tác nhân',
-  'Agent model': 'Mô hình cho tác nhân',
+  'Agent provider': 'Nhà cung cấp cho agent',
+  'Agent model': 'Mô hình cho agent',
   'Enforce': 'Áp dụng',
   'Monitor only': 'Chỉ theo dõi',
   'Block the turn': 'Chặn cả lượt',
@@ -2196,13 +2157,10 @@ export const vi: Record<string, string> = {
   'Withhold the whole source': 'Giữ lại toàn bộ nguồn dữ liệu',
   'Guardrail provider': 'Nhà cung cấp cho rào chắn',
   'Guardrail model': 'Mô hình cho rào chắn',
-  'Nothing is checked until a model is chosen. The pattern checks above keep working either way.':
-    'Không có gì được kiểm tra cho tới khi một mô hình được chọn. Các kiểm tra theo mẫu ở trên vẫn hoạt động trong cả hai trường hợp.',
+  'Nothing is checked until you choose a model.': 'Chưa kiểm tra gì cho đến khi bạn chọn mô hình.',
   'relevant': 'có liên quan',
-  'Up to {size} MB each; rebuild the index after changing the embedding model.':
-    'Tối đa {size} MB mỗi tệp tin; hãy dựng lại chỉ mục sau khi đổi mô hình vector nhúng (embeddings).',
-  'Nothing here yet. Until a document is added, this layer does nothing and costs nothing.':
-    'Chưa có gì ở đây. Cho đến khi có tài liệu, lớp này không làm gì và không tốn chi phí.',
+  'Up to {size} MB each.': 'Tối đa {size} MB mỗi tệp.',
+  'Nothing here yet.': 'Chưa có gì ở đây.',
   'Could not add that document.': 'Không thể thêm tài liệu đó.',
   '{count} passage indexed|{count} passages indexed':
     'Đã lập chỉ mục {count} đoạn văn bản|Đã lập chỉ mục {count} đoạn văn bản',
@@ -2211,14 +2169,11 @@ export const vi: Record<string, string> = {
   'pdfplumber (table-aware PDFs)': 'pdfplumber (PDF có nhận biết bảng)',
   'OCR (always)': 'OCR (luôn luôn)',
   'Vision model': 'Mô hình thị giác',
-  'Free and offline, plain text only; needs tesseract and pytesseract.':
-    'Miễn phí và chạy ngoại tuyến, chỉ cho văn bản thuần; cần cài tesseract và pytesseract.',
-  'Reads layout, tables and handwriting far better; one model call per page.':
-    'Đọc bố cục, bảng biểu và chữ viết tay tốt hơn nhiều; mỗi trang tốn một lượt gọi mô hình.',
+  'Free and offline, plain text only.': 'Miễn phí và chạy ngoại tuyến, chỉ văn bản thuần.',
+  'Reads layouts, tables and handwriting. One model call per page.': 'Đọc bố cục, bảng và chữ viết tay. Mỗi trang một lần gọi mô hình.',
   'OCR provider': 'Nhà cung cấp cho OCR',
   'OCR model': 'Mô hình cho OCR',
-  'Must be a vision-capable model. Leave blank to leave OCR switched off.':
-    'Phải là mô hình có khả năng thị giác. Để trống để tắt OCR.',
+  'A vision model. Leave blank to turn OCR off.': 'Mô hình thị giác. Để trống để tắt OCR.',
   'Embedding provider': 'Nhà cung cấp cho vector nhúng',
   'Embedding model': 'Mô hình vector nhúng (embeddings)',
   'Query expansion provider': 'Nhà cung cấp cho mở rộng truy vấn',
@@ -2229,11 +2184,13 @@ export const vi: Record<string, string> = {
   'Extraction model': 'Mô hình trích xuất',
   'How long each kind of data is kept, swept daily.': 'Mỗi loại dữ liệu được giữ trong bao lâu, được dọn dẹp hàng ngày.',
   '0 keeps it forever': '0 nghĩa là giữ mãi mãi',
+  'Conversations (days)': 'Cuộc trò chuyện (ngày)',
   'Idle conversations; pinned ones are kept.':
     'Các cuộc trò chuyện không hoạt động; những cuộc đã ghim được giữ lại.',
   'Evaluation data (days)': 'Dữ liệu đánh giá (ngày)',
   'Per-turn and per-search records.': 'Bản ghi theo từng lượt và theo từng lần tìm kiếm.',
   'Usage records (days)': 'Bản ghi sử dụng (ngày)',
+  'Feedback (days)': 'Góp ý (ngày)',
   'Submitted feedback and its attachments.': 'Góp ý đã gửi và các tệp tin đính kèm.',
   'System proxy': 'Proxy hệ thống',
   'Custom proxy': 'Proxy tùy chỉnh',
@@ -2245,30 +2202,29 @@ export const vi: Record<string, string> = {
 
   // -- one more save-state word --------------------------------------------------------------------
   'Saved.': 'Đã lưu.',
-  'Saving {field}...': 'Đang lưu {field}...',
-  '{count} of those would have been withheld, but monitor mode let them through.': '{count} trong số đó lẽ ra đã bị chặn, nhưng chế độ giám sát đã cho qua.',
-  'The classifier failed and let 1 turn through. Check that its provider is reachable.|The classifier failed and let {count} turns through. Check that its provider is reachable.': 'Bộ phân loại gặp lỗi và đã cho qua {count} lượt. Hãy kiểm tra xem có kết nối được tới nhà cung cấp của nó không.',
-  "From counted tokens and rates, unless the provider states the cost; the provider's bill is the actual charge.":
-    'Tính từ số token đã đếm và đơn giá, trừ khi nhà cung cấp tự báo chi phí; hóa đơn của nhà cung cấp mới là số tiền thực tế.',
-  'This installation updates by downloading the new release, not in place.': 'Bản cài đặt này cập nhật bằng cách tải về bản phát hành mới, không cập nhật tại chỗ.',
+  // A number a setting cannot take, said before it is saved (the click-to-edit rule, 2026-11-02).
+  'Enter a number.': 'Hãy nhập một số.',
+  'Enter a whole number.': 'Hãy nhập một số nguyên.',
+  'Enter {min} or more.': 'Hãy nhập từ {min} trở lên.',
+  'Enter {max} or less.': 'Hãy nhập tối đa {max}.',
+  '{count} would have been blocked in monitor mode.': '{count} tin nhắn lẽ ra đã bị chặn ở chế độ giám sát.',
+  'The check failed and let 1 turn through.|The check failed and let {count} turns through.': 'Việc kiểm tra bị lỗi và đã cho {count} lượt đi qua.',
+  'Your provider bill is the real charge.': 'Hóa đơn của nhà cung cấp là chi phí thật.',
+  'Update by downloading the new release.': 'Cập nhật bằng cách tải bản phát hành mới.',
 
   // -- the product tour, the What's New panel, and the last of the settings pages ------------------
   '0 = no limit': '0 = không giới hạn',
   '100% on-premise': '100% trên hạ tầng của bạn',
   "A source can point at its own server and use its own credential - set it in that source's Configure dialog.":
     'Một nguồn dữ liệu có thể trỏ tới máy chủ riêng của nó và dùng thông tin đăng nhập riêng - hãy đặt điều đó trong hộp thoại Cấu hình của nguồn dữ liệu đó.',
-  'An ordered set of steps the agent runs one at a time. Type "/" in the chat box and pick it by name.':
-    'Một chuỗi các bước có thứ tự mà tác nhân thực hiện lần lượt. Gõ "/" trong ô trò chuyện và chọn quy trình theo tên.',
+  'Steps the agent runs in order. Type "/" in chat to start one.': 'Các bước agent chạy theo thứ tự. Gõ "/" trong trò chuyện để bắt đầu.',
   'A workflow needs at least one step.': 'Một quy trình cần ít nhất một bước.',
   'At least {count} characters': 'Ít nhất {count} ký tự',
   'Check now and Download on the Updates page show that they are working.':
     'Nút Kiểm tra ngay và Tải về trên trang Cập nhật đã cho thấy chúng đang hoạt động.',
   'Configuration exported without credentials.': 'Đã xuất cấu hình mà không kèm thông tin đăng nhập.',
-  'Configuration exported. Keep the passphrase - nothing else can open the file.':
-    'Đã xuất cấu hình. Hãy giữ cụm mật khẩu - không có gì khác mở được tệp tin này.',
+  'Configuration exported. Keep the passphrase to open the file.': 'Đã xuất cấu hình. Hãy giữ cụm mật khẩu để mở tệp.',
   'Configuration imported.': 'Đã nhập cấu hình.',
-  'Configuration imported. Some of it needs a restart to take effect.':
-    'Đã nhập cấu hình. Một phần trong đó cần khởi động lại mới có hiệu lực.',
   'Conversations are named after what you asked about.':
     'Các cuộc trò chuyện được đặt tên theo nội dung bạn đã hỏi.',
   'Could not export the configuration.': 'Không thể xuất cấu hình.',
@@ -2289,6 +2245,8 @@ export const vi: Record<string, string> = {
   'Main chat model': 'Mô hình trò chuyện chính',
   'Move step {number} down': 'Chuyển bước {number} xuống dưới',
   'Move step {number} up': 'Chuyển bước {number} lên trên',
+  'Step {number} title': 'Tên bước {number}',
+  'Step {number} instruction': 'Hướng dẫn của bước {number}',
   'Must be a whole number between 0 and {max}': 'Phải là một số nguyên từ 0 đến {max}',
   'Must be a whole number between 1 and {max}': 'Phải là một số nguyên từ 1 đến {max}',
   'Name is required': 'Vui lòng nhập tên',
@@ -2296,8 +2254,7 @@ export const vi: Record<string, string> = {
   'Only if you want a reply.': 'Chỉ điền nếu bạn muốn nhận phản hồi.',
   'Page limit must be a whole number between 1 and {max}.':
     'Giới hạn số trang phải là một số nguyên từ 1 đến {max}.',
-  'Pick a model from this provider, or set the provider back to the chat model.':
-    'Hãy chọn một mô hình từ nhà cung cấp này, hoặc đặt nhà cung cấp trở lại thành mô hình trò chuyện.',
+  'Pick a model, or use the chat model.': 'Chọn một mô hình, hoặc dùng mô hình trò chuyện.',
   'Proxyma is up to date': 'Proxyma đã là phiên bản mới nhất',
   'Proxyma now tells you what changed after an update.':
     'Từ nay Proxyma sẽ cho bạn biết những gì đã thay đổi sau mỗi lần cập nhật.',
@@ -2305,21 +2262,27 @@ export const vi: Record<string, string> = {
   'Proxyma {version} is available': 'Đã có Proxyma {version}',
   'Proxyma {version} is available to download': 'Đã có Proxyma {version} để tải về',
   'Proxyma {version} is ready to install': 'Proxyma {version} đã sẵn sàng để cài đặt',
+  // The desktop window's title row, while an update waits (UpdateNotice.tsx).
+  'Restart Proxyma to update': 'Khởi động lại Proxyma để cập nhật',
+  'Update available': 'Có bản cập nhật',
+  'Proxyma {version} is ready.': 'Proxyma {version} đã sẵn sàng.',
+  'Otherwise it installs the next time Proxyma starts.':
+    'Nếu không, bản cập nhật sẽ được cài vào lần khởi động Proxyma tiếp theo.',
+  'Work still in progress stops when Proxyma restarts.':
+    'Công việc đang chạy sẽ dừng lại khi Proxyma khởi động lại.',
+  'Later': 'Để sau',
   'Rate limited - retrying in {seconds}s...': 'Bị giới hạn tần suất - sẽ thử lại sau {seconds} giây...',
-  'Reindexing to a new model - old results still shown until it finishes':
-    'Đang lập chỉ mục lại sang một mô hình mới - kết quả cũ vẫn được hiển thị cho tới khi hoàn tất',
-  'Reindexing to {model} - old results still shown until it finishes':
-    'Đang lập chỉ mục lại sang {model} - kết quả cũ vẫn được hiển thị cho tới khi hoàn tất',
+  'Reindexing to a new model': 'Đang lập chỉ mục lại với mô hình mới',
+  'Reindexing to {model}': 'Đang lập chỉ mục lại với {model}',
   'Remove step {number}': 'Xóa bước {number}',
-  'Restart and install {version}': 'Khởi động lại và cài đặt {version}',
+  'Restart Proxyma and install {version}': 'Khởi động lại Proxyma và cài đặt {version}',
   'Short description is required': 'Vui lòng nhập mô tả ngắn',
   'Sources that live on more than one server, and Linux gets a proper installer.':
     'Các nguồn dữ liệu nằm trên nhiều máy chủ khác nhau, và Linux đã có một bộ cài đặt đúng nghĩa.',
   'That file could not be read.': 'Không thể đọc tệp tin đó.',
   'That file is not a Proxyma configuration export.':
     'Tệp tin đó không phải là một bản xuất cấu hình của Proxyma.',
-  'These files match content already indexed. Skipping saves storage quota; uploading anyway keeps your own copy.':
-    'Các tệp tin này trùng với nội dung đã được lập chỉ mục. Bỏ qua sẽ tiết kiệm hạn mức lưu trữ; vẫn tải lên thì bạn giữ bản sao của riêng mình.',
+  'These files are already indexed. Skipping saves storage.': 'Các tệp này đã được lập chỉ mục. Bỏ qua để tiết kiệm dung lượng.',
 
   'The last check did not finish': 'Lần kiểm tra gần nhất chưa hoàn tất',
   'This panel, the first time you open a new version.':
@@ -2342,13 +2305,11 @@ export const vi: Record<string, string> = {
   'Every 6 hours': '6 giờ một lần',
   'Once a day': 'Mỗi ngày một lần',
   'Once a week': 'Mỗi tuần một lần',
-  'Providers, models and API keys return to defaults - you will need to configure them again':
-    'Nhà cung cấp, mô hình và API key trở về mặc định - bạn sẽ phải cấu hình lại chúng',
+  'Providers, models and API keys go back to defaults': 'Nhà cung cấp, mô hình và khóa API về mặc định',
   'Connectors, indexed documents and chat history are kept':
     'Bộ kết nối, tài liệu đã lập chỉ mục và lịch sử trò chuyện được giữ lại',
   'Proxyma restarts when this finishes': 'Proxyma sẽ khởi động lại khi việc này hoàn tất',
-  'Every connector and everything indexed from it will be deleted':
-    'Mọi bộ kết nối và toàn bộ dữ liệu đã lập chỉ mục từ chúng sẽ bị xóa',
+  'Every source and its index is deleted': 'Mọi nguồn dữ liệu và chỉ mục của nó bị xóa',
   'All chat history and conversations will be deleted':
     'Toàn bộ lịch sử trò chuyện và các cuộc trò chuyện sẽ bị xóa',
   'All settings return to defaults': 'Toàn bộ thiết lập trở về mặc định',
@@ -2369,14 +2330,11 @@ export const vi: Record<string, string> = {
   'View the knowledge graph': 'Xem đồ thị tri thức',
   'View indexed chunks': 'Xem các đoạn đã lập chỉ mục',
   'What this item put into the knowledge graph.': 'Những gì mục này đã đưa vào đồ thị tri thức.',
-  'Every item in this source, in one graph. A thing two files both mention is one node here.':
-    'Mọi mục trong nguồn dữ liệu này, gộp trong một đồ thị. Thứ mà hai tệp tin cùng nhắc tới sẽ là một nút duy nhất ở đây.',
-  'Every indexed chunk in this source. Open an item to read what it was split into.':
-    'Toàn bộ các đoạn đã lập chỉ mục trong nguồn dữ liệu này. Hãy mở một mục để đọc nội dung đã được chia.',
-  'The indexed text of this document, as it was split for search.': 'Nội dung đã lập chỉ mục của tài liệu này, theo cách nó được chia nhỏ để tìm kiếm.',
+  'Everything in this source, in one graph.': 'Mọi thứ trong nguồn này, trong một đồ thị.',
+  'Every indexed chunk in this source.': 'Mọi đoạn đã lập chỉ mục trong nguồn này.',
+  'The indexed text of this document.': 'Văn bản đã lập chỉ mục của tài liệu này.',
   '{entities} entities, {relations} relationships.': '{entities} thực thể, {relations} mối quan hệ.',
-  'Showing the {count} most connected - raise the star limit to see more.':
-    'Đang hiển thị {count} thực thể có nhiều liên kết nhất - hãy nâng giới hạn số sao để xem thêm.',
+  'Showing the {count} most connected.': 'Đang hiện {count} mục liên kết nhiều nhất.',
   'Drawing {done} of {total}...': 'Đang vẽ {done} trên {total}...',
   'Stars': 'Số sao',
   'How many of the most connected entities to draw':
@@ -2385,8 +2343,7 @@ export const vi: Record<string, string> = {
   // Double-quoted on both sides: the English carries an apostrophe AND a quoted phrase, and a
   // single-quoted literal would need the apostrophe escaped - which is exactly the shape the
   // checker's parser has been wrong about before (see .claude/rules/frontend.md).
-  "Turn on \"Build a knowledge graph\" in this source's settings. Items already indexed are extracted in the background.":
-    'Hãy bật "Xây dựng đồ thị tri thức" trong cài đặt của nguồn dữ liệu này. Các mục đã lập chỉ mục sẽ được trích xuất ở chế độ nền.',
+  'Turn on "Build a knowledge graph" in this source\'s settings.': 'Bật "Xây dựng đồ thị tri thức" trong cài đặt của nguồn này.',
   'Failed to load the graph': 'Không thể tải đồ thị',
   // The gesture line. Rewritten with the 3D view: dragging now ROTATES and panning moved to
   // shift-drag, and dragging a node to move it is gone entirely - in three dimensions a
@@ -2444,8 +2401,7 @@ export const vi: Record<string, string> = {
   // 2026-09-16 - three log messages had been telling operators to raise a setting no
   // screen offered.
   'Extraction timeout': 'Thời gian chờ trích xuất',
-  'How long one chunk may take; raise it for local or reasoning models.':
-    'Thời gian tối đa cho một đoạn; hãy tăng lên với mô hình cục bộ hoặc mô hình suy luận.',
+  'Time limit per chunk. Raise it for slow models.': 'Thời gian tối đa cho mỗi đoạn. Tăng lên cho mô hình chậm.',
 
   // The knowledge graph's live progress line - see ConnectorSettingsModal.
   'Building the knowledge graph - passage {done} of {total}':
@@ -2466,7 +2422,7 @@ export const vi: Record<string, string> = {
   'Video from {host}': 'Video từ {host}',
   'Audio from {host}': 'Âm thanh từ {host}',
   // A render error: the whole app, one page, one chat message (components/ui/ErrorBoundaries.tsx).
-  'Something went wrong on this page. Reloading usually fixes it.': 'Đã xảy ra lỗi trên trang này. Tải lại trang thường sẽ khắc phục được.',
+  'Something went wrong. Reload the page.': 'Đã xảy ra lỗi. Hãy tải lại trang.',
   'Something went wrong on this page.': 'Đã xảy ra lỗi trên trang này.',
   'Reloading usually fixes it.': 'Tải lại trang thường sẽ khắc phục được.',
   'A new version is available. Reloading...': 'Đã có phiên bản mới. Đang tải lại...',
@@ -2480,10 +2436,8 @@ export const vi: Record<string, string> = {
   'Add connection': 'Thêm kết nối',
   'Edit connection': 'Sửa kết nối',
   'No connections yet.': 'Chưa có kết nối nào.',
-  'The servers your sources and the agent reach, each with your credential.':
-    'Các máy chủ mà nguồn dữ liệu của bạn và tác nhân truy cập, mỗi máy chủ với thông tin đăng nhập của bạn.',
-  'Let the agent add and remove sources for you; removing one deletes its index.':
-    'Cho phép tác nhân thêm và gỡ nguồn dữ liệu thay bạn; gỡ một nguồn sẽ xóa cả chỉ mục của nó.',
+  'The servers your sources and agent reach.': 'Các máy chủ mà nguồn dữ liệu và agent kết nối tới.',
+  'Let the agent add and remove sources.': 'Cho agent thêm và gỡ nguồn dữ liệu.',
   'Default': 'Mặc định',
   'Not signed in': 'Chưa đăng nhập',
   'Signed in as {account}': 'Đã đăng nhập với tư cách {account}',
@@ -2491,10 +2445,10 @@ export const vi: Record<string, string> = {
   'no token': 'chưa có token',
   'no username': 'chưa có tên người dùng',
   'no password': 'chưa có mật khẩu',
-  'agent may read and write': 'tác nhân được đọc và ghi',
-  'agent may read': 'tác nhân được đọc',
-  'agent may write': 'tác nhân được ghi',
-  'agent has no access': 'tác nhân không có quyền truy cập',
+  'Agent may read and write': 'Agent được đọc và ghi',
+  'Agent may read': 'Agent được đọc',
+  'Agent may write': 'Agent được ghi',
+  'Agent has no access': 'Agent không có quyền truy cập',
   'Sign in again': 'Đăng nhập lại',
   'Sign in again to keep its sources syncing.': 'Hãy đăng nhập lại để các nguồn dữ liệu của kết nối này tiếp tục được đồng bộ.',
   'Signed out of {name}.': 'Đã đăng xuất khỏi {name}.',
@@ -2505,42 +2459,45 @@ export const vi: Record<string, string> = {
   'Delete connection': 'Xóa kết nối',
   'Its credential and Read/Write switches are deleted with it.':
     'Thông tin đăng nhập và các công tắc Đọc/Ghi của nó sẽ bị xóa cùng.',
-  'A connection still used by a source cannot be deleted - remove or move those sources first.':
-    'Không thể xóa một kết nối vẫn đang được nguồn dữ liệu sử dụng - hãy gỡ bỏ hoặc chuyển các nguồn đó trước.',
+  // Deleting a connection sources still read through: they are kept and stop syncing.
+  '{names} and {count} more': '{names} và {count} nguồn khác',
+  '{name} reads through it. It stops syncing until another connection is chosen in its settings; what it indexed is kept.':
+    '{name} đang đọc qua kết nối này. Nguồn đó sẽ ngừng đồng bộ cho đến khi bạn chọn kết nối khác trong phần cài đặt của nó; những gì đã lập chỉ mục vẫn được giữ lại.',
+  '{names} read through it. They stop syncing until another connection is chosen in their settings; what they indexed is kept.':
+    '{names} đang đọc qua kết nối này. Các nguồn đó sẽ ngừng đồng bộ cho đến khi bạn chọn kết nối khác trong phần cài đặt của chúng; những gì đã lập chỉ mục vẫn được giữ lại.',
+  'Agents pinned to it use your default {service} connection instead.':
+    'Các agent được ghim vào kết nối này sẽ dùng kết nối {service} mặc định của bạn thay thế.',
+  "Its connection was deleted. Choose another connection in the source's settings.":
+    'Kết nối của nguồn này đã bị xóa. Hãy chọn kết nối khác trong phần cài đặt của nguồn.',
+  'Its connection was deleted. Choose another one to sync it again.':
+    'Kết nối của nguồn này đã bị xóa. Hãy chọn kết nối khác để đồng bộ lại.',
   // The Add/Edit connection dialog.
   'Username': 'Tên người dùng',
-  'A personal access token for this server. Yours alone - it is never shared with other users.':
-    'Một personal access token cho máy chủ này. Của riêng bạn - nó không bao giờ được chia sẻ với người dùng khác.',
-  "The repository root. Each SVN source's path is added to it.":
-    'Thư mục gốc của kho mã. Đường dẫn của mỗi nguồn SVN được nối vào sau nó.',
-  "Windows Authentication takes a domain-qualified name (DOMAIN\\you); Subversion Authentication takes a name from the server's own user list.":
-    'Windows Authentication dùng tên kèm miền (DOMAIN\\you); Subversion Authentication dùng một tên trong danh sách người dùng của chính máy chủ.',
+  'A personal access token. Yours alone.': 'Token truy cập cá nhân. Chỉ của riêng bạn.',
+  'The repository root URL.': 'URL gốc của kho.',
+  "Windows: DOMAIN\\you. Subversion: a name from the server's user list.": 'Windows: DOMAIN\\you. Subversion: tên trong danh sách người dùng của máy chủ.',
   'Remove the stored credential': 'Gỡ bỏ thông tin đăng nhập đã lưu',
-  'Keep the stored credential': 'Giữ thông tin đăng nhập đã lưu',
-  'The stored credential is removed when you save.': 'Thông tin đăng nhập đã lưu sẽ bị gỡ bỏ khi bạn lưu.',
-  'Signed in as {account}. Sign in again from the connection list to use a different account.':
-    'Đã đăng nhập với tư cách {account}. Hãy đăng nhập lại từ danh sách kết nối để dùng một tài khoản khác.',
+  'Fill in the fields below to switch.': 'Điền các trường bên dưới để chuyển đổi.',
+  'Signed in as {account}.': 'Đã đăng nhập bằng {account}.',
   'Not signed in yet. Use Sign in on the connection list.': 'Chưa đăng nhập. Hãy dùng Đăng nhập trong danh sách kết nối.',
+  'Not signed in yet.': 'Chưa đăng nhập.',
+  'Sign in to {service} through this connection.': 'Đăng nhập vào {service} qua kết nối này.',
+  'The sign-in was for the old client. Sign in again with the new one.':
+    'Lần đăng nhập trước dành cho OAuth client cũ. Hãy đăng nhập lại bằng client mới.',
   'Use as default for {service}': 'Dùng làm mặc định cho {service}',
   'Your first {service} connection is the default.': 'Kết nối {service} đầu tiên của bạn là kết nối mặc định.',
   'To change it, make another connection the default.': 'Để thay đổi, hãy đặt một kết nối khác làm mặc định.',
-  'A source that names no connection, and the agent, use the default.':
-    'Nguồn dữ liệu không chỉ định kết nối, và tác nhân, sẽ dùng kết nối mặc định.',
-  'Allow agent to read': 'Cho phép tác nhân đọc',
-  'Allow agent to write': 'Cho phép tác nhân ghi',
-  'Let the agent search and read {service} through this connection, from chat and from an attached MCP client.':
-    'Cho phép tác nhân tìm kiếm và đọc {service} qua kết nối này, từ cửa sổ trò chuyện và từ một ứng dụng MCP đang kết nối.',
-  'Let the agent create, update and delete {service} content through this connection, on your behalf.':
-    'Cho phép tác nhân tạo, cập nhật và xóa nội dung {service} qua kết nối này, thay mặt bạn.',
+  'Used by the agent and by sources with no connection set.': 'Được agent và các nguồn chưa chọn kết nối sử dụng.',
+  'Allow agent to read': 'Cho phép agent đọc',
+  'Allow agent to write': 'Cho phép agent ghi',
+  'Let the agent search and read {service}.': 'Cho agent tìm và đọc {service}.',
+  'Let the agent create, update and delete {service} content.': 'Cho agent tạo, sửa và xóa nội dung {service}.',
   // The Connection field of Add Source and of a source's settings.
   'Add a connection': 'Thêm một kết nối',
   '{name} (default)': '{name} (mặc định)',
-  'You have no {service} connection yet. A source reads through one - the server and the credential it is reached with.':
-    'Bạn chưa có kết nối {service} nào. Mỗi nguồn dữ liệu đọc qua một kết nối - máy chủ và thông tin đăng nhập dùng để truy cập nó.',
-  'Sign in to {name} first. This source reads as the account signed in there.':
-    'Hãy đăng nhập vào {name} trước. Nguồn dữ liệu này đọc với tư cách tài khoản đã đăng nhập ở đó.',
-  'Sign in to {name} again. This source reads as the account signed in there.':
-    'Hãy đăng nhập lại vào {name}. Nguồn dữ liệu này đọc với tư cách tài khoản đã đăng nhập ở đó.',
+  'No {service} connection yet.': 'Chưa có kết nối {service}.',
+  'Sign in to {name} first.': 'Hãy đăng nhập {name} trước.',
+  'Sign in to {name} again.': 'Hãy đăng nhập lại {name}.',
   'via {connection}': 'qua {connection}',
   'Configure connection': 'Cấu hình kết nối',
   'Configure connection and file types': 'Cấu hình kết nối và loại tệp tin',
@@ -2562,8 +2519,7 @@ export const vi: Record<string, string> = {
     'Không có gì phản hồi tại địa chỉ đó (404). Hãy kiểm tra đó là địa chỉ gốc của máy chủ.',
   '{service} answered {status}.': '{service} phản hồi mã {status}.',
   'Could not reach {url}: {reason}': 'Không thể kết nối tới {url}: {reason}',
-  "The server's certificate expired on {date}. Its administrator has to renew it.":
-    'Chứng chỉ của máy chủ đã hết hạn vào {date}. Quản trị viên của máy chủ cần gia hạn chứng chỉ.',
+  "The server's certificate expired on {date}.": 'Chứng chỉ của máy chủ đã hết hạn vào {date}.',
   "The server's certificate has expired. Its administrator has to renew it.":
     'Chứng chỉ của máy chủ đã hết hạn. Quản trị viên của máy chủ cần gia hạn chứng chỉ.',
   "The server's certificate is not valid yet. Check this computer's date and time.":
@@ -2582,8 +2538,41 @@ export const vi: Record<string, string> = {
   'Get started': 'Bắt đầu',
   'Add a source': 'Thêm nguồn dữ liệu',
   'Set up a model': 'Thiết lập mô hình',
+  // Sign in with OpenRouter (useOpenRouterSignIn.ts).
+  'Sign in with OpenRouter': 'Đăng nhập bằng OpenRouter',
+  'Waiting for OpenRouter...': 'Đang chờ OpenRouter...',
+  'Signed in to OpenRouter.': 'Đã đăng nhập OpenRouter.',
+  'Could not set up OpenRouter.': 'Không thiết lập được OpenRouter.',
+  'OpenRouter answered, but listed no model to use. Choose one in Settings > Agents.': 'OpenRouter đã trả lời nhưng không liệt kê mô hình nào để dùng. Hãy chọn một mô hình trong Cài đặt > Agent.',
+  'The sign-in took too long. Start it again.': 'Đăng nhập mất quá nhiều thời gian. Hãy bắt đầu lại.',
+  'The sign-in was declined on OpenRouter.': 'Đăng nhập đã bị từ chối trên OpenRouter.',
+  'The sign-in was not completed. Try again.': 'Đăng nhập chưa hoàn tất. Hãy thử lại.',
+  'Sign in with OpenRouter is for Proxyma Desktop and Home Server.': 'Đăng nhập bằng OpenRouter dành cho Proxyma Desktop và Home Server.',
+  // The free-Gemini quick start (GeminiQuickStart.tsx).
+  'Get a free Gemini key': 'Lấy khóa Gemini miễn phí',
+  'Use another provider': 'Dùng nhà cung cấp khác',
+  'Proxyma is ready': 'Proxyma đã sẵn sàng',
+  'Proxyma needs an AI model. Gemini has a free tier with just a Google account.': 'Proxyma cần một mô hình AI. Gemini có gói miễn phí, chỉ cần tài khoản Google.',
+  'Connected to Gemini': 'Đã kết nối với Gemini',
+  'Chat uses {chat}. Documents are indexed with {embedding}.': 'Trò chuyện dùng {chat}. Tài liệu được lập chỉ mục bằng {embedding}.',
+  'Ask "What can you do?", or add a folder first.': 'Hãy hỏi "Bạn làm được gì?", hoặc thêm một thư mục trước.',
+  'Open Google AI Studio and sign in with your Google account.': 'Mở Google AI Studio và đăng nhập bằng tài khoản Google của bạn.',
+  'Open Google AI Studio': 'Mở Google AI Studio',
+  'Choose Create API key, then copy the key.': 'Chọn Create API key (Tạo khóa API), rồi sao chép khóa.',
+  'Paste it below and choose Connect.': 'Dán khóa vào ô bên dưới và chọn Kết nối.',
+  'Gemini API key': 'Khóa API Gemini',
+  'Connecting to Gemini': 'Đang kết nối với Gemini',
+  'On the free tier, Google may use what you send. For private documents, use a paid key.': 'Ở gói miễn phí, Google có thể dùng những gì bạn gửi. Với tài liệu riêng tư, hãy dùng khóa trả phí.',
+  'Add your documents': 'Thêm tài liệu của bạn',
+  'Start chatting': 'Bắt đầu trò chuyện',
+  'Save the key': 'Lưu khóa',
+  'Check the key with Google': 'Kiểm tra khóa với Google',
+  'Choose the models': 'Chọn mô hình',
+  'Google answered, but offered no chat or embedding model to this key.': 'Google đã phản hồi, nhưng không cấp mô hình trò chuyện hoặc mô hình embedding nào cho khóa này.',
+  'Could not connect to Gemini.': 'Không thể kết nối với Gemini.',
   'Help': 'Trợ giúp',
   'No matching sources': 'Không có nguồn nào phù hợp',
+  'Project leads': 'Trưởng nhóm dự án',
   // -- The composer's permission mode (PermissionModePicker.tsx) -----------------------------------
   'Ask': 'Hỏi trước',
   'Auto': 'Tự động',
@@ -2593,8 +2582,7 @@ export const vi: Record<string, string> = {
   'Reads only, never changes anything': 'Chỉ đọc, không bao giờ thay đổi gì',
   'Permission: {mode}': 'Quyền: {mode}',
   // -- Conversations running side by side (useWorkingAgents, ChatSessionList) ---------------------
-  '{count} conversation still working - go to the latest|{count} conversations still working - go to the latest':
-    '{count} cuộc trò chuyện vẫn đang chạy - đi tới cuộc mới nhất',
+  '{count} conversation still working|{count} conversations still working': '{count} cuộc trò chuyện vẫn đang chạy',
   'Still working': 'Vẫn đang chạy',
   // -- What's New, 0.19.0 --------------------------------------------------------------------------
   'Run conversations side by side, and choose how much the assistant may change.':
@@ -2613,7 +2601,7 @@ export const vi: Record<string, string> = {
   '{used} of {limit}': '{used} / {limit}',
 
   // -- the public Enterprise sandbox: banner and sign-in accounts ------------------
-  'Public sandbox - other visitors can see what you add, and everything is deleted every night.': 'Môi trường dùng thử công khai - khách khác có thể thấy những gì bạn thêm, và mọi thứ bị xóa mỗi đêm.',
+  'Public sandbox. Others can see what you add. Everything is deleted nightly.': 'Bản thử nghiệm công khai. Người khác thấy những gì bạn thêm. Mọi thứ bị xóa mỗi đêm.',
   'Do not enter real credentials or confidential data.': 'Đừng nhập thông tin đăng nhập thật hoặc dữ liệu bảo mật.',
   'Try it as': 'Dùng thử với vai trò',
   'Super admin': 'Quản trị viên cấp cao',
@@ -2638,14 +2626,14 @@ export const vi: Record<string, string> = {
   'Conversion': 'Chuyển đổi',
   'Delete {name}': 'Xóa {name}',
   'Edition': 'Ấn bản',
-  'Every tool the agent has, and what each one may change.': 'Mọi công cụ của tác nhân, và những gì mỗi công cụ được phép thay đổi.',
-  'Generate one for each client, so each can be revoked on its own.': 'Tạo một token cho mỗi ứng dụng, để có thể thu hồi riêng từng cái.',
+  'Every tool the agent has, and what each one may change.': 'Mọi công cụ của agent, và những gì mỗi công cụ được phép thay đổi.',
+  'Make one per client, so each can be revoked alone.': 'Tạo mỗi ứng dụng một token để thu hồi riêng.',
   'Claude Code, VS Code & Copilot': 'Claude Code, VS Code & Copilot',
   'Proxyma API': 'API của Proxyma',
-  'What the agent can do': 'Tác nhân có thể làm gì',
+  'What the agent can do': 'Agent có thể làm gì',
   'Guides': 'Hướng dẫn',
   'OCR': 'OCR',
-  'Searching your sources and asking the agent from a script.': 'Tìm trong nguồn dữ liệu và hỏi tác nhân từ một script.',
+  'Searching your sources and asking the agent from a script.': 'Tìm trong nguồn dữ liệu và hỏi agent từ một script.',
   'Spending': 'Chi tiêu',
   'You accepted version {version} of the terms on {date}.': 'Bạn đã chấp nhận phiên bản {version} của điều khoản vào ngày {date}.',
   'created {date}': 'tạo ngày {date}',
@@ -2656,18 +2644,16 @@ export const vi: Record<string, string> = {
   'Add server': 'Thêm máy chủ',
   'File server': 'Máy chủ tệp tin',
   'Remove': 'Gỡ bỏ',
-  'The instructions the agent starts every conversation with. Read-only.': 'Những chỉ dẫn tác nhân dùng khi bắt đầu mọi cuộc trò chuyện. Chỉ đọc.',
-  "What the agent is given when a conversation starts. Today's date and the lists of skills and workflows are added to it.":
-    'Những gì tác nhân nhận được khi một cuộc trò chuyện bắt đầu. Ngày hôm nay cùng danh sách kỹ năng và quy trình được thêm vào đó.',
+  'What the agent starts every conversation with. Read-only.': 'Nội dung agent dùng khi bắt đầu mỗi cuộc trò chuyện. Chỉ đọc.',
+  'What the agent starts every conversation with.': 'Nội dung agent dùng khi bắt đầu mỗi cuộc trò chuyện.',
   'Use from other AI assistants': 'Dùng từ các trợ lý AI khác',
   'What do you need done?': 'Bạn cần xử lý việc gì?',
-  'Optional; Network share connections may only name the servers listed.':
-    'Không bắt buộc; kết nối thư mục chia sẻ mạng chỉ được trỏ tới các máy chủ trong danh sách.',
-  'The server your network paths start with. Its folders are read as this account, and no other server is.': 'Máy chủ mà các đường dẫn mạng của bạn bắt đầu bằng. Các thư mục trên đó được đọc bằng tài khoản này, và không máy chủ nào khác được đọc.',
-  'Your Windows domain account, as DOMAIN\\you or you@domain. Only files it can open are indexed.': 'Tài khoản miền Windows của bạn, dạng DOMAIN\\you hoặc you@domain. Chỉ những tệp tin tài khoản này mở được mới được lập chỉ mục.',
+  'Optional. Network shares may only use these servers.': 'Không bắt buộc. Thư mục mạng chỉ được dùng các máy chủ này.',
+  'The server your network paths start with.': 'Máy chủ mà đường dẫn mạng của bạn bắt đầu.',
+  'Your Windows domain account, as DOMAIN\\you or you@domain.': 'Tài khoản miền Windows, dạng DOMAIN\\you hoặc you@domain.',
 
   // -- 2026-10-06: Settings on the rebuilt UI kit ------------------------------------------------
-  'A skill is a set of instructions the agent reads only when a question needs it.': 'Kỹ năng là một bộ hướng dẫn mà tác nhân chỉ đọc khi câu hỏi cần đến.',
+  'Instructions the agent reads when a question needs them.': 'Hướng dẫn agent đọc khi câu hỏi cần đến.',
   '{count} step|{count} steps': '{count} bước',
   'Unchanged': 'Không thay đổi',
   'Passphrase': 'Cụm mật khẩu',
@@ -2685,21 +2671,20 @@ export const vi: Record<string, string> = {
   'Failed to save the memory entry': 'Không lưu được mục bộ nhớ',
   'Filter entries': 'Lọc các mục',
   'Knowledge': 'Kiến thức',
-  'Main agent': 'Tác nhân chính',
+  'Main agent': 'Agent chính',
   'The agent that answers in your conversations.':
-    'Tác nhân trả lời trong các cuộc trò chuyện của bạn.',
+    'Agent trả lời trong các cuộc trò chuyện của bạn.',
   'Memory': 'Bộ nhớ',
   'Memory categories': 'Các loại bộ nhớ',
   'Move to About you': 'Chuyển sang Về bạn',
   'Move to Knowledge': 'Chuyển sang Kiến thức',
   'No entries match this filter.': 'Không có mục nào khớp với bộ lọc này.',
-  'Nothing saved yet. The agent saves facts and your preferences here as it learns them.': 'Chưa lưu gì. Tác nhân lưu các thông tin và sở thích của bạn ở đây khi nó học được.',
+  'Nothing saved yet.': 'Chưa lưu gì.',
   'Select every entry shown': 'Chọn mọi mục đang hiển thị',
   'Select this entry': 'Chọn mục này',
-  'The agent will no longer know this in any conversation.': 'Tác nhân sẽ không còn biết điều này trong bất kỳ cuộc trò chuyện nào.',
-  'What the agent saved for later; correct or delete anything out of date.':
-    'Những gì tác nhân đã lưu để dùng về sau; hãy sửa hoặc xóa mọi thông tin đã cũ.',
-  'What the agent remembers': 'Điều tác nhân ghi nhớ',
+  'The agent will no longer know this in any conversation.': 'Agent sẽ không còn biết điều này trong bất kỳ cuộc trò chuyện nào.',
+  'What the agent saved. Fix or delete anything out of date.': 'Những gì agent đã lưu. Sửa hoặc xóa mục đã cũ.',
+  'What the agent remembers': 'Điều agent ghi nhớ',
   'this memory entry': 'mục bộ nhớ này',
   '{count} entries': '{count} mục',
   '{count} memory entries': '{count} mục bộ nhớ',
@@ -2717,6 +2702,7 @@ export const vi: Record<string, string> = {
   'Key': 'Trọng điểm',
   'Key accounts': 'Khách hàng trọng điểm',
   'Constellations': 'Chòm sao',
+  'YouTube assistant': 'Trợ lý YouTube',
   'Note': 'Ghi chú',
   'Opportunities': 'Cơ hội',
   'Optional': 'Không bắt buộc',
@@ -2758,20 +2744,18 @@ export const vi: Record<string, string> = {
   'Data': 'Dữ liệu',
   'Days waiting': 'Số ngày đang chờ',
   'Diagnostics sent': 'Đã gửi dữ liệu chẩn đoán',
-  'Each check in the period, newest first. Open a row to see which rules fired.': 'Mỗi lần kiểm tra trong khoảng thời gian, mới nhất trước. Mở một dòng để xem quy tắc nào đã kích hoạt.',
-  'Each event in the period, newest first. Open a row to see what was recorded with it.': 'Mỗi sự kiện trong khoảng thời gian, mới nhất trước. Mở một dòng để xem những gì được ghi lại cùng nó.',
-  'Each send, failure, switch and deletion in the period, newest first. A send carries the report exactly as it went.': 'Mỗi lần gửi, lỗi, bật tắt và xóa trong khoảng thời gian, mới nhất trước. Mỗi lần gửi kèm báo cáo đúng như khi được gửi đi.',
-  'Each tool call in the period, newest first. Open a row to see its input and result.': 'Mỗi lần gọi công cụ trong khoảng thời gian, mới nhất trước. Mở một dòng để xem đầu vào và kết quả.',
-  'Error types, timings and enabled features - never your documents, questions, file names or account. The switch is in Settings > About > Privacy.': 'Loại lỗi, thời gian xử lý và các tính năng đang bật - không bao giờ có tài liệu, câu hỏi, tên tệp hay tài khoản của bạn. Công tắc nằm ở Cài đặt > Giới thiệu > Quyền riêng tư.',
+  'Every check, newest first.': 'Mọi lần kiểm tra, mới nhất trước.',
+  'Every event, newest first.': 'Mọi sự kiện, mới nhất trước.',
+  'Every send, failure, switch and deletion, newest first.': 'Mọi lần gửi, lỗi, bật tắt và xóa, mới nhất trước.',
+  'Every tool call, newest first.': 'Mọi lần gọi công cụ, mới nhất trước.',
+  'Error types, timings and features. Never your documents, questions or account.': 'Loại lỗi, thời gian và tính năng. Không bao giờ gồm tài liệu, câu hỏi hay tài khoản của bạn.',
   'Event': 'Sự kiện',
-  'Every check, its decision and the rules that fired are recorded in Logs.':
-    'Mỗi lần kiểm tra, quyết định của nó và các quy tắc được kích hoạt đều được ghi lại trong Nhật ký.',
-  'Every check, including the ones that let the text through. Rule names and categories only - never the text.': 'Mọi lần kiểm tra, kể cả những lần cho văn bản đi qua. Chỉ tên quy tắc và loại - không bao giờ có văn bản.',
+  'Every check is recorded in Logs.': 'Mọi lần kiểm tra được ghi trong Nhật ký.',
+  'Every check, with rule names only. Never the text.': 'Mọi lần kiểm tra, chỉ có tên quy tắc. Không bao giờ có văn bản.',
   'Every entry on this tab is deleted, in every period.': 'Mọi mục trên thẻ này sẽ bị xóa, trong mọi khoảng thời gian.',
   'Every model call and its cost.':
     'Mọi lần gọi mô hình và chi phí của nó.',
-  'Every update found, installed or failed is in Logs, under Activity.':
-    'Mọi bản cập nhật được tìm thấy, đã cài đặt hoặc bị lỗi đều nằm trong Nhật ký, mục Hoạt động.',
+  'Every update is recorded in Logs.': 'Mọi lần cập nhật được ghi trong Nhật ký.',
   'Guardrail window reset': 'Đã đặt lại cửa sổ rào chắn',
   'Guest': 'Khách',
   'Input check': 'Kiểm tra đầu vào',
@@ -2787,7 +2771,7 @@ export const vi: Record<string, string> = {
   'No tool was called in this period.': 'Không có công cụ nào được gọi trong khoảng thời gian này.',
   'Not since the app started': 'Chưa từ khi ứng dụng khởi động',
   'Nothing else was recorded with this entry.': 'Không có gì khác được ghi cùng mục này.',
-  'Nothing is collected while the switch is off; the preview shows what today would contain.': 'Không thu thập gì khi công tắc đang tắt; bản xem trước cho thấy hôm nay sẽ chứa những gì.',
+  'Nothing is collected while this is off.': 'Không thu thập gì khi đang tắt.',
   'Nothing was recorded in this period.': 'Không có gì được ghi lại trong khoảng thời gian này.',
   'Observed only': 'Chỉ quan sát',
   'Off': 'Tắt',
@@ -2805,21 +2789,23 @@ export const vi: Record<string, string> = {
   'Sending': 'Đang gửi',
   'Setting changed': 'Đã thay đổi cài đặt',
   'Setting cleared': 'Đã xóa cài đặt',
-  'Settings, sources, access, limits, updates, and anything cleared or deleted.': 'Cài đặt, nguồn dữ liệu, truy cập, giới hạn, cập nhật và mọi thứ đã bị xóa.',
-  'Sign-ins, account changes, settings, sources, access, limits, updates and maintenance.': 'Đăng nhập, thay đổi tài khoản, cài đặt, nguồn dữ liệu, truy cập, giới hạn, cập nhật và bảo trì.',
+  'Settings, sources, access, limits, updates and deletions.': 'Cài đặt, nguồn dữ liệu, quyền truy cập, hạn mức, cập nhật và các lần xóa.',
+  'Sign-ins, accounts, settings, sources, access, limits and updates.': 'Đăng nhập, tài khoản, cài đặt, nguồn dữ liệu, quyền truy cập, hạn mức và cập nhật.',
   'Spending limit reached': 'Đã chạm giới hạn chi tiêu',
   'Switched off': 'Đã tắt',
   'Switched on': 'Đã bật',
   'Target': 'Đối tượng',
   'The clear itself is recorded under Activity.': 'Bản thân thao tác xóa được ghi lại trong mục Hoạt động.',
-  'The text a rule objected to, kept in memory until restart and never written to the log. Turn off "Keep the matched text" in Guardrails to stop recording it.': 'Văn bản mà một quy tắc phản đối, chỉ giữ trong bộ nhớ đến khi khởi động lại và không bao giờ ghi vào nhật ký. Tắt "Giữ văn bản khớp" trong Rào chắn để ngừng ghi lại.',
+  'Text the rules matched, kept in memory until Proxyma restarts. Never written to the log.': 'Văn bản bị quy tắc phát hiện, giữ trong bộ nhớ đến khi Proxyma khởi động lại. Không ghi vào nhật ký.',
   'Took': 'Thời gian',
+  '{minutes} min': '{minutes} phút',
+  '{minutes} min {seconds} s': '{minutes} phút {seconds} giây',
   'Tool': 'Công cụ',
   'Tool call': 'Gọi công cụ',
   'Tool calls': 'Lần gọi công cụ',
   'CSV': 'CSV',
   'Could not download the log': 'Không thể tải nhật ký xuống',
-  'Downloaded the newest 10,000 entries. Choose a shorter period or a filter for the rest.': 'Đã tải 10.000 mục mới nhất. Chọn khoảng thời gian ngắn hơn hoặc một bộ lọc để lấy phần còn lại.',
+  'Downloaded the newest 10,000 entries. Narrow the period for the rest.': 'Đã tải 10.000 mục mới nhất. Chọn khoảng thời gian ngắn hơn để xem phần còn lại.',
   'Every field, for another program': 'Mọi trường, cho chương trình khác',
   'JSON': 'JSON',
   'Log downloaded': 'Đã tải nhật ký xuống',
@@ -2836,9 +2822,8 @@ export const vi: Record<string, string> = {
   'Tool calls, guardrail checks and activity.':
     'Lần gọi công cụ, kiểm tra rào chắn và hoạt động.',
   'Unsent days deleted': 'Đã xóa các ngày chưa gửi',
-  'What each call was given and what it returned, as the model saw it. Long results are cut short.': 'Mỗi lần gọi nhận gì và trả về gì, đúng như mô hình đã thấy. Kết quả dài được cắt ngắn.',
-  'Spending by provider, model and service, and every call, is in Logs.':
-    'Chi tiêu theo nhà cung cấp, mô hình và dịch vụ, cùng mọi lượt gọi, nằm trong Nhật ký.',
+  'What each call was given and what it returned.': 'Đầu vào và kết quả của mỗi lần gọi.',
+  'Spending details are in Logs.': 'Chi tiết chi tiêu nằm trong Nhật ký.',
   'Writes denied or not allowed.': 'Thao tác ghi bị từ chối hoặc không được phép.',
   'You': 'Bạn',
   'User budget reached': 'Đã chạm ngân sách người dùng',
@@ -2898,11 +2883,9 @@ export const vi: Record<string, string> = {
   // MCP server connections (Settings > Connections)
   '1 header|{count} headers': '{count} header',
   '1 variable|{count} variables': '{count} biến',
-  'A program on this computer, such as npx, uvx or docker. It starts with a minimal environment plus the variables added here.':
-    'Một chương trình trên máy này, ví dụ npx, uvx hoặc docker. Chương trình chạy với môi trường tối thiểu cộng với các biến được thêm ở đây.',
+  'A program on this computer, like npx, uvx or docker.': 'Một chương trình trên máy này, như npx, uvx hoặc docker.',
   'Add variable': 'Thêm biến',
-  'After saving, press Sign in on the connection to sign in to this server.':
-    'Sau khi lưu, nhấn Đăng nhập trên kết nối để đăng nhập vào máy chủ này.',
+  'After saving, press Sign in on the connection.': 'Sau khi lưu, nhấn Đăng nhập trên kết nối.',
   'Allow agent to use': 'Cho phép agent sử dụng',
   'Arguments': 'Tham số',
   'Authentication': 'Xác thực',
@@ -2911,10 +2894,8 @@ export const vi: Record<string, string> = {
   'Command': 'Lệnh',
   'Connected to {server}. Tools available: {count}.': 'Đã kết nối tới {server}. Số công cụ khả dụng: {count}.',
   'Could not connect: {reason}': 'Không thể kết nối: {reason}',
-  'Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).':
-    'Không thể kết nối: {reason}. Máy chủ MCP thường trả lời tại địa chỉ kết thúc bằng /mcp (hoặc /sse với kiểu truyền cũ).',
-  "That address answered, but not as a Subversion repository. Use the repository's root URL.":
-    'Địa chỉ đó có trả lời, nhưng không phải là một kho Subversion. Hãy dùng URL gốc của kho mã.',
+  'Could not connect: {reason}. MCP servers usually end in /mcp or /sse.': 'Không kết nối được: {reason}. Máy chủ MCP thường kết thúc bằng /mcp hoặc /sse.',
+  "This is not a Subversion repository. Use the repository's root URL.": 'Đây không phải kho Subversion. Hãy dùng URL gốc của kho.',
   'GitLab answers at {address}. Use that address as the GitLab URL.':
     'GitLab trả lời tại {address}. Hãy dùng địa chỉ đó làm URL GitLab.',
   "Zendesk has nothing at {address}. Check the connection's address.":
@@ -2923,40 +2904,39 @@ export const vi: Record<string, string> = {
     'Freshdesk không có gì tại {address}. Hãy kiểm tra địa chỉ của kết nối.',
   'Could not start the sign-in.': 'Không thể bắt đầu đăng nhập.',
   'Environment variables': 'Biến môi trường',
-  'Every user on this server can use its tools through this connection.':
-    'Mọi người dùng trên máy chủ này đều dùng được các công cụ của nó qua kết nối này.',
-  'Finish signing in in the window that opened.': 'Hoàn tất đăng nhập trong cửa sổ vừa mở.',
+  'Every user can use its tools.': 'Mọi người dùng đều dùng được công cụ của nó.',
+  'The sign-in opened in a new window.': 'Trang đăng nhập đã mở trong cửa sổ mới.',
   'Headers': 'Header',
   'Local command': 'Lệnh cục bộ',
   'Local command (stdio)': 'Lệnh cục bộ (stdio)',
-  'Most servers register Proxyma by themselves. Enter a client only if the server asks for one; its redirect URL is {url}.':
-    'Hầu hết máy chủ tự đăng ký Proxyma. Chỉ nhập client khi máy chủ yêu cầu; URL chuyển hướng của nó là {url}.',
+  'Most servers need no client. Redirect URL: {url}.': 'Hầu hết máy chủ không cần client. URL chuyển hướng: {url}.',
   'No authentication': 'Không xác thực',
   'OAuth sign-in': 'Đăng nhập OAuth',
-  "Offer this server's tools to the agent. Each call waits for your approval unless the conversation is in Auto.":
-    'Cung cấp các công cụ của máy chủ này cho agent. Mỗi lần gọi đều chờ bạn chấp thuận, trừ khi cuộc trò chuyện ở chế độ Tự động.',
+  "Offer this server's tools to the agent. Each call asks first, unless in Auto.": 'Cho agent dùng công cụ của máy chủ này. Mỗi lần gọi đều hỏi trước, trừ khi ở chế độ Tự động.',
   'One per line.': 'Mỗi dòng một giá trị.',
   'Open it again': 'Mở lại',
-  'Passed to the command. A saved value is kept while its box is left empty.':
-    'Được truyền cho lệnh. Giá trị đã lưu được giữ nguyên khi ô để trống.',
+  'Passed to the command. Leave empty to keep a saved value.': 'Truyền cho lệnh. Để trống để giữ giá trị đã lưu.',
   'Remove variable': 'Xóa biến',
   'SSE': 'SSE',
   'Saved - type to replace': 'Đã lưu - nhập để thay thế',
+  'Needs a name and a value.': 'Cần có tên và giá trị.',
+  'That name is already saved.': 'Tên này đã được lưu.',
+  'Type the command to save this change.': 'Nhập lệnh để lưu thay đổi này.',
+  'Type the server URL to save this change.': 'Nhập URL máy chủ để lưu thay đổi này.',
+  'Type the token to save this change.': 'Nhập token để lưu thay đổi này.',
   'Scope': 'Phạm vi (scope)',
-  'Sent to the server as a bearer token with every request.': 'Được gửi tới máy chủ dưới dạng bearer token trong mọi yêu cầu.',
-  'Sent with every request. A saved value is kept while its box is left empty.':
-    'Được gửi kèm mọi yêu cầu. Giá trị đã lưu được giữ nguyên khi ô để trống.',
+  'Sent as a bearer token.': 'Gửi dưới dạng bearer token.',
+  'Sent with every request. Leave empty to keep a saved value.': 'Gửi kèm mọi yêu cầu. Để trống để giữ giá trị đã lưu.',
   'Server-Sent Events (SSE)': 'Server-Sent Events (SSE)',
   'Share with everyone': 'Chia sẻ với mọi người',
   'Sign in again to use its tools.': 'Đăng nhập lại để dùng các công cụ của nó.',
   'Signed in to {name}.': 'Đã đăng nhập vào {name}.',
-  'Signed in. Sign in again from the connection list to use a different account.':
-    'Đã đăng nhập. Đăng nhập lại từ danh sách kết nối để dùng một tài khoản khác.',
+  'Signed in.': 'Đã đăng nhập.',
   'Streamable HTTP': 'Streamable HTTP',
   'The address of the MCP endpoint, often ending in /mcp.': 'Địa chỉ của endpoint MCP, thường kết thúc bằng /mcp.',
   'The address of the SSE endpoint, often ending in /sse.': 'Địa chỉ của endpoint SSE, thường kết thúc bằng /sse.',
   'Transport': 'Phương thức truyền',
-  'agent may use, asking first': 'agent được dùng, hỏi trước mỗi lần',
+  'Agent may use, asking first': 'Agent được dùng, hỏi trước mỗi lần',
   'not signed in': 'chưa đăng nhập',
   'shared with everyone': 'chia sẻ với mọi người',
   'signed in': 'đã đăng nhập',
@@ -2965,23 +2945,19 @@ export const vi: Record<string, string> = {
   'Add a custom source': 'Thêm nguồn tùy chỉnh',
   'Custom source': 'Nguồn tùy chỉnh',
   'Custom sources': 'Nguồn tùy chỉnh',
-  'Documents your own scripts and tools push to Proxyma through the ingestion API, and notes the assistant saves. Nothing is read from elsewhere.':
-    'Tài liệu do script và công cụ của bạn đẩy vào Proxyma qua API nạp dữ liệu, cùng các ghi chú trợ lý lưu lại. Không đọc dữ liệu từ nơi nào khác.',
+  'Documents your scripts push through the ingestion API, and notes the assistant saves.': 'Tài liệu do script của bạn gửi qua API nạp dữ liệu, và ghi chú trợ lý lưu lại.',
   'What it holds, for you and for the assistant.': 'Nguồn này chứa gì, để bạn và trợ lý cùng biết.',
   'Ingestion API': 'API nạp dữ liệu',
-  'Push documents to this source from a script, Zapier, Make or n8n. Each request carries one of its tokens, which opens this source and nothing else.':
-    'Đẩy tài liệu vào nguồn này từ một script, Zapier, Make hoặc n8n. Mỗi yêu cầu mang theo một token của nguồn; token đó chỉ mở được nguồn này.',
+  'Push documents here from a script, Zapier, Make or n8n.': 'Gửi tài liệu vào đây từ script, Zapier, Make hoặc n8n.',
   'How to push documents': 'Cách đẩy tài liệu',
   'Endpoint': 'Endpoint',
   'Tokens': 'Token',
-  'No tokens yet. Create one for each script, so each can be revoked on its own.':
-    'Chưa có token nào. Hãy tạo một token cho mỗi script để có thể thu hồi riêng từng cái.',
+  'No tokens yet. Make one per script.': 'Chưa có token. Hãy tạo mỗi script một token.',
   'Token name': 'Tên token',
   'For example: n8n workflow': 'Ví dụ: quy trình n8n',
   'Create token': 'Tạo token',
   'Failed to create the token': 'Không tạo được token',
-  'This source has as many tokens as it may. Revoke one you no longer use to create another.':
-    'Nguồn này đã có số token tối đa. Hãy thu hồi một token không còn dùng để tạo token khác.',
+  'Token limit reached. Revoke one to create another.': 'Đã đạt giới hạn token. Thu hồi một token để tạo cái mới.',
   'never used': 'chưa từng dùng',
   'Nothing has been pushed to this source yet.': 'Chưa có tài liệu nào được đẩy vào nguồn này.',
   'Ingest token created': 'Đã tạo token nạp dữ liệu',
@@ -2993,7 +2969,7 @@ export const vi: Record<string, string> = {
   'This source is now shared with others': 'Nguồn dữ liệu này giờ đã được chia sẻ với người khác',
   'This source is no longer shared': 'Nguồn dữ liệu này không còn được chia sẻ',
   'Failed to change sharing': 'Không thể thay đổi việc chia sẻ',
-  'This matches {name}, already shared by another user. Skipping uses that copy at no cost; registering your own uses your own sync and storage capacity.': 'Mục này trùng với {name}, vốn đã được một người dùng khác chia sẻ. Bỏ qua sẽ dùng bản đó miễn phí; đăng ký bản riêng sẽ dùng dung lượng đồng bộ và lưu trữ của chính bạn.',
+  'Another user already shares {name}. Skip to use their copy for free.': 'Người dùng khác đã chia sẻ {name}. Bỏ qua để dùng bản đó miễn phí.',
   '{count} item failed|{count} items failed': '{count} mục lỗi',
   'synced {when}': 'đã đồng bộ {when}',
   'Turn on "Include subfolders" below to index them.': 'Hãy bật "Bao gồm cả thư mục con" bên dưới để lập chỉ mục cho chúng.',
@@ -3001,35 +2977,30 @@ export const vi: Record<string, string> = {
   '{count} file uploaded to {folder}, {skipped} skipped|{count} files uploaded to {folder}, {skipped} skipped': 'Đã tải {count} tệp lên {folder}, bỏ qua {skipped}',
   'Uploading {done}/{total} files to {folder}': 'Đang tải lên {done}/{total} tệp tin vào {folder}',
   '{done} of {total} files uploaded to {folder}, {failed} failed': 'Đã tải lên {done} trên {total} tệp tin vào {folder}, {failed} thất bại',
-  'The following files already exist in {folder}. Choose to skip or overwrite each file.': 'Các tệp tin sau đã tồn tại trong {folder}. Chọn bỏ qua hoặc ghi đè cho từng tệp tin.',
+  'These files already exist in {folder}. Skip or overwrite each one.': 'Các tệp này đã có trong {folder}. Bỏ qua hoặc ghi đè từng tệp.',
   'Cancel this upload?': 'Hủy lần tải lên này?',
-  'The files that did upload are removed from the server, and nothing is indexed.': 'Các tệp đã tải lên sẽ bị xóa khỏi máy chủ và không có gì được lập chỉ mục.',
+  'Uploaded files are removed and nothing is indexed.': 'Các tệp đã tải lên bị gỡ và không có gì được lập chỉ mục.',
   'Keep them': 'Giữ lại',
   'Knowledge graph: {entities} entities, {relations} relationships': 'Đồ thị tri thức: {entities} thực thể, {relations} mối quan hệ',
   'You are about to {verb}:': 'Bạn sắp {verb}:',
   'Delete conversation': 'Xóa cuộc trò chuyện',
-  'The conversation and every message in it are deleted. This cannot be undone.': 'Cuộc trò chuyện và mọi tin nhắn trong đó sẽ bị xóa. Không thể hoàn tác.',
+  'The conversation is deleted. This cannot be undone.': 'Cuộc trò chuyện bị xóa. Không thể hoàn tác.',
   // -- Settings, Administration, Logs and sign-in on the UI kit (adopt-settings, 2026-10-14) ------
   'Choose a provider first': 'Hãy chọn nhà cung cấp trước',
   'Could not delete this provider': 'Không xóa được nhà cung cấp này',
   'Could not load the default prompt': 'Không tải được câu lệnh mặc định',
-  'Similarity only decides which clauses are {relevant}, and the model decides whether the message actually breaks one.':
-    'Độ tương đồng chỉ quyết định những điều khoản nào là {relevant}, còn mô hình quyết định xem tin nhắn có thực sự vi phạm điều khoản nào hay không.',
+  'Similarity picks the {relevant} clauses. The model decides if a message breaks one.': 'Độ tương đồng chọn các điều khoản {relevant}. Mô hình quyết định tin nhắn có vi phạm không.',
   'Remove policy document': 'Gỡ bỏ tài liệu chính sách',
   'remove': 'gỡ bỏ',
   'Removing...': 'Đang gỡ bỏ...',
   'Could not remove that document': 'Không gỡ bỏ được tài liệu đó',
   'Could not rebuild the index': 'Không dựng lại được chỉ mục',
-  'Its rules leave the policy index, and messages are no longer checked against them.':
-    'Các quy tắc của tài liệu bị xóa khỏi chỉ mục chính sách, và tin nhắn không còn được kiểm tra theo chúng nữa.',
-  'A monthly {hardStop}: chat, search and indexing stop until the reset day.':
-    'Một {hardStop} hàng tháng: trò chuyện, tìm kiếm và lập chỉ mục sẽ dừng cho tới ngày đặt lại.',
+  'Messages are no longer checked against its rules.': 'Tin nhắn không còn được kiểm tra theo các quy tắc này.',
+  'A monthly {hardStop}: chat, search and indexing stop until the reset day.': 'Một {hardStop} hằng tháng: trò chuyện, tìm kiếm và lập chỉ mục dừng đến ngày đặt lại.',
   '{count} minute|{count} minutes': '{count} phút',
-  'Credentials are written as {placeholder}. Enter them by hand after importing.':
-    'Thông tin đăng nhập được ghi thành {placeholder}. Sau khi nhập tệp, hãy điền lại chúng bằng tay.',
+  'Credentials appear as {placeholder}. Enter them after importing.': 'Thông tin đăng nhập hiện dưới dạng {placeholder}. Hãy nhập lại sau khi nhập cấu hình.',
   'Delete collected data?': 'Xóa dữ liệu đã thu thập?',
-  'Diagnostics waiting to be sent are deleted, and nothing already sent is affected.':
-    'Dữ liệu chẩn đoán đang chờ gửi sẽ bị xóa; những gì đã gửi không bị ảnh hưởng.',
+  'Diagnostics waiting to be sent are deleted.': 'Dữ liệu chẩn đoán đang chờ gửi sẽ bị xóa.',
   "{product} can't guarantee the AI assistant always uses this tool correctly. Every write action - creating, editing, deleting - {real}, in your connected system. {review} before it proceeds - {responsible} for what it does, not {product}.":
     '{product} không thể bảo đảm trợ lý AI luôn dùng công cụ này một cách chính xác. Mọi hành động ghi - tạo, sửa, xóa - {real}, trong hệ thống bạn đã kết nối. {review} trước khi nó được thực hiện - {responsible} cho những gì nó làm, chứ không phải {product}.',
   'I have read and accept the {terms}, {privacy} and {eula}.':
@@ -3037,10 +3008,8 @@ export const vi: Record<string, string> = {
   'By continuing you agree to the {terms}, {privacy} and {eula}.':
     'Bằng việc tiếp tục, bạn đồng ý với {terms}, {privacy} và {eula}.',
   'Your account is scheduled for deletion in {days}.': 'Tài khoản của bạn được lên lịch xóa sau {days}.',
-  'Model calls with a price appear here as cost per day. Rates are set per provider in Settings > AI Providers.':
-    'Các lượt gọi mô hình có giá sẽ hiện ở đây theo chi phí mỗi ngày. Giá được đặt cho từng nhà cung cấp trong Cài đặt > Nhà cung cấp AI.',
-  'Model calls with a price appear here as cost per month. Rates are set per provider in Settings > AI Providers.':
-    'Các lượt gọi mô hình có giá sẽ hiện ở đây theo chi phí mỗi tháng. Giá được đặt cho từng nhà cung cấp trong Cài đặt > Nhà cung cấp AI.',
+  'Priced model calls appear here as cost per day.': 'Các lần gọi mô hình có giá sẽ hiện ở đây theo chi phí mỗi ngày.',
+  'Priced model calls appear here as cost per month.': 'Các lần gọi mô hình có giá sẽ hiện ở đây theo chi phí mỗi tháng.',
 
   // -- What the SERVER says (serverMessages.generated.ts, read out of the Java source) -----------
   // The backend writes these in English; the page translates them as they arrive (serverText). A
@@ -3060,10 +3029,6 @@ export const vi: Record<string, string> = {
   "A connection's type cannot be changed. Add a new connection instead.":
     'Không thể đổi loại của một kết nối. Hãy thêm một kết nối mới.',
   "You already have a connection called '{0}'.": "Bạn đã có một kết nối tên '{0}'.",
-  "'{0}' is used by 1 source. Remove it from Sources first.":
-    "'{0}' đang được 1 nguồn dữ liệu sử dụng. Hãy xóa nguồn đó khỏi Nguồn dữ liệu trước.",
-  "'{0}' is used by {1} sources. Remove them from Sources first.":
-    "'{0}' đang được {1} nguồn dữ liệu sử dụng. Hãy xóa các nguồn đó khỏi Nguồn dữ liệu trước.",
   'The server URL is not a valid URL.': 'URL máy chủ không hợp lệ.',
   'The server URL must start with http:// or https://.':
     'URL máy chủ phải bắt đầu bằng http:// hoặc https://.',
@@ -3313,47 +3278,38 @@ export const vi: Record<string, string> = {
   'Too many sign-ins are in progress. Try again in a few minutes.': 'Có quá nhiều lượt đăng nhập đang diễn ra. Hãy thử lại sau vài phút.',
   'Deployment code': 'Mã triển khai',
   'Off - Proxyma Enterprise Server never sends diagnostics': 'Tắt - Proxyma Enterprise Server không bao giờ gửi dữ liệu chẩn đoán',
-  'Proxyma Enterprise Server never sends diagnostics or rated answers to Proxyma.': 'Proxyma Enterprise Server không bao giờ gửi dữ liệu chẩn đoán hay câu trả lời đã đánh giá tới Proxyma.',
-  'This server cannot add new accounts without an Enterprise license. Existing accounts sign in as before; ask your administrator.': 'Máy chủ này không thể thêm tài khoản mới khi không có giấy phép Enterprise. Các tài khoản hiện có vẫn đăng nhập như trước; hãy hỏi quản trị viên.',
+  'Enterprise Server never sends diagnostics or ratings.': 'Enterprise Server không bao giờ gửi dữ liệu chẩn đoán hay đánh giá.',
+  'New accounts need an Enterprise license. Ask your administrator.': 'Tài khoản mới cần giấy phép Enterprise. Hãy hỏi quản trị viên.',
 
   // THE CONNECTOR FRAMEWORK. The connector catalog's words (i18n/connectorLabels.generated.ts, read
   // out of the descriptors), the generic source and connection dialogs, and what the framework's
   // HTTP client and settings checks say when a service or a value is refused.
   "A Bitbucket repository's pull requests and commits.": 'Pull request và commit của một kho mã Bitbucket.',
-  "A Bitbucket Cloud repository's pull requests, with their comments and reviews, and its documentation files if you choose.":
-    'Pull request của một kho mã Bitbucket Cloud cùng bình luận và đánh giá của chúng, và các tệp tài liệu nếu bạn chọn.',
+  'Pull requests with comments and reviews, and documentation files if you choose.': 'Pull request kèm bình luận và đánh giá, và tệp tài liệu nếu bạn chọn.',
   "A Confluence space's pages and their comments.": 'Trang của một không gian Confluence cùng bình luận của chúng.',
-  'A workspace, project or repository access token with read access to repositories and pull requests.':
-    'Một access token của workspace, dự án hoặc kho mã, có quyền đọc kho mã và pull request.',
+  'A workspace, project or repository access token that can read.': 'Token truy cập workspace, dự án hoặc kho có quyền đọc.',
   'API token': 'API token',
   'Add a Bitbucket Cloud repository': 'Thêm kho mã Bitbucket Cloud',
   'Bitbucket Cloud': 'Bitbucket Cloud',
   'Bitbucket Cloud repositories': 'Kho mã Bitbucket Cloud',
   'Bitbucket Cloud repository': 'Kho mã Bitbucket Cloud',
-  'Create one at id.atlassian.com under Security > API tokens, with Bitbucket scopes to read repositories and pull requests.':
-    'Tạo token tại id.atlassian.com, mục Security > API tokens, với phạm vi Bitbucket để đọc kho mã và pull request.',
-  'Create one at id.atlassian.com under Security > API tokens. Yours alone - it is never shared with other users.':
-    'Tạo token tại id.atlassian.com, mục Security > API tokens. Token là của riêng bạn - không bao giờ được chia sẻ với người dùng khác.',
-  'Data Center or Server: the address you open it at. Cloud: your site, https://your-site.atlassian.net':
-    'Data Center hoặc Server: địa chỉ bạn dùng để mở nó. Cloud: site của bạn, https://your-site.atlassian.net',
+  'Create one at id.atlassian.com > Security > API tokens, with Bitbucket read scopes.': 'Tạo tại id.atlassian.com > Security > API tokens, với quyền đọc Bitbucket.',
+  'Create one at id.atlassian.com > Security > API tokens.': 'Tạo tại id.atlassian.com > Security > API tokens.',
+  'The address you open it at. Cloud: https://your-site.atlassian.net': 'Địa chỉ bạn dùng để mở nó. Cloud: https://your-site.atlassian.net',
   'Email address': 'Địa chỉ email',
   'Email and API token': 'Email và API token',
   'Email and API token (Cloud)': 'Email và API token (Cloud)',
-  'Markdown, reStructuredText and text files on the main branch.': 'Các tệp Markdown, reStructuredText và văn bản trên nhánh chính.',
+  'Markdown and text files on the main branch.': 'Tệp Markdown và văn bản trên nhánh chính.',
   'Personal access token (Data Center or Server)': 'Personal access token (Data Center hoặc Server)',
   'The email address you sign in to Atlassian with.': 'Địa chỉ email bạn dùng để đăng nhập Atlassian.',
   'The letters its issue numbers start with: PROJ in PROJ-123.': 'Các chữ cái đứng đầu số hiệu issue: PROJ trong PROJ-123.',
   "The repository's main branch when empty.": 'Nhánh chính của kho mã khi để trống.',
-  "A GitHub repository's issues and pull requests, with their comments, and its documentation files if you choose.":
-    'Issue và pull request của một kho mã GitHub cùng bình luận của chúng, và các tệp tài liệu nếu bạn chọn.',
+  'Issues and pull requests with comments, and documentation files if you choose.': 'Issue và pull request kèm bình luận, và tệp tài liệu nếu bạn chọn.',
   "A Jira project's issues, with their comments and history.": 'Issue của một dự án Jira, cùng bình luận và lịch sử của chúng.',
-  'A classic token with the repo scope, or a fine-grained one that can read issues, pull requests and contents.':
-    'Một token cổ điển có phạm vi repo, hoặc một token chi tiết có quyền đọc issue, pull request và nội dung.',
+  'A token that can read issues, pull requests and contents.': 'Token có quyền đọc issue, pull request và nội dung.',
   'A folder of documents - PDF, Office, text and more.': 'Một thư mục tài liệu - PDF, Office, văn bản và hơn thế nữa.',
-  'A folder on a Windows file server, read as your own domain account.':
-    'Một thư mục trên máy chủ tệp Windows, được đọc bằng chính tài khoản miền của bạn.',
-  'A website, crawled from a starting address to a depth and page count you set.':
-    'Một trang web, được thu thập từ một địa chỉ bắt đầu tới độ sâu và số trang bạn đặt.',
+  'A folder on a Windows file server.': 'Một thư mục trên máy chủ tệp Windows.',
+  'A website, crawled from a starting address.': 'Một trang web, thu thập từ một địa chỉ bắt đầu.',
   'API URL': 'URL API',
   'Add a GitHub repository': 'Thêm kho mã GitHub',
   'Branch': 'Nhánh',
@@ -3367,8 +3323,7 @@ export const vi: Record<string, string> = {
   'Docs and wikis': 'Tài liệu và wiki',
   'Documentation files': 'Tệp tài liệu',
   'Domain account': 'Tài khoản miền',
-  'Every source on a server or a service reads through one. Add the one you have an account on.':
-    'Mọi nguồn dữ liệu trên một máy chủ hay dịch vụ đều đọc qua một kết nối. Hãy thêm kết nối tới nơi bạn có tài khoản.',
+  'Sources read through a connection. Add the one you have an account on.': 'Nguồn dữ liệu đọc qua một kết nối. Thêm kết nối mà bạn có tài khoản.',
   'For GitHub Enterprise Server: https://your-host/api/v3': 'Với GitHub Enterprise Server: https://your-host/api/v3',
   'GitHub': 'GitHub',
   'GitHub repositories': 'Kho mã GitHub',
@@ -3376,8 +3331,7 @@ export const vi: Record<string, string> = {
   'HTTP access token': 'HTTP access token',
   'Issues': 'Issue',
   'MCP server': 'Máy chủ MCP',
-  'Markdown, reStructuredText and text files on the default branch.':
-    'Các tệp Markdown, reStructuredText và văn bản trên nhánh mặc định.',
+  'Markdown and text files on the default branch.': 'Tệp Markdown và văn bản trên nhánh mặc định.',
   'Meetings': 'Cuộc họp',
   'More options': 'Thêm tùy chọn',
   'Must be a whole number': 'Phải là số nguyên',
@@ -3397,23 +3351,17 @@ export const vi: Record<string, string> = {
   'Channels': 'Kênh',
   'Channels to leave out': 'Các kênh bỏ qua',
   'Days of history': 'Số ngày lịch sử',
-  "From your own Slack app's Basic Information page. Slack returns only to an https:// address, so paste the bot token where Proxyma is not served over https.":
-    'Lấy từ trang Basic Information của ứng dụng Slack của riêng bạn. Slack chỉ quay về địa chỉ https://, nên hãy dán bot token nếu Proxyma không chạy qua https.',
-  "From your own Slack app's OAuth & Permissions page, once it is installed to your workspace.":
-    'Lấy từ trang OAuth & Permissions của ứng dụng Slack của riêng bạn, sau khi đã cài ứng dụng vào workspace.',
+  "From your Slack app's Basic Information page.": 'Trong trang Basic Information của ứng dụng Slack.',
+  "From your Slack app's OAuth & Permissions page.": 'Trong trang OAuth & Permissions của ứng dụng Slack.',
   'Leave as it is unless you reach Slack through a relay.': 'Giữ nguyên, trừ khi bạn truy cập Slack qua một máy chủ trung gian.',
-  'Messages older than this are left out, and leave the index as they age. Leave empty for the whole history.':
-    'Tin nhắn cũ hơn số ngày này sẽ bị bỏ qua, và rời khỏi chỉ mục khi chúng cũ đi. Để trống để lấy toàn bộ lịch sử.',
-  'One per line, as #name or a channel ID. The app must be in each one. Leave empty for every public channel the app is in.':
-    'Mỗi dòng một kênh, dạng #tên hoặc ID kênh. Ứng dụng phải có mặt trong từng kênh. Để trống để lấy mọi kênh công khai có ứng dụng.',
+  'Older messages are left out. Empty for all history.': 'Bỏ qua tin nhắn cũ hơn. Để trống để lấy toàn bộ.',
+  'One per line, as #name or an ID. Empty for every channel the app is in.': 'Mỗi dòng một kênh, dạng #tên hoặc ID. Để trống để lấy mọi kênh có ứng dụng.',
   'One per line. Useful with every public channel.': 'Mỗi dòng một kênh. Hữu ích khi lấy mọi kênh công khai.',
-  'Optional. Lets private channels you are in be indexed without inviting the app to them.':
-    'Không bắt buộc. Cho phép lập chỉ mục các kênh riêng tư mà bạn tham gia mà không cần mời ứng dụng vào.',
+  'Optional. Indexes your private channels without inviting the app.': 'Không bắt buộc. Lập chỉ mục kênh riêng của bạn mà không cần mời ứng dụng.',
   'Sign in with Slack': 'Đăng nhập bằng Slack',
   'Slack': 'Slack',
   'Slack channels': 'Kênh Slack',
-  'The messages of Slack channels, one document per thread and one per channel per day, read through your own Slack app. Never direct messages.':
-    'Tin nhắn của các kênh Slack, mỗi luồng một tài liệu và mỗi kênh mỗi ngày một tài liệu, được đọc qua ứng dụng Slack của riêng bạn. Không bao giờ đọc tin nhắn trực tiếp.',
+  'Messages from Slack channels, read through your own Slack app. Never direct messages.': 'Tin nhắn từ các kênh Slack, đọc qua ứng dụng Slack của bạn. Không bao giờ đọc tin nhắn riêng.',
   'User token': 'User token',
   'Add Notion pages': 'Thêm trang Notion',
   'Add an Airtable base': 'Thêm base Airtable',
@@ -3421,14 +3369,10 @@ export const vi: Record<string, string> = {
   'Airtable base': 'Base Airtable',
   'Airtable bases': 'Base Airtable',
   'Base': 'Base',
-  'Create one at airtable.com/create/tokens with the data.records:read and schema.bases:read scopes, and add the bases to index.':
-    'Tạo tại airtable.com/create/tokens với các scope data.records:read và schema.bases:read, rồi thêm các base cần lập chỉ mục.',
-  'From your OAuth integration at airtable.com/create/oauth. You choose the bases to share when you sign in.':
-    'Lấy từ OAuth integration của bạn tại airtable.com/create/oauth. Bạn chọn các base để chia sẻ khi đăng nhập.',
-  "From your internal integration's Configuration tab in Notion's developer portal. Share each page or database to index with the integration.":
-    'Lấy từ thẻ Configuration của internal integration trong cổng dành cho nhà phát triển của Notion. Hãy chia sẻ từng trang hoặc cơ sở dữ liệu cần lập chỉ mục với integration.',
-  "From your public Notion integration's Configuration tab. You choose the pages to share when you sign in.":
-    'Lấy từ thẻ Configuration của public integration Notion của bạn. Bạn chọn các trang để chia sẻ khi đăng nhập.',
+  'Create one at airtable.com/create/tokens with read scopes.': 'Tạo tại airtable.com/create/tokens với quyền đọc.',
+  'From your OAuth integration at airtable.com/create/oauth.': 'Từ tích hợp OAuth tại airtable.com/create/oauth.',
+  "From your internal integration's Configuration tab in Notion.": 'Trong thẻ Configuration của tích hợp nội bộ trên Notion.',
+  "From your public integration's Configuration tab in Notion.": 'Trong thẻ Configuration của tích hợp công khai trên Notion.',
   'Integration token': 'Integration token',
   'Its name or ID. Leave empty for every table in the base.':
     'Tên hoặc ID của bảng. Để trống để lấy mọi bảng trong base.',
@@ -3438,20 +3382,15 @@ export const vi: Record<string, string> = {
     'Giữ nguyên, trừ khi bạn truy cập Notion qua một máy chủ trung gian.',
   'Notion': 'Notion',
   'Notion pages': 'Trang Notion',
-  'Notion pages and database rows shared with your integration, each page one document with its properties.':
-    'Các trang Notion và hàng cơ sở dữ liệu được chia sẻ với integration của bạn, mỗi trang một tài liệu kèm các thuộc tính.',
-  'One per line, as a link or an ID. A page brings every page under it, a database all its rows. Leave empty for everything shared with the integration.':
-    'Mỗi dòng một mục, dạng liên kết hoặc ID. Một trang kéo theo mọi trang bên dưới, một cơ sở dữ liệu kéo theo mọi hàng. Để trống để lấy mọi thứ được chia sẻ với integration.',
-  'Only the records this view shows, by its name or ID. Needs a table.':
-    'Chỉ các bản ghi mà chế độ xem này hiển thị, theo tên hoặc ID. Cần chọn bảng.',
+  'Notion pages and database rows shared with your integration.': 'Trang Notion và dòng cơ sở dữ liệu được chia sẻ với tích hợp của bạn.',
+  'One per line, as a link or an ID. Empty for everything shared.': 'Mỗi dòng một mục, dạng liên kết hoặc ID. Để trống để lấy mọi thứ được chia sẻ.',
+  'Only the records in this view. Needs a table.': 'Chỉ các bản ghi trong view này. Cần chọn bảng.',
   'Pages and databases': 'Trang và cơ sở dữ liệu',
   'Sign in with Airtable': 'Đăng nhập bằng Airtable',
   'Sign in with Notion': 'Đăng nhập bằng Notion',
   'Table': 'Bảng',
-  "The base's ID, or a link to the base, a table or a view - copied from the address bar in Airtable.":
-    'ID của base, hoặc liên kết tới base, bảng hay chế độ xem - sao chép từ thanh địa chỉ trong Airtable.',
-  'The records of an Airtable base, one document per record with every field, from one table or all of them.':
-    'Các bản ghi của một base Airtable, mỗi bản ghi một tài liệu với mọi trường, từ một bảng hoặc tất cả các bảng.',
+  "The base's ID or a link to it.": 'ID của base hoặc liên kết tới nó.',
+  'The records of an Airtable base.': 'Các bản ghi của một base Airtable.',
   'View': 'Chế độ xem',
   'Add Box': 'Thêm Box',
   'Add Dropbox': 'Thêm Dropbox',
@@ -3464,31 +3403,30 @@ export const vi: Record<string, string> = {
   'Dropbox': 'Dropbox',
   'Dropbox folder': 'Thư mục Dropbox',
   'Dropbox folders': 'Thư mục Dropbox',
-  'Files in Box - PDF and Office files, text and Box Notes - from All Files or one folder.':
-    'Các tệp tin trong Box - tệp PDF và Office, văn bản và Box Notes - từ All Files hoặc một thư mục.',
-  'Files in Dropbox - PDF and Office files, text and Paper docs - from the whole Dropbox or one folder.':
-    'Các tệp tin trong Dropbox - tệp PDF và Office, văn bản và tài liệu Paper - từ toàn bộ Dropbox hoặc một thư mục.',
-  "From your Platform App's Configuration tab in the Box Developer Console.":
-    'Lấy từ thẻ Configuration của Platform App trong Box Developer Console.',
+  'Files in Box, from All Files or one folder.': 'Tệp tin trong Box, từ All Files hoặc một thư mục.',
+  'Files in Dropbox, from all of it or one folder.': 'Tệp tin trong Dropbox, từ toàn bộ hoặc một thư mục.',
+  "From your app's Configuration tab in the Box Developer Console.": 'Trong thẻ Configuration của ứng dụng trên Box Developer Console.',
   "From your app's Settings tab in the Dropbox App Console.":
     'Lấy từ thẻ Settings của ứng dụng trong Dropbox App Console.',
-  "Generated on your Platform App's Configuration tab in the Box Developer Console. It expires after 60 minutes, so use it to try Proxyma out.":
-    'Được tạo trên thẻ Configuration của Platform App trong Box Developer Console. Token hết hạn sau 60 phút, nên chỉ dùng để dùng thử Proxyma.',
-  "Generated on your app's Settings tab in the Dropbox App Console. It expires after four hours, so use it to try Proxyma out.":
-    'Được tạo trên thẻ Settings của ứng dụng trong Dropbox App Console. Token hết hạn sau bốn giờ, nên chỉ dùng để dùng thử Proxyma.',
+  'From the Box Developer Console. Expires after 60 minutes.': 'Lấy từ Box Developer Console. Hết hạn sau 60 phút.',
+  'From the Dropbox App Console. Expires after four hours.': 'Lấy từ Dropbox App Console. Hết hạn sau bốn giờ.',
   'Leave it empty to read All Files.': 'Để trống để đọc All Files.',
   'Leave it empty to read your whole Dropbox.': 'Để trống để đọc toàn bộ Dropbox của bạn.',
   'Optional: the sign-in works without it.': 'Không bắt buộc: đăng nhập vẫn hoạt động khi không có.',
   'Sign in with Box': 'Đăng nhập bằng Box',
   'Sign in with Dropbox': 'Đăng nhập bằng Dropbox',
-  'Saving takes you to {service} to sign in. The sign-in is never shared with other users.':
-    'Khi lưu, bạn sẽ được chuyển tới {service} để đăng nhập. Lần đăng nhập không bao giờ được chia sẻ với người dùng khác.',
+  'Your browser opened for the sign-in.': 'Trình duyệt đã mở để bạn đăng nhập.',
+  'Redirect address': 'Địa chỉ chuyển hướng',
+  'Use my own OAuth client': 'Dùng ứng dụng OAuth của tôi',
+  'How to set up {service}': 'Cách thiết lập {service}',
+  'Use the built-in sign-in': 'Dùng cách đăng nhập có sẵn',
+  'Add it as a redirect address on your OAuth client at {service}.': 'Thêm nó làm địa chỉ chuyển hướng cho OAuth client tại {service}.',
+  'Saving takes you to {service} to sign in.': 'Khi lưu, bạn sẽ được chuyển tới {service} để đăng nhập.',
   'Sign in with': 'Đăng nhập bằng',
   'Sign in with {service}': 'Đăng nhập bằng {service}',
   'Stay on the same site': 'Chỉ trong cùng trang web',
   'Support': 'Hỗ trợ',
-  "The files of a Subversion repository, by path under the connection's server.":
-    'Các tệp của một kho mã Subversion, theo đường dẫn trên máy chủ của kết nối.',
+  'Files of a Subversion repository.': 'Tệp tin của một kho Subversion.',
   'The last folder of the path, when left empty.': 'Thư mục cuối của đường dẫn, khi để trống.',
   "The repository's default branch when empty.": 'Nhánh mặc định của kho mã khi để trống.',
   'Tickets and tasks': 'Phiếu và công việc',
@@ -3498,17 +3436,13 @@ export const vi: Record<string, string> = {
 
   // The GitLab and Linear connectors (ai.proxyma.connectors.gitlab, .linear): their descriptors' words
   // and what their sessions say about a source or an item.
-  "A GitLab project's or group's issues and merge requests, with their comments, and its documentation files if you choose.":
-    'Issue và merge request của một dự án hoặc nhóm GitLab cùng bình luận của chúng, và các tệp tài liệu nếu bạn chọn.',
-  "A group's path reads every project under it, its subgroups included.":
-    'Đường dẫn của một nhóm sẽ đọc mọi dự án bên trong nó, kể cả các nhóm con.',
-  'A personal, group or project access token with the read_api scope.':
-    'Một access token cá nhân, nhóm hoặc dự án có phạm vi read_api.',
+  'Issues and merge requests with comments, and documentation files if you choose.': 'Issue và merge request kèm bình luận, và tệp tài liệu nếu bạn chọn.',
+  'A group reads every project under it.': 'Một nhóm sẽ đọc mọi dự án bên trong nó.',
+  'An access token with the read_api scope.': 'Token truy cập có quyền read_api.',
   'Add Linear issues': 'Thêm issue Linear',
   'Add a GitLab project or group': 'Thêm dự án hoặc nhóm GitLab',
-  'An OAuth application created in Linear under Settings > API.': 'Một ứng dụng OAuth được tạo trong Linear tại Settings > API.',
-  'An application registered on gitlab.com with the read_api scope. For a self-managed GitLab, use an access token.':
-    'Một ứng dụng đã đăng ký trên gitlab.com với phạm vi read_api. Với GitLab tự quản lý, hãy dùng access token.',
+  'An OAuth application created in Linear under Settings > Administration > API.': 'Một ứng dụng OAuth được tạo trong Linear tại Settings > Administration > API.',
+  'An application on gitlab.com with the read_api scope.': 'Một ứng dụng trên gitlab.com có quyền read_api.',
   'Application ID': 'Application ID',
   'Create one in Linear under Settings > Security & access.': 'Hãy tạo một khóa trong Linear tại Settings > Security & access.',
   "Each project's default branch when empty.": 'Nhánh mặc định của từng dự án khi để trống.',
@@ -3518,16 +3452,14 @@ export const vi: Record<string, string> = {
   'GitLab project': 'Dự án GitLab',
   'GitLab projects': 'Dự án GitLab',
   'Linear': 'Linear',
-  'Linear issues with their descriptions and comments, from the teams you choose.':
-    'Issue Linear cùng mô tả và bình luận của chúng, từ các nhóm bạn chọn.',
+  'Linear issues with comments, from the teams you choose.': 'Issue Linear kèm bình luận, từ các nhóm bạn chọn.',
   'Linear source': 'Nguồn Linear',
   'Linear sources': 'Nguồn Linear',
   'Merge requests': 'Merge request',
   'Personal API key': 'Personal API key',
   'Project or group': 'Dự án hoặc nhóm',
   'Secret': 'Secret',
-  'Separated by commas. Every team the connection can see when empty.':
-    'Cách nhau bằng dấu phẩy. Mọi nhóm mà kết nối nhìn thấy khi để trống.',
+  'Comma-separated. Empty for every team.': 'Phân cách bằng dấu phẩy. Để trống để lấy mọi nhóm.',
   'Sign in with GitLab': 'Đăng nhập bằng GitLab',
   'Sign in with Linear': 'Đăng nhập bằng Linear',
   'Team keys': 'Mã nhóm',
@@ -3541,29 +3473,33 @@ export const vi: Record<string, string> = {
   'That is not an item of a GitLab project.': 'Đó không phải một mục của dự án GitLab.',
   'That is not an item of a Linear source.': 'Đó không phải một mục của nguồn Linear.',
   '{0} is larger than 1 MB, so it is not read as documentation.': '{0} lớn hơn 1 MB, nên không được đọc như tài liệu.',
+  // YouTube: a Google sign-in of its own, for the channel's videos and comments (YouTubeConnectorPlugin).
+  'YouTube': 'YouTube',
+  'YouTube channel': 'Kênh YouTube',
+  'YouTube channels': 'Kênh YouTube',
+  'Add your YouTube channel': 'Thêm kênh YouTube của bạn',
+  'Your newest videos and their comments, and whether you answered.': 'Video mới nhất của bạn và bình luận, kèm việc bạn đã trả lời chưa.',
+  'Newest videos': 'Số video mới nhất',
+  "How many of the channel's newest videos are read each time.": 'Số video mới nhất của kênh được đọc mỗi lần.',
+  'Newest comment threads': 'Số chuỗi bình luận mới nhất',
+  'How many of the newest comment threads to read.': 'Số chuỗi bình luận mới nhất được đọc.',
+  'From your OAuth client in Google Cloud > APIs & Services > Credentials.': 'Từ OAuth client của bạn trong Google Cloud > APIs & Services > Credentials.',
   // Google: one connection for Drive, Gmail and Calendar (ai.proxyma.connectors.google).
   'Add Google Drive': 'Thêm Google Drive',
   'Add a Gmail mailbox': 'Thêm hộp thư Gmail',
   'Add a Google calendar': 'Thêm lịch Google',
   'Calendars': 'Lịch',
-  'Conversations in a Gmail mailbox, under the labels you choose - the inbox by default.':
-    'Các cuộc hội thoại trong một hộp thư Gmail, thuộc các nhãn bạn chọn - mặc định là hộp thư đến.',
+  'Gmail conversations under the labels you choose.': 'Hội thoại Gmail theo các nhãn bạn chọn.',
   'Days ahead': 'Số ngày tới',
   'Days back': 'Số ngày trước',
-  'Each calendar to read, by its ID: primary for your own, or the calendar ID from its settings in Google Calendar.':
-    'Mỗi lịch cần đọc, theo mã lịch: primary cho lịch của bạn, hoặc mã lịch trong phần cài đặt của lịch đó trên Google Calendar.',
-  'Each label to read, by its name: INBOX, SENT, or one of your own. Drafts, spam and trash are never read.':
-    'Mỗi nhãn cần đọc, theo tên: INBOX, SENT hoặc một nhãn của riêng bạn. Thư nháp, thư rác và thùng rác không bao giờ được đọc.',
+  'Calendar IDs: primary for your own, or the ID from Google Calendar settings.': 'ID lịch: primary cho lịch của bạn, hoặc ID trong cài đặt Google Calendar.',
+  'Label names: INBOX, SENT, or your own.': 'Tên nhãn: INBOX, SENT, hoặc nhãn của bạn.',
   'Each shared drive to read, by its ID or the link to it.': 'Mỗi bộ nhớ dùng chung cần đọc, theo mã hoặc đường liên kết tới nó.',
-  'Events in Google calendars - who, when, where and what - from a year back to half a year ahead.':
-    'Sự kiện trong lịch Google - ai, khi nào, ở đâu và về việc gì - từ một năm trước tới nửa năm tới.',
+  'Events in Google calendars, from a year back to six months ahead.': 'Sự kiện trong Google Calendar, từ một năm trước đến sáu tháng tới.',
   'Events that ended up to this many days ago.': 'Các sự kiện đã kết thúc trong vòng chừng này ngày trước.',
   'Events that start up to this many days from now.': 'Các sự kiện bắt đầu trong vòng chừng này ngày tới.',
-  'Files in Google Drive - Docs, Sheets and Slides, PDF and Office files - from My Drive, shared drives or one folder.':
-    'Tệp trong Google Drive - Docs, Sheets và Slides, tệp PDF và Office - từ Drive của tôi, bộ nhớ dùng chung hoặc một thư mục.',
+  'Files in Google Drive, from My Drive, shared drives or one folder.': 'Tệp tin trong Google Drive, từ My Drive, drive dùng chung hoặc một thư mục.',
   'Files other people shared with you.': 'Các tệp người khác đã chia sẻ với bạn.',
-  'From the OAuth client you created in Google Cloud, under APIs & Services > Credentials.':
-    'Lấy từ OAuth client bạn đã tạo trong Google Cloud, tại APIs & Services > Credentials.',
   'Gmail': 'Gmail',
   'Gmail mailbox': 'Hộp thư Gmail',
   'Gmail mailboxes': 'Hộp thư Gmail',
@@ -3575,11 +3511,9 @@ export const vi: Record<string, string> = {
   'Labels': 'Nhãn',
   'Leave it as it is unless you are told otherwise.': 'Giữ nguyên trừ khi bạn được hướng dẫn khác.',
   'My Drive': 'Drive của tôi',
-  'Only conversations with a message from this many days before today.':
-    'Chỉ các cuộc hội thoại có thư trong chừng này ngày trước hôm nay.',
+  'Only conversations from the last this many days.': 'Chỉ hội thoại trong số ngày gần đây này.',
   'Only this folder': 'Chỉ thư mục này',
-  'Read this folder and the folders inside it, instead of the choices above.':
-    'Đọc thư mục này và các thư mục bên trong nó, thay cho các lựa chọn ở trên.',
+  'Read this folder and its subfolders only.': 'Chỉ đọc thư mục này và các thư mục con.',
   'Service account': 'Service account',
   'Service account key': 'Khóa service account',
   'Shared drives': 'Bộ nhớ dùng chung',
@@ -3587,8 +3521,7 @@ export const vi: Record<string, string> = {
   'Sign in with Google': 'Đăng nhập bằng Google',
   'The Workspace user whose Drive, mail and calendar are read.': 'Người dùng Workspace có Drive, thư và lịch được đọc.',
   'The files you own.': 'Các tệp bạn sở hữu.',
-  'The whole JSON key file of a service account with domain-wide delegation.':
-    'Toàn bộ tệp khóa JSON của một service account có ủy quyền toàn miền (domain-wide delegation).',
+  'The JSON key file of a service account.': 'Tệp khóa JSON của tài khoản dịch vụ.',
   'User to act as': 'Người dùng được đại diện',
 
   // Zendesk and Freshdesk (ai.proxyma.connectors.zendesk, .freshdesk): their descriptors' words and
@@ -3596,18 +3529,14 @@ export const vi: Record<string, string> = {
   'Add Freshdesk tickets or articles': 'Thêm phiếu hỗ trợ hoặc bài viết Freshdesk',
   'Add Zendesk tickets or articles': 'Thêm phiếu hỗ trợ hoặc bài viết Zendesk',
   'Agent email address': 'Địa chỉ email của nhân viên hỗ trợ',
-  "Agents' private comments on tickets. Off: only the public conversation is read.":
-    'Bình luận nội bộ của nhân viên hỗ trợ trên phiếu. Khi tắt: chỉ đọc phần trao đổi công khai.',
-  'An OAuth client created in Admin Center under Apps and integrations > APIs > OAuth Clients.':
-    'Một OAuth client được tạo trong Admin Center tại Apps and integrations > APIs > OAuth Clients.',
+  "Agents' private comments on tickets.": 'Bình luận riêng của nhân viên trên ticket.',
+  'Created in Admin Center > Apps and integrations > APIs > OAuth Clients.': 'Tạo trong Admin Center > Apps and integrations > APIs > OAuth Clients.',
   'Article categories': 'Danh mục bài viết',
   'Article languages': 'Ngôn ngữ bài viết',
   'Article sections': 'Mục bài viết',
-  "Category numbers, separated by commas - the number in a category's address. Every category when empty.":
-    'Mã số danh mục, cách nhau bằng dấu phẩy - con số trong địa chỉ của danh mục. Mọi danh mục khi để trống.',
+  'Category numbers, comma-separated. Empty for all.': 'Số danh mục, phân cách bằng dấu phẩy. Để trống để lấy tất cả.',
   'Client identifier': 'Mã định danh client (client identifier)',
-  'Create one in Admin Center under Apps and integrations > APIs > Zendesk API, with token access turned on.':
-    'Hãy tạo một token trong Admin Center tại Apps and integrations > APIs > Zendesk API, với quyền truy cập bằng token đã được bật.',
+  'An existing token from Admin Center > Apps and integrations > APIs > API tokens. Zendesk creates no new ones: sign in with Zendesk instead.': 'Một token có sẵn từ Admin Center > Apps and integrations > APIs > API tokens. Zendesk không tạo token mới nữa: hãy đăng nhập bằng Zendesk.',
   'Domain': 'Tên miền',
   'Every ticket the agent can see, with its comments.': 'Mọi phiếu hỗ trợ mà nhân viên đó xem được, cùng bình luận của chúng.',
   'Every ticket the agent can see, with its replies and notes.':
@@ -3616,45 +3545,35 @@ export const vi: Record<string, string> = {
   'Freshdesk address': 'Địa chỉ Freshdesk',
   'Freshdesk source': 'Nguồn Freshdesk',
   'Freshdesk sources': 'Nguồn Freshdesk',
-  'Freshdesk tickets with their conversations, and knowledge base articles if you choose.':
-    'Phiếu hỗ trợ Freshdesk cùng các cuộc trao đổi của chúng, và bài viết cơ sở tri thức nếu bạn chọn.',
+  'Freshdesk tickets, and knowledge base articles if you choose.': 'Ticket Freshdesk, và bài viết cơ sở tri thức nếu bạn chọn.',
   'Help Center articles': 'Bài viết Help Center',
-  'In Freshdesk, open your profile picture > Profile settings > View API key.':
-    'Trong Freshdesk, mở ảnh hồ sơ của bạn > Profile settings > View API key.',
+  'In Freshdesk: profile picture > Profile settings > View API key.': 'Trong Freshdesk: ảnh đại diện > Profile settings > View API key.',
   'Internal notes': 'Ghi chú nội bộ',
   'Knowledge base articles': 'Bài viết cơ sở tri thức',
-  "Language codes, separated by commas. The Help Center's default language when empty.":
-    'Mã ngôn ngữ, cách nhau bằng dấu phẩy. Ngôn ngữ mặc định của Help Center khi để trống.',
-  'Notes only agents can see. Off: replies and public notes are read.':
-    'Ghi chú chỉ nhân viên hỗ trợ xem được. Khi tắt: chỉ đọc phản hồi và ghi chú công khai.',
+  'Language codes, comma-separated. Empty for the default.': 'Mã ngôn ngữ, phân cách bằng dấu phẩy. Để trống để dùng mặc định.',
+  'Notes only agents can see.': 'Ghi chú chỉ nhân viên thấy.',
   "Only for an address other than your domain's.": 'Chỉ dùng cho một địa chỉ khác với địa chỉ theo tên miền của bạn.',
-  "Only for an address other than your subdomain's, such as your own domain.":
-    'Chỉ dùng cho một địa chỉ khác với địa chỉ theo tên miền phụ của bạn, chẳng hạn tên miền riêng.',
+  'Only if you use your own domain.': 'Chỉ khi bạn dùng tên miền riêng.',
   'Private notes': 'Ghi chú riêng tư',
   'Published articles. Drafts are left out.': 'Các bài viết đã xuất bản. Bản nháp không được đọc.',
   'Published solution articles. Drafts are left out.': 'Các bài viết giải pháp đã xuất bản. Bản nháp không được đọc.',
-  "Section numbers, separated by commas - the number in a section's address. Every section when empty.":
-    'Mã số mục, cách nhau bằng dấu phẩy - con số trong địa chỉ của mục. Mọi mục khi để trống.',
+  'Section numbers, comma-separated. Empty for all.': 'Số mục, phân cách bằng dấu phẩy. Để trống để lấy tất cả.',
   'Sign in with Zendesk': 'Đăng nhập bằng Zendesk',
   'Signed in as {user} on {site}': 'Đã đăng nhập với tên {user} trên {site}',
   'Subdomain': 'Tên miền phụ',
   'The email address of the agent whose access is used.': 'Địa chỉ email của nhân viên hỗ trợ có quyền truy cập được sử dụng.',
-  'The first part of your Freshdesk address - yourcompany in yourcompany.freshdesk.com.':
-    'Phần đầu của địa chỉ Freshdesk của bạn - yourcompany trong yourcompany.freshdesk.com.',
-  'The first part of your Zendesk address - yourcompany in yourcompany.zendesk.com.':
-    'Phần đầu của địa chỉ Zendesk của bạn - yourcompany trong yourcompany.zendesk.com.',
+  'yourcompany in yourcompany.freshdesk.com.': 'yourcompany trong yourcompany.freshdesk.com.',
+  'yourcompany in yourcompany.zendesk.com.': 'yourcompany trong yourcompany.zendesk.com.',
   'Tickets': 'Phiếu hỗ trợ',
   'Zendesk': 'Zendesk',
   'Zendesk address': 'Địa chỉ Zendesk',
   'Zendesk source': 'Nguồn Zendesk',
   'Zendesk sources': 'Nguồn Zendesk',
-  'Zendesk tickets with their comments, and Help Center articles if you choose.':
-    'Phiếu hỗ trợ Zendesk cùng bình luận của chúng, và bài viết Help Center nếu bạn chọn.',
+  'Zendesk tickets, and Help Center articles if you choose.': 'Ticket Zendesk, và bài viết Help Center nếu bạn chọn.',
 
   // The HubSpot and Salesforce connectors (ai.proxyma.connectors.hubspot, .salesforce): their
   // descriptors' words, their connections' Test verdicts, and what their sessions say.
-  'A HubSpot app created in a HubSpot developer account, with the CRM read scopes.':
-    'Một ứng dụng HubSpot được tạo trong tài khoản nhà phát triển HubSpot, có các phạm vi đọc CRM.',
+  'A HubSpot app with CRM read scopes.': 'Một ứng dụng HubSpot có quyền đọc CRM.',
   'API version': 'Phiên bản API',
   'Accounts': 'Tài khoản khách hàng',
   'Add HubSpot records': 'Thêm bản ghi HubSpot',
@@ -3665,50 +3584,36 @@ export const vi: Record<string, string> = {
   'Consumer key': 'Consumer key',
   'Consumer secret': 'Consumer secret',
   'Contacts': 'Liên hệ',
-  "Create one in HubSpot under Settings > Integrations > Service Keys, with read scopes for the records to index. A legacy private app's access token works too.":
-    'Hãy tạo một khóa trong HubSpot tại Settings > Integrations > Service Keys, với phạm vi đọc cho các bản ghi cần lập chỉ mục. Access token của một private app cũ cũng dùng được.',
+  'Created in HubSpot > Settings > Integrations > Service Keys, with read scopes.': 'Tạo trong HubSpot > Settings > Integrations > Service Keys, với quyền đọc.',
   'Deals': 'Giao dịch',
-  'From the External Client App whose JWT bearer flow has your certificate.':
-    'Lấy từ External Client App có chứng chỉ của bạn trong luồng JWT bearer.',
-  "From the org's External Client App, with OAuth, PKCE and the api, id and refresh_token scopes.":
-    'Lấy từ External Client App của tổ chức, có bật OAuth, PKCE và các phạm vi api, id và refresh_token.',
+  'From the External Client App that has your certificate.': 'Từ External Client App có chứng chỉ của bạn.',
+  "From the org's External Client App.": 'Từ External Client App của tổ chức.',
   'HubSpot': 'HubSpot',
-  'HubSpot companies, contacts, deals and tickets, each with its notes, activity and associated records.':
-    'Công ty, liên hệ, giao dịch và ticket HubSpot, mỗi mục kèm ghi chú, hoạt động và các bản ghi liên kết.',
+  'HubSpot companies, contacts, deals and tickets.': 'Công ty, liên hệ, giao dịch và ticket trên HubSpot.',
   'HubSpot source': 'Nguồn HubSpot',
   'HubSpot sources': 'Nguồn HubSpot',
-  "HubSpot's dated API version. Leave empty for the one this version of Proxyma was built on.":
-    'Phiên bản API theo ngày của HubSpot. Để trống để dùng phiên bản mà bản Proxyma này được xây dựng theo.',
+  'Empty for the default.': 'Để trống để dùng mặc định.',
   'JWT bearer (integration user)': 'JWT bearer (người dùng tích hợp)',
   'Leads': 'Khách hàng tiềm năng',
   'My Domain URL': 'URL My Domain',
   'Objects': 'Đối tượng',
   'Private key': 'Khóa riêng tư',
-  "Read as the connection's Salesforce user, so this source cannot be shared.":
-    'Được đọc với quyền của người dùng Salesforce trong kết nối, nên nguồn này không thể chia sẻ.',
+  'Read as your Salesforce user. This source cannot be shared.': 'Đọc bằng người dùng Salesforce của bạn. Không thể chia sẻ nguồn này.',
   'Records': 'Bản ghi',
   'Salesforce': 'Salesforce',
-  'Salesforce accounts, contacts, opportunities, leads and cases, each with its notes, activity and related records.':
-    'Tài khoản khách hàng, liên hệ, cơ hội, khách hàng tiềm năng và case Salesforce, mỗi mục kèm ghi chú, hoạt động và các bản ghi liên quan.',
+  'Salesforce accounts, contacts, opportunities, leads and cases.': 'Tài khoản, liên hệ, cơ hội, khách tiềm năng và yêu cầu trên Salesforce.',
   'Salesforce source': 'Nguồn Salesforce',
   'Salesforce sources': 'Nguồn Salesforce',
-  "Salesforce's REST API version. Leave empty for the one this version of Proxyma was built on.":
-    'Phiên bản REST API của Salesforce. Để trống để dùng phiên bản mà bản Proxyma này được xây dựng theo.',
   'Service Key': 'Service Key',
   'Service Key or private app token': 'Service Key hoặc token của private app',
   'Sign in with HubSpot': 'Đăng nhập bằng HubSpot',
   'Sign in with Salesforce': 'Đăng nhập bằng Salesforce',
-  'The PEM private key of the certificate uploaded to the app, unencrypted.':
-    'Khóa riêng tư PEM của chứng chỉ đã tải lên ứng dụng, không mã hóa.',
-  'The connection reads the whole HubSpot account, so this source cannot be shared.':
-    'Kết nối đọc toàn bộ tài khoản HubSpot, nên nguồn này không thể chia sẻ.',
-  "The integration user's Salesforce user name, pre-authorized for the app.":
-    'Tên người dùng Salesforce của người dùng tích hợp, đã được cấp quyền trước cho ứng dụng.',
-  'Told from the address when empty: https://test.salesforce.com for a sandbox.':
-    'Khi để trống sẽ được suy ra từ địa chỉ: https://test.salesforce.com cho sandbox.',
+  'The unencrypted PEM private key of the certificate.': 'Khóa riêng PEM không mã hóa của chứng chỉ.',
+  'Reads the whole HubSpot account. This source cannot be shared.': 'Đọc toàn bộ tài khoản HubSpot. Không thể chia sẻ nguồn này.',
+  "The integration user's Salesforce user name.": 'Tên người dùng Salesforce của người dùng tích hợp.',
+  'Optional. https://test.salesforce.com for a sandbox.': 'Không bắt buộc. https://test.salesforce.com cho sandbox.',
   'User name': 'Tên người dùng',
-  "Your org's address. For a sandbox: https://acme--uat.sandbox.my.salesforce.com":
-    'Địa chỉ tổ chức của bạn. Với sandbox: https://acme--uat.sandbox.my.salesforce.com',
+  "Your org's address.": 'Địa chỉ tổ chức của bạn.',
   'Signed in to portal {portal}': 'Đã đăng nhập vào portal {portal}',
   'Signed in as {user} on {instance}': 'Đã đăng nhập với tên {user} trên {instance}',
   'HubSpot has archived {0}:{1}.': 'HubSpot đã lưu trữ {0}:{1}.',
@@ -3743,61 +3648,46 @@ export const vi: Record<string, string> = {
   'Add ClickUp tasks': 'Thêm công việc ClickUp',
   'Add Trello cards': 'Thêm thẻ Trello',
   'Add monday.com items': 'Thêm mục monday.com',
-  'An app created in ClickUp under Settings > Integrations > ClickUp API.':
-    'Một ứng dụng được tạo trong ClickUp tại Settings > Integrations > ClickUp API.',
-  'An app created in the Asana developer console, with read scopes.':
-    'Một ứng dụng được tạo trong Asana developer console, với các phạm vi chỉ đọc.',
-  'An app created in the monday.com Developer Center, with read scopes.':
-    'Một ứng dụng được tạo trong monday.com Developer Center, với các phạm vi chỉ đọc.',
+  'An app created in ClickUp under Settings > Apps > Create new app.': 'Một ứng dụng được tạo trong ClickUp tại Settings > Apps > Create new app.',
+  'An Asana app with read scopes.': 'Một ứng dụng Asana có quyền đọc.',
+  'A monday.com app with read scopes.': 'Một ứng dụng monday.com có quyền đọc.',
   'Asana': 'Asana',
   'Asana source': 'Nguồn Asana',
   'Asana sources': 'Nguồn Asana',
-  'Asana tasks with their notes, comments and subtasks, from the projects you choose.':
-    'Công việc Asana cùng ghi chú, bình luận và công việc con của chúng, từ các dự án bạn chọn.',
-  "Board IDs or links, separated by commas - the number after /boards/ in a board's address. Every board the connection can see when empty.":
-    'Mã hoặc đường liên kết của bảng, cách nhau bằng dấu phẩy - là con số sau /boards/ trong địa chỉ của bảng. Mọi bảng mà kết nối nhìn thấy khi để trống.',
-  "Board links or IDs, separated by commas. Every open board of the connection's member when empty.":
-    'Đường liên kết hoặc mã của bảng, cách nhau bằng dấu phẩy. Mọi bảng đang mở của thành viên sở hữu kết nối khi để trống.',
+  'Asana tasks with comments, from the projects you choose.': 'Nhiệm vụ Asana kèm bình luận, từ các dự án bạn chọn.',
+  'Board IDs or links, comma-separated. Empty for all.': 'ID hoặc liên kết bảng, phân cách bằng dấu phẩy. Để trống để lấy tất cả.',
+  'Board links or IDs, comma-separated. Empty for all open boards.': 'Liên kết hoặc ID bảng, phân cách bằng dấu phẩy. Để trống để lấy mọi bảng đang mở.',
   'Boards': 'Bảng',
   'ClickUp': 'ClickUp',
   'ClickUp source': 'Nguồn ClickUp',
   'ClickUp sources': 'Nguồn ClickUp',
-  'ClickUp tasks with their descriptions, comments and subtasks, from a workspace or the spaces, folders and lists you choose.':
-    'Công việc ClickUp cùng mô tả, bình luận và công việc con của chúng, từ một không gian làm việc hoặc các space, thư mục và danh sách bạn chọn.',
-  'Create one in ClickUp under Settings > Apps. It starts with pk_.': 'Hãy tạo một token trong ClickUp tại Settings > Apps. Token bắt đầu bằng pk_.',
-  'Create one in the Asana developer console, under Personal access tokens.':
-    'Hãy tạo một token trong Asana developer console, tại Personal access tokens.',
+  'ClickUp tasks with comments, from the places you choose.': 'Nhiệm vụ ClickUp kèm bình luận, từ những nơi bạn chọn.',
+  'Created in ClickUp > Settings > Apps. Starts with pk_.': 'Tạo trong ClickUp > Settings > Apps. Bắt đầu bằng pk_.',
+  'Created in the Asana developer console.': 'Tạo trong Asana developer console.',
   'Folder IDs, separated by commas.': 'Mã thư mục, cách nhau bằng dấu phẩy.',
   'Folders': 'Thư mục',
-  'Generated from the Token link beside the API key, with read access.':
-    'Được tạo từ liên kết Token bên cạnh API key, với quyền đọc.',
+  'From the Token link beside the API key.': 'Từ liên kết Token bên cạnh API key.',
   'In monday.com, your avatar > Developers > API token.': 'Trong monday.com, ảnh đại diện của bạn > Developers > API token.',
   'List IDs, separated by commas.': 'Mã danh sách, cách nhau bằng dấu phẩy.',
   'Lists': 'Danh sách',
-  "On your Power-Up's page in the Trello Power-Up admin portal, under API key.":
-    'Trên trang Power-Up của bạn trong Trello Power-Up admin portal, tại API key.',
+  'In the Trello Power-Up admin portal, under API key.': 'Trong Trello Power-Up admin portal, mục API key.',
   'Personal API token': 'Personal API token',
-  'Project IDs or names, separated by commas. Every project the connection can see in the workspace when empty.':
-    'Mã hoặc tên dự án, cách nhau bằng dấu phẩy. Mọi dự án trong không gian làm việc mà kết nối nhìn thấy khi để trống.',
+  'Project IDs or names, comma-separated. Empty for all.': 'ID hoặc tên dự án, phân cách bằng dấu phẩy. Để trống để lấy tất cả.',
   'Projects': 'Dự án',
   'Sign in with Asana': 'Đăng nhập bằng Asana',
   'Sign in with ClickUp': 'Đăng nhập bằng ClickUp',
   'Sign in with monday.com': 'Đăng nhập bằng monday.com',
-  'Space IDs, separated by commas. Every task of the workspace when no space, folder or list is chosen.':
-    'Mã space, cách nhau bằng dấu phẩy. Mọi công việc của không gian làm việc khi không chọn space, thư mục hay danh sách nào.',
+  'Space IDs, comma-separated. Empty for the whole workspace.': 'ID space, phân cách bằng dấu phẩy. Để trống để lấy cả workspace.',
   'Spaces': 'Space',
   "The workspace's name as Asana shows it, or its ID.": 'Tên không gian làm việc như Asana hiển thị, hoặc mã của nó.',
-  "The workspace's name, or its ID - the number after app.clickup.com/ in its address.":
-    'Tên không gian làm việc, hoặc mã của nó - là con số sau app.clickup.com/ trong địa chỉ của nó.',
+  "The workspace's name or ID.": 'Tên hoặc ID của workspace.',
   'Token': 'Token',
   'Trello': 'Trello',
-  'Trello cards with their descriptions, checklists and comments, from the boards you choose.':
-    'Thẻ Trello cùng mô tả, danh sách kiểm tra và bình luận của chúng, từ các bảng bạn chọn.',
+  'Trello cards with comments, from the boards you choose.': 'Thẻ Trello kèm bình luận, từ các bảng bạn chọn.',
   'Trello source': 'Nguồn Trello',
   'Trello sources': 'Nguồn Trello',
   'monday.com': 'monday.com',
-  'monday.com items with their columns, updates and subitems, from the boards you choose.':
-    'Mục monday.com cùng các cột, cập nhật và mục con của chúng, từ các bảng bạn chọn.',
+  'monday.com items with updates, from the boards you choose.': 'Mục monday.com kèm cập nhật, từ các bảng bạn chọn.',
   'monday.com source': 'Nguồn monday.com',
   'monday.com sources': 'Nguồn monday.com',
   'A ClickUp source needs its workspace.': 'Nguồn ClickUp cần không gian làm việc của nó.',
@@ -3838,48 +3728,36 @@ export const vi: Record<string, string> = {
   'Account ID': 'ID tài khoản (Account ID)',
   'Add Zoom meetings': 'Thêm cuộc họp Zoom',
   'Add an IMAP mailbox': 'Thêm hộp thư IMAP',
-  'An app password where your mail service offers them. Microsoft 365 and Outlook.com mailboxes accept no password over IMAP.':
-    'Dùng mật khẩu ứng dụng (app password) nếu dịch vụ thư của bạn có cung cấp. Hộp thư Microsoft 365 và Outlook.com không chấp nhận mật khẩu qua IMAP.',
+  'An app password if your mail service has them.': 'Mật khẩu ứng dụng nếu dịch vụ thư của bạn có.',
   'Days of meetings': 'Số ngày cuộc họp',
-  "Each folder to read, by its full name: INBOX, Sent, Projects/2026. A folder's subfolders are read only when they are named too.":
-    'Mỗi thư mục cần đọc, theo tên đầy đủ: INBOX, Sent, Projects/2026. Thư mục con chỉ được đọc khi cũng được liệt kê.',
-  'From the Zoom app you created for Proxyma, under App Credentials.':
-    'Lấy từ ứng dụng Zoom bạn đã tạo cho Proxyma, tại App Credentials.',
-  "From the app's App Credentials page in the Zoom App Marketplace.":
-    'Lấy từ trang App Credentials của ứng dụng trong Zoom App Marketplace.',
+  'Full folder names: INBOX, Sent, Projects/2026.': 'Tên đầy đủ của thư mục: INBOX, Sent, Projects/2026.',
+  'From your Zoom app, under App Credentials.': 'Từ ứng dụng Zoom của bạn, mục App Credentials.',
+  'From App Credentials in the Zoom App Marketplace.': 'Từ App Credentials trên Zoom App Marketplace.',
   'IMAP mail': 'Thư IMAP',
   'IMAP mailbox': 'Hộp thư IMAP',
   'IMAP mailboxes': 'Hộp thư IMAP',
-  'Leave it empty for the usual port: 993 with TLS, 143 otherwise.':
-    'Để trống để dùng cổng thông thường: 993 với TLS, 143 với các lựa chọn khác.',
+  'Empty for 993 with TLS, or 143.': 'Để trống để dùng 993 với TLS, hoặc 143.',
   'Mail server': 'Máy chủ thư',
-  'Messages in the folders you choose of a mailbox that accepts a password over IMAP - the inbox by default.':
-    'Thư trong các thư mục bạn chọn của một hộp thư chấp nhận đăng nhập bằng mật khẩu qua IMAP - mặc định là hộp thư đến.',
+  'Mail in the folders you choose, over IMAP.': 'Thư trong các thư mục bạn chọn, qua IMAP.',
   'None (this computer only)': 'Không có (chỉ máy tính này)',
   'Only meetings from this many days before today.': 'Chỉ các cuộc họp trong chừng ấy ngày tính đến hôm nay.',
-  'Only messages from or to an address at one of these domains. Empty reads every message.':
-    'Chỉ thư gửi từ hoặc gửi tới một địa chỉ thuộc một trong các tên miền này. Để trống sẽ đọc mọi thư.',
-  'Only messages received on or after this day, as YYYY-MM-DD. Empty reads them all.':
-    'Chỉ thư nhận được từ ngày này trở đi, theo dạng YYYY-MM-DD. Để trống sẽ đọc tất cả.',
+  'Only mail from or to these domains. Empty for all.': 'Chỉ thư gửi từ hoặc tới các tên miền này. Để trống để lấy tất cả.',
+  'Only mail from this day on, as YYYY-MM-DD. Empty for all.': 'Chỉ thư từ ngày này trở đi, dạng YYYY-MM-DD. Để trống để lấy tất cả.',
   'Only these domains': 'Chỉ các tên miền này',
   'Port': 'Cổng',
-  'Read attached documents - PDF, Word, Excel, PowerPoint, text - as documents of their own.':
-    'Đọc các tài liệu đính kèm - PDF, Word, Excel, PowerPoint, văn bản - thành tài liệu riêng.',
+  'Read attachments as documents of their own.': 'Đọc tệp đính kèm như tài liệu riêng.',
   'Received since': 'Nhận từ ngày',
   'STARTTLS': 'STARTTLS',
   'Security': 'Bảo mật',
   'Server-to-Server OAuth app': 'Ứng dụng Server-to-Server OAuth',
   'Sign in with Zoom': 'Đăng nhập bằng Zoom',
   'TLS': 'TLS',
-  'TLS on port 993 for almost every mail service. STARTTLS is port 143.':
-    'TLS trên cổng 993 cho hầu hết dịch vụ thư. STARTTLS dùng cổng 143.',
+  'TLS on port 993 for most services.': 'TLS cổng 993 cho hầu hết dịch vụ.',
   "The IMAP server's host name, as your mail service gives it.":
     'Tên máy chủ IMAP, theo thông tin dịch vụ thư của bạn cung cấp.',
-  'Transcripts of Zoom cloud recordings and AI Companion meeting summaries.':
-    'Bản chép lời của các bản ghi đám mây Zoom và bản tóm tắt cuộc họp của AI Companion.',
+  'Zoom recording transcripts and meeting summaries.': 'Bản ghi lời từ bản ghi Zoom và tóm tắt cuộc họp.',
   'Usually your whole email address.': 'Thường là toàn bộ địa chỉ email của bạn.',
-  'Whose meetings to read, by email address. Leave it empty for your own. With a Server-to-Server app, name the people, or * for everyone on the account.':
-    'Cuộc họp của những ai cần đọc, theo địa chỉ email. Để trống để đọc cuộc họp của chính bạn. Với ứng dụng Server-to-Server, hãy liệt kê từng người, hoặc * để đọc của mọi người trong tài khoản.',
+  'Whose meetings to read, by email. Empty for your own, * for everyone.': 'Đọc cuộc họp của ai, theo email. Để trống cho chính bạn, * cho mọi người.',
   'Zoom': 'Zoom',
   'Zoom meeting list': 'Danh sách cuộc họp Zoom',
   'Zoom meeting lists': 'Danh sách cuộc họp Zoom',
@@ -3921,11 +3799,46 @@ export const vi: Record<string, string> = {
   "Zoom stopped sending the meeting's transcript: {0}": 'Zoom đã ngừng gửi bản chép lời của cuộc họp: {0}',
 
   // A connection's OAuth2 sign-in, as its callback reports it (features/settings/utils/connectionSignIn.ts).
+  'Signed in, but a permission Proxyma needs was not allowed. Sign in again and leave every permission ticked.':
+    'Đã đăng nhập, nhưng một quyền mà Proxyma cần chưa được cho phép. Hãy đăng nhập lại và giữ nguyên mọi quyền đã đánh dấu.',
+  'Signed in to {name}, but a permission Proxyma needs was not allowed. Sign in again and leave every permission ticked.':
+    'Đã đăng nhập vào {name}, nhưng một quyền mà Proxyma cần chưa được cho phép. Hãy đăng nhập lại và giữ nguyên mọi quyền đã đánh dấu.',
+  // What a YouTube sign-in shows before Google's page opens (SignInDisclosureDialog, YouTube's API policies).
+  'Before you sign in to YouTube': 'Trước khi bạn đăng nhập YouTube',
+  // A sign-in that came back refused or failed (useConnectionSignInWait, signInFlow.ts).
+  'You did not allow Proxyma on the sign-in page, so {name} was not signed in.':
+    'Bạn đã không cho phép Proxyma ở trang đăng nhập, nên {name} chưa được đăng nhập.',
+  'The sign-in to {name} did not finish. Try again.': 'Đăng nhập vào {name} chưa hoàn tất. Hãy thử lại.',
+  "Proxyma reads your channel's comments, videos and numbers, and posts a reply after you approve it, or on its own where you let it, as with Approve automatically.":
+    'Proxyma đọc bình luận, video và số liệu của kênh, và đăng câu trả lời sau khi bạn duyệt, hoặc tự đăng ở nơi bạn cho phép, như khi bật Tự động chấp thuận.',
+  'What it reads stays in Proxyma, except the comments the assistant works on, which go to the AI model you chose. A public fact a reply needs may be looked up with a web search.':
+    'Những gì Proxyma đọc được giữ trong Proxyma, trừ các bình luận mà trợ lý xử lý - chúng được gửi đến mô hình AI bạn đã chọn. Một thông tin công khai mà câu trả lời cần có thể được tra bằng một lần tìm kiếm trên web.',
+  "By continuing, you agree to the {terms} and Proxyma's {ours}. The {privacy} applies to your Google account.":
+    'Khi tiếp tục, bạn đồng ý với {terms} và {ours} của Proxyma. {privacy} áp dụng cho tài khoản Google của bạn.',
+  'YouTube Terms of Service': 'Điều khoản dịch vụ của YouTube',
+  'Google Privacy Policy': 'Chính sách quyền riêng tư của Google',
+  "You can remove Proxyma's access at any time in your {permissions}, or by deleting the connection here.":
+    'Bạn có thể gỡ quyền truy cập của Proxyma bất cứ lúc nào trong {permissions}, hoặc bằng cách xóa kết nối tại đây.',
+  'Google account settings': 'phần cài đặt tài khoản Google',
+  'Google asks which permissions to allow. Leave them all ticked, or the assistant cannot do its work.':
+    'Google sẽ hỏi bạn cho phép những quyền nào. Hãy giữ nguyên mọi quyền đã đánh dấu, nếu không trợ lý không thể làm việc.',
+  'Continue to Google': 'Tiếp tục đến Google',
+  "Proxyma's access is removed at Google, and the YouTube sources reading through it are deleted with what they indexed.":
+    'Quyền truy cập của Proxyma bị gỡ khỏi Google, và các nguồn YouTube đọc qua kết nối này bị xóa cùng mọi dữ liệu đã lập chỉ mục.',
+  // Granular consent: what the connection's row says when a permission was left unticked (YouTubeConnectionPlugin).
+  "Google was not allowed to let Proxyma read the channel's comments and videos. Sign in again and leave every permission ticked.":
+    'Google chưa được phép cho Proxyma đọc bình luận và video của kênh. Hãy đăng nhập lại và giữ nguyên mọi quyền đã đánh dấu.',
+  'Google was not allowed to let Proxyma post the replies you approve. Sign in again and leave every permission ticked, or turn Write off.':
+    'Google chưa được phép cho Proxyma đăng các câu trả lời bạn duyệt. Hãy đăng nhập lại và giữ nguyên mọi quyền đã đánh dấu, hoặc tắt công tắc Ghi.',
+  // The built-in sign-in's daily share on this computer, spent (BuiltInQuota): said to the agent, and kept on a held reply.
+  '{0} Nothing was posted; try again after midnight Pacific time, when it resets.':
+    '{0} Chưa có gì được đăng; hãy thử lại sau nửa đêm giờ Thái Bình Dương, khi hạn mức được đặt lại.',
+  '{0} This is a limit, not a refusal: try again after midnight Pacific time, when it resets.':
+    '{0} Đây là giới hạn, không phải từ chối: hãy thử lại sau nửa đêm giờ Thái Bình Dương, khi hạn mức được đặt lại.',
   'Signed in. The connection is ready to use.': 'Đã đăng nhập. Kết nối đã sẵn sàng để dùng.',
-  'The sign-in was declined, so the connection is not signed in.': 'Lần đăng nhập đã bị từ chối, nên kết nối chưa được đăng nhập.',
+  'The sign-in was declined.': 'Việc đăng nhập đã bị từ chối.',
   'Signing in failed. Try again.': 'Đăng nhập thất bại. Hãy thử lại.',
-  "This service's sign-in is not set up. Give the connection its OAuth client, or ask an administrator to set one up.":
-    'Chưa thiết lập đăng nhập cho dịch vụ này. Hãy cung cấp OAuth client cho kết nối, hoặc nhờ quản trị viên thiết lập.',
+  "This service's sign-in is not set up. Give the connection an OAuth client.": 'Chưa thiết lập đăng nhập cho dịch vụ này. Hãy thêm OAuth client cho kết nối.',
 
   // -- chat, the app shell, tour and feedback (the 2026-10 kit adoption) --
   // What a screen reader is told in the thread, and the names of the thread's own controls.
@@ -3942,8 +3855,7 @@ export const vi: Record<string, string> = {
   'Copy code': 'Sao chép mã',
   // A workflow step's or the agent's request to switch write tools on, in one sentence with the tool's
   // name as a slot, and why enabling could not go ahead.
-  "{tool} needs {connector} write tools, which you haven't enabled yet. Enable them now, or keep this action blocked?":
-    '{tool} cần các công cụ ghi của {connector}, mà bạn chưa bật. Bật chúng ngay bây giờ, hay tiếp tục chặn hành động này?',
+  '{tool} needs {connector} write tools. Turn them on, or keep this blocked?': '{tool} cần công cụ ghi của {connector}. Bật chúng, hay tiếp tục chặn?',
   'The connection to enable was not found.': 'Không tìm thấy kết nối cần bật.',
   'There is no setting to enable for this tool.': 'Không có cài đặt nào để bật cho công cụ này.',
   // The shared conversation's footer: one sentence, the link a slot in it.
@@ -4113,22 +4025,23 @@ export const vi: Record<string, string> = {
     '{0} đã chuyển hướng tới một máy chủ khác ({1}), nơi thông tin xác thực của kết nối không được gửi tới.',
   "{0} refused access with the connection's credential. Check that its account may read this.":
     '{0} đã từ chối truy cập với thông tin xác thực của kết nối. Hãy kiểm tra tài khoản đó có quyền đọc nội dung này.',
+  "{0} refused access with the connection's credential. Check that its account may read this. {1} said: {2}":
+    '{0} đã từ chối truy cập với thông tin xác thực của kết nối. Hãy kiểm tra tài khoản đó có quyền đọc nội dung này. {1} cho biết: {2}',
   "{0} refused the connection's credential. Replace it, or sign in again, in Settings > Connections.":
     '{0} đã từ chối thông tin xác thực của kết nối. Hãy thay thế, hoặc đăng nhập lại, trong Cài đặt > Kết nối.',
   '{0} refused the request ({1}).': '{0} đã từ chối yêu cầu ({1}).',
+  '{0} refused the request ({1}). {2} said: {3}': '{0} đã từ chối yêu cầu ({1}). {2} cho biết: {3}',
   '{0} refused the sign-in of {1}. Sign in again in Settings > Connections.': '{0} đã từ chối lần đăng nhập của {1}. Hãy đăng nhập lại trong Cài đặt > Kết nối.',
   '{0} sources have no file-type filter': 'Nguồn dữ liệu {0} không có bộ lọc loại tệp',
   // The connector framework follow-ups (2026-10-14): Box client credentials, the token exchange's
   // refusals, and the sentences a connector returns rather than throws.
   'Client credentials (server app)': 'Thông tin xác thực ứng dụng (ứng dụng máy chủ)',
   'Enterprise or user ID': 'ID doanh nghiệp hoặc người dùng',
-  'From a Platform App with Server Authentication (Client Credentials Grant), authorized by your Box admin.':
-    'Từ một Platform App dùng Server Authentication (Client Credentials Grant), đã được quản trị viên Box của bạn cấp quyền.',
+  'From a Box Platform App with Server Authentication.': 'Từ Box Platform App dùng Server Authentication.',
   'One user': 'Một người dùng',
   'Read as': 'Đọc với tư cách',
   "The app's service account": 'Tài khoản dịch vụ của ứng dụng',
-  "Your enterprise ID for the service account, else the user's ID. Both are in the Box Admin Console.":
-    'ID doanh nghiệp của bạn cho tài khoản dịch vụ, nếu không thì ID của người dùng. Cả hai đều có trong Box Admin Console.',
+  'Your enterprise ID, or a user ID, from the Box Admin Console.': 'Enterprise ID của bạn, hoặc ID người dùng, trong Box Admin Console.',
   'The sign-in service refused the request ({0}).': 'Dịch vụ đăng nhập đã từ chối yêu cầu ({0}).',
   'The sign-in service refused the request.': 'Dịch vụ đăng nhập đã từ chối yêu cầu.',
   'This connection is missing a setting its sign-in needs ({0}). Add it in Settings > Connections.':
@@ -4203,6 +4116,19 @@ export const vi: Record<string, string> = {
     'Google không chấp nhận lần đăng nhập hoặc khóa tài khoản dịch vụ của kết nối.',
   'Google refused access. Check that the Google Drive, Gmail and Google Calendar APIs are enabled in the Google Cloud project.':
     'Google đã từ chối truy cập. Hãy kiểm tra các API Google Drive, Gmail và Google Calendar đã được bật trong dự án Google Cloud.',
+  'Google refused access. Check that the YouTube Data API v3 is enabled in the Google Cloud project.':
+    'Google đã từ chối truy cập. Hãy kiểm tra YouTube Data API v3 đã được bật trong dự án Google Cloud.',
+  'Google did not accept the connection\'s sign-in. Sign in again.':
+    'Google không chấp nhận lần đăng nhập của kết nối. Hãy đăng nhập lại.',
+  'This Google account has no YouTube channel.': 'Tài khoản Google này không có kênh YouTube.',
+  'This Google account has no YouTube channel. Connect the account that owns the channel.':
+    'Tài khoản Google này không có kênh YouTube. Hãy kết nối tài khoản sở hữu kênh.',
+  'This Google account has no YouTube channel. Sign in with the account that owns the channel.':
+    'Tài khoản Google này không có kênh YouTube. Hãy đăng nhập bằng tài khoản sở hữu kênh.',
+  'Only the newest {0} videos and {1} comment threads are read each time.':
+    'Mỗi lần chỉ đọc {0} video và {1} chuỗi bình luận mới nhất.',
+  'YouTube no longer has the comment thread {0}.': 'YouTube không còn chuỗi bình luận {0}.',
+  'YouTube no longer has the video {0}.': 'YouTube không còn video {0}.',
   'HubSpot did not accept the token. Replace it in Settings > Connections.':
     'HubSpot không chấp nhận token. Hãy thay thế trong Cài đặt > Kết nối.',
   'HubSpot will not let this connection read {0}. Give its key the read scope for {1}.':
@@ -4295,12 +4221,9 @@ export const vi: Record<string, string> = {
 
   // Settings > About: Community's source offer and license (SourceCodeSection.desktop.tsx).
   'Source code': 'Mã nguồn',
-  'Proxyma Community is free software under the GNU Affero General Public License v3. The source code of this version is public.':
-    'Proxyma Community là phần mềm tự do theo Giấy phép Công cộng GNU Affero, phiên bản 3. Mã nguồn của bản này được công khai.',
-  'Proxyma Community is free software under the GNU Affero General Public License v3. This development build is not published; each release is.':
-    'Proxyma Community là phần mềm tự do theo Giấy phép Công cộng GNU Affero, phiên bản 3. Mã nguồn của bản dựng phát triển này không được công bố; mã nguồn của mỗi bản phát hành thì có.',
-  'Proxyma Community is free software under the GNU Affero General Public License v3. The source code of each release is public.':
-    'Proxyma Community là phần mềm tự do theo Giấy phép Công cộng GNU Affero, phiên bản 3. Mã nguồn của mỗi bản phát hành được công khai.',
+  'Free software under the GNU AGPL v3. The source of this version is public.': 'Phần mềm tự do theo giấy phép GNU AGPL v3. Mã nguồn của phiên bản này được công khai.',
+  'Free software under the GNU AGPL v3. This development build is not published.': 'Phần mềm tự do theo giấy phép GNU AGPL v3. Bản phát triển này không được công khai.',
+  'Free software under the GNU AGPL v3. Each release has public source.': 'Phần mềm tự do theo giấy phép GNU AGPL v3. Mỗi bản phát hành đều có mã nguồn công khai.',
   'Proxyma Community {version} on GitHub': 'Proxyma Community {version} trên GitHub',
   'Proxyma Community on GitHub': 'Proxyma Community trên GitHub',
   'The source code of this version, to read, build or change.': 'Mã nguồn của bản này, để đọc, tự build hoặc sửa đổi.',
@@ -4316,15 +4239,15 @@ export const vi: Record<string, string> = {
   'Search one source for this message': 'Tìm trong một nguồn cho tin nhắn này',
   'No sources yet.': 'Chưa có nguồn nào.',
   'Index a website as a new source': 'Lập chỉ mục một trang web thành nguồn mới',
-  'Index a folder on this computer as a new source': 'Lập chỉ mục một thư mục trên máy này thành nguồn mới',
+  'Index a folder on this computer': 'Lập chỉ mục một thư mục trên máy này',
   'MCP servers': 'Máy chủ MCP',
   'Give this message an MCP server\'s tools': 'Cho tin nhắn này dùng công cụ của một máy chủ MCP',
   'No MCP servers yet.': 'Chưa có máy chủ MCP nào.',
   'Manage MCP servers': 'Quản lý máy chủ MCP',
-  'Add or manage MCP servers in Settings > Connections': 'Thêm hoặc quản lý máy chủ MCP trong Cài đặt > Kết nối',
+  'Manage MCP servers in Settings > Connections': 'Quản lý máy chủ MCP trong Cài đặt > Kết nối',
   'Remember something': 'Ghi nhớ điều gì đó',
-  'Save a fact or a preference to the agent\'s memory': 'Lưu một thông tin hoặc sở thích vào bộ nhớ của tác nhân',
-  'The agent reads its memory before it searches, in every conversation.': 'Tác nhân đọc bộ nhớ trước khi tìm kiếm, trong mọi cuộc trò chuyện.',
+  "Save something to the agent's memory": 'Lưu một điều vào bộ nhớ của agent',
+  'The agent reads its memory in every conversation.': 'Agent đọc bộ nhớ của nó trong mọi cuộc trò chuyện.',
   'What to remember': 'Điều cần ghi nhớ',
   'Kind': 'Loại',
   'Our release branch is called release/next.': 'Nhánh phát hành của chúng tôi tên là release/next.',
@@ -4333,24 +4256,27 @@ export const vi: Record<string, string> = {
   'Saved to memory': 'Đã lưu vào bộ nhớ',
   'Could not save to memory': 'Không thể lưu vào bộ nhớ',
   // -- The tree of agents (2026-10-28): every agent deploys agents of its own, each a conversation
-  // of its own. The thread's agent panels and inbox lines, the agents map, a deployed agent's strip,
-  // the alarms chip, the new tools' rows and Settings > Agents > Deployed agents.
-  'Agent: {title}':
-    'Tác nhân: {title}',
+  // of its own. The thread's agent panels and inbox lines, the agents map, a deployed agent's
+  // transcript (2026-11-04, read-only in a dialog), the alarms chip, the new tools' rows and
+  // Settings > Agents > Deployed agents.
+  'Agent transcript':
+    'Bản ghi của agent',
+  'Back to {name}':
+    'Quay lại {name}',
+  'Open its transcript':
+    'Mở bản ghi của nó',
   'Agents (deployed agents)':
-    'Tác nhân (tác nhân được triển khai)',
+    'Agent (agent được triển khai)',
   'Agents - {count} agent working|Agents - {count} agents working':
-    'Tác nhân - {count} tác nhân đang làm việc|Tác nhân - {count} tác nhân đang làm việc',
+    'Agent - {count} agent đang làm việc|Agent - {count} agent đang làm việc',
   'Agents deployed by the same agent can message each other.':
-    'Các tác nhân do cùng một tác nhân triển khai có thể nhắn tin cho nhau.',
+    'Các agent do cùng một agent triển khai có thể nhắn tin cho nhau.',
   'Agents may message their siblings':
-    'Cho phép các tác nhân cùng cấp nhắn tin cho nhau',
+    'Cho phép các agent cùng cấp nhắn tin cho nhau',
   'Alarm':
     'Báo thức',
   'Alarm: {title}':
     'Báo thức: {title}',
-  'Back to the conversation that deployed it':
-    'Quay lại cuộc trò chuyện đã triển khai tác nhân này',
   'Context window filling - told to save what matters':
     'Cửa sổ ngữ cảnh sắp đầy - đã nhắc lưu những điều quan trọng',
   'Read its workspace memory':
@@ -4370,13 +4296,13 @@ export const vi: Record<string, string> = {
   'Canceling background work':
     'Đang hủy công việc chạy nền',
   'Checked its agents':
-    'Đã kiểm tra các tác nhân của nó',
+    'Đã kiểm tra các agent của nó',
   'Checked its alarms':
     'Đã kiểm tra các báo thức của nó',
   'Checked its background work':
     'Đã kiểm tra công việc chạy nền của nó',
   'Checking its agents':
-    'Đang kiểm tra các tác nhân của nó',
+    'Đang kiểm tra các agent của nó',
   'Checking its alarms':
     'Đang kiểm tra các báo thức của nó',
   'Checking its background work':
@@ -4384,88 +4310,183 @@ export const vi: Record<string, string> = {
   'Could not cancel the alarm':
     'Không thể hủy báo thức',
   'Could not change the agent':
-    'Không thể thay đổi tác nhân',
+    'Không thể thay đổi agent',
   'Deployed agent':
-    'Tác nhân được triển khai',
-  'Deployed agent model':
-    'Mô hình cho tác nhân được triển khai',
-  'Deployed agent provider':
-    'Nhà cung cấp cho tác nhân được triển khai',
+    'Agent được triển khai',
   'Deployed agents':
-    'Tác nhân được triển khai',
+    'Agent được triển khai',
   'Deployed an agent':
-    'Đã triển khai một tác nhân',
-  'Deployed by {name}':
-    'Được triển khai bởi {name}',
+    'Đã triển khai một agent',
   'Deploying an agent':
-    'Đang triển khai một tác nhân',
+    'Đang triển khai một agent',
   'Dismiss this agent':
-    'Cho tác nhân này nghỉ',
+    'Cho agent này nghỉ',
   'Dismissed an agent':
-    'Đã cho một tác nhân nghỉ',
+    'Đã cho một agent nghỉ',
   'Dismissing an agent':
-    'Đang cho một tác nhân nghỉ',
+    'Đang cho một agent nghỉ',
   'Due now':
     'Đến giờ',
-  'Every agent working on this conversation, the agents each deployed, and what each cost.':
-    'Mọi tác nhân làm việc trong cuộc trò chuyện này, các tác nhân mà mỗi tác nhân đã triển khai, và chi phí của từng tác nhân.',
-  'Give it a task, not just a question. The agent plans the work, deploys agents to do parts of it in parallel, and keeps going across your systems for as many steps as the job takes.':
-    'Hãy giao cho nó một nhiệm vụ, không chỉ một câu hỏi. Tác nhân lập kế hoạch, triển khai các tác nhân khác làm song song từng phần việc, và tiếp tục làm việc trên các hệ thống của bạn qua bao nhiêu bước mà công việc cần.',
+  'Every agent in this conversation, and what each cost.': 'Mọi agent trong cuộc trò chuyện này, và chi phí của từng agent.',
+  'Give it a task, not just a question. It plans the work and runs agents in parallel.': 'Hãy giao việc, không chỉ hỏi. Nó tự lên kế hoạch và chạy nhiều agent song song.',
   'Go to its latest turn':
     'Đi tới lượt mới nhất',
   'Heard from its agents':
-    'Đã nhận phản hồi từ các tác nhân của nó',
+    'Đã nhận phản hồi từ các agent của nó',
   'Hide its last report':
     'Ẩn báo cáo gần nhất',
   'Hide the agents it deployed':
-    'Ẩn các tác nhân nó đã triển khai',
-  'How long the provider keeps the conversation cached; 1 hour costs more.':
-    'Thời gian nhà cung cấp giữ cuộc trò chuyện trong bộ nhớ đệm; 1 giờ tốn chi phí hơn.',
-  'How many levels of agents may work under the one in your conversation.':
-    'Số cấp tác nhân có thể làm việc bên dưới tác nhân trong cuộc trò chuyện của bạn.',
+    'Ẩn các agent nó đã triển khai',
+  'How long the conversation stays cached. 1 hour costs more.': 'Thời gian cuộc trò chuyện được lưu trong bộ nhớ đệm. 1 giờ tốn hơn.',
+  'How many levels of agents may work under yours.': 'Số cấp agent được làm việc bên dưới agent của bạn.',
   'In {time}':
     'Sau {time}',
-  "Empty uses the agent's model. A cheaper one here cuts cost, and it also titles new conversations.":
-    'Để trống sẽ dùng mô hình của tác nhân. Một mô hình rẻ hơn ở đây giúp giảm chi phí, và nó cũng đặt tiêu đề cho các cuộc trò chuyện mới.',
-  'Models agents may choose': 'Mô hình tác nhân được chọn',
-  'Applies when an agent picks a model for one it deploys.': 'Áp dụng khi một tác nhân chọn mô hình cho tác nhân nó triển khai.',
+  'Models agents may choose': 'Mô hình agent được chọn',
+  'For agents that pick a model for others.': 'Cho agent chọn mô hình cho agent khác.',
   'Any listed model': 'Mọi mô hình có trong danh sách',
   'Only these': 'Chỉ những mô hình này',
   'All but these': 'Tất cả trừ những mô hình này',
   'Add a provider or model': 'Thêm nhà cung cấp hoặc mô hình',
   'Every model': 'Mọi mô hình',
   'Max deployed agent iterations':
-    'Số vòng lặp tối đa của tác nhân được triển khai',
+    'Số vòng lặp tối đa của agent được triển khai',
   'Message from an agent':
-    'Tin nhắn từ một tác nhân',
+    'Tin nhắn từ một agent',
   'Message from {title}':
     'Tin nhắn từ {title}',
   'Messaged an agent':
-    'Đã nhắn tin cho một tác nhân',
+    'Đã nhắn tin cho một agent',
   'Messaging an agent':
-    'Đang nhắn tin cho một tác nhân',
-  'No deployed agents yet. The agents the agent deploys appear here, finished ones included.':
-    'Chưa có tác nhân được triển khai nào. Các tác nhân mà tác nhân triển khai sẽ hiện ở đây, kể cả những tác nhân đã hoàn tất.',
+    'Đang nhắn tin cho một agent',
+  // A teammate's answer, and what an agent told the person from a run (a Constellations lead's tellPerson).
+  'Reply from {title}':
+    'Trả lời từ {title}',
+  'Reply from an agent':
+    'Trả lời từ một agent',
+  'Message for you':
+    'Tin nhắn cho bạn',
+  // A Constellations agent's own messages, as lines: how a run started, a template's own runs, a note for the lead.
+  'Scheduled run':
+    'Lần chạy theo lịch',
+  'Run started by a webhook':
+    'Lần chạy do webhook khởi động',
+  'Run started by new documents':
+    'Lần chạy do có tài liệu mới',
+  'Run started by a project member':
+    'Lần chạy do một thành viên dự án khởi động',
+  'Learning from your decisions':
+    'Học từ các quyết định của bạn',
+  'Revising the drafts waiting for approval':
+    'Sửa lại các bản nháp đang chờ duyệt',
+  "Update on the team's work":
+    'Cập nhật về công việc của nhóm',
+  '{title} could not answer':
+    '{title} không trả lời được',
+  'An agent could not answer':
+    'Một agent không trả lời được',
+  'Messaging you':
+    'Đang nhắn cho bạn',
+  'Messaged you':
+    'Đã nhắn cho bạn',
+  // A Constellations run's conversation, titled by how it started and its task (conversationTitle.ts).
+  'Scheduled run: {task}': 'Lần chạy theo lịch: {task}',
+  'Run started by a webhook: {task}': 'Lần chạy do webhook khởi động: {task}',
+  'Run started by new documents: {task}': 'Lần chạy do có tài liệu mới: {task}',
+  'Run started by a project member: {task}': 'Lần chạy do một thành viên dự án khởi động: {task}',
+  // A saved agent's workspace file, said by what it holds and never by its name (toolActivity.ts).
+  'Reading its memory': 'Đang đọc bộ nhớ của nó',
+  'Read its memory': 'Đã đọc bộ nhớ của nó',
+  'Saving to its memory': 'Đang lưu vào bộ nhớ của nó',
+  'Saved to its memory': 'Đã lưu vào bộ nhớ của nó',
+  'Updating its memory': 'Đang cập nhật bộ nhớ của nó',
+  'Updated its memory': 'Đã cập nhật bộ nhớ của nó',
+  'Removing a memory': 'Đang xóa một ghi nhớ',
+  'Removed a memory': 'Đã xóa một ghi nhớ',
+  'Reading its next steps': 'Đang đọc các bước tiếp theo của nó',
+  'Read its next steps': 'Đã đọc các bước tiếp theo của nó',
+  'Writing its next steps': 'Đang viết các bước tiếp theo của nó',
+  'Wrote its next steps': 'Đã viết các bước tiếp theo của nó',
+  'Updating its next steps': 'Đang cập nhật các bước tiếp theo của nó',
+  'Updated its next steps': 'Đã cập nhật các bước tiếp theo của nó',
+  'Clearing its next steps': 'Đang xóa các bước tiếp theo của nó',
+  'Cleared its next steps': 'Đã xóa các bước tiếp theo của nó',
+  'Reading its journal': 'Đang đọc nhật ký của nó',
+  'Read its journal': 'Đã đọc nhật ký của nó',
+  'Writing its journal': 'Đang viết nhật ký của nó',
+  'Wrote its journal': 'Đã viết nhật ký của nó',
+  'Editing its journal': 'Đang sửa nhật ký của nó',
+  'Edited its journal': 'Đã sửa nhật ký của nó',
+  'Deleting part of its journal': 'Đang xóa một phần nhật ký của nó',
+  'Deleted part of its journal': 'Đã xóa một phần nhật ký của nó',
+  "Reading the team's knowledge": 'Đang đọc kiến thức của nhóm',
+  "Read the team's knowledge": 'Đã đọc kiến thức của nhóm',
+  "Writing the team's knowledge": 'Đang viết kiến thức của nhóm',
+  "Wrote the team's knowledge": 'Đã viết kiến thức của nhóm',
+  "Updating the team's knowledge": 'Đang cập nhật kiến thức của nhóm',
+  "Updated the team's knowledge": 'Đã cập nhật kiến thức của nhóm',
+  "Clearing the team's knowledge": 'Đang xóa kiến thức của nhóm',
+  "Cleared the team's knowledge": 'Đã xóa kiến thức của nhóm',
+  "Reading the channel's voice": 'Đang đọc giọng văn của kênh',
+  "Read the channel's voice": 'Đã đọc giọng văn của kênh',
+  "Writing down the channel's voice": 'Đang ghi lại giọng văn của kênh',
+  "Wrote down the channel's voice": 'Đã ghi lại giọng văn của kênh',
+  "Updating the channel's voice": 'Đang cập nhật giọng văn của kênh',
+  "Updated the channel's voice": 'Đã cập nhật giọng văn của kênh',
+  "Clearing the channel's voice": 'Đang xóa giọng văn của kênh',
+  "Cleared the channel's voice": 'Đã xóa giọng văn của kênh',
+  'Reading past decisions': 'Đang đọc các quyết định trước đây',
+  'Read past decisions': 'Đã đọc các quyết định trước đây',
+  'Writing down past decisions': 'Đang ghi lại các quyết định trước đây',
+  'Wrote down past decisions': 'Đã ghi lại các quyết định trước đây',
+  'Updating past decisions': 'Đang cập nhật các quyết định trước đây',
+  'Updated past decisions': 'Đã cập nhật các quyết định trước đây',
+  'Clearing past decisions': 'Đang xóa các quyết định trước đây',
+  'Cleared past decisions': 'Đã xóa các quyết định trước đây',
+  'Reading a dashboard': 'Đang đọc một bảng tổng quan',
+  'Read a dashboard': 'Đã đọc một bảng tổng quan',
+  'Writing a dashboard': 'Đang viết một bảng tổng quan',
+  'Wrote a dashboard': 'Đã viết một bảng tổng quan',
+  'Updating a dashboard': 'Đang cập nhật một bảng tổng quan',
+  'Updated a dashboard': 'Đã cập nhật một bảng tổng quan',
+  'Deleting a dashboard': 'Đang xóa một bảng tổng quan',
+  'Deleted a dashboard': 'Đã xóa một bảng tổng quan',
+  'Reading a past session': 'Đang đọc một phiên trước',
+  'Read a past session': 'Đã đọc một phiên trước',
+  'Writing down a session': 'Đang ghi lại một phiên',
+  'Wrote down a session': 'Đã ghi lại một phiên',
+  'Updating a past session': 'Đang cập nhật một phiên trước',
+  'Updated a past session': 'Đã cập nhật một phiên trước',
+  'Deleting a past session': 'Đang xóa một phiên trước',
+  'Deleted a past session': 'Đã xóa một phiên trước',
+  'Reading its notes': 'Đang đọc ghi chú của nó',
+  'Read its notes': 'Đã đọc ghi chú của nó',
+  'Writing in its notes': 'Đang viết vào ghi chú của nó',
+  'Wrote in its notes': 'Đã viết vào ghi chú của nó',
+  'Editing its notes': 'Đang sửa ghi chú của nó',
+  'Edited its notes': 'Đã sửa ghi chú của nó',
+  'Deleting a note': 'Đang xóa một ghi chú',
+  'Deleted a note': 'Đã xóa một ghi chú',
+  'No deployed agents yet.': 'Chưa có agent nào được triển khai.',
   'One task':
     'Một nhiệm vụ',
   'Open its conversation':
     'Mở cuộc trò chuyện của nó',
   'Pause this agent':
-    'Tạm dừng tác nhân này',
+    'Tạm dừng agent này',
   'Paused an agent':
-    'Đã tạm dừng một tác nhân',
+    'Đã tạm dừng một agent',
   'Pausing an agent':
-    'Đang tạm dừng một tác nhân',
+    'Đang tạm dừng một agent',
   'Report from an agent':
-    'Báo cáo từ một tác nhân',
+    'Báo cáo từ một agent',
   'Report from {title}':
     'Báo cáo từ {title}',
   'Resume this agent':
-    'Tiếp tục tác nhân này',
+    'Tiếp tục agent này',
   'Resumed an agent':
-    'Đã tiếp tục một tác nhân',
+    'Đã tiếp tục một agent',
   'Resuming an agent':
-    'Đang tiếp tục một tác nhân',
+    'Đang tiếp tục một agent',
   'Set an alarm':
     'Đã đặt một báo thức',
   'Setting an alarm':
@@ -4473,7 +4494,7 @@ export const vi: Record<string, string> = {
   'Show its last report':
     'Hiện báo cáo gần nhất',
   'Show the agents it deployed':
-    'Hiện các tác nhân nó đã triển khai',
+    'Hiện các agent nó đã triển khai',
   'Started background work':
     'Đã bắt đầu công việc chạy nền',
   'Starting background work':
@@ -4481,41 +4502,34 @@ export const vi: Record<string, string> = {
   'Stays on':
     'Làm việc lâu dài',
   'Stop this agent':
-    'Dừng tác nhân này',
+    'Dừng agent này',
   'Stopped an agent':
-    'Đã dừng một tác nhân',
+    'Đã dừng một agent',
   'Stopping an agent':
-    'Đang dừng một tác nhân',
-  'Text between {open} and {close} is included only while the agent can deploy agents.':
-    'Văn bản giữa {open} và {close} chỉ được đưa vào khi tác nhân có thể triển khai tác nhân.',
-  'Agents the main agent deploys to handle parts of the work.':
-    'Các tác nhân mà tác nhân chính triển khai để xử lý từng phần việc.',
+    'Đang dừng một agent',
+  'Text between {open} and {close} is used only while agents can be deployed.': 'Văn bản giữa {open} và {close} chỉ được dùng khi có thể triển khai agent.',
+  'Agents that handle parts of the work.': 'Agent đảm nhận một phần công việc.',
   'This conversation':
     'Cuộc trò chuyện này',
   'Wait for agents':
-    'Chờ các tác nhân',
+    'Chờ các agent',
   'Waiting for its agents':
-    'Đang chờ các tác nhân của nó',
+    'Đang chờ các agent của nó',
   'Waiting on its agents':
-    'Đang chờ các tác nhân của nó',
+    'Đang chờ các agent của nó',
   '{count} deployed agent|{count} deployed agents':
-    '{count} tác nhân được triển khai|{count} tác nhân được triển khai',
+    '{count} agent được triển khai|{count} agent được triển khai',
   '{count} working now':
     '{count} đang làm việc',
   '{cost} spent by deployed agents':
-    'Các tác nhân được triển khai đã chi {cost}',
+    'Các agent được triển khai đã chi {cost}',
   'With the agents it deployed: {cost}':
-    'Tính cả các tác nhân nó đã triển khai: {cost}',
+    'Tính cả các agent nó đã triển khai: {cost}',
   'You talked to an agent':
-    'Bạn đã trao đổi với một tác nhân',
+    'Bạn đã trao đổi với một agent',
   'You talked to {title}':
     'Bạn đã trao đổi với {title}',
-  'a deployed agent':
-    'một tác nhân được triển khai',
-  "becomes this deployment's name - keep it as it is. The section on deploying agents is added to this prompt automatically.":
-    'trở thành tên của bản triển khai này - hãy giữ nguyên. Phần về việc triển khai tác nhân được tự động thêm vào lời nhắc này.',
-  'the main agent':
-    'tác nhân chính',
+  "becomes this deployment's name. Keep it as it is.": 'sẽ thành tên của bản triển khai này. Giữ nguyên nó.',
   '{count} alarm set|{count} alarms set':
     'Đã đặt {count} báo thức',
   'Paused':
@@ -4528,12 +4542,12 @@ export const vi: Record<string, string> = {
     'Thao tác',
   // A saved agent's turn refused because its provider is gone (ChatService, AgentProfile).
   'This agent is set to run on a provider that is no longer configured. Open the agent\'s Model tab and pick another.':
-    'Tác nhân này được đặt để chạy trên một nhà cung cấp không còn được cấu hình. Hãy mở thẻ Mô hình của tác nhân và chọn nhà cung cấp khác.',
+    'Agent này được đặt để chạy trên một nhà cung cấp không còn được cấu hình. Hãy mở thẻ Mô hình của agent và chọn nhà cung cấp khác.',
   // The agent tree's tools of 2026-10-29: a list, a report in full, a check, a panel, a decision, a file.
-  'Agents over a list': 'Tác nhân theo danh sách',
+  'Agents over a list': 'Agent theo danh sách',
   'Panel': 'Hội đồng',
-  'Deploying agents over a list': 'Đang triển khai tác nhân theo danh sách',
-  'Deployed agents over a list': 'Đã triển khai tác nhân theo danh sách',
+  'Deploying agents over a list': 'Đang triển khai agent theo danh sách',
+  'Deployed agents over a list': 'Đã triển khai agent theo danh sách',
   'Reading a report in full': 'Đang đọc toàn bộ một báo cáo',
   'Read a report in full': 'Đã đọc toàn bộ một báo cáo',
   'Having a report checked': 'Đang cho kiểm tra một báo cáo',
@@ -4544,12 +4558,32 @@ export const vi: Record<string, string> = {
   'Recorded a decision': 'Đã ghi lại quyết định',
   'Handing on a file': 'Đang chuyển một tệp',
   'Handed on a file': 'Đã chuyển một tệp',
-  'Approval {title}': 'Phê duyệt {title}',
   'A decision on a write': 'Một quyết định về thao tác ghi',
   'Checks a report': 'Kiểm tra một báo cáo',
-  'Budget {budget}': 'Ngân sách {budget}',
-  'Due {time}': 'Hạn {time}',
   'Checked {supported} of {total} supported': 'Đã kiểm tra: {supported} trên {total} có căn cứ',
+  // The agents map's status: why an agent ended, and its figures against their limits (2026-11-02).
+  'Stopped - time limit': 'Đã dừng - hết thời gian',
+  'Stopped - budget spent': 'Đã dừng - hết ngân sách',
+  'Stopped - run limit reached': 'Đã dừng - chạm giới hạn lượt chạy',
+  'Stopped by its parent agent': 'Bị agent cha dừng',
+  'Stopped by you': 'Bị bạn dừng',
+  'Failed - rate limited': 'Thất bại - bị giới hạn tốc độ',
+  'Context {used} of {window}': 'Ngữ cảnh {used} trên {window}',
+  'Context {used}': 'Ngữ cảnh {used}',
+  'Spent {cost}': 'Đã chi {cost}',
+  'Spent {cost} of its {budget} budget': 'Đã chi {cost} trên ngân sách {budget}',
+  'Spent {cost} of its {budget} budget, with the agents it deployed': 'Đã chi {cost} trên ngân sách {budget}, gồm cả các agent nó triển khai',
+  'Ran {time}': 'Đã chạy {time}',
+  'Ran {time} of {limit}': 'Đã chạy {time} trên {limit}',
+  'Time limit {time}': 'Hạn chót {time}',
+  'Time limit {time}, set on an agent above it': 'Hạn chót {time}, do một agent cấp trên đặt',
+  // The agents map's main agent: where it stands and its time worked (2026-11-03). The first two are
+  // also what a Constellations card says.
+  'Waiting for approval': 'Đang chờ phê duyệt',
+  'Not made': 'Không thực hiện',
+  'Rate limited, waiting to retry': 'Bị giới hạn tốc độ, đang chờ thử lại',
+  'Waiting for your answer': 'Đang chờ câu trả lời của bạn',
+  'Worked {time}, its turns added up': 'Đã làm việc {time}, cộng dồn các lượt',
   // The glass shell's sidebar (2026-10-29).
   'Maximize': 'Phóng to',
   'Minimize': 'Thu nhỏ',
@@ -4559,4 +4593,700 @@ export const vi: Record<string, string> = {
   'New chat': 'Cuộc trò chuyện mới',
   'Recent chats': 'Trò chuyện gần đây',
   'Your conversations appear here.': 'Các cuộc trò chuyện của bạn sẽ hiện ở đây.',
+
+  // Part A, YouTube data (2026-10-31): the numbers of the channel - tool rows, the notes of the connection Test,
+  // and what the four tools say back (YouTubeTools, YouTubeCalls, YouTubeConnectionPlugin).
+  'Reading YouTube channel stats': 'Đang đọc số liệu kênh YouTube',
+  'Read YouTube channel stats': 'Đã đọc số liệu kênh YouTube',
+  'Listing YouTube videos': 'Đang liệt kê video YouTube',
+  'Listed YouTube videos': 'Đã liệt kê video YouTube',
+  'Reading YouTube Analytics': 'Đang đọc YouTube Analytics',
+  'Read YouTube Analytics': 'Đã đọc YouTube Analytics',
+  'Reading YouTube impressions': 'Đang đọc lượt hiển thị YouTube',
+  'Read YouTube impressions': 'Đã đọc lượt hiển thị YouTube',
+  'Signed in as {user}. YouTube Analytics is allowed.': 'Đã đăng nhập với tên {user}. YouTube Analytics đã được cho phép.',
+  'Signed in as {user}. YouTube Analytics is not allowed yet: sign in again to allow it.':
+    'Đã đăng nhập với tên {user}. YouTube Analytics chưa được cho phép: hãy đăng nhập lại để cho phép.',
+  "Signed in as {user}. Enable the YouTube Analytics API in the Google Cloud project to read the channel's numbers.":
+    'Đã đăng nhập với tên {user}. Hãy bật YouTube Analytics API trong dự án Google Cloud để đọc số liệu của kênh.',
+  'Signed in as {user}. Enable the YouTube Reporting API in the Google Cloud project to read impressions and click-through rate.':
+    'Đã đăng nhập với tên {user}. Hãy bật YouTube Reporting API trong dự án Google Cloud để đọc lượt hiển thị và tỷ lệ nhấp.',
+  'A period is at most 365 days; this one has {0}.': 'Một khoảng thời gian dài tối đa 365 ngày; khoảng này có {0} ngày.',
+  "Google did not accept the YouTube connection's sign-in. Tell the user to sign in again on the YouTube connection in Settings > Connections.":
+    'Google không chấp nhận lần đăng nhập của kết nối YouTube. Hãy báo người dùng đăng nhập lại kết nối YouTube trong Cài đặt > Kết nối.',
+  "The YouTube Analytics API is not enabled in the connection's Google Cloud project. Tell the user to enable the YouTube Analytics API in their Google Cloud project (APIs & Services > Library), then try again.":
+    'YouTube Analytics API chưa được bật trong dự án Google Cloud của kết nối. Hãy báo người dùng bật YouTube Analytics API trong dự án Google Cloud của họ (APIs & Services > Library), rồi thử lại.',
+  "The YouTube Reporting API is not enabled in the connection's Google Cloud project. Tell the user to enable the YouTube Reporting API in their Google Cloud project (APIs & Services > Library), then try again.":
+    'YouTube Reporting API chưa được bật trong dự án Google Cloud của kết nối. Hãy báo người dùng bật YouTube Reporting API trong dự án Google Cloud của họ (APIs & Services > Library), rồi thử lại.',
+  "The YouTube connection's sign-in does not allow YouTube Analytics. Tell the user to sign in again on the YouTube connection in Settings > Connections to allow YouTube Analytics; comments keep working meanwhile.":
+    'Lần đăng nhập của kết nối YouTube không cho phép YouTube Analytics. Hãy báo người dùng đăng nhập lại kết nối YouTube trong Cài đặt > Kết nối để cho phép YouTube Analytics; trong lúc đó bình luận vẫn hoạt động.',
+  "The YouTube connection's sign-in does not include every permission it needs. Tell the user to sign in again on the YouTube connection in Settings > Connections and tick every permission Google lists. YouTube said: {0}":
+    'Lần đăng nhập của kết nối YouTube không có đủ mọi quyền cần thiết. Hãy báo người dùng đăng nhập lại kết nối YouTube trong Cài đặt > Kết nối và đánh dấu mọi quyền mà Google liệt kê. YouTube cho biết: {0}',
+  "The YouTube connection's sign-in does not include every permission it needs. Sign in again on the YouTube connection in Settings > Connections and tick every permission Google lists. YouTube said: {0}":
+    'Lần đăng nhập của kết nối YouTube không có đủ mọi quyền cần thiết. Hãy đăng nhập lại kết nối YouTube trong Cài đặt > Kết nối và đánh dấu mọi quyền mà Google liệt kê. YouTube cho biết: {0}',
+  "The YouTube Data API v3 is not enabled in the connection's Google Cloud project. Tell the user to enable it in Google Cloud > APIs & Services > Library, then try again. YouTube said: {0}":
+    'YouTube Data API v3 chưa được bật trong dự án Google Cloud của kết nối. Hãy báo người dùng bật nó trong Google Cloud > APIs & Services > Library, rồi thử lại. YouTube cho biết: {0}',
+  "The YouTube Data API v3 is not enabled in the connection's Google Cloud project. Enable it in Google Cloud > APIs & Services > Library, then sync again. YouTube said: {0}":
+    'YouTube Data API v3 chưa được bật trong dự án Google Cloud của kết nối. Hãy bật nó trong Google Cloud > APIs & Services > Library, rồi đồng bộ lại. YouTube cho biết: {0}',
+  'Comments are turned off for this channel or its videos (videos made for kids have none), so there are no comments to read.':
+    'Bình luận đã bị tắt cho kênh này hoặc các video của kênh (video dành cho trẻ em không có bình luận), nên không có bình luận nào để đọc.',
+  'Comments are turned off for this channel or its videos (videos made for kids have none), so there are no comments to read. YouTube said: {0}':
+    'Bình luận đã bị tắt cho kênh này hoặc các video của kênh (video dành cho trẻ em không có bình luận), nên không có bình luận nào để đọc. YouTube cho biết: {0}',
+  "YouTube does not list this channel's comments all at once, so its newest {0} videos were read one by one ({1} with comments turned off).":
+    'YouTube không liệt kê toàn bộ bình luận của kênh này cùng lúc, nên {0} video mới nhất của kênh đã được đọc lần lượt từng video ({1} video đã tắt bình luận).',
+  'The retention report is about one video: give its videoId, from listYouTubeVideos.':
+    'Báo cáo giữ chân người xem là về một video: hãy cho biết videoId của nó, lấy từ listYouTubeVideos.',
+  'YouTube Analytics refused the query: {0}': 'YouTube Analytics đã từ chối truy vấn: {0}',
+  'Already answered on YouTube.': 'Đã được trả lời trên YouTube.',
+  'The comment is gone.': 'Bình luận không còn nữa.',
+  'Made for another channel.': 'Được soạn cho một kênh khác.',
+  'Missing details: the comment could not be read.': 'Thiếu thông tin: không đọc được bình luận.',
+  'Missing details: the video could not be read.': 'Thiếu thông tin: không đọc được video.',
+  'Missing details: the viewer could not be read.': 'Thiếu thông tin: không đọc được người xem.',
+  'Missing details: the reply is empty.': 'Thiếu thông tin: câu trả lời đang trống.',
+  'A write for the same thing was already approved.': 'Một thao tác ghi cho cùng nội dung này đã được phê duyệt.',
+  'YouTube Reporting did not make the reach job. Try again later.':
+    'YouTube Reporting đã không tạo tác vụ thu thập lượt hiển thị. Hãy thử lại sau.',
+  'YouTube is limiting how often it is asked. Wait a minute, then try again.':
+    'YouTube đang giới hạn tần suất truy vấn. Hãy chờ một phút rồi thử lại.',
+  "Signed in. YouTube's daily limit for Proxyma's shared sign-in is reached on this computer, so the channel's name is read after midnight Pacific time.":
+    'Đã đăng nhập. Hạn mức YouTube hằng ngày của cách đăng nhập dùng chung của Proxyma trên máy này đã hết, nên tên kênh sẽ được đọc sau nửa đêm giờ Thái Bình Dương.',
+  "Signed in. YouTube's daily quota for the connection's Google Cloud project is spent, so the channel's name is read after midnight Pacific time.":
+    'Đã đăng nhập. Hạn mức YouTube hằng ngày của dự án Google Cloud của kết nối đã hết, nên tên kênh sẽ được đọc sau nửa đêm giờ Thái Bình Dương.',
+  "YouTube's daily quota for the connection's Google Cloud project is spent. This is a limit, not a refusal: try again after midnight Pacific time, when it resets.":
+    'Hạn mức hằng ngày của YouTube cho dự án Google Cloud của kết nối đã hết. Đây là giới hạn, không phải bị từ chối: hãy thử lại sau nửa đêm giờ Thái Bình Dương, khi hạn mức được đặt lại.',
+  'endDate is in the future. YouTube has numbers up to about three days ago.':
+    'endDate nằm trong tương lai. YouTube chỉ có số liệu đến khoảng ba ngày trước.',
+  'publishedAfter is a date written YYYY-MM-DD, such as 2026-10-01.':
+    'publishedAfter là một ngày viết theo dạng YYYY-MM-DD, ví dụ 2026-10-01.',
+  'publishedAfter is an ISO time, such as 2026-11-01T08:00:00Z.':
+    'publishedAfter là một thời điểm theo dạng ISO, ví dụ 2026-11-01T08:00:00Z.',
+  'publishedBefore is an ISO time, such as 2026-11-01T08:00:00Z.':
+    'publishedBefore là một thời điểm theo dạng ISO, ví dụ 2026-11-01T08:00:00Z.',
+  'report is one of overview, topVideos, trafficSources, searchTerms, subscribedStatus, contentType, geography, retention.':
+    'report là một trong overview, topVideos, trafficSources, searchTerms, subscribedStatus, contentType, geography, retention.',
+  'startDate and endDate are dates written YYYY-MM-DD, such as 2026-10-01.':
+    'startDate và endDate là các ngày viết theo dạng YYYY-MM-DD, ví dụ 2026-10-01.',
+  'startDate is after endDate.': 'startDate nằm sau endDate.',
+  'topVideos covers the whole channel; leave videoId out.': 'topVideos bao quát toàn kênh; hãy bỏ videoId.',
+
+  // Approval context (2026-10-31): what a write waiting for approval is about - a YouTube reply's
+  // video, viewer, comment and reply (ApprovalContextCard, utils/approvalContext.ts).
+  'Video': 'Video',
+  'Their comment': 'Bình luận của họ',
+  'Reply to post': 'Trả lời sẽ đăng',
+  'Reply as': 'Trả lời với tư cách',
+  'Commented': 'Thời điểm bình luận',
+  // Beside the viewer: their comment and the posted reply where they sit on the video (foldContextLinks).
+  'View comment': 'Xem bình luận',
+  'View reply': 'Xem trả lời',
+  'Reply posted': 'Trả lời đã đăng',
+  // A video an older build named only by its id (approvalContextRows).
+  'Open video': 'Mở video',
+  // A comment's card (commentCard, 2026-11-05): the reply labeled with the agent that drafted it.
+  "{name}'s draft": 'Bản nháp của {name}',
+  // A person's edit of a write waiting for approval, refused by the server (ApprovalInbox).
+  '"{0}" cannot be edited.': 'Không thể sửa "{0}".',
+  'The edited text is empty.': 'Nội dung đã sửa đang trống.',
+  'The edited text is longer than {0} characters.': 'Nội dung đã sửa dài hơn {0} ký tự.',
+  'This request offers nothing to edit.': 'Yêu cầu này không có gì để sửa.',
+  "This request's arguments cannot be edited.": 'Không thể sửa tham số của yêu cầu này.',
+  // A person's message into a deployed agent's conversation, refused (ChatService, 2026-11-04).
+  'A deployed agent takes no messages. Ask the agent that deployed it instead.':
+    'Agent được triển khai không nhận tin nhắn. Hãy hỏi agent đã triển khai nó.',
+
+  // -- Every tool by name (2026-11-05): TOOL_TITLES in toolDisplayName.ts, the title of a tool in the
+  // detail dialog, a failed row, an approval card and the logs - an instruction, so no "Dang"/"Da" -
+  // and the rest of PHRASES in toolActivity.ts, the row of a call running or done. Every tool the
+  // backend offers has both (toolNames.test.ts, from tools/i18n/tool-names.mjs).
+  'Search your sources': 'Tìm trong nguồn dữ liệu của bạn',
+  'Search earlier conversations': 'Tìm trong các cuộc trò chuyện trước',
+  'Search the knowledge graph': 'Tìm trong đồ thị tri thức',
+  'Trace connections': 'Dò các mối liên hệ',
+  'Find who works on something': 'Tìm người phụ trách một việc',
+  'Find the history of something': 'Tìm lịch sử của một việc',
+  'Find the main themes': 'Tìm các chủ đề chính',
+  'Recall memory': 'Đọc lại bộ nhớ',
+  'Remember a fact': 'Ghi nhớ một điều',
+  'Load a skill': 'Tải một kỹ năng',
+  'Ask you a question': 'Hỏi bạn một câu',
+  'Find your questions': 'Tìm câu hỏi cho bạn',
+  'Answer or withdraw questions': 'Trả lời hoặc rút câu hỏi',
+  'Reword or merge a question': 'Sửa hoặc gộp câu hỏi',
+  'Search the web': 'Tìm kiếm trên web',
+  'Read a web page': 'Đọc một trang web',
+  'Open a page in a browser': 'Mở một trang trong trình duyệt',
+  'Read a saved result': 'Đọc một kết quả đã lưu',
+  'Search a saved result': 'Tìm trong một kết quả đã lưu',
+  'Convert a document': 'Chuyển đổi một tài liệu',
+  'Run Python on a file': 'Chạy Python trên một tệp tin',
+  'Run a command': 'Chạy một lệnh',
+  'Running a command': 'Đang chạy một lệnh',
+  'Ran a command': 'Đã chạy một lệnh',
+  'Open a file from your computer': 'Mở một tệp tin từ máy tính của bạn',
+  'Save a file to your computer': 'Lưu một tệp tin vào máy tính của bạn',
+  'Check this deployment': 'Kiểm tra hệ thống này',
+  'Switch server': 'Chuyển máy chủ',
+  'Check your sources': 'Kiểm tra nguồn dữ liệu của bạn',
+  'List the types of source': 'Liệt kê các loại nguồn dữ liệu',
+  'Checking the types of source': 'Đang kiểm tra các loại nguồn dữ liệu',
+  'Checked the types of source': 'Đã kiểm tra các loại nguồn dữ liệu',
+  'Adding a source': 'Đang thêm một nguồn dữ liệu',
+  'Added a source': 'Đã thêm một nguồn dữ liệu',
+  'Remove a source': 'Gỡ một nguồn dữ liệu',
+  'Removing a source': 'Đang gỡ một nguồn dữ liệu',
+  'Removed a source': 'Đã gỡ một nguồn dữ liệu',
+  'Open an item of a source': 'Mở một mục của nguồn dữ liệu',
+  'Reading an item from a source': 'Đang đọc một mục từ nguồn dữ liệu',
+  'Read an item from a source': 'Đã đọc một mục từ nguồn dữ liệu',
+  'Save a note to a source': 'Lưu một ghi chú vào nguồn dữ liệu',
+  'Saving a note to a source': 'Đang lưu một ghi chú vào nguồn dữ liệu',
+  'Saved a note to a source': 'Đã lưu một ghi chú vào nguồn dữ liệu',
+  'Searching the knowledge graph': 'Đang tìm trong đồ thị tri thức',
+  'Searched the knowledge graph': 'Đã tìm trong đồ thị tri thức',
+  // The tree of agents.
+  'Deploy an agent': 'Triển khai một agent',
+  'Message an agent': 'Nhắn cho một agent',
+  'Direct its agents': 'Điều phối các agent của nó',
+  'Read the report of an agent': 'Đọc báo cáo của một agent',
+  'Have a report checked': 'Cho kiểm tra một báo cáo',
+  'Record a decision': 'Ghi lại một quyết định',
+  'Hand on a file': 'Chuyển một tệp',
+  'Work in the background': 'Chạy nền',
+  'Convert a file': 'Chuyển đổi một tệp tin',
+  // Jira.
+  'Sending a Jira request': 'Đang gửi yêu cầu Jira',
+  'Sent a Jira request': 'Đã gửi yêu cầu Jira',
+  'Search Jira issues': 'Tìm các issue Jira',
+  'Open a Jira issue': 'Mở một issue Jira',
+  'Opening Jira issue': 'Đang mở issue Jira',
+  'Opened Jira issue': 'Đã mở issue Jira',
+  'Create a Jira issue': 'Tạo một issue Jira',
+  'Update a Jira issue': 'Cập nhật một issue Jira',
+  'Updating Jira issue': 'Đang cập nhật issue Jira',
+  'Updated Jira issue': 'Đã cập nhật issue Jira',
+  'Delete a Jira issue': 'Xóa một issue Jira',
+  'Deleting Jira issue': 'Đang xóa issue Jira',
+  'Deleted Jira issue': 'Đã xóa issue Jira',
+  'Change the status of a Jira issue': 'Đổi trạng thái một issue Jira',
+  'Comment on a Jira issue': 'Bình luận về một issue Jira',
+  'Edit a Jira comment': 'Sửa một bình luận Jira',
+  'Delete a Jira comment': 'Xóa một bình luận Jira',
+  'Attach a file to a Jira issue': 'Đính kèm tệp tin vào một issue Jira',
+  'Log work on a Jira issue': 'Ghi nhận công việc cho một issue Jira',
+  'Update a Jira estimate': 'Cập nhật ước tính của một issue Jira',
+  'Updating the estimate of': 'Đang cập nhật ước tính của',
+  'Updated the estimate of': 'Đã cập nhật ước tính của',
+  'Link Jira issues': 'Liên kết các issue Jira',
+  'Remove a link between Jira issues': 'Gỡ một liên kết giữa các issue Jira',
+  'Removing a link between Jira issues': 'Đang gỡ một liên kết giữa các issue Jira',
+  'Removed a link between Jira issues': 'Đã gỡ một liên kết giữa các issue Jira',
+  'Check your Jira account': 'Kiểm tra tài khoản Jira của bạn',
+  'List Jira projects': 'Liệt kê các dự án Jira',
+  'List Jira issue types': 'Liệt kê các loại issue Jira',
+  'List Jira fields': 'Liệt kê các trường Jira',
+  'List Jira versions': 'Liệt kê các phiên bản Jira',
+  'Listing Jira versions': 'Đang liệt kê các phiên bản Jira',
+  'Listed Jira versions': 'Đã liệt kê các phiên bản Jira',
+  'Create a Jira version': 'Tạo một phiên bản Jira',
+  'Creating a Jira version': 'Đang tạo một phiên bản Jira',
+  'Created a Jira version': 'Đã tạo một phiên bản Jira',
+  // Confluence.
+  'Sending a Confluence request': 'Đang gửi yêu cầu Confluence',
+  'Sent a Confluence request': 'Đã gửi yêu cầu Confluence',
+  'Search Confluence pages': 'Tìm các trang Confluence',
+  'Searching Confluence pages': 'Đang tìm các trang Confluence',
+  'Searched Confluence pages': 'Đã tìm các trang Confluence',
+  'Open a Confluence page': 'Mở một trang Confluence',
+  'Opening Confluence page': 'Đang mở trang Confluence',
+  'Opened Confluence page': 'Đã mở trang Confluence',
+  'Create a Confluence page': 'Tạo một trang Confluence',
+  'Update a Confluence page': 'Cập nhật một trang Confluence',
+  'Updating a Confluence page': 'Đang cập nhật một trang Confluence',
+  'Updated a Confluence page': 'Đã cập nhật một trang Confluence',
+  'Delete a Confluence page': 'Xóa một trang Confluence',
+  'Deleting a Confluence page': 'Đang xóa một trang Confluence',
+  'Deleted a Confluence page': 'Đã xóa một trang Confluence',
+  'Move a Confluence page': 'Di chuyển một trang Confluence',
+  'Comment on a Confluence page': 'Bình luận trên một trang Confluence',
+  'Edit a Confluence comment': 'Sửa một bình luận Confluence',
+  'Delete a Confluence comment': 'Xóa một bình luận Confluence',
+  'Attach a file to a Confluence page': 'Đính kèm tệp tin vào một trang Confluence',
+  'Label a Confluence page': 'Gắn nhãn một trang Confluence',
+  'List Confluence spaces': 'Liệt kê các không gian Confluence',
+  // Bitbucket and SVN.
+  'Sending a Bitbucket request': 'Đang gửi yêu cầu Bitbucket',
+  'Sent a Bitbucket request': 'Đã gửi yêu cầu Bitbucket',
+  'Open a Bitbucket pull request': 'Mở một pull request Bitbucket',
+  'Open a Bitbucket Cloud pull request': 'Mở một pull request Bitbucket Cloud',
+  'Read the diff of a pull request': 'Đọc phần khác biệt của một pull request',
+  'Create a pull request': 'Tạo một pull request',
+  'Comment on a pull request': 'Bình luận trên một pull request',
+  'Review a pull request': 'Xem xét một pull request',
+  'Merge a pull request': 'Gộp một pull request',
+  'Read the commit history': 'Đọc lịch sử commit',
+  'Read the diff of a commit': 'Đọc phần khác biệt của một commit',
+  'List Bitbucket branches': 'Liệt kê các nhánh Bitbucket',
+  'Listing Bitbucket branches': 'Đang liệt kê các nhánh Bitbucket',
+  'Listed Bitbucket branches': 'Đã liệt kê các nhánh Bitbucket',
+  'Create a Bitbucket branch': 'Tạo một nhánh Bitbucket',
+  'Delete a Bitbucket branch': 'Xóa một nhánh Bitbucket',
+  'List Bitbucket tags': 'Liệt kê các tag Bitbucket',
+  'Listing Bitbucket tags': 'Đang liệt kê các tag Bitbucket',
+  'Listed Bitbucket tags': 'Đã liệt kê các tag Bitbucket',
+  'Create a Bitbucket tag': 'Tạo một tag Bitbucket',
+  'List the files of a repository': 'Liệt kê các tệp của một kho mã',
+  'Listing repository files': 'Đang liệt kê các tệp của kho mã',
+  'Listed repository files': 'Đã liệt kê các tệp của kho mã',
+  'Browse a Bitbucket repository': 'Duyệt một kho mã Bitbucket',
+  'Open a Bitbucket Cloud file': 'Mở một tệp Bitbucket Cloud',
+  'Download a Bitbucket repository': 'Tải về một kho mã Bitbucket',
+  'Delete a downloaded repository': 'Xóa một kho mã đã tải về',
+  'List SVN files': 'Liệt kê các tệp SVN',
+  'Listing SVN files': 'Đang liệt kê các tệp SVN',
+  'Listed SVN files': 'Đã liệt kê các tệp SVN',
+  'Open an SVN file': 'Mở một tệp SVN',
+  'Reading an SVN file': 'Đang đọc một tệp SVN',
+  'Read an SVN file': 'Đã đọc một tệp SVN',
+  // YouTube.
+  'List YouTube comments': 'Liệt kê bình luận YouTube',
+  'Reply to a YouTube comment': 'Trả lời một bình luận YouTube',
+  'List YouTube replies waiting for approval': 'Liệt kê các câu trả lời YouTube đang chờ duyệt',
+  'List the YouTube replies of the channel': 'Liệt kê các câu trả lời YouTube của kênh',
+  'Look up a YouTube viewer': 'Tra cứu một người xem YouTube',
+  'Open a YouTube video': 'Mở một video YouTube',
+  'List YouTube videos': 'Liệt kê video YouTube',
+  'Get YouTube channel stats': 'Lấy số liệu kênh YouTube',
+  'Get a YouTube Analytics report': 'Lấy một báo cáo YouTube Analytics',
+  'Get YouTube impressions': 'Lấy lượt hiển thị YouTube',
+  // Key accounts.
+  'List key accounts': 'Liệt kê khách hàng trọng điểm',
+  'Listing key accounts': 'Đang liệt kê khách hàng trọng điểm',
+  'Listed key accounts': 'Đã liệt kê khách hàng trọng điểm',
+  'Choose a key account': 'Chọn một khách hàng trọng điểm',
+  'Opening a key account': 'Đang mở một khách hàng trọng điểm',
+  'Opened a key account': 'Đã mở một khách hàng trọng điểm',
+  'Open the key account': 'Mở khách hàng trọng điểm',
+  'Reading the key account': 'Đang đọc thông tin khách hàng trọng điểm',
+  'Read the key account': 'Đã đọc thông tin khách hàng trọng điểm',
+  'List the items of a key account': 'Liệt kê các mục của một khách hàng trọng điểm',
+  'Listing the items of the key account': 'Đang liệt kê các mục của khách hàng trọng điểm',
+  'Listed the items of the key account': 'Đã liệt kê các mục của khách hàng trọng điểm',
+  'Update the key account details': 'Cập nhật thông tin khách hàng trọng điểm',
+  'Updating the key account details': 'Đang cập nhật thông tin khách hàng trọng điểm',
+  'Updated the key account details': 'Đã cập nhật thông tin khách hàng trọng điểm',
+  'Propose a fact': 'Đề xuất một dữ kiện',
+  'Proposing a fact': 'Đang đề xuất một dữ kiện',
+  'Proposed a fact': 'Đã đề xuất một dữ kiện',
+  'Propose a rating': 'Đề xuất một mức đánh giá',
+  'Proposing a rating': 'Đang đề xuất một mức đánh giá',
+  'Proposed a rating': 'Đã đề xuất một mức đánh giá',
+  'Propose a move': 'Đề xuất bước đi',
+  'Proposing a move': 'Đang đề xuất một bước đi',
+  'Proposed a move': 'Đã đề xuất một bước đi',
+  'Add an action to the plan': 'Thêm một việc vào kế hoạch',
+  'Adding an action to the plan': 'Đang thêm một việc vào kế hoạch',
+  'Added an action to the plan': 'Đã thêm một việc vào kế hoạch',
+  'Add evidence': 'Thêm bằng chứng',
+  'Adding evidence': 'Đang thêm bằng chứng',
+  'Added evidence': 'Đã thêm bằng chứng',
+  'Save a risk': 'Lưu một rủi ro',
+  'Saving a risk': 'Đang lưu một rủi ro',
+  'Saved a risk': 'Đã lưu một rủi ro',
+  'Save an opportunity': 'Lưu một cơ hội',
+  'Saving an opportunity': 'Đang lưu một cơ hội',
+  'Saved an opportunity': 'Đã lưu một cơ hội',
+  'Save a stakeholder': 'Lưu một người liên quan',
+  'Saving a stakeholder': 'Đang lưu một người liên quan',
+  'Saved a stakeholder': 'Đã lưu một người liên quan',
+  'Import revenue': 'Nhập doanh thu',
+  'Importing revenue': 'Đang nhập doanh thu',
+  'Imported revenue': 'Đã nhập doanh thu',
+  'Draft the review report': 'Soạn báo cáo đánh giá',
+  'Drafting the review report': 'Đang soạn báo cáo đánh giá',
+  'Drafted the review report': 'Đã soạn báo cáo đánh giá',
+  // Constellations: the team, its workspace, the board and the approvals.
+  'Check on the team': 'Xem tình hình nhóm',
+  'Message a teammate': 'Nhắn cho một đồng đội',
+  'Ask a project lead': 'Hỏi trưởng nhóm của một dự án',
+  'Message you': 'Nhắn cho bạn',
+  'Describe the team': 'Mô tả nhóm',
+  'Add an agent to the team': 'Thêm một agent vào nhóm',
+  'Change an agent': 'Sửa một agent',
+  'Remove an agent from the team': 'Xóa một agent khỏi nhóm',
+  'Link agents': 'Nối các agent',
+  'Schedule an agent': 'Đặt lịch cho một agent',
+  'Save a memory': 'Lưu một ghi nhớ',
+  'Note for the team': 'Ghi lại cho cả nhóm',
+  'List workspace files': 'Liệt kê các tệp trong không gian làm việc',
+  'Read a workspace file': 'Đọc một tệp trong không gian làm việc',
+  'Write a workspace file': 'Viết một tệp trong không gian làm việc',
+  'Edit a workspace file': 'Sửa một tệp trong không gian làm việc',
+  'Delete a workspace file': 'Xóa một tệp trong không gian làm việc',
+  'Write in the journal': 'Ghi nhật ký',
+  'Post a finding to the board': 'Đăng một phát hiện lên bảng',
+  'List the findings on the board': 'Liệt kê các phát hiện trên bảng',
+  'Update a finding': 'Cập nhật một phát hiện',
+  'List writes waiting for approval': 'Liệt kê các thao tác ghi đang chờ phê duyệt',
+  'Withdraw writes': 'Rút lại các thao tác ghi',
+  'Take new comments to sort': 'Lấy bình luận mới để phân loại',
+  'Take comments to answer': 'Lấy bình luận cần trả lời',
+  'Sort comments': 'Phân loại bình luận',
+  'List the questions for you': 'Liệt kê các câu hỏi dành cho bạn',
+  'Close comments that get no reply': 'Đóng các bình luận không cần trả lời',
+  // What became of a write kept for a person's decision (approvalOutcome.ts): the approval mail row
+  // in a transcript and the agents' timeline. {tool} is the tool's title above, already translated.
+  'Approved: {tool}': 'Đã phê duyệt: {tool}',
+  'Denied: {tool}': 'Đã từ chối: {tool}',
+  'Approved, waiting to be sent: {tool}': 'Đã phê duyệt, đang chờ gửi: {tool}',
+  'Approved, but it failed: {tool}': 'Đã phê duyệt nhưng thất bại: {tool}',
+  'Withdrawn: {tool}': 'Đã rút lại: {tool}',
+  'Replaced by a newer draft: {tool}': 'Đã được thay bằng một bản nháp mới hơn: {tool}',
+  'Nobody decided in time: {tool}': 'Không ai quyết định kịp: {tool}',
+  'Decided: {tool}': 'Đã có quyết định: {tool}',
+
+  // Settings > Configuration transfer: what an import does to each item (ConfigTransferService), 2026-11-05.
+  'Chat system prompt': 'Câu lệnh hệ thống của trò chuyện',
+  '\'{0}\' connections are not available here.': 'Kết nối \'{0}\' không có ở đây.',
+  'A policy document with this name is already here; it was left alone.': 'Đã có tài liệu chính sách cùng tên ở đây; tài liệu đó được giữ nguyên.',
+  'A provider with this name is already configured; kept as it is.': 'Đã có nhà cung cấp cùng tên; được giữ nguyên.',
+  'A skill here already uses this name, and "/" is one namespace.': 'Một kỹ năng ở đây đã dùng tên này, và "/" là một không gian tên chung.',
+  'A skill with this name already exists here; it was left alone.': 'Đã có kỹ năng cùng tên ở đây; kỹ năng đó được giữ nguyên.',
+  'A workflow here already uses this name, and "/" is one namespace.': 'Một quy trình ở đây đã dùng tên này, và "/" là một không gian tên chung.',
+  'A workflow of 1 step, shared with everyone.': 'Quy trình 1 bước, chia sẻ với mọi người.',
+  'A workflow of 1 step, shared with everyone. The provider it runs on is not in this file - it will use the main chat model.':
+    'Quy trình 1 bước, chia sẻ với mọi người. Nhà cung cấp nó chạy trên không có trong tệp này - nó sẽ dùng mô hình trò chuyện chính.',
+  'A workflow of 1 step.': 'Quy trình 1 bước.',
+  'A workflow of 1 step. The provider it runs on is not in this file - it will use the main chat model.':
+    'Quy trình 1 bước. Nhà cung cấp nó chạy trên không có trong tệp này - nó sẽ dùng mô hình trò chuyện chính.',
+  'A workflow of {0} steps, shared with everyone.': 'Quy trình {0} bước, chia sẻ với mọi người.',
+  'A workflow of {0} steps, shared with everyone. The provider it runs on is not in this file - it will use the main chat model.':
+    'Quy trình {0} bước, chia sẻ với mọi người. Nhà cung cấp nó chạy trên không có trong tệp này - nó sẽ dùng mô hình trò chuyện chính.',
+  'A workflow of {0} steps.': 'Quy trình {0} bước.',
+  'A workflow of {0} steps. The provider it runs on is not in this file - it will use the main chat model.':
+    'Quy trình {0} bước. Nhà cung cấp nó chạy trên không có trong tệp này - nó sẽ dùng mô hình trò chuyện chính.',
+  'A workflow with this name already exists here; it was left alone.': 'Đã có quy trình cùng tên ở đây; quy trình đó được giữ nguyên.',
+  'Created without a credential - add one before use.': 'Đã tạo nhưng chưa có thông tin xác thực - hãy thêm trước khi dùng.',
+  'Created. Add its password before use.': 'Đã tạo. Hãy thêm mật khẩu trước khi dùng.',
+  'Created. Add its token before use.': 'Đã tạo. Hãy thêm token trước khi dùng.',
+  'Created. Sign in to it before use.': 'Đã tạo. Hãy đăng nhập trước khi dùng.',
+  'Credential set.': 'Đã đặt thông tin xác thực.',
+  'Examples. Indexed after the import.': 'Ví dụ. Được lập chỉ mục sau khi nhập.',
+  'Exported without secrets - the existing value is kept.': 'Được xuất không kèm thông tin bí mật - giữ nguyên giá trị hiện có.',
+  'Indexed after the import.': 'Được lập chỉ mục sau khi nhập.',
+  'It was created.': 'Đã được tạo.',
+  'Its provider is not on this deployment - import AI Providers too, or choose one here.':
+    'Nhà cung cấp của nó không có trên bản triển khai này - hãy nhập cả Nhà cung cấp AI, hoặc chọn một nhà cung cấp ở đây.',
+  'MCP server connections are not imported. Add them in Settings > Connections.':
+    'Kết nối máy chủ MCP không được nhập. Hãy thêm chúng trong Cài đặt > Kết nối.',
+  'No value for this field in the file\'s secrets.': 'Phần thông tin bí mật của tệp không có giá trị cho trường này.',
+  'Shared with everyone, as in the file.': 'Chia sẻ với mọi người, như trong tệp.',
+  'The file\'s copy of this document is damaged.': 'Bản sao của tài liệu này trong tệp bị hỏng.',
+  'The prompt already customized here will be replaced.': 'Câu lệnh đã tùy chỉnh ở đây sẽ bị thay thế.',
+  'This build has no setting by that name.': 'Phiên bản này không có cài đặt nào tên như vậy.',
+  'This build has no settings group by that name.': 'Phiên bản này không có nhóm cài đặt nào tên như vậy.',
+  'This edition always uses the built-in system prompt.': 'Phiên bản này luôn dùng câu lệnh hệ thống có sẵn.',
+  'This group exists on Enterprise Server only.': 'Nhóm này chỉ có trên Enterprise Server.',
+  'This group is fixed at deploy time or belongs to one user, not the deployment.':
+    'Nhóm này được cố định khi triển khai hoặc thuộc về một người dùng, không thuộc về bản triển khai.',
+  'Unknown protocol \'{0}\' - this build cannot speak it.': 'Giao thức \'{0}\' không xác định - phiên bản này không hỗ trợ.',
+  'Will be created without a credential.': 'Sẽ được tạo mà chưa có thông tin xác thực.',
+  'Will be created.': 'Sẽ được tạo.',
+  'Will be created. Add its password before use.': 'Sẽ được tạo. Hãy thêm mật khẩu trước khi dùng.',
+  'Will be created. Add its token before use.': 'Sẽ được tạo. Hãy thêm token trước khi dùng.',
+  'Will be created. Sign in to it before use.': 'Sẽ được tạo. Hãy đăng nhập trước khi dùng.',
+  'You already have a connection with this name; kept as it is.': 'Bạn đã có kết nối cùng tên; được giữ nguyên.',
+  // Why the folder chooser did not open (LocalPathController), 2026-11-05.
+  'A folder chooser is already open.': 'Hộp thoại chọn thư mục đang mở.',
+  'No desktop session is available to show a folder chooser.': 'Không có phiên làm việc trên máy tính để hiện hộp thoại chọn thư mục.',
+  // The Logs page's names for every setting and its choices (auditLabels.ts), 2026-11-05. Moved from the Enterprise catalog, which still uses them.
+  'Application (client) ID': 'ID ứng dụng (client)',
+  'Authority host': 'Máy chủ xác thực (authority host)',
+  'Calendar days ahead': 'Số ngày lịch về sau',
+  'Calendar days back': 'Số ngày lịch về trước',
+  'Custom CA certificate': 'Chứng chỉ CA tùy chỉnh',
+  'Day of month': 'Ngày trong tháng',
+  'Day of week': 'Ngày trong tuần',
+  'Default 5-hour quota ($)': 'Hạn mức 5 giờ mặc định ($)',
+  'Default monthly quota ($)': 'Hạn mức hàng tháng mặc định ($)',
+  'Default weekly quota ($)': 'Hạn mức hàng tuần mặc định ($)',
+  'Directory (tenant) ID': 'ID thư mục (tenant)',
+  'Every day': 'Hàng ngày',
+  'Every month': 'Hàng tháng',
+  'Every week': 'Hàng tuần',
+  'Expected back': 'Dự kiến hoạt động trở lại',
+  'Frequency': 'Tần suất',
+  'Friday':
+    'Thứ Sáu',
+  'Monday':
+    'Thứ Hai',
+  'Outlook mail and calendars': 'Thư và lịch Outlook',
+  'Outlook sync interval (seconds)': 'Chu kỳ đồng bộ Outlook (giây)',
+  'Reason': 'Lý do',
+  'Redirect URI': 'URI chuyển hướng',
+  'Saturday':
+    'Thứ Bảy',
+  'Scheduled start': 'Thời điểm bắt đầu theo lịch',
+  'Scopes': 'Phạm vi quyền (scopes)',
+  'Show the announcement banner': 'Hiển thị biểu ngữ thông báo',
+  'Sunday':
+    'Chủ Nhật',
+  'Teams channels': 'Kênh Teams',
+  'Teams chats': 'Trò chuyện Teams',
+  'Thursday':
+    'Thứ Năm',
+  'Tuesday':
+    'Thứ Ba',
+  'Wednesday':
+    'Thứ Tư',
+  'Back up on growth': 'Sao lưu khi dữ liệu tăng',
+  'Backup schedule': 'Lịch sao lưu',
+  'Categories to check': 'Các loại cần kiểm tra',
+  'Check against examples': 'Đối chiếu với các ví dụ',
+  'Could not be reached': 'Không kết nối được',
+  'Default storage quota': 'Hạn mức dung lượng mặc định',
+  'Email (IMAP)': 'Email (IMAP)',
+  'Evaluation data': 'Dữ liệu đánh giá',
+  'Example match threshold': 'Ngưỡng khớp với ví dụ',
+  'Fact source link': 'Liên kết nguồn của thông tin',
+  'Fact source title': 'Tiêu đề nguồn của thông tin',
+  'Fact written on': 'Ngày viết thông tin',
+  'Home-screen fact in Vietnamese': 'Thông tin trên màn hình chính bằng tiếng Việt',
+  'Indexed file extensions': 'Phần mở rộng tệp được lập chỉ mục',
+  'Keep a Markdown copy of each document': 'Giữ một bản Markdown của mỗi tài liệu',
+  'Maintenance announcement': 'Thông báo bảo trì',
+  'Minimum rule relevance': 'Độ liên quan tối thiểu của quy tắc',
+  'Not valid': 'Không hợp lệ',
+  'Pause after repeats (minutes)': 'Tạm dừng sau khi lặp lại (phút)',
+  'Record evaluation data': 'Ghi lại dữ liệu đánh giá',
+  'Repeat window (minutes)': 'Khoảng thời gian tính lặp lại (phút)',
+  'Revoked': 'Đã thu hồi',
+  'Rules to compare': 'Số quy tắc để so sánh',
+  'Skipped custom fields': 'Các trường tùy chỉnh bỏ qua',
+  'Storage overhead multiplier': 'Hệ số dung lượng phụ trội',
+  'Sync interval (seconds)': 'Chu kỳ đồng bộ (giây)',
+  'System prompt marker': 'Dấu hiệu câu lệnh hệ thống',
+  'Time limit (minutes)': 'Giới hạn thời gian (phút)',
+  'Valid': 'Hợp lệ',
+  // Server sentences a person reads - a refusal, a sync note, a failed item, an update error - that had no Vietnamese yet (serverMessages.generated.ts), 2026-11-05.
+  // Removing a source (SourceRegistration) - the outcome of a removal
+  'Already being removed.': 'Đang được xóa.',
+  'Removal started: {0} \'{1}\' is being unregistered and its search data deleted in the background.': 'Đã bắt đầu xóa: {0} \'{1}\' đang được hủy đăng ký và dữ liệu tìm kiếm của nó đang được xóa ở chế độ nền.',
+  'Source {0} is not a {1} - it is a {2} source. Nothing was removed.': 'Nguồn {0} không phải là {1} - đó là một nguồn {2}. Không có gì bị xóa.',
+  // Sources: registration refusals and sync / failed-item reasons
+  'A whole drive cannot be added as one folder - choose a folder on it.': 'Không thể thêm cả một ổ đĩa như một thư mục - hãy chọn một thư mục trên ổ đó.',
+  'Choose the folder to index.': 'Hãy chọn thư mục cần lập chỉ mục.',
+  'Give the folder\'s full path - "{0}" is not one.': 'Hãy nêu đường dẫn đầy đủ của thư mục - "{0}" không phải là đường dẫn đầy đủ.',
+  'The include pattern is longer than {0} characters.': 'Mẫu bao gồm dài hơn {0} ký tự.',
+  'The include pattern is not a valid regular expression: {0}': 'Mẫu bao gồm không phải là biểu thức chính quy hợp lệ: {0}',
+  '{0} must be on one line.': '{0} phải nằm trên một dòng.',
+  '{0} is not in the form expected{1}': '{0} không đúng dạng mong đợi{1}',
+  'That repository URL is not on the server of the SVN connection "{0}" ({1}), and its saved credential is only sent there. Use a path below that server, or add a connection to the repository\'s own server in Settings > Connections and register it through that.': 'URL kho mã đó không nằm trên máy chủ của kết nối SVN "{0}" ({1}), và thông tin xác thực đã lưu chỉ được gửi tới đó. Hãy dùng một đường dẫn bên dưới máy chủ đó, hoặc thêm kết nối tới máy chủ riêng của kho mã trong Cài đặt > Kết nối rồi đăng ký qua kết nối đó.',
+  'This source\'s repository URL is not on the server of its SVN connection{0}, and the saved SVN credential is only sent there. Remove the source and register the repository through a connection to its own server.': 'URL kho mã của nguồn này không nằm trên máy chủ của kết nối SVN{0}, và thông tin xác thực SVN đã lưu chỉ được gửi tới đó. Hãy xóa nguồn rồi đăng ký kho mã qua một kết nối tới máy chủ riêng của nó.',
+  'No SVN repository URL is configured for this source, and the item carries none': 'Chưa cấu hình URL kho SVN cho nguồn này, và mục này cũng không có',
+  'Failed to fetch SVN file content: {0}': 'Không lấy được nội dung tệp SVN: {0}',
+  'Could not read the svn listing: it carries a DOCTYPE': 'Không đọc được danh sách svn: nó chứa DOCTYPE',
+  'Could not read the svn output: {0}': 'Không đọc được đầu ra của svn: {0}',
+  'svn command interrupted: {0}': 'lệnh svn bị gián đoạn: {0}',
+  'svn command timed out reading its output: {0}': 'lệnh svn hết thời gian chờ khi đọc đầu ra: {0}',
+  'svn exited with code {0}. Stderr: {1}': 'svn thoát với mã {0}. Stderr: {1}',
+  'That id is not one this service uses - it holds a path of its own. Use the id exactly as the service shows it.': 'Đó không phải ID mà dịch vụ này dùng - nó chứa một đường dẫn riêng. Hãy dùng ID đúng như dịch vụ hiển thị.',
+  'That is not a page of a Confluence space.': 'Đó không phải một trang của không gian Confluence.',
+  'That is not an issue of a Jira project.': 'Đó không phải một issue của dự án Jira.',
+  'That is not an item of a Bitbucket Cloud repository.': 'Đó không phải một mục của kho mã Bitbucket Cloud.',
+  'That is not an item of a GitHub repository.': 'Đó không phải một mục của kho mã GitHub.',
+  'That is not an item of a YouTube channel.': 'Đó không phải một mục của kênh YouTube.',
+  'This document is not one of the source\'s.': 'Tài liệu này không thuộc nguồn dữ liệu.',
+  'This document was deleted from the source.': 'Tài liệu này đã bị xóa khỏi nguồn dữ liệu.',
+  'This document\'s content is no longer stored. Push it again.': 'Nội dung của tài liệu này không còn được lưu. Hãy gửi lại.',
+  'Could not read the stored document: {0}': 'Không đọc được tài liệu đã lưu: {0}',
+  'The folder path of {0} is too long to store.': 'Đường dẫn thư mục của {0} quá dài để lưu.',
+  'The path of {0} is too long to store - upload it from a folder with a shorter name or fewer levels.': 'Đường dẫn của {0} quá dài để lưu - hãy tải lên từ một thư mục có tên ngắn hơn hoặc ít cấp hơn.',
+  'This deployment does not reach {0}: it is a link-local or cloud instance metadata address, which no feature may fetch.': 'Bản triển khai này không truy cập {0}: đó là địa chỉ link-local hoặc địa chỉ metadata của máy ảo đám mây, mà không tính năng nào được phép truy cập.',
+  // Indexing: document conversion, OCR and the vector and keyword stores
+  'Could not read the file: {0}': 'Không đọc được tệp: {0}',
+  'This file is not text and no converter reads its format{0}. Save it as PDF, an Office format or plain text to index it.': 'Tệp này không phải văn bản và không bộ chuyển đổi nào đọc được định dạng của nó{0}. Hãy lưu dưới dạng PDF, định dạng Office hoặc văn bản thuần để lập chỉ mục.',
+  'Failed to extract \'{0}\': {1}': 'Trích xuất \'{0}\' thất bại: {1}',
+  'OCR failed on every page of \'{0}\': {1}': 'OCR thất bại trên mọi trang của \'{0}\': {1}',
+  'markitdown executable not found. Cannot process PDF/Office document: {0}': 'Không tìm thấy tệp thực thi markitdown. Không thể xử lý tài liệu PDF/Office: {0}',
+  'markitdown exited with code {0} for \'{1}\'{2}': 'markitdown thoát với mã {0} cho \'{1}\'{2}',
+  'markitdown {0} converting \'{1}\'': 'markitdown {0} khi chuyển đổi \'{1}\'',
+  'could not read the process output: {0}': 'không đọc được đầu ra của tiến trình: {0}',
+  'timed out after {0}': 'hết thời gian chờ sau {0}',
+  'BM25 collection swap failed: {0}': 'Hoán đổi bộ sưu tập BM25 thất bại: {0}',
+  'ChromaDB collection rename failed during swap: {0}': 'Đổi tên bộ sưu tập ChromaDB thất bại khi hoán đổi: {0}',
+  'ChromaDB delete failed for collection {0}': 'Xóa trong ChromaDB thất bại với bộ sưu tập {0}',
+  'ChromaDB search failed for collection {0}': 'Tìm kiếm trong ChromaDB thất bại với bộ sưu tập {0}',
+  'ChromaDB upsert failed for collection {0}': 'Ghi vào ChromaDB thất bại với bộ sưu tập {0}',
+  'PgVector collection swap failed: {0}': 'Hoán đổi bộ sưu tập PgVector thất bại: {0}',
+  'the extraction of document {0} stopped before the end ({1} of {2} chunk(s) attempted, {3} answered, {4}ms). The knowledge-graph model in Settings > Search is unreachable, or too slow for the extraction timeout{5}.': 'quá trình trích xuất tài liệu {0} dừng trước khi xong ({1} trên {2} đoạn đã thử, {3} được trả lời, {4}ms). Mô hình đồ thị tri thức trong Cài đặt > Tìm kiếm không truy cập được, hoặc quá chậm so với thời gian chờ trích xuất{5}.',
+  // Bitbucket Data Center: sync errors, and an approved write that failed
+  'Bitbucket API error ({0}): 404 Not Found': 'Lỗi API Bitbucket ({0}): 404 Not Found',
+  'Bitbucket API error ({0}): {1}': 'Lỗi API Bitbucket ({0}): {1}',
+  'Bitbucket API error ({0}): {1} {2}': 'Lỗi API Bitbucket ({0}): {1} {2}',
+  'Bitbucket API error: {0} {1}': 'Lỗi API Bitbucket: {0} {1}',
+  'Bitbucket {0} failed: {1}': 'Bitbucket {0} thất bại: {1}',
+  'Bitbucket has no branch \'{0}\' in {1}/{2}.': 'Bitbucket không có nhánh \'{0}\' trong {1}/{2}.',
+  'Bitbucket has no pull request {0} in {1}/{2}.': 'Bitbucket không có pull request {0} trong {1}/{2}.',
+  'Branch name must not be empty.': 'Tên nhánh không được để trống.',
+  'No Bitbucket base URL is configured': 'Chưa cấu hình URL gốc của Bitbucket',
+  'Failed to add comment to Bitbucket PR: {0}/{1} PR-{2}': 'Không thêm được bình luận vào PR Bitbucket: {0}/{1} PR-{2}',
+  'Failed to create Bitbucket branch \'{0}\' in {1}/{2}': 'Không tạo được nhánh Bitbucket \'{0}\' trong {1}/{2}',
+  'Failed to create Bitbucket pull request in {0}/{1}': 'Không tạo được pull request Bitbucket trong {0}/{1}',
+  'Failed to create Bitbucket tag \'{0}\' in {1}/{2}': 'Không tạo được tag Bitbucket \'{0}\' trong {1}/{2}',
+  'Failed to delete Bitbucket branch \'{0}\' in {1}/{2}': 'Không xóa được nhánh Bitbucket \'{0}\' trong {1}/{2}',
+  'Failed to determine the current Bitbucket user': 'Không xác định được người dùng Bitbucket hiện tại',
+  'Failed to fetch Bitbucket PR details: {0}/{1} PR-{2}': 'Không lấy được chi tiết PR Bitbucket: {0}/{1} PR-{2}',
+  'Failed to fetch Bitbucket PRs for: {0}/{1}': 'Không lấy được các PR Bitbucket của: {0}/{1}',
+  'Failed to fetch Bitbucket branches for: {0}/{1}': 'Không lấy được các nhánh Bitbucket của: {0}/{1}',
+  'Failed to fetch Bitbucket commit details: {0}/{1} {2}': 'Không lấy được chi tiết commit Bitbucket: {0}/{1} {2}',
+  'Failed to fetch Bitbucket commits for: {0}/{1} branch={2}': 'Không lấy được các commit Bitbucket của: {0}/{1} branch={2}',
+  'Failed to fetch Bitbucket diff for: {0}': 'Không lấy được diff Bitbucket của: {0}',
+  'Failed to fetch Bitbucket tags for: {0}/{1}': 'Không lấy được các tag Bitbucket của: {0}/{1}',
+  'Failed to fetch modified Bitbucket PRs for: {0}/{1}': 'Không lấy được các PR Bitbucket đã thay đổi của: {0}/{1}',
+  'Failed to merge Bitbucket PR: {0}/{1} PR-{2}': 'Không gộp được PR Bitbucket: {0}/{1} PR-{2}',
+  'Failed to set review status on Bitbucket PR: {0}/{1} PR-{2}': 'Không đặt được trạng thái xem xét cho PR Bitbucket: {0}/{1} PR-{2}',
+  'Pull request PR-{0} cannot be merged: {1}': 'Không thể gộp pull request PR-{0}: {1}',
+  'Pull request PR-{0} has merge conflicts and cannot be merged automatically.': 'Pull request PR-{0} có xung đột khi gộp và không thể gộp tự động.',
+  'Pull request PR-{0} is {1}, not OPEN - it cannot be merged.': 'Pull request PR-{0} đang ở trạng thái {1}, không phải OPEN - không thể gộp.',
+  'Pull request not found: {0}/{1} PR-{2}': 'Không tìm thấy pull request: {0}/{1} PR-{2}',
+  // Confluence: an approved write that failed, and the lookups around it
+  'Confluence API returned HTTP {0}': 'Confluence API trả về HTTP {0}',
+  'Confluence CQL search failed with HTTP {0}: {1}': 'Tìm kiếm CQL trên Confluence thất bại với HTTP {0}: {1}',
+  'Confluence addComment failed with HTTP {0}': 'Confluence addComment thất bại với HTTP {0}',
+  'Confluence addLabels failed with HTTP {0}': 'Confluence addLabels thất bại với HTTP {0}',
+  'Confluence attachFile failed with HTTP {0}': 'Confluence attachFile thất bại với HTTP {0}',
+  'Confluence attachment lookup failed with HTTP {0}': 'Tra cứu tệp đính kèm Confluence thất bại với HTTP {0}',
+  'Confluence createPage failed with HTTP {0}': 'Confluence createPage thất bại với HTTP {0}',
+  'Confluence deletePage failed with HTTP {0}': 'Confluence deletePage thất bại với HTTP {0}',
+  'Confluence labels lookup failed with HTTP {0}': 'Tra cứu nhãn Confluence thất bại với HTTP {0}',
+  'Confluence movePage failed with HTTP {0}': 'Confluence movePage thất bại với HTTP {0}',
+  'Confluence page lookup failed with HTTP {0}': 'Tra cứu trang Confluence thất bại với HTTP {0}',
+  'Confluence page not found or not accessible: {0}': 'Không tìm thấy trang Confluence hoặc không truy cập được: {0}',
+  'Confluence removeLabel failed with HTTP {0}': 'Confluence removeLabel thất bại với HTTP {0}',
+  'Confluence updateComment failed with HTTP {0}': 'Confluence updateComment thất bại với HTTP {0}',
+  'Confluence updatePage failed with HTTP {0}': 'Confluence updatePage thất bại với HTTP {0}',
+  'Empty response from Confluence API': 'Phản hồi rỗng từ Confluence API',
+  'Empty response from Confluence addComment': 'Phản hồi rỗng từ Confluence addComment',
+  'Empty response from Confluence createPage': 'Phản hồi rỗng từ Confluence createPage',
+  'Empty response reading Confluence page {0}': 'Phản hồi rỗng khi đọc trang Confluence {0}',
+  'Failed to add comment to Confluence page: {0} - {1}': 'Không thêm được bình luận vào trang Confluence: {0} - {1}',
+  'Failed to attach {0} to Confluence page: {1} - {2}': 'Không đính kèm được {0} vào trang Confluence: {1} - {2}',
+  'Failed to create Confluence page in space: {0} - {1}': 'Không tạo được trang Confluence trong không gian: {0} - {1}',
+  'Failed to delete Confluence page: {0} - {1}': 'Không xóa được trang Confluence: {0} - {1}',
+  'Failed to fetch page details: {0} - {1}': 'Không lấy được chi tiết trang: {0} - {1}',
+  'Failed to list Confluence spaces': 'Không liệt kê được các không gian Confluence',
+  'Failed to move Confluence page: {0} - {1}': 'Không di chuyển được trang Confluence: {0} - {1}',
+  'Failed to search Confluence pages: {0}': 'Không tìm kiếm được trang Confluence: {0}',
+  'Failed to update Confluence comment: {0} - {1}': 'Không cập nhật được bình luận Confluence: {0} - {1}',
+  'Failed to update Confluence page: {0} - {1}': 'Không cập nhật được trang Confluence: {0} - {1}',
+  'Failed to update labels on Confluence page: {0} - {1}': 'Không cập nhật được nhãn trên trang Confluence: {0} - {1}',
+  'Page not found: {0}': 'Không tìm thấy trang: {0}',
+  // Jira: an approved write that failed, and the lookups around it
+  'Empty response from Jira createIssue': 'Phản hồi rỗng từ Jira createIssue',
+  'Empty response from Jira myself API': 'Phản hồi rỗng từ Jira myself API',
+  'Failed to add comment to Jira issue: {0} - {1}': 'Không thêm được bình luận vào issue Jira: {0} - {1}',
+  'Failed to attach {0} to {1}: {2}': 'Không đính kèm được {0} vào {1}: {2}',
+  'Failed to create Jira issue: {0}': 'Không tạo được issue Jira: {0}',
+  'Failed to create Jira version: {0} - {1}': 'Không tạo được phiên bản Jira: {0} - {1}',
+  'Failed to delete Jira comment: {0} - {1}': 'Không xóa được bình luận Jira: {0} - {1}',
+  'Failed to delete Jira issue link: {0} - {1}': 'Không xóa được liên kết issue Jira: {0} - {1}',
+  'Failed to delete Jira issue: {0} - {1}': 'Không xóa được issue Jira: {0} - {1}',
+  'Failed to fetch Jira issue link types: {0}': 'Không lấy được các loại liên kết issue Jira: {0}',
+  'Failed to fetch Jira project versions: {0} - {1}': 'Không lấy được các phiên bản của dự án Jira: {0} - {1}',
+  'Failed to fetch current Jira user: {0}': 'Không lấy được người dùng Jira hiện tại: {0}',
+  'Failed to fetch issue details: {0} - {1}': 'Không lấy được chi tiết issue: {0} - {1}',
+  'Failed to fetch transitions for issue: {0} - {1}': 'Không lấy được các bước chuyển trạng thái của issue: {0} - {1}',
+  'Failed to link Jira issues: {0}': 'Không liên kết được các issue Jira: {0}',
+  'Failed to list Jira fields: {0}': 'Không liệt kê được các trường Jira: {0}',
+  'Failed to list Jira projects': 'Không liệt kê được các dự án Jira',
+  'Failed to log work on Jira issue: {0} - {1}': 'Không ghi được thời gian làm việc vào issue Jira: {0} - {1}',
+  'Failed to read Jira create metadata: {0}': 'Không đọc được metadata tạo issue của Jira: {0}',
+  'Failed to search Jira issues: {0}': 'Không tìm kiếm được issue Jira: {0}',
+  'Failed to transition Jira issue: {0} - {1}': 'Không chuyển được trạng thái issue Jira: {0} - {1}',
+  'Failed to update Jira comment: {0} - {1}': 'Không cập nhật được bình luận Jira: {0} - {1}',
+  'Failed to update Jira issue: {0} - {1}': 'Không cập nhật được issue Jira: {0} - {1}',
+  'Issue not found: {0}': 'Không tìm thấy issue: {0}',
+  'Jira API call failed: {0}': 'Lệnh gọi Jira API thất bại: {0}',
+  'Jira API returned HTTP {0} for issue: {1}': 'Jira API trả về HTTP {0} cho issue: {1}',
+  'Jira addAttachment failed with HTTP {0}: {1}': 'Jira addAttachment thất bại với HTTP {0}: {1}',
+  'Jira addComment failed with HTTP {0}: {1}': 'Jira addComment thất bại với HTTP {0}: {1}',
+  'Jira createIssue failed with HTTP {0}: {1}': 'Jira createIssue thất bại với HTTP {0}: {1}',
+  'Jira createIssueLink failed with HTTP {0}: {1}': 'Jira createIssueLink thất bại với HTTP {0}: {1}',
+  'Jira createVersion failed with HTTP {0}: {1}': 'Jira createVersion thất bại với HTTP {0}: {1}',
+  'Jira deleteComment failed with HTTP {0}: {1}': 'Jira deleteComment thất bại với HTTP {0}: {1}',
+  'Jira deleteIssue failed with HTTP {0}: {1}': 'Jira deleteIssue thất bại với HTTP {0}: {1}',
+  'Jira deleteIssueLink failed with HTTP {0}: {1}': 'Jira deleteIssueLink thất bại với HTTP {0}: {1}',
+  'Jira fetchIssueLinkTypes failed with HTTP {0}: {1}': 'Jira fetchIssueLinkTypes thất bại với HTTP {0}: {1}',
+  'Jira fetchProjectVersions failed with HTTP {0}: {1}': 'Jira fetchProjectVersions thất bại với HTTP {0}: {1}',
+  'Jira fetchTransitions failed with HTTP {0}: {1}': 'Jira fetchTransitions thất bại với HTTP {0}: {1}',
+  'Jira knows no project \'{0}\' that this account can create issues in.': 'Jira không có dự án \'{0}\' nào mà tài khoản này có thể tạo issue.',
+  'Jira listFields failed with HTTP {0}: {1}': 'Jira listFields thất bại với HTTP {0}: {1}',
+  'Jira logWork failed with HTTP {0}: {1}': 'Jira logWork thất bại với HTTP {0}: {1}',
+  'Jira myself returned HTTP {0}': 'Jira myself trả về HTTP {0}',
+  'Jira returned HTTP {0}: {1}': 'Jira trả về HTTP {0}: {1}',
+  'Jira search failed with HTTP {0}: {1}': 'Tìm kiếm trên Jira thất bại với HTTP {0}: {1}',
+  'Jira transitionIssue failed with HTTP {0}: {1}': 'Jira transitionIssue thất bại với HTTP {0}: {1}',
+  'Jira updateComment failed with HTTP {0}: {1}': 'Jira updateComment thất bại với HTTP {0}: {1}',
+  'Jira updateIssue failed with HTTP {0}: {1}': 'Jira updateIssue thất bại với HTTP {0}: {1}',
+  'No transition to status \'{0}\' available for issue: {1}': 'Không có bước chuyển sang trạng thái \'{0}\' cho issue: {1}',
+  'Project {0} has no issue type \'{1}\'. Its types are: {2}.': 'Dự án {0} không có loại issue \'{1}\'. Các loại của nó là: {2}.',
+  // YouTube: an approved reply that failed
+  'That YouTube connection is not yours.': 'Kết nối YouTube đó không phải của bạn.',
+  'The connection\'s Google account has no YouTube channel.': 'Tài khoản Google của kết nối không có kênh YouTube.',
+  // MCP servers: a call that failed, the sign-in, the command line
+  'No such MCP server connection.': 'Không có kết nối máy chủ MCP này.',
+  'The MCP server \'{0}\' failed: {1}': 'Máy chủ MCP \'{0}\' gặp lỗi: {1}',
+  'The MCP server returned nothing.': 'Máy chủ MCP không trả về gì.',
+  'The arguments were not valid JSON: {0}': 'Các đối số không phải JSON hợp lệ: {0}',
+  'The token response carried no access token.': 'Phản hồi token không chứa access token.',
+  'The token response could not be read.': 'Không đọc được phản hồi token.',
+  'The command or an argument contains \'{0}\', which Windows would read as part of a command when starting this server through cmd.exe. Use the full path of an .exe, or remove the character.': 'Lệnh hoặc một đối số chứa \'{0}\', ký tự mà Windows sẽ hiểu là một phần của lệnh khi khởi động máy chủ này qua cmd.exe. Hãy dùng đường dẫn đầy đủ của một tệp .exe, hoặc bỏ ký tự đó.',
+  '{0} (not tried again until {1})': '{0} (sẽ không thử lại cho đến {1})',
+  'MCP server secrets could not be written': 'Không ghi được thông tin bí mật của máy chủ MCP',
+  'MCP server settings could not be written': 'Không ghi được cài đặt của máy chủ MCP',
+  'Only a Super admin can run an MCP server on this server.': 'Chỉ Super admin mới có thể chạy máy chủ MCP trên máy chủ này.',
+  // Settings: connections, providers, sign-in and saved settings
+  'This sign-in opens in the same browser on a server with accounts.': 'Trên máy chủ có tài khoản, lần đăng nhập này mở trong cùng trình duyệt.',
+  'Only a super administrator can change AI providers.': 'Chỉ quản trị viên cấp cao mới có thể thay đổi nhà cung cấp AI.',
+  'The custom headers are too long to store.': 'Header tùy chỉnh quá dài để lưu.',
+  'That setting name is too long.': 'Tên cài đặt đó quá dài.',
+  'Your saved settings are too large to add to.': 'Cài đặt đã lưu của bạn quá lớn để thêm vào.',
+  'Unknown OCR engine: {0}': 'Bộ máy OCR không xác định: {0}',
+  'Unknown document conversion method: {0}': 'Phương pháp chuyển đổi tài liệu không xác định: {0}',
+  'Unknown tone: {0}': 'Giọng điệu không xác định: {0}',
+  'That file is larger than an import can read ({0} MB).': 'Tệp đó lớn hơn mức một lần nhập có thể đọc ({0} MB).',
+  // Chat: refusals of the page's own requests
+  'Cannot rewind conversationId={0} while a turn is in progress': 'Không thể tua lại conversationId={0} khi một lượt đang chạy',
+  'Cannot rewind conversationId={0} while it is being condensed': 'Không thể tua lại conversationId={0} khi cuộc trò chuyện đang được cô đọng',
+  'Message {0} is not in conversation {1}': 'Tin nhắn {0} không thuộc cuộc trò chuyện {1}',
+  'messageId {0} is not part of conversation {1}': 'messageId {0} không thuộc cuộc trò chuyện {1}',
+  'Not a valid conversation id.': 'Không phải ID cuộc trò chuyện hợp lệ.',
+  'Not a valid user id.': 'Không phải ID người dùng hợp lệ.',
+  'A conversation surface is lower-case letters, digits and dashes.': 'Bề mặt cuộc trò chuyện chỉ gồm chữ thường, chữ số và dấu gạch ngang.',
+  'Unknown approval decision: {0}': 'Quyết định phê duyệt không xác định: {0}',
+  'Unknown enable decision: {0}': 'Quyết định bật không xác định: {0}',
+  // Workflows: a definition refused on save, and a run whose provider is gone
+  'Workflow \'{0}\' has a node with no id. Every node needs one - it is what bindings refer to.': 'Quy trình \'{0}\' có một nút không có id. Mỗi nút cần một id - đó là thứ các liên kết tham chiếu tới.',
+  'Workflow \'{0}\' has an edge missing its from or to.': 'Quy trình \'{0}\' có một cạnh thiếu from hoặc to.',
+  'Workflow \'{0}\' is empty.': 'Quy trình \'{0}\' trống.',
+  'Workflow \'{0}\' is not valid YAML: {1}': 'Quy trình \'{0}\' không phải YAML hợp lệ: {1}',
+  'Workflow \'{0}\' is set to run on a provider that is no longer configured. Open it in Settings > Workflows and pick another, or clear the choice to run it on the main chat model.': 'Quy trình \'{0}\' được đặt chạy trên một nhà cung cấp không còn được cấu hình. Hãy mở nó trong Cài đặt > Quy trình và chọn nhà cung cấp khác, hoặc bỏ lựa chọn để chạy trên mô hình trò chuyện chính.',
+  'Workflow \'{0}\' is {1} characters; the limit is {2}.': 'Quy trình \'{0}\' dài {1} ký tự; giới hạn là {2}.',
+  'Workflow \'{0}\' node \'{1}\' has an unknown type \'{2}\'. This build understands: {3}.': 'Nút \'{1}\' của quy trình \'{0}\' có loại không xác định \'{2}\'. Phiên bản này hiểu: {3}.',
+  'Workflow \'{0}\' should be a mapping of fields, not a {1}.': 'Quy trình \'{0}\' phải là một ánh xạ các trường, không phải một {1}.',
+  // Updates and the release parts (Settings > Updates)
+  'Proxyma {0} is not newer than this installation ({1}) - refusing it': 'Proxyma {0} không mới hơn bản cài đặt này ({1}) - đã từ chối',
+  'The release is not signed: {0} is missing': 'Bản phát hành chưa được ký: thiếu {0}',
+  'The release published as {0} is version {1} - refusing it': 'Bản phát hành được công bố là {0} lại là phiên bản {1} - đã từ chối',
+  '{0} failed its SHA-256 check': '{0} không vượt qua kiểm tra SHA-256',
+  '{0} is larger than any release file should be': '{0} lớn hơn mức mà bất kỳ tệp phát hành nào nên có',
+  'Refusing to extract \'{0}\' - it resolves outside {1}': 'Từ chối giải nén \'{0}\' - nó nằm ngoài {1}',
+  'cannot stage {0}: {1} part(s) not installed': 'không thể chuẩn bị {0}: {1} thành phần chưa được cài đặt',
+  'got {0} of {1} bytes': 'nhận được {0} trên {1} byte',
+  'the parts manifest names no download location': 'bản kê thành phần không nêu địa chỉ tải xuống',
+  'Data older than a lowered limit is deleted at the next daily sweep.': 'Dữ liệu cũ hơn giới hạn vừa hạ sẽ bị xóa ở lần dọn dẹp hằng ngày tiếp theo.',
+  'In reply to {name}: {text}': 'Trong chuỗi của {name}: {text}',
+  'Opening comment': 'Bình luận mở đầu',
+  'Opened by': 'Người mở đầu',
 };

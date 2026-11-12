@@ -1,5 +1,6 @@
 package ai.proxyma.core.chat.service;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.external.ExternalToolSource;
 import ai.proxyma.core.chat.exception.SkillAccessDeniedException;
 import org.springframework.beans.factory.annotation.Value;
@@ -241,13 +242,23 @@ public class ChatSkillService {
     }
 
     public String formatForSystemPrompt(String requesterId) {
+        return formatForSystemPrompt(requesterId, name -> true);
+    }
+
+    /**
+     * The same, listing only the skills {@code listed} accepts by name - a saved agent's conversation
+     * is told only of the skills its profile lets it read (AgentProfile).
+     */
+    public String formatForSystemPrompt(String requesterId, java.util.function.Predicate<String> listed) {
         List<IdParsed> visible = listFiles().stream()
                 .map(this::readIdParsed)
                 .filter(Objects::nonNull)
                 .filter(ip -> isVisible(ip.parsed(), requesterId))
+                .filter(ip -> listed.test(ip.parsed().name()))
                 .sorted(Comparator.comparing(ip -> ip.parsed().name(), String.CASE_INSENSITIVE_ORDER))
                 .toList();
-        List<ExternalToolSource.ExternalSkill> external = externalSkills(requesterId);
+        List<ExternalToolSource.ExternalSkill> external = externalSkills(requesterId).stream()
+                .filter(skill -> listed.test(skill.name())).toList();
         if (visible.isEmpty() && external.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder(SKILLS_BLOCK_MARKER).append('\n')
@@ -298,7 +309,7 @@ public class ChatSkillService {
     private static String truncate(String s, int max) {
         if (s == null) return "";
         String flat = s.replace('\n', ' ').strip();
-        return flat.length() <= max ? flat : flat.substring(0, max - 3) + "...";
+        return flat.length() <= max ? flat : Utf16.cut(flat, max - 3) + "...";
     }
 
     // One skill's full instructions, ready to be injected into a conversation as a message (see

@@ -7,6 +7,7 @@ import {
 import { providersApi } from '../services/providersApi'
 import { useResolved } from '../pages/shared'
 import { useProviderModels } from '../hooks/useProviderModels'
+import { useSettingGroup } from '../hooks/useSettingGroup'
 import { keys } from '@/services/queryKeys'
 import { useTranslation } from '@/i18n'
 import type { TabProps } from '../pages/shared'
@@ -106,23 +107,20 @@ export function RemoveConfirm({ name, title, verb, confirmLabel, pendingLabel, c
 // SIDE BY SIDE because they are one decision, not two. A model belongs to a provider - changing
 // the provider re-fetches this very list - so stacking them put a heading, a control, and another
 // heading between two halves of the same choice.
+//
+// SAVED AS ONE, when the person leaves the pair (the click-to-edit rule, 2026-11-02): a provider with
+// the model of the one before, or with none yet, is not a choice anybody made, so neither half is
+// written until the person has left both - useSettingGroup.
 export function ProviderModelRow({
-  role, providerLabel, modelLabel, modelPlaceholder, modelHint, unsetProviderLabel, fallbackProvider = '', trackChange, pending,
+  role, providerLabel, modelLabel, modelPlaceholder, modelHint, pending,
 }: {
   role: string
   providerLabel: string
   modelLabel: string
   modelPlaceholder: string
-  // What the empty provider choice says, already translated, for a role where empty is a real
-  // answer rather than "nothing chosen yet": the deployed agent, which then runs on the agent's.
-  unsetProviderLabel?: string
-  // The provider that empty choice stands for, whose models the model list offers meanwhile. A
-  // deployed agent on "Same as the agent" picks from the agent's provider: it asked an empty provider
-  // for its models until 2026-10-03, and "Failed to load models" was all it could say.
-  fallbackProvider?: string
   // The model field's hint, under its label (the field rule of 2026-10-29 - it was a caption under
-  // the pair, after both controls), ALREADY TRANSLATED. The roles that need one: the deployed agent
-  // (pick something cheaper, that is the point), OCR (must be vision-capable) and the guardrail. It
+  // the pair, after both controls), ALREADY TRANSLATED. The roles that need one: OCR (must be
+  // vision-capable) and the guardrail. It
   // was looked up a second time here, so a Vietnamese hint was used as a key - right only by luck.
   // FormColumns keeps the two controls level whichever of them has words over it.
   modelHint?: ReactNode
@@ -132,9 +130,12 @@ export function ProviderModelRow({
   // The stored value is a provider INSTANCE id. No default: on a deployment with nothing
   // configured the select is genuinely empty, and inventing a default here would show a provider
   // that was never chosen.
-  const provider = useResolved(role, 'provider', pending, '')
-  const model = useResolved(role, 'model', pending)
-  const asked = provider || fallbackProvider
+  const group = useSettingGroup()
+  const savedProvider = useResolved(role, 'provider', pending, '')
+  const savedModel = useResolved(role, 'model', pending)
+  const provider = group.value(role, 'provider', savedProvider)
+  const model = group.value(role, 'model', savedModel)
+  const asked = provider
   const { options: modelOptions, status: modelStatus, errorText: modelsError, onOpen: openModels } = useProviderModels(asked)
   // With no provider there is nothing to ask - the list says what to do first rather than asking
   // /providers//models and reporting "Failed to load models".
@@ -152,7 +153,7 @@ export function ProviderModelRow({
   const selectedMissing = instancesLoaded && provider !== '' && !eligible.some(p => p.id === provider)
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" {...group.bind}>
       {/* One column below sm: at that width the two controls would each be too narrow to show a
           model name, which is the longest string either of them ever holds. */}
       <FormColumns className="items-start">
@@ -168,17 +169,14 @@ export function ProviderModelRow({
             // provider's catalogue, so carrying `gpt-4o` across to an Ollama instance leaves a
             // selection that reads as chosen, survives Save, and fails at the first call with an
             // error about a model the user can see named right there in the box. The empty value
-            // takes the deleteField path in performSave, so it clears on the server too rather
-            // than being left at whatever was stored.
-            //
-            // Both calls are safe in one handler: trackChange uses a functional setPending and
-            // replaces by (prefix, field), so the two entries do not race.
+            // clears it on the server too (the window's save deletes an empty field) rather than
+            // leaving it at whatever was stored.
             onChange={v => {
-              trackChange(role, 'provider', v)
-              trackChange(role, 'model', '')
+              group.set({ prefix: role, field: 'provider', value: v }, { saved: savedProvider })
+              group.set({ prefix: role, field: 'model', value: '' }, { saved: savedModel })
             }}
             options={[
-              { value: '', label: unsetProviderLabel ?? (eligible.length === 0 ? t('No providers configured') : t('Select a provider')) },
+              { value: '', label: eligible.length === 0 ? t('No providers configured') : t('Select a provider') },
               ...eligible.map(p => ({ value: p.id, label: p.name })),
             ]}
           />}
@@ -188,7 +186,7 @@ export function ProviderModelRow({
             <Combobox
               id={id}
               value={model}
-              onChange={v => trackChange(role, 'model', v)}
+              onChange={v => group.set({ prefix: role, field: 'model', value: v }, { saved: savedModel })}
               placeholder={modelPlaceholder}
               options={modelOptions}
               status={modelStatus}

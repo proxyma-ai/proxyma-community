@@ -30,12 +30,13 @@ import { useWheelScrollX } from './useWheelScrollX'
  */
 
 /**
- * The panel: nearly full-screen on a phone, nearly full-height on a short screen, larger from 2xl
- * so a 1080p screen is not a small box in a big room - always with backdrop round it, since no
- * dialog has a close X.
+ * The panel: nearly full-screen on a phone, nearly full-height on a short screen, and from xl as wide
+ * as the window allows - 90% of it, up to 100rem (2026-11-11, the maintainer: the width should follow
+ * the app's, for a better look on a wide window; it was 64rem, 72rem from 2xl) - always with backdrop
+ * round it, since no dialog has a close X.
  */
 export const SETTINGS_PANEL =
-  'relative surface-float border rounded-lg shadow-float w-full sm:max-w-5xl 2xl:max-w-6xl ' +
+  'relative surface-float border rounded-lg shadow-float w-full sm:max-w-5xl xl:max-w-[min(90vw,100rem)] ' +
   'h-[calc(100dvh-1.5rem)] sm:h-[min(760px,calc(100dvh-3rem))] 2xl:h-[min(880px,88dvh)] short:h-[calc(100dvh-1rem)] ' +
   // CLIPPED to its corners (not hidden: a hidden box is a scroll container a focused field can
   // move), so the rail's well and the save bar keep the panel's radius. Its lists are portalled.
@@ -104,8 +105,8 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
         type="button"
         onClick={() => onChange(item.key)}
         aria-current={on}
-        // The rail's rows stay 13px on `py-1` - the rail has to fit 1280x720 without scrolling (six
-        // pixels to spare on desktop, frontend.md), and a 14/20 row is 36px taller over eighteen.
+        // The rail's rows stay 12px on `py-1` - the rail has to fit 1280x720 without scrolling (six
+        // pixels to spare on desktop, frontend.md), and a 14/20 row is 72px taller over eighteen.
         // The current tab is LIFTED out of the rail's well (since 2026-10-29, the depth review): the
         // floating plane with `shadow-card`, its glyph in the brand's ink - never a teal fill.
         // THE ROW (a phone, a short window) IS SubNavTabs' underlined words since 2026-10-28 (the UI
@@ -122,7 +123,7 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
             // tall window, 14px rows on 6px - the 720px fit is kept below that.
             'flex items-center gap-2 rounded-md text-xs whitespace-nowrap transition-colors focus-ring w-full px-3 py-1 touch:py-2 text-left',
             '[@media(min-height:900px)]:text-sm [@media(min-height:900px)]:py-1.5',
-            on ? 'bg-surface-float shadow-card text-ink-primary font-medium' : 'text-ink-caption mouse:hover:bg-surface-float/60 mouse:hover:text-ink-secondary',
+            on ? 'bg-lift shadow-card text-ink-primary font-medium' : 'text-ink-caption mouse:hover:bg-lift/60 mouse:hover:text-ink-secondary',
           )}
       >
         {Icon && <Icon size={14} className={cn('shrink-0', layout === 'column' && '[@media(min-height:900px)]:w-4 [@media(min-height:900px)]:h-4', on && layout === 'column' && 'text-brand-legible')} />}

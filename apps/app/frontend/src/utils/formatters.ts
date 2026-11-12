@@ -5,8 +5,10 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+// `locale` is the APP's language (useTranslation's), so a Vietnamese reader in an English browser
+// does not read English month names - useDates.ts says why. Undefined falls back to the browser's.
+export function formatDate(iso: string, locale?: string): string {
+  return new Date(iso).toLocaleString(locale, {
     dateStyle: 'medium', timeStyle: 'short',
   })
 }
@@ -20,8 +22,8 @@ export function formatDate(iso: string): string {
 // Uses explicit component options (year/month/day/hour/minute), NOT dateStyle/timeStyle - the
 // Intl spec throws a TypeError if timeZoneName is combined with dateStyle/timeStyle ("Invalid
 // option : option" in V8), so those two option shapes can never be mixed here.
-export function formatDateWithZone(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+export function formatDateWithZone(iso: string, locale?: string): string {
+  return new Date(iso).toLocaleString(locale, {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: 'numeric', minute: '2-digit',
     timeZoneName: 'short',

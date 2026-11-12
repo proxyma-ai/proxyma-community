@@ -87,11 +87,12 @@ public class LogTailProvider {
             + "password|passwd|pwd|passphrase|token|authorization|cookie|session[-_]?id|credential)"
             + "[\"']?\\s*[:=]\\s*[\"']?)(?!(?:bearer|basic|token)\\s)([^\\s\"'&,;)}\\]]+)");
     // Values that are credentials by their shape alone: vendor key prefixes, the product's own MCP
-    // tokens, source-host tokens, Google API keys, JWTs.
+    // tokens, source-host tokens, Google API keys (the older "AIza" and the "AQ." auth keys AI Studio
+    // makes since 2026), JWTs.
     private static final Pattern TOKEN_SHAPE = Pattern.compile(
             "\\b(?:(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}|pxm_[0-9a-fA-F]{16,}"
             + "|(?:ghp|gho|ghs|ghu|glpat|xox[abpsr])[-_][A-Za-z0-9_-]{10,}"
-            + "|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,})");
+            + "|AIza[0-9A-Za-z_-]{30,}|AQ\\.[0-9A-Za-z_.-]{30,}|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,})");
     // A URL's query string: where a signed link, an authorization code or a search term rides.
     private static final Pattern QUERY_STRING = Pattern.compile("(https?://[^\\s?#\"'<>]+)\\?[^\\s\"'<>]*");
 

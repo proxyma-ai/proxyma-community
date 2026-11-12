@@ -2,9 +2,11 @@ import { Logo as KitLogo } from '@/components/ui/kit'
 import { useThemeStore } from '@/store/themeStore'
 
 interface LogoProps {
-  /** Forwarded to the mark so the header can drive its idle rotation. */
+  /** Forwarded to the mark so the sidebar can drive its turn (useIdleRotation). */
   iconRef?: React.Ref<SVGSVGElement>
   size?: number
+  /** Holds the mark still - the kit gallery's specimens; every other mark turns. */
+  still?: boolean
   /** Mark alone, for a surface that already names the product in its own copy. */
   markOnly?: boolean
   className?: string

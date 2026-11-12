@@ -50,6 +50,14 @@ public class AgentVerifier {
             return supported + unsupported + uncited;
         }
 
+        /**
+         * The counts alone, "supported/unsupported/uncited", for the timeline, which words them in the reader's
+         * language; null when nothing was scored.
+         */
+        String counts() {
+            return total() == 0 ? null : supported + "/" + unsupported + "/" + uncited;
+        }
+
         /** The lines a parent reads under the report. */
         String summary() {
             if (note != null && total() == 0) return "[Verification: no score - " + note + "]";
@@ -131,7 +139,7 @@ public class AgentVerifier {
             target.setVerification(write(score));
             nodes.save(target);
             if (record != null) {
-                record.record(target, AgentEvent.VERIFIED, null, null, score.summary());
+                record.record(target, AgentEvent.VERIFIED, null, null, score.counts());
             }
         }
         boolean automatic = target != null && target.isVerify() && target.isReportOwed()

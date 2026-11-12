@@ -49,11 +49,10 @@ public class GitLabConnectionPlugin implements ConnectionPlugin {
             .mark("gitlab")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Access token",
                             FieldSpec.secret("token", "Access token").asRequired()
-                                    .help("A personal, group or project access token with the read_api scope.")),
+                                    .help("An access token with the read_api scope.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with GitLab",
                             FieldSpec.text("clientId", "Application ID")
-                                    .help("An application registered on gitlab.com with the read_api scope. "
-                                            + "For a self-managed GitLab, use an access token."),
+                                    .help("An application on gitlab.com with the read_api scope."),
                             FieldSpec.secret("clientSecret", "Secret")))
             .baseUrl(FieldSpec.url("baseUrl", "GitLab URL").defaultValue(GitLabApi.DEFAULT_BASE_URL)
                     .help("For a self-managed GitLab: https://your-host"))

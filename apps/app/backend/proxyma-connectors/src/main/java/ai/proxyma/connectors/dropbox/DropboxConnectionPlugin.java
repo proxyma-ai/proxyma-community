@@ -60,8 +60,7 @@ public class DropboxConnectionPlugin implements ConnectionPlugin {
                                     .help("Optional: the sign-in works without it.")),
                     AuthMethod.of(AuthKind.TOKEN, "Access token",
                             FieldSpec.secret("token", "Access token").asRequired().placeholder("sl.")
-                                    .help("Generated on your app's Settings tab in the Dropbox App Console. "
-                                            + "It expires after four hours, so use it to try Proxyma out.")))
+                                    .help("From the Dropbox App Console. Expires after four hours.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(DropboxApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave it as it is unless you are told otherwise."))
             .sourceTypes(ConnectorType.DROPBOX)

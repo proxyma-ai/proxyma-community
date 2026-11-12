@@ -48,7 +48,7 @@ public class LinearConnectionPlugin implements ConnectionPlugin {
                                     .help("Create one in Linear under Settings > Security & access.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Linear",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("An OAuth application created in Linear under Settings > API."),
+                                    .help("An OAuth application created in Linear under Settings > Administration > API."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(LinearApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.LINEAR)

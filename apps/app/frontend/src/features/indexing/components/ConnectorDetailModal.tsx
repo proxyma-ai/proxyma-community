@@ -122,14 +122,14 @@ function ItemStatusMark({ status, graphDone, label }: { status: string; graphDon
  * warning - both of which would say something untrue about a healthy background task.
  */
 function GraphReadingMark({ done, total }: { done: number; total: number }) {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   return (
     <StatusMark
       state="graph"
       size={14}
       label={total > 0
         ? t('Building the knowledge graph - passage {done} of {total}', {
-            done: done.toLocaleString(), total: total.toLocaleString(),
+            done: done.toLocaleString(locale), total: total.toLocaleString(locale),
           })
         : t('Building the knowledge graph')}
     />
@@ -256,9 +256,11 @@ function ItemRowContent({ item, connector, active, graphReading, className }: {
       )}
       title={item.title}
       titleLink={url ? cls => (
-        <ExternalLink href={url} className={cls} labelClassName="truncate" title={item.title}>
-          {item.title}
-        </ExternalLink>
+        <Tooltip label={item.title} className="flex w-fit max-w-full min-w-0">
+          <ExternalLink href={url} className={cls} labelClassName="truncate">
+            {item.title}
+          </ExternalLink>
+        </Tooltip>
       ) : undefined}
       meta={meta.length > 0 ? meta : undefined}
       // The reason, truncated with the start of it on hover, and a copy button at the END OF THE
@@ -515,15 +517,16 @@ export function ConnectorDetailModal({ connector, onClose }: Props) {
   const title = (
     <span className="flex items-center gap-3 min-w-0">
       {destUrl ? (
-        <ExternalLink
-          href={destUrl}
-          className="min-w-0 max-w-full mouse:hover:text-brand-legible"
-          labelClassName="truncate"
-          iconSize={14}
-          title={connector.name}
-        >
-          {displayName}
-        </ExternalLink>
+        <Tooltip label={connector.name} className="flex min-w-0">
+          <ExternalLink
+            href={destUrl}
+            className="min-w-0 max-w-full mouse:hover:text-brand-legible"
+            labelClassName="truncate"
+            iconSize={14}
+          >
+            {displayName}
+          </ExternalLink>
+        </Tooltip>
       ) : (
         <span className="truncate min-w-0 animate-fade-in">{displayName}</span>
       )}
@@ -607,15 +610,15 @@ export function ConnectorDetailModal({ connector, onClose }: Props) {
           state.healthy && graphFinished(connector) && <span>{t('in the knowledge graph')}</span>,
           connector.reindexing && (
             <Tooltip label={connector.reindexTargetModel
-            ? t('Reindexing to {model} - old results still shown until it finishes', { model: connector.reindexTargetModel })
-            : t('Reindexing to a new model - old results still shown until it finishes')}>
+            ? t('Reindexing to {model}', { model: connector.reindexTargetModel })
+            : t('Reindexing to a new model')}>
               <span className="flex items-center gap-1 text-brand-accent-legible">
                 <ListRestart size={14} /> {t('reindexing')}
               </span>
             </Tooltip>
           ),
           connector.status === 'PAUSED' && (
-            <Tooltip label={t('Storage quota exceeded - processing resumes automatically once usage drops back under the limit')}>
+            <Tooltip label={t('Storage quota full. Resumes when usage drops.')}>
               <span className="flex items-center gap-1 text-warning">
                 {t('paused - quota exceeded')}
               </span>

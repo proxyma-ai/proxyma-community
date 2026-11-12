@@ -51,33 +51,38 @@ class SplashWindow extends JFrame implements Splash {
     // -- tokens, mirroring the Dark appearance of proxyma-tokens.css (neutral since 2026-10-30) ---
     // The fill is the app window's own dark gray (--field-base, desktop-shell's backgroundColor), so
     // the splash and the window it hands over to are one color - no teal tint in either.
-    private static final Color FILL         = new Color(0x10, 0x10, 0x11); // --field-base   #101011
-    private static final Color LINE         = new Color(0x2A, 0x2A, 0x2D); // --line         #2a2a2d
-    private static final Color INK_PRIMARY  = new Color(0xF5, 0xF6, 0xF7); // --ink-primary  #f5f6f7
-    private static final Color INK_CAPTION  = new Color(0xA0, 0xA1, 0xA4); // --ink-caption  #a0a1a4
-    private static final Color INK_DISABLED = new Color(0x70, 0x71, 0x74); // --ink-disabled #707174
-    private static final Color BRAND_LEGIBLE= new Color(0xA6, 0xD6, 0xE7); // --brand-legible p300
-    private static final Color BRAND_ACCENT = new Color(0x78, 0xBE, 0xD9); // --brand-accent   p400
+    static final Color FILL         = new Color(0x18, 0x18, 0x18); // --field-base   #181818
+    static final Color LINE         = new Color(0x3C, 0x3C, 0x3C); // --line         #3c3c3c
+    static final Color INK_PRIMARY  = new Color(0xF5, 0xF6, 0xF7); // --ink-primary  #f5f6f7
+    static final Color INK_CAPTION  = new Color(0xA0, 0xA1, 0xA4); // --ink-caption  #a0a1a4
+    private static final Color INK_DISABLED = new Color(0x7A, 0x7B, 0x7E); // --ink-disabled #7a7b7e
+    static final Color BRAND_LEGIBLE= new Color(0xA6, 0xD6, 0xE7); // --brand-legible p300
+    static final Color BRAND_ACCENT = new Color(0x78, 0xBE, 0xD9); // --brand-accent   p400
     private static final Color DANGER       = new Color(0xF8, 0x71, 0x71); // --danger
 
     // -- geometry -------------------------------------------------------------
-    private static final int W = 440;
-    private static final int H = 260;
+    // 880x580 since 2026-10-31, when the window took the slides (SplashSlides): the scene, its title
+    // and line fill the top, and the mark, the wordmark, the status line and the bar share a strip
+    // along the bottom.
+    static final int W = 880;
+    static final int H = 580;
     private static final int RADIUS   = 14;  // the app's largest surface radius (rounded-3xl)
-    private static final int LOGO     = 72;
-    private static final int LOGO_CY  = 82;
-    private static final float WORDMARK_SIZE = 19f;
-    private static final int BAR_W    = 200;
+    private static final int STRIP_Y  = H - 76;
+    // The kit's Logo at the size the app's header draws it (Logo.tsx): a 28px mark, 8px, the wordmark at
+    // text-base - 13px in the kit's type scale.
+    private static final int LOGO     = 28;
+    private static final int LOGO_CX  = 42;
+    private static final int LOGO_CY  = H - 38;
+    private static final float WORDMARK_SIZE = 13f;
+    private static final int WORDMARK_X = LOGO_CX + LOGO / 2 + 8;
+    private static final int BAR_W    = 220;
+    private static final int BAR_X    = W - 32 - BAR_W;
     // 4, not 3: the wave is a lighter band INSIDE the bar, and at 3px it was a flicker nobody saw.
     private static final int BAR_H    = 4;
-    private static final int BAR_Y    = 214;
+    private static final int BAR_Y    = H - 40;
+    private static final int STATUS_BASELINE = H - 50;
     // The line under the bar that says a start is taking longer than usual - see SLOW_AFTER_MS.
-    private static final int HINT_BASELINE = 242;
-    // The only region that changes frame to frame: the status line's ascent/descent around its
-    // baseline at y=190, down past the bar and the hint under it. Anything drawn outside it is
-    // painted once.
-    private static final int ANIM_BAND_Y = 168;
-    private static final int ANIM_BAND_H = H - 4 - ANIM_BAND_Y;
+    private static final int HINT_BASELINE = H - 18;
 
     // A START THAT IS TAKING LONGER THAN USUAL SAYS SO, after a minute (maintainer's request,
     // 2026-10-10). A start after an update rebuilds the Python runtime first, and a slow machine
@@ -98,11 +103,22 @@ class SplashWindow extends JFrame implements Splash {
     // before the bar and leaving two after it. The indeterminate phases scale that pace by
     // sweepRate; the download runs it at full pace so a stalled download still visibly lives.
     private static final double WAVE_MS = 1_800.0;
-    // The header logo's idle speed (Topbar.tsx, IDLE_DEG_PER_S).
+    // The mark's one speed, 30 degrees a second (one turn in 12s): it MUST equal the kit's token
+    // `--mark-turn` (libs/ui-kit/tokens/proxyma-tokens.css), which every mark in the four apps turns
+    // at - the maintainer, 2026-11-08: "the same speed everywhere". libs/ui-kit/react/markTurn.test.ts
+    // reads this line and fails when the two differ.
     private static final double MARK_DEG_PER_MS = 30.0 / 1_000.0;
     // The box the turning mark is repainted in. The mark is round, so turning never leaves it.
     private static final Rectangle MARK_BOX =
-            new Rectangle(W / 2 - LOGO / 2 - 2, LOGO_CY - LOGO / 2 - 2, LOGO + 4, LOGO + 4);
+            new Rectangle(LOGO_CX - LOGO / 2 - 2, LOGO_CY - LOGO / 2 - 2, LOGO + 4, LOGO + 4);
+
+    // -- the slides (SplashSlides) ---------------------------------------------
+    // The show's clock: a slide is a function of the time since showStart, and a click on a dot moves
+    // showStart so that slide begins now. A first start, which downloads for minutes, opens on the
+    // first slide and tells the story in order; any other opens on a random one, since a usual start
+    // shows one slide or two.
+    volatile long showStart = System.currentTimeMillis();
+    volatile int  firstSlide;
 
     private volatile double  sweepPos  = 0.0;  // 0..1, one pass of the wave
     private volatile double  sweepRate = 0.45; // 0..1, scales the wave's pace
@@ -126,21 +142,21 @@ class SplashWindow extends JFrame implements Splash {
     // proxyma-tokens.css). It is not installed system-wide on any of the three platforms, so the
     // splash used to draw the wordmark in the platform sans - Segoe UI on Windows - and the first
     // thing a user saw of the product was its name in a different typeface from the one it uses
-    // everywhere afterwards. The TTF now ships in the jar (src/main/resources/fonts, SIL Open Font
+    // everywhere afterwards. The TTF ships in the jar (src/main/resources/fonts, SIL Open Font
     // License, OFL.txt beside it) and is loaded from the classpath, which needs no installation and
     // no GraphicsEnvironment registration - deriveFont is enough to draw with.
     //
-    // BOLD IS SYNTHESISED. The workspace carries only Orbitron Regular (400); the header uses 700.
-    // Java2D thickens the real Orbitron letterforms rather than substituting another face, which is
-    // the part that matters here - but it is not the 700 cut, and shipping Orbitron-Bold.ttf beside
-    // this one would make it exact.
+    // THE 700 CUT, since 2026-11-10. The jar carried Orbitron's variable font, which Java2D draws at
+    // its default instance (400) and thickened into a synthesized bold - visibly not the header's
+    // letterforms. Orbitron-Bold.ttf is @fontsource/orbitron's 700 latin file, the very data the app
+    // bundle ships, unwrapped from WOFF with every table kept as it was.
     //
     // Loaded ONCE, statically. createFont parses the file on every call, and this is on the path
     // that has to put a window on screen before anything else happens.
     private static final Font BRAND_FONT = loadBrandFont();
 
     private static Font loadBrandFont() {
-        try (InputStream in = SplashWindow.class.getResourceAsStream("/fonts/Orbitron.ttf")) {
+        try (InputStream in = SplashWindow.class.getResourceAsStream("/fonts/Orbitron-Bold.ttf")) {
             if (in == null) {
                 LoggerFactory.getLogger(SplashWindow.class)
                         .warn("Brand font missing from the jar - the splash wordmark will use the platform sans");
@@ -156,10 +172,33 @@ class SplashWindow extends JFrame implements Splash {
         }
     }
 
-    private static Font brandFont(float size) {
+    static Font brandFont(float size) {
         return BRAND_FONT != null
-                ? BRAND_FONT.deriveFont(Font.BOLD, size)
+                ? BRAND_FONT.deriveFont(Font.PLAIN, size)
                 : new Font(Font.SANS_SERIF, Font.BOLD, (int) size);
+    }
+
+    /** Whether the jar's Orbitron Bold was found. */
+    static boolean brandFaceLoaded() {
+        return BRAND_FONT != null;
+    }
+
+    /**
+     * The wordmark as the kit's Logo writes it: "Proxyma" in Orbitron 700, --brand-legible, tracking-wider
+     * (0.05em), its line box centered on {@code centerY}. Java2D has no letter-spacing on a plain
+     * drawString, so the glyphs are placed one at a time.
+     */
+    static void drawWordmark(Graphics2D g, int x, int centerY, float size) {
+        Font f = brandFont(size);
+        g.setFont(f);
+        g.setColor(BRAND_LEGIBLE);
+        FontMetrics fm = g.getFontMetrics();
+        int baseline = centerY + (fm.getAscent() - fm.getDescent()) / 2;
+        float cx = x;
+        for (char c : "Proxyma".toCharArray()) {
+            g.drawString(String.valueOf(c), cx, baseline);
+            cx += fm.charWidth(c) + size * 0.05f;
+        }
     }
 
     // -- factory --------------------------------------------------------------
@@ -177,6 +216,8 @@ class SplashWindow extends JFrame implements Splash {
         try {
             SwingUtilities.invokeAndWait(() -> {
                 SplashWindow w = new SplashWindow();
+                w.firstSlide = firstStart() ? 0
+                        : java.util.concurrent.ThreadLocalRandom.current().nextInt(SplashSlides.SLIDES.size());
                 w.setVisible(true);
                 ref[0] = w;
             });
@@ -186,6 +227,16 @@ class SplashWindow extends JFrame implements Splash {
             return Splash.NONE;
         }
         return ref[0];
+    }
+
+    /** No release has been made active yet: this start downloads Proxyma, which takes minutes. */
+    private static boolean firstStart() {
+        try {
+            return !java.nio.file.Files.isRegularFile(
+                    ai.proxyma.core.system.util.AppPaths.create().partsDir().resolve("active.txt"));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private SplashWindow() {
@@ -226,7 +277,7 @@ class SplashWindow extends JFrame implements Splash {
 
         setContentPane(new SplashPanel(this::minimize));
 
-        animTimer = new Timer(16, e -> tick());
+        animTimer = new Timer(33, e -> tick());
         animTimer.start();
     }
 
@@ -308,13 +359,10 @@ class SplashWindow extends JFrame implements Splash {
         boolean hintAllowed = phase != Phase.DOWNLOAD && phase != Phase.DONE && phase != Phase.ERROR;
         hintAlpha = hintAllowed && slowFor > 0 ? Math.min(1.0, slowFor / HINT_FADE_MS) : 0.0;
 
-        // Only two regions change between frames: the turning mark, and the band holding the status
-        // line (baseline 190) and the bar (BAR_Y). Repainting all 440x260 sixty times a second
-        // redrew everything else to an identical result, which on software rendering is slow
-        // enough to be visible as flicker. Full width for the band, so a shorter status string
-        // cannot leave the tail of a longer one behind it.
-        repaint(MARK_BOX.x, MARK_BOX.y, MARK_BOX.width, MARK_BOX.height);
-        repaint(0, ANIM_BAND_Y, W, ANIM_BAND_H);
+        // Everything but the corners moves now that the slides fill the window, so the whole panel is
+        // repainted - at the timer's 30 frames a second rather than 60, which kept a software-rendered
+        // desktop from showing it as flicker when only two small regions changed.
+        repaint();
     }
 
     // Whether this device can clip a window to a shape. Defensive rather than trusting the call:
@@ -334,6 +382,12 @@ class SplashWindow extends JFrame implements Splash {
     }
 
     private void minimize() { setState(JFrame.ICONIFIED); }
+
+    /** Starts slide {@code d} now, from its fade-in. */
+    void showSlide(int d) {
+        int n = SplashSlides.SLIDES.size();
+        showStart = System.currentTimeMillis() - Math.floorMod(d - firstSlide, n) * SplashSlides.SLIDE_MS;
+    }
 
     @Override
     public void dispose() {
@@ -376,6 +430,9 @@ class SplashWindow extends JFrame implements Splash {
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) {
                     if (minBtn.contains(e.getPoint())) minimizeAction.run();
+                    for (int d = 0; d < SplashSlides.SLIDES.size(); d++) {
+                        if (SplashSlides.dot(d, W).contains(e.getPoint())) showSlide(d);
+                    }
                 }
                 @Override public void mouseExited(MouseEvent e) { minHover = false; repaint(); }
             });
@@ -408,44 +465,48 @@ class SplashWindow extends JFrame implements Splash {
             g2.setStroke(new BasicStroke(1f));
             g2.drawRoundRect(0, 0, W - 1, H - 1, arc, arc);
 
+            // The slides, or - once something failed - the sentence that says what. An error is a
+            // full sentence the user has to read and act on, so it takes the slide's place rather
+            // than squeezing into the status line.
+            if (isError) {
+                g2.setFont(SplashSlides.ui(14f, false));
+                g2.setColor(DANGER);
+                FontMetrics fm = g2.getFontMetrics();
+                String[] lines = wrap(statusText, fm, W - 160);
+                int top = SplashSlides.SCENE_Y + SplashSlides.SCENE_H / 2 - (lines.length - 1) * 11;
+                for (int i = 0; i < lines.length; i++) {
+                    g2.drawString(lines[i], (W - fm.stringWidth(lines[i])) / 2, top + i * 22);
+                }
+            } else {
+                SplashSlides.paint(g2, W, System.currentTimeMillis() - showStart, firstSlide);
+            }
+            g2.setComposite(AlphaComposite.SrcOver);
+
+            // The strip: a hairline, the turning mark and the wordmark at the left, the status line
+            // and the bar at the right.
+            g2.setColor(LINE);
+            g2.drawLine(0, STRIP_Y, W, STRIP_Y);
             paintMark(g2);
 
-            // Wordmark, in the app's own brand face - see brandFont(). Tracking is the header's
-            // `tracking-wider` (0.05em) rather than the 3px this carried while it was drawn in the
-            // platform sans: that figure existed to loosen a face which is not Orbitron, and
-            // Orbitron is already a wide one. Applying both would have made the splash wordmark
-            // visibly looser than the header it is meant to match.
-            drawTracked(g2, "Proxyma", brandFont(WORDMARK_SIZE), WORDMARK_SIZE * 0.05f,
-                        BRAND_LEGIBLE, 160);
+            // Wordmark, in the app's own brand face - see brandFont().
+            drawWordmark(g2, WORDMARK_X, LOGO_CY, WORDMARK_SIZE);
 
             // The status line is a PHASE, not a sentence: "Starting", "Installing Python
             // packages" - small, and the same line the web restart screen (RestartingModal) shows.
-            // SENTENCE CASE since 2026-10-01 (maintainer's feedback); it was upper case and
-            // tracked, which shouted on a screen whose only job is to say "wait". An ERROR is a
-            // full sentence, because it is something the user has to read and act on.
-            if (isError) {
-                g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-                g2.setColor(DANGER);
-                FontMetrics fm = g2.getFontMetrics();
-                // Two lines at most: an error the user has to act on is a sentence, and cutting it
-                // at 440px left the part that said what to do. Anything longer still ends in "...".
-                int maxW = W - 48;
-                String[] lines = wrap(statusText, fm, maxW);
-                if (lines.length == 1) {
-                    g2.drawString(lines[0], (W - fm.stringWidth(lines[0])) / 2, 190);
-                } else {
-                    g2.drawString(lines[0], (W - fm.stringWidth(lines[0])) / 2, 182);
-                    g2.drawString(lines[1], (W - fm.stringWidth(lines[1])) / 2, 198);
-                }
-            } else {
-                drawTracked(g2, statusText, new Font(Font.SANS_SERIF, Font.PLAIN, 12), 0f, INK_CAPTION, 190);
-            }
+            // In sentence case. An error's sentence is drawn where the slide was, above.
+            String status = isError ? "Proxyma could not start" : statusText;
+            Font small = SplashSlides.ui(12f, false);
+            g2.setFont(small);
+            drawTracked(g2, status, small, 0f, isError ? DANGER : INK_CAPTION,
+                        BAR_X + BAR_W - g2.getFontMetrics().stringWidth(status), STATUS_BASELINE);
 
             drawProgressBar(g2);
             double hint = hintAlpha;
             if (hint > 0 && !isError) {
-                drawTracked(g2, SLOW_HINT, new Font(Font.SANS_SERIF, Font.PLAIN, 12), 0f,
-                        withAlpha(INK_CAPTION, (int) Math.round(255 * hint)), HINT_BASELINE);
+                Font hf = SplashSlides.ui(11.5f, false);
+                g2.setFont(hf);
+                drawTracked(g2, SLOW_HINT, hf, 0f, withAlpha(INK_CAPTION, (int) Math.round(255 * hint)),
+                        BAR_X + BAR_W - g2.getFontMetrics().stringWidth(SLOW_HINT), HINT_BASELINE);
             }
             drawMinimizeButton(g2);
 
@@ -466,8 +527,8 @@ class SplashWindow extends JFrame implements Splash {
             }
             Graphics2D r = (Graphics2D) g2.create();
             r.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            r.rotate(Math.toRadians(markDeg), W / 2.0, LOGO_CY);
-            r.drawImage(mark, W / 2 - LOGO / 2, LOGO_CY - LOGO / 2, LOGO, LOGO, null);
+            r.rotate(Math.toRadians(markDeg), LOGO_CX, LOGO_CY);
+            r.drawImage(mark, LOGO_CX - LOGO / 2, LOGO_CY - LOGO / 2, LOGO, LOGO, null);
             r.dispose();
         }
 
@@ -491,7 +552,7 @@ class SplashWindow extends JFrame implements Splash {
         }
 
         private void drawProgressBar(Graphics2D g2) {
-            int x = (W - BAR_W) / 2;
+            int x = BAR_X;
 
             g2.setColor(LINE);
             g2.fillRoundRect(x, BAR_Y, BAR_W, BAR_H, BAR_H, BAR_H);
@@ -554,16 +615,16 @@ class SplashWindow extends JFrame implements Splash {
 
         // Java2D has no letter-spacing on a plain drawString, and the wordmark needs the same
         // widened tracking the web logo uses - so glyphs are placed one at a time.
-        private void drawTracked(Graphics2D g2, String text, Font font, float tracking, Color color, int baselineY) {
+        private void drawTracked(Graphics2D g2, String text, Font font, float tracking, Color color, int x, int baselineY) {
             g2.setFont(font);
             g2.setColor(color);
             FontMetrics fm = g2.getFontMetrics();
-            float total = 0;
-            for (int i = 0; i < text.length(); i++) {
-                total += fm.charWidth(text.charAt(i));
-                if (i < text.length() - 1) total += tracking;
+            if (tracking == 0f) {
+                // Plain text keeps the face's own kerning, which placing glyphs one by one loses.
+                g2.drawString(text, x, baselineY);
+                return;
             }
-            float cx = (W - total) / 2f;
+            float cx = x;
             for (int i = 0; i < text.length(); i++) {
                 char c = text.charAt(i);
                 g2.drawString(String.valueOf(c), cx, baselineY);

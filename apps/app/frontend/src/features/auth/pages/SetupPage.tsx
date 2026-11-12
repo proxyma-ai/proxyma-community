@@ -107,7 +107,7 @@ export function SetupPage() {
       title={t('Create the super admin account')}
       subtitle={t('Initial server setup')}
       // The card's own note under its subtitle (AuthLayout's `description`), not a Caption in the form.
-      description={t('This account has full control over the server. Choose a strong password you will remember.')}
+      description={t('This account has full control. Use a strong password.')}
     >
       <Presence show={!!error}><FormAlert>{error}</FormAlert></Presence>
       <Presence show={!!success}><FormAlert tone="success">{success}</FormAlert></Presence>
@@ -117,7 +117,7 @@ export function SetupPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" autoComplete="off">
           <Input
             label={t('Setup token')}
-            hint={t('The server prints it in its log when it starts. Set PROXYMA_SETUP_TOKEN to choose it.')}
+            hint={t('Printed in the server log at startup.')}
             value={setupToken}
             onChange={e => setSetupToken(e.target.value)}
             autoFocus

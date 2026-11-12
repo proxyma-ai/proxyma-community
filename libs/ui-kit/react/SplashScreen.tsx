@@ -1,10 +1,9 @@
 'use client'
-import { useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from './cn'
 import { ProgressBar } from './Meter'
 import { Presence } from './Presence'
 import { ProxymaIcon } from './ProxymaIcon'
-import { useIdleRotation } from './useIdleRotation'
 
 /**
  * THE DESKTOP SPLASH, INSIDE THE WINDOW - for Proxyma itself restarting, quitting and stopped.
@@ -27,11 +26,13 @@ import { useIdleRotation } from './useIdleRotation'
  * lines wherever the fonts' line boxes fall, and the point is that they fall where the window's do.
  * On a screen narrower than the card it narrows and the lines stay centred.
  *
- * THE MARK TURNS while something is under way, at the header logo's idle speed (useIdleRotation)
- * - motion that says the app is alive, carrying no progress - and the bar runs beside it. Both STOP
+ * THE MARK TURNS while something is under way, at the speed every mark turns at (the kit's
+ * `.mark-turn`, one turn in `--mark-turn`, as SplashWindow.MARK_DEG_PER_MS turns the launcher's) -
+ * motion that says the app is alive, carrying no progress - and the bar runs beside it. Both STOP
  * when nothing is going on any more (Proxyma has stopped), where they would promise work that is not
- * happening; the launcher's splash stops its mark on an error for the same reason. Reduced motion:
- * the mark stands still and nothing fades.
+ * happening; the launcher's splash stops its mark on an error for the same reason. The mark is
+ * PAUSED rather than unturned, so it holds the angle it reached as the launcher's does. Reduced
+ * motion: the mark stands still and nothing fades.
  *
  * Presentational, like every screen here: the layer, the scrim, the focus trap and the words are the
  * app's (StatusLayer).
@@ -51,18 +52,18 @@ export function SplashScreen({ turning, status, detail, productName = 'Proxyma',
     // (SplashWindow.java RADIUS = 14), and this screen has to be that window.
     <div className={cn('relative w-[440px] max-w-full h-[260px] rounded-[14px] border border-line surface-float shadow-float text-center animate-slide-up', className)}>
       <div className="absolute inset-x-0 top-[46px] flex justify-center">
-        {turning ? <TurningMark /> : <ProxymaIcon size={MARK_SIZE} />}
+        <ProxymaIcon size={MARK_SIZE} className={cn('mark-turn', !turning && '[animation-play-state:paused]')} />
       </div>
       {/* 19px is the launcher's WORDMARK_SIZE, not a step of the type scale - the name is drawn,
           not set. */}
       <div className="absolute inset-x-0 top-[141px] font-brand font-bold text-[19px] leading-6 tracking-wider text-brand-legible">
         {productName}
       </div>
-      <div className="absolute inset-x-6 top-[176px] text-2xs leading-4 text-ink-caption truncate">{status}</div>
+      <div className="absolute inset-x-6 top-[176px] text-xs text-ink-caption truncate">{status}</div>
       <Presence show={turning} collapse={false} className="absolute inset-x-0 top-[214px] mx-auto w-[200px] max-w-[calc(100%-3rem)]">
         <ProgressBar size="xs" />
       </Presence>
-      <div className="absolute inset-x-6 top-[228px] text-2xs leading-4 text-ink-caption">
+      <div className="absolute inset-x-6 top-[228px] text-xs text-ink-caption">
         <Presence show={!!detail} collapse={false}>{detail}</Presence>
       </div>
     </div>
@@ -70,11 +71,3 @@ export function SplashScreen({ turning, status, detail, productName = 'Proxyma',
 }
 
 const MARK_SIZE = 72
-
-// Its own component so the rotation hook runs only while the mark turns - a hook cannot be called
-// conditionally, and a still mark should not be driving a frame loop.
-function TurningMark() {
-  const ref = useRef<SVGSVGElement>(null)
-  useIdleRotation(ref)
-  return <ProxymaIcon ref={ref} size={MARK_SIZE} />
-}

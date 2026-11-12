@@ -28,11 +28,13 @@ import { shouldShowWhatsNew, markWhatsNewSeen } from '@/store/whatsNewStore'
 import { whatsNewFor } from '@/features/system/data/whatsNew'
 import { WhatsNewModal } from '@/features/system/components/WhatsNewModal'
 import { QuitDialogs } from '@/features/system/components/QuitButton'
+import { UpdateNotice } from '@/features/system/components/UpdateNotice'
 import { useTranslation } from '@/i18n'
 import { useConnectorListSync } from '@/hooks/useConnectorListSync'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
 import { withReason } from '@/services/apiError'
 import { startupDialogs } from './startupDialogs'
+import { SignInDisclosureDialog } from '@/features/settings/components/SignInDisclosureDialog'
 
 // Lazy so Settings' own bundle (dozens of tab components) only downloads the first time it's
 // actually opened, not on every authenticated page load - same reasoning Router.tsx used for its
@@ -106,7 +108,7 @@ export function AppShell() {
     addToast(
       // `{product}` rather than a template literal: a translatable string has to be one quoted
       // literal the checker can read, and the runtime does the substitution.
-      t('Did you know you can query {product} from your IDE or scripts via MCP/API?', { product: productName }),
+      t('You can use {product} from your IDE or scripts.', { product: productName }),
       'info',
       {
         persist: true,
@@ -114,6 +116,8 @@ export function AppShell() {
         onClose: markMcpAdClosed,
         onLinkClick: markMcpAdDismissedForever,
         quietAction: { label: t("Don't show again"), action: markMcpAdDismissedForever },
+        // A tip, not news: at the window's foot, off every page's own controls (the self-review of 2026-11-11).
+        placement: 'bottom',
       },
     )
     // Intentionally runs once per app mount only - re-rolling on every productName/addToast
@@ -155,7 +159,7 @@ export function AppShell() {
     // provider is saved while still unreachable.
     if (providerToastId.current) return
     providerToastId.current = addToast(
-      t('No AI provider is responding. Chat and search will not work until one is reachable.'),
+      t('No AI provider is responding. Chat and search are down.'),
       'danger',
       {
         persist: true,
@@ -242,8 +246,12 @@ export function AppShell() {
         {/* The scrollbar's room is ALWAYS kept (the maintainer, 2026-10-30): a page whose skeleton or
             entrance ran a little taller than the window showed the bar for a moment, shifting the
             page left and back. On the right only - kept on both sides, it left a strip beside a
-            full-height page's left panel (Constellations). */}
-        <main className="flex-1 overflow-auto [scrollbar-gutter:stable]">
+            full-height page's left panel (Constellations). EXCEPT on a page that scrolls inside a column of
+            its own (`data-page-fill` on its root - chat, a Constellations project, a key account): this
+            container never scrolls there, and the room it kept was an empty strip that set the page's own
+            scrollbar 10px in from the sheet's edge (the maintainer, 2026-10-31: "the vertical scrollbar
+            should always be right at the modal edge"). */}
+        <main className="flex-1 overflow-auto [scrollbar-gutter:stable] has-[[data-page-fill]]:[scrollbar-gutter:auto]">
           {/* Keyed by pathname so a top-level nav change (Chat/Connectors/Docs/...) remounts this
               wrapper and replays the fade-up entrance - Suspense's own fallback (PageSkeleton)
               already covers the lazy-chunk loading gap, this is purely the settled-content
@@ -260,7 +268,7 @@ export function AppShell() {
       {/* The field behind the glass, at every width (an app shell's ProxymaBackground). */}
       <ProxymaBackground />
       {framed ? (
-        <div className="relative z-10 h-full overflow-hidden">
+        <div className="relative z-raised h-full overflow-hidden">
           {/* In the desktop app's own borderless window the frame floats on the field with the
               window's buttons over the page; in a browser it is the page, edge to edge. */}
           <GlassFrame
@@ -268,20 +276,24 @@ export function AppShell() {
             mode={desktopWindow ? 'window' : 'page'}
             onToggleMaximize={desktopWindow?.controls.toggleMaximize}
             windowBar={desktopWindow && (
-              <WindowControls
-                maximized={desktopWindow.maximized}
-                onMinimize={desktopWindow.controls.minimize}
-                onToggleMaximize={desktopWindow.controls.toggleMaximize}
-                onClose={desktopWindow.controls.close}
-                labels={{ minimize: t('Minimize'), maximize: t('Maximize'), restore: t('Restore'), close: t('Close') }}
-              />
+              <div className="flex items-center gap-2">
+                {/* "Restart to update", left of the window's buttons, while an update waits. */}
+                <UpdateNotice inWindow />
+                <WindowControls
+                  maximized={desktopWindow.maximized}
+                  onMinimize={desktopWindow.controls.minimize}
+                  onToggleMaximize={desktopWindow.controls.toggleMaximize}
+                  onClose={desktopWindow.controls.close}
+                  labels={{ minimize: t('Minimize'), maximize: t('Maximize'), restore: t('Restore'), close: t('Close') }}
+                />
+              </div>
             )}
           >
             {page}
           </GlassFrame>
         </div>
       ) : (
-        <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        <div className="relative z-raised flex flex-col h-full overflow-hidden">
           {/* On a phone the bar steps aside while the reader swipes on down a page, and comes back
               when they turn round - see the kit's AutoHideHeader. Every page starts with it. */}
           <AutoHideHeader resetKey={location.pathname}>
@@ -303,6 +315,8 @@ export function AppShell() {
       )}
       {showReConsent && <ReConsentModal user={user!} />}
       <FeedbackButton />
+      {/* What a YouTube sign-in is told before Google's page opens - every sign-in button goes through it. */}
+      <SignInDisclosureDialog />
       {/* Both modes - the walkthrough is how a first-run desktop user finds Connectors, Settings
           and the MCP/API surfaces at all. Steps whose subject is server-only (the feedback
           button, storage quota) drop themselves out via requiresFeature/optionalTarget rather

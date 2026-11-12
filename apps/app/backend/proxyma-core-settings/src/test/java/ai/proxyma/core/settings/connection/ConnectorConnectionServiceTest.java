@@ -25,9 +25,12 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -36,7 +39,7 @@ import static org.mockito.Mockito.when;
  * <p>Security tests wearing behavior clothes, like the provider ones they mirror. The rules pinned
  * here are the ones whose failure is silent: a token readable by the wrong person, a token written
  * in clear text (SEC-31's shape), a token erased by an unrelated edit, and a connection deleted out
- * from under sources that still sync through it.
+ * from under sources that still sync through it without those sources being told.
  */
 class ConnectorConnectionServiceTest {
 
@@ -150,13 +153,65 @@ class ConnectorConnectionServiceTest {
     }
 
     @Test
-    @DisplayName("a connection sources still read through cannot be deleted")
-    void inUseIsKept() {
+    @DisplayName("a connection sources still read through is deleted, and its sources are kept and told it is gone")
+    void inUseIsDeletedAndItsSourcesKept() {
         UUID id = service.create(ANA, jira("Work", "token-1234567890")).id();
         when(usage.sourcesUsing(id)).thenReturn(2L);
-        InvalidConnectionException e = assertThrows(InvalidConnectionException.class, () -> service.delete(ANA, id));
-        assertThat(e.getMessage()).contains("2 sources");
-        assertThat(rows).containsKey(id);
+
+        service.delete(ANA, id);
+
+        assertThat(rows).doesNotContainKey(id);
+        // The sources are told - their card says the connection is gone - and nothing else is asked of
+        // them: no source is deleted, moved or emptied from here (RegistryConnectionUsage marks them).
+        verify(usage).connectionDeleted(id);
+        verify(usage, never()).sourceNamesUsing(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("deleting a connection revokes its sign-in at the service before the row goes (YouTube's policies: removal in the app removes the access)")
+    void deletionRevokes() {
+        UUID id = service.create(ANA, jira("Work", "token-1234567890")).id();
+        OAuth2ConnectionService signIns = mock(OAuth2ConnectionService.class);
+        java.util.List<Boolean> rowPresent = new java.util.ArrayList<>();
+        doAnswer(inv -> {
+            rowPresent.add(rows.containsKey(inv.<ConnectorConnection>getArgument(0).getId()));
+            return null;
+        }).when(signIns).revokeGrant(any(ConnectorConnection.class));
+        service.setSignIns(signIns);
+
+        service.delete(ANA, id);
+
+        assertThat(rowPresent).containsExactly(true);
+        assertThat(rows).doesNotContainKey(id);
+    }
+
+    @Test
+    @DisplayName("a connection nothing reads through is deleted without touching any source")
+    void unusedIsDeletedQuietly() {
+        UUID id = service.create(ANA, jira("Work", "token-1234567890")).id();
+        when(usage.sourcesUsing(id)).thenReturn(0L);
+
+        service.delete(ANA, id);
+
+        assertThat(rows).doesNotContainKey(id);
+        verify(usage, never()).connectionDeleted(any());
+    }
+
+    @Test
+    @DisplayName("the warning before a delete names the sources using it, the first few, and only to its owner")
+    void usageNamesTheSources() {
+        UUID id = service.create(ANA, jira("Work", "token-1234567890")).id();
+        when(usage.sourcesUsing(id)).thenReturn(7L);
+        when(usage.sourceNamesUsing(id, ConnectorConnectionService.USAGE_NAMES))
+                .thenReturn(List.of("Alpha", "Beta", "Gamma", "Delta", "Epsilon"));
+
+        ConnectorConnectionService.UsageView view = service.usage(ANA, id);
+
+        assertThat(view.sources()).isEqualTo(7);
+        assertThat(view.names()).containsExactly("Alpha", "Beta", "Gamma", "Delta", "Epsilon");
+        assertThrows(NoSuchElementException.class, () -> service.usage(BO, id));
+        when(usage.sourcesUsing(id)).thenReturn(0L);
+        assertThat(service.usage(ANA, id).names()).isEmpty();
     }
 
     @Test
@@ -267,5 +322,19 @@ class ConnectorConnectionServiceTest {
         UUID id = service.create(null, jira("Work", "token-1234567890")).id();
         assertThat(rows.get(id).getOwnerId()).isEqualTo(ConnectorConnection.LOCAL_OWNER);
         assertThat(service.resolveOwned("", id)).isPresent();
+    }
+
+    @Test
+    @DisplayName("a connection still under its placeholder name takes its account's name once known; a name somebody gave never changes (2026-11-11)")
+    void namedAfterItsAccount() {
+        UUID id = service.create(ANA, jira("YouTube", "token-ana-1234")).id();
+        assertThat(service.nameAfterAccount(id, "YouTube", "  Lê Sỹ Hậu ")).isTrue();
+        assertThat(rows.get(id).getName()).isEqualTo("Lê Sỹ Hậu");
+        assertThat(service.nameAfterAccount(id, "YouTube", "Someone else")).as("renamed already").isFalse();
+
+        UUID second = service.create(ANA, jira("YouTube", "token-ana-5678")).id();
+        assertThat(service.nameAfterAccount(second, "YouTube", "lê sỹ hậu")).as("another connection has that name").isFalse();
+        assertThat(service.nameAfterAccount(second, "YouTube", " ")).isFalse();
+        assertThat(rows.get(second).getName()).isEqualTo("YouTube");
     }
 }

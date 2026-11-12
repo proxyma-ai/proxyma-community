@@ -36,13 +36,11 @@ public class AirtableConnectionPlugin implements ConnectionPlugin {
             .mark("airtable")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Personal access token",
                             FieldSpec.secret("token", "Personal access token").asRequired().placeholder("pat...")
-                                    .help("Create one at airtable.com/create/tokens with the data.records:read and "
-                                            + "schema.bases:read scopes, and add the bases to index.")),
+                                    .help("Create one at airtable.com/create/tokens with read scopes.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Airtable",
                             FieldSpec.text("clientId", "Client ID").asRequired(),
                             FieldSpec.secret("clientSecret", "Client secret").asRequired()
-                                    .help("From your OAuth integration at airtable.com/create/oauth. You choose the "
-                                            + "bases to share when you sign in.")))
+                                    .help("From your OAuth integration at airtable.com/create/oauth.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(AirtableApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave as it is unless you reach Airtable through a relay."))
             .sourceTypes(ConnectorType.AIRTABLE)

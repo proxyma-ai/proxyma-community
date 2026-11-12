@@ -430,7 +430,7 @@ public class ConfigTransferService {
                 if (chosen) {
                     report.add(SECTION_PROVIDERS, TransferGroups.PROVIDERS, p.name(),
                             ConfigImportReport.Outcome.SKIPPED,
-                            "A provider with this name is already configured; kept as it is.");
+                            notice("A provider with this name is already configured; kept as it is."));
                 }
                 continue;
             }
@@ -442,12 +442,12 @@ public class ConfigTransferService {
             ProviderProtocol protocol = parseProtocol(p.protocol());
             if (protocol == null) {
                 report.add(SECTION_PROVIDERS, TransferGroups.PROVIDERS, p.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "Unknown protocol '" + p.protocol() + "' - this build cannot speak it.");
+                        notice("Unknown protocol '" + p.protocol() + "' - this build cannot speak it."));
                 continue;
             }
             if (!apply) {
                 report.add(SECTION_PROVIDERS, TransferGroups.PROVIDERS, p.name(), ConfigImportReport.Outcome.CREATED,
-                        credentialMissing ? "Will be created without a credential." : "Will be created.");
+                        credentialMissing ? notice("Will be created without a credential.") : notice("Will be created."));
                 continue;
             }
             try {
@@ -463,7 +463,7 @@ public class ConfigTransferService {
                                 headers, null, GatewayApi.fromValue(p.api()), p.blockingCalls()));
                 if (p.sourceId() != null) remap.put(p.sourceId(), created.id().toString());
                 report.add(SECTION_PROVIDERS, TransferGroups.PROVIDERS, p.name(), ConfigImportReport.Outcome.CREATED,
-                        credentialMissing ? "Created without a credential - add one before use." : "Created.");
+                        credentialMissing ? notice("Created without a credential - add one before use.") : notice("It was created."));
             } catch (RuntimeException e) {
                 // Provider validation is real (Azure and self-hosted runtimes are rejected without
                 // a base URL, names must be unique) and its messages are written to be shown.
@@ -492,31 +492,33 @@ public class ConfigTransferService {
             if (c.name() == null || c.name().isBlank()) continue;
             if (existing.contains(c.name().toLowerCase(Locale.ROOT))) {
                 report.add(SECTION_CONNECTIONS, TransferGroups.CONNECTORS, c.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "You already have a connection with this name; kept as it is.");
+                        notice("You already have a connection with this name; kept as it is."));
                 continue;
             }
             ConnectionProtocol protocol = ConnectionProtocol.fromValue(c.protocol());
             if (protocol == ConnectionProtocol.MCP_SERVER) {
                 // See exportConnections: never written to a file, and never read from one.
                 report.add(SECTION_CONNECTIONS, TransferGroups.CONNECTORS, c.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "MCP server connections are not imported. Add them in Settings > Connections.");
+                        notice("MCP server connections are not imported. Add them in Settings > Connections."));
                 continue;
             }
             if (protocol == null || !connectionService.offeredProtocols().contains(protocol)) {
                 report.add(SECTION_CONNECTIONS, TransferGroups.CONNECTORS, c.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "'" + c.protocol() + "' connections are not available here.");
+                        notice("'" + c.protocol() + "' connections are not available here."));
                 continue;
             }
             String secret = resolveSecret(c.secret(), SECTION_CONNECTIONS + "/" + c.name() + "/secret", secrets);
             var descriptor = catalog.protocol(protocol);
             ConnectionAuthKind kind = ConnectionAuthKind.of(descriptor == null ? null : descriptor.primaryAuth().kind());
-            String note = kind == ConnectionAuthKind.OAUTH
-                    ? "Sign in to it before use."
-                    : secret == null ? "Add its " + (kind == ConnectionAuthKind.BASIC ? "password" : "token")
-                            + " before use." : null;
+            boolean signIn = kind == ConnectionAuthKind.OAUTH;
+            boolean password = !signIn && secret == null && kind == ConnectionAuthKind.BASIC;
+            boolean token = !signIn && secret == null && kind != ConnectionAuthKind.BASIC;
             if (!apply) {
                 report.add(SECTION_CONNECTIONS, TransferGroups.CONNECTORS, c.name(), ConfigImportReport.Outcome.CREATED,
-                        note == null ? "Will be created." : "Will be created. " + note);
+                        signIn ? notice("Will be created. Sign in to it before use.")
+                                : password ? notice("Will be created. Add its password before use.")
+                                : token ? notice("Will be created. Add its token before use.")
+                                : notice("Will be created."));
                 continue;
             }
             try {
@@ -525,7 +527,10 @@ public class ConfigTransferService {
                         null, null));
                 existing.add(c.name().toLowerCase(Locale.ROOT));
                 report.add(SECTION_CONNECTIONS, TransferGroups.CONNECTORS, c.name(), ConfigImportReport.Outcome.CREATED,
-                        note == null ? "Created." : "Created. " + note);
+                        signIn ? notice("Created. Sign in to it before use.")
+                                : password ? notice("Created. Add its password before use.")
+                                : token ? notice("Created. Add its token before use.")
+                                : notice("It was created."));
             } catch (RuntimeException e) {
                 // The service's validation messages are written to be shown - a missing URL, a tier
                 // that does not include the service.
@@ -555,19 +560,19 @@ public class ConfigTransferService {
             boolean restart = SettingsService.requiresRestart(prefix);
             if (SettingsPrefixRegistry.EXCLUDED_PREFIXES.contains(prefix)) {
                 report.add(SECTION_SETTINGS, transferGroup, prefix, ConfigImportReport.Outcome.SKIPPED,
-                        "This group is fixed at deploy time or belongs to one user, not the deployment.");
+                        notice("This group is fixed at deploy time or belongs to one user, not the deployment."));
                 continue;
             }
             if (SettingsPrefixRegistry.classFor(prefix) == null) {
                 report.add(SECTION_SETTINGS, transferGroup, prefix, ConfigImportReport.Outcome.SKIPPED,
-                        "This build has no settings group by that name.");
+                        notice("This build has no settings group by that name."));
                 continue;
             }
             // The settings API refuses this prefix off Enterprise Server (SettingsController), and an
             // import is the same write by another door - so it refuses it too.
             if (!multiUser && SERVER_ONLY_PREFIXES.contains(prefix)) {
                 report.add(SECTION_SETTINGS, transferGroup, prefix, ConfigImportReport.Outcome.SKIPPED,
-                        "This group exists on Enterprise Server only.");
+                        notice("This group exists on Enterprise Server only."));
                 continue;
             }
             Map<String, Object> current = settingsService.getSettingsFields(prefix);
@@ -580,14 +585,14 @@ public class ConfigTransferService {
 
                 if (!SettingsSecrets.isKnownField(prefix, key)) {
                     report.add(SECTION_SETTINGS, transferGroup, label, ConfigImportReport.Outcome.SKIPPED,
-                            "This build has no setting by that name.");
+                            notice("This build has no setting by that name."));
                     continue;
                 }
                 if (incoming == null) {
                     report.add(SECTION_SETTINGS, transferGroup, label, ConfigImportReport.Outcome.SKIPPED,
                             ConfigExport.OMITTED_PLACEHOLDER.equals(field.getValue())
-                                    ? "Exported without secrets - the existing value is kept."
-                                    : "No value for this field in the file's secrets.");
+                                    ? notice("Exported without secrets - the existing value is kept.")
+                                    : notice("No value for this field in the file's secrets."));
                     continue;
                 }
                 // Re-point a role that names a provider from the source deployment. One whose
@@ -598,7 +603,7 @@ public class ConfigTransferService {
                     incoming = remapped;
                 } else if (fileProviderIds.contains(incoming)) {
                     report.add(SECTION_SETTINGS, transferGroup, label, ConfigImportReport.Outcome.SKIPPED,
-                            "Its provider is not on this deployment - import AI Providers too, or choose one here.");
+                            notice("Its provider is not on this deployment - import AI Providers too, or choose one here."));
                     continue;
                 }
 
@@ -613,7 +618,7 @@ public class ConfigTransferService {
                 // A secret's VALUE is never put in the report - the report is rendered on screen
                 // and travels back over the wire. Only that it changed.
                 report.add(SECTION_SETTINGS, transferGroup, label, outcome,
-                        SettingsPrefixRegistry.isSecret(prefix, key) ? "Credential set." : null, restart);
+                        SettingsPrefixRegistry.isSecret(prefix, key) ? notice("Credential set.") : null, restart);
             }
             if (apply && !writes.isEmpty()) {
                 // The one write path, for secrets too: it encrypts by the @EncryptedField annotation
@@ -636,7 +641,7 @@ public class ConfigTransferService {
             String lower = s.name().toLowerCase(Locale.ROOT);
             if (taken.contains(lower)) {
                 report.add(SECTION_SKILLS, TransferGroups.SKILLS, s.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "A skill with this name already exists here; it was left alone.");
+                        notice("A skill with this name already exists here; it was left alone."));
                 continue;
             }
             if (workflowNames.contains(lower)) {
@@ -644,7 +649,7 @@ public class ConfigTransferService {
                 // here rather than left to fail inside create(): this is a bulk operation and a
                 // refusal with no explanation in the report would look like a dropped item.
                 report.add(SECTION_SKILLS, TransferGroups.SKILLS, s.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "A workflow here already uses this name, and \"/\" is one namespace.");
+                        notice("A workflow here already uses this name, and \"/\" is one namespace."));
                 continue;
             }
             // Sharing is a multi-user idea; on Enterprise Server a skill shared where it was written
@@ -661,7 +666,7 @@ public class ConfigTransferService {
             }
             taken.add(lower);
             report.add(SECTION_SKILLS, TransferGroups.SKILLS, s.name(), ConfigImportReport.Outcome.CREATED,
-                    share ? "Shared with everyone, as in the file." : null);
+                    share ? notice("Shared with everyone, as in the file.") : null);
         }
     }
 
@@ -678,12 +683,12 @@ public class ConfigTransferService {
             String lower = w.name().toLowerCase(Locale.ROOT);
             if (taken.contains(lower)) {
                 report.add(SECTION_WORKFLOWS, TransferGroups.WORKFLOWS, w.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "A workflow with this name already exists here; it was left alone.");
+                        notice("A workflow with this name already exists here; it was left alone."));
                 continue;
             }
             if (skillNames.contains(lower)) {
                 report.add(SECTION_WORKFLOWS, TransferGroups.WORKFLOWS, w.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "A skill here already uses this name, and \"/\" is one namespace.");
+                        notice("A skill here already uses this name, and \"/\" is one namespace."));
                 continue;
             }
             List<WorkflowService.WorkflowStep> steps = new ArrayList<>();
@@ -699,14 +704,13 @@ public class ConfigTransferService {
             // the report rather than silently, because the author chose that model on purpose.
             String provider = blankToNull(w.provider());
             String model = blankToNull(w.model());
-            String modelNote = null;
+            boolean modelDropped = false;
             if (provider != null) {
                 String mapped = providerIdRemap.get(provider);
                 if (mapped == null) {
                     provider = null;
                     model = null;
-                    modelNote = "The provider it runs on is not in this file - it will use the main "
-                            + "chat model.";
+                    modelDropped = true;
                 } else {
                     provider = mapped;
                 }
@@ -731,11 +735,28 @@ public class ConfigTransferService {
                 }
             }
             taken.add(lower);
-            String detail = steps.size() + " step" + (steps.size() == 1 ? "" : "s")
-                    + (share ? ", shared with everyone" : "");
             report.add(SECTION_WORKFLOWS, TransferGroups.WORKFLOWS, w.name(), ConfigImportReport.Outcome.CREATED,
-                    modelNote == null ? detail : detail + ". " + modelNote);
+                    workflowDetail(steps.size(), share, modelDropped));
         }
+    }
+
+    // A created workflow in one sentence the page can translate: its steps, shared or not, and whether the provider
+    // it ran on was left behind (it then uses the main chat model).
+    private static String workflowDetail(int steps, boolean shared, boolean modelDropped) {
+        boolean one = steps == 1;
+        if (modelDropped) {
+            if (shared) {
+                return one ? notice("A workflow of 1 step, shared with everyone. The provider it runs on is not in this file - it will use the main chat model.")
+                        : notice("A workflow of " + steps + " steps, shared with everyone. The provider it runs on is not in this file - it will use the main chat model.");
+            }
+            return one ? notice("A workflow of 1 step. The provider it runs on is not in this file - it will use the main chat model.")
+                    : notice("A workflow of " + steps + " steps. The provider it runs on is not in this file - it will use the main chat model.");
+        }
+        if (shared) {
+            return one ? notice("A workflow of 1 step, shared with everyone.")
+                    : notice("A workflow of " + steps + " steps, shared with everyone.");
+        }
+        return one ? notice("A workflow of 1 step.") : notice("A workflow of " + steps + " steps.");
     }
 
     private void importSystemPrompt(ConfigExport file, boolean apply, ConfigImportReport report) {
@@ -749,7 +770,7 @@ public class ConfigTransferService {
             // Desktop and Home Server run the built-in prompt of their build. A file from an
             // Enterprise Server must not become the one way to change it.
             report.add(SECTION_PROMPT, TransferGroups.AGENTS, "Chat system prompt", ConfigImportReport.Outcome.SKIPPED,
-                    "This edition always uses the built-in system prompt.");
+                    notice("This edition always uses the built-in system prompt."));
             return;
         }
         String existing = blankToNull(systemPromptService.readSaved());
@@ -760,7 +781,7 @@ public class ConfigTransferService {
         if (apply) systemPromptService.write(incoming);
         report.add(SECTION_PROMPT, TransferGroups.AGENTS, "Chat system prompt",
                 existing == null ? ConfigImportReport.Outcome.CREATED : ConfigImportReport.Outcome.UPDATED,
-                existing == null ? null : "The prompt already customized here will be replaced.");
+                existing == null ? null : notice("The prompt already customized here will be replaced."));
     }
 
     /**
@@ -827,7 +848,7 @@ public class ConfigTransferService {
             String key = kind.name() + "\n" + f.name().toLowerCase(Locale.ROOT);
             if (taken.contains(key)) {
                 report.add(SECTION_POLICIES, TransferGroups.GUARDRAILS, f.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "A policy document with this name is already here; it was left alone.");
+                        notice("A policy document with this name is already here; it was left alone."));
                 continue;
             }
             byte[] content;
@@ -835,7 +856,7 @@ public class ConfigTransferService {
                 content = Base64.getDecoder().decode(f.contentBase64());
             } catch (IllegalArgumentException e) {
                 report.add(SECTION_POLICIES, TransferGroups.GUARDRAILS, f.name(), ConfigImportReport.Outcome.SKIPPED,
-                        "The file's copy of this document is damaged.");
+                        notice("The file's copy of this document is damaged."));
                 continue;
             }
             if (apply) {
@@ -850,7 +871,7 @@ public class ConfigTransferService {
             }
             taken.add(key);
             report.add(SECTION_POLICIES, TransferGroups.GUARDRAILS, f.name(), ConfigImportReport.Outcome.CREATED,
-                    kind == PolicyDocument.Kind.EXAMPLES ? "Examples. Indexed after the import." : "Indexed after the import.");
+                    kind == PolicyDocument.Kind.EXAMPLES ? notice("Examples. Indexed after the import.") : notice("Indexed after the import."));
         }
     }
 
@@ -934,5 +955,10 @@ public class ConfigTransferService {
         } catch (Exception e) {
             return Optional.empty();
         }
+    }
+
+    // A detail the import report shows, translated on the page (tools/i18n/server-messages.mjs reads notice("...")).
+    private static String notice(String sentence) {
+        return sentence;
     }
 }

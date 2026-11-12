@@ -61,8 +61,8 @@ export function GuestBanner() {
         {message}{' '}
         <span className="text-ink-caption">
           {data.allowed
-            ? t('Sign in for your own conversation history, your own sources, and a far larger allowance.')
-            : t('Sign in for your own conversation history and your own sources.')}
+            ? t('Sign in to keep your chats and sources, with a larger allowance.')
+            : t('Sign in to keep your chats and sources.')}
         </span>
       </Banner>
     </Presence>

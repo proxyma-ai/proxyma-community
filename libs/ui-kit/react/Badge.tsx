@@ -6,7 +6,7 @@ interface Props {
   variant?: 'brand' | 'featured' | 'electric' | 'success' | 'warning' | 'danger' | 'neutral' | 'outline'
   /** For `outline`: a fact that is bad news (a mood of "bad", a revoked key) takes `danger` ink. */
   tone?: 'neutral' | 'danger' | 'warning' | 'brand'
-  /** `sm` sits inside a 14px title line without four overrides. */
+  /** `sm` (20px) sits inside a 14px title line without four overrides; `md` is 24px. */
   size?: 'sm' | 'md'
   /** A count or figure: medium weight, digits in the readout face. */
   numeric?: boolean
@@ -16,7 +16,7 @@ interface Props {
 }
 
 /**
- * 12px semibold in the label's OWN CASE (the `2xs` step, kept for what sits inside a small shape),
+ * 12px semibold in the label's OWN CASE (the `xs` step, the caption's, the floor of the scale),
  * always the control radius. Every badge was upper case with wide tracking until 2026-10-28 (the UI
  * review: "PAUSED" and "MEMBER" shouted beside sentence-case badges of the same kind); weight and
  * fill tell a status from a fact now, not capitals.
@@ -25,9 +25,11 @@ interface Props {
  * medium weight, no fill and a hairline border in secondary ink. A fill there read as a status the
  * person was in. A word the USER typed (a tag) is not a badge at all but a `Chip`.
  *
- * rounded-md, not rounded-full. These carry WORDS - Admin, Enterprise, Revoked, Most popular - and
- * a full pill around a word reads as a chip you can click. rounded-md is the same radius Button
- * uses, so a badge sitting beside one shares its corner.
+ * THE BUTTON'S SHAPE, SMALLER - never a pill (the maintainer, 2026-11-08: "The badges should not be
+ * pill style, they should be similar to the primary buttons, but smaller"). A fixed height - 24px,
+ * 20px for `sm` - and `rounded-sm` (6px): the button's corner in proportion, 8px on a 32-36px
+ * button being a quarter of its height. These were `rounded-md` (8px) on 18-20px, which is all
+ * but a full pill, and read as one. These carry WORDS - Admin, Enterprise, Revoked, Most popular.
  *
  * The three brand variants differ only in WEIGHT - the solid fill, then two on the NEUTRAL selected
  * fill with the brand's ink (the brand is never a tinted background, since 2026-10-28): `featured`
@@ -41,8 +43,8 @@ export function Badge({ label, variant = 'neutral', tone = 'neutral', size = 'md
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md whitespace-nowrap',
-        size === 'sm' ? 'px-1 text-2xs' : 'px-2 py-0.5 text-2xs',
+        'inline-flex items-center gap-1 rounded-sm whitespace-nowrap text-xs leading-none',
+        size === 'sm' ? 'h-5 px-1.5' : 'h-6 px-2',
         variant === 'outline' || numeric ? 'font-medium' : 'font-semibold',
         numeric && 'data-readout',
         variant === 'brand' && 'bg-brand-solid text-brand-on-solid',

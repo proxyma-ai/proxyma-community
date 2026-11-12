@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { Hand, Search, Zap } from 'lucide-react'
-import { MenuGroup, MenuRow, MenuTrigger, Popover, Tooltip } from '@/components/ui/kit'
+import { MenuGroup, MenuRow, MenuTrigger, Popover, Tooltip, cn, iconButton } from '@/components/ui/kit'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import type { PermissionMode } from '../types/chat.types'
 import { useTranslation } from '@/i18n'
@@ -19,8 +19,12 @@ const ORDER: PermissionMode[] = ['ASK', 'AUTO', 'READ_ONLY']
  * The kit's Popover, MenuTrigger and menu rows, opening UPWARD: the composer sits at the bottom of the page, and
  * a menu dropping below it would open off-screen. The Popover flips if there is no room above, and
  * marks Escape handled so a dialog beneath stays open (its own listeners did not).
+ *
+ * `compact` is the mode's icon alone, the kit's icon-button recipe, its name moving into the tooltip
+ * with what it means - where the composer is too narrow for the words (composerFit.ts, the
+ * maintainer's feedback of 2026-11-02). The same menu opens from it, by mouse or keyboard.
  */
-export function PermissionModePicker() {
+export function PermissionModePicker({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   // The chat this picker sits in - the chat page's, or a panel's - each with a mode of its own.
   const mode = useChatStore(s => s.permissionMode)
@@ -34,12 +38,29 @@ export function PermissionModePicker() {
   }
 
   const Icon = ICONS[mode]
+  const ariaLabel = t('Permission: {mode}', { mode: names[mode] })
   return (
     <Popover
       placement="top-start"
       widthClass="w-64"
-      ariaLabel={t('Permission: {mode}', { mode: names[mode] })}
-      trigger={({ open, toggle, ref }) => (
+      ariaLabel={ariaLabel}
+      trigger={({ open, toggle, ref }) => compact ? (
+        // The kit's tooltip keeps line breaks: the mode by name, then what it means.
+        <Tooltip label={`${ariaLabel}\n${hints[mode]}`} className="inline-flex shrink-0">
+          <button
+            ref={ref}
+            type="button"
+            onClick={toggle}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label={ariaLabel}
+            // Auto's warning ink is the control's state: its color at rest (the icon-button rule).
+            className={cn(iconButton('md', mode === 'AUTO' ? null : 'default'), mode === 'AUTO' && 'text-warning')}
+          >
+            <Icon size={16} aria-hidden="true" />
+          </button>
+        </Tooltip>
+      ) : (
         // SHRINK-0 ON THE WRAPPER: the Tooltip's box is the flex item, not the button, and on a
         // phone it shrank under the button's width - the chevron overlapped the model's name.
         <Tooltip label={hints[mode]} className="inline-flex shrink-0">
@@ -47,7 +68,7 @@ export function PermissionModePicker() {
             triggerRef={ref}
             icon={Icon}
             value={names[mode]}
-            ariaLabel={t('Permission: {mode}', { mode: names[mode] })}
+            ariaLabel={ariaLabel}
             open={open}
             onClick={toggle}
             tone={mode === 'AUTO' ? 'warning' : 'default'}

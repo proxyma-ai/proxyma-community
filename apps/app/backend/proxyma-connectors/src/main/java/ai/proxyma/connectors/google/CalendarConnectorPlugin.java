@@ -46,7 +46,7 @@ public class CalendarConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.GOOGLE_CALENDAR)
             .protocol(ConnectionProtocol.GOOGLE)
             .displayName("Google Calendar")
-            .description("Events in Google calendars - who, when, where and what - from a year back to half a year ahead.")
+            .description("Events in Google calendars, from a year back to six months ahead.")
             .noun("Google calendar", "Google calendars")
             .addTitle("Add a Google calendar")
             .order(44)
@@ -54,8 +54,7 @@ public class CalendarConnectorPlugin implements ConnectorPlugin {
             .mark("googlecalendar")
             .fields(
                     FieldSpec.list(CALENDARS, "Calendars").defaultValue("primary").placeholder("primary")
-                            .help("Each calendar to read, by its ID: primary for your own, or the calendar ID from "
-                                    + "its settings in Google Calendar."),
+                            .help("Calendar IDs: primary for your own, or the ID from Google Calendar settings."),
                     FieldSpec.number(DAYS_BACK, "Days back").defaultValue(String.valueOf(DEFAULT_DAYS_BACK)).range(0, 3650)
                             .help("Events that ended up to this many days ago."),
                     FieldSpec.number(DAYS_AHEAD, "Days ahead").defaultValue(String.valueOf(DEFAULT_DAYS_AHEAD)).range(0, 3650)

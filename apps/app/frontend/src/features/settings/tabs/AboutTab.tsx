@@ -12,6 +12,7 @@ import { Logo } from '@/components/ui/Logo'
 import { configApi } from '@/services/configApi'
 import { settingsApi } from '../services/settingsApi'
 import { useTourStore } from '@/store/tourStore'
+import { useEditionWalkthroughs } from '@edition'
 import { withReason } from '@/services/apiError'
 import { useSettings } from '../hooks/useSettings'
 import { useAuthStore } from '@/store/authStore'
@@ -58,6 +59,7 @@ import { SignpostSection } from '../pages/shared'
 // policy is now one section above them rather than one tab away.
 export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTab: OpenTab }) {
   const { t } = useTranslation()
+  const walkthroughs = useEditionWalkthroughs().tours
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: configApi.get, staleTime: Infinity, retry: false })
   // Three editions from two builds: the home server is the desktop bundle, so only the runtime
   // config can name it. "Home Server" and "Enterprise Server" stay untranslated - they are product
@@ -99,9 +101,9 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
           The facts are the kit's KeyValueList, a name and its value per row. */}
       <div className="flex items-stretch gap-6">
         <span className="shrink-0 self-stretch w-20" aria-hidden="true">
-          {/* Turns at the header's idle speed, 30 degrees a second: the kit's named mark-idle
-              animation, which the kit's prefers-reduced-motion rule stops with no code here. */}
-          <Logo markOnly className="h-full w-full animate-mark-idle" />
+          {/* Turns as every mark does, one turn in the kit's `--mark-turn`: Logo's own `.mark-turn`,
+              still under reduced motion with no code here. */}
+          <Logo markOnly className="h-full w-full" />
         </span>
         <KeyValueList layout="rows" className="flex-1 min-w-0 content-center gap-y-3">
           <KeyValue layout="rows" label={t('Edition')}>{`Proxyma ${editionName}`}</KeyValue>
@@ -163,13 +165,33 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
           </Button>
         }
       />
+      {/* An edition's walkthroughs (the YouTube assistant's, Constellations'), each replayed from here as from its page. */}
+      {walkthroughs.map(w => (
+        <SignpostSection
+          key={w.name}
+          title={t(w.title)}
+          caption={t('Each step is one you do yourself.')}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                onClose()
+                useTourStore.getState().start(w.name)
+              }}
+            >
+              <RotateCw size={14} />
+              {t('Replay walkthrough')}
+            </Button>
+          }
+        />
+      ))}
 
       {/* THE NAME IS A REFERENCE: the End User License Agreement sends a reader to "Settings >
           About > Open-source licenses", so this heading must keep saying exactly that. The text is
           THIRD-PARTY-NOTICES.txt, the same file the installers put in the installation folder. */}
       <SignpostSection
         title={t('Open-source licenses')}
-        caption={t('Each open-source part, its license, and how to get GPL and LGPL source.')}
+        caption={t('Open-source parts and their licenses.')}
         action={
           <Button variant="secondary" onClick={() => setShowNotices(true)}>
             <Scale size={14} />
@@ -195,7 +217,7 @@ function DisplaySection() {
       <SwitchRow
         className="pt-0"
         title={t('Show a space fact on the empty chat')}
-        caption={t('A short astronomy fact under the logo on a new chat. Saved in this browser only.')}
+        caption={t('A short space fact on a new chat. This browser only.')}
         checked={spaceFact}
         onChange={setSpaceFact}
       />
@@ -226,7 +248,7 @@ function GuidesSection() {
         <LinkRow
           icon={Code2}
           title={t('Claude Code, VS Code & Copilot')}
-          description={t('Reaching this instance from your own tools or coding assistant.')}
+          description={t('Use this instance from your own tools.')}
           href={docs('integrations')}
         />
         <LinkRow
@@ -261,7 +283,7 @@ function DocumentationSection() {
   return (
     <SettingsSection
       title={t('Documentation')}
-      caption={t('Manuals, the API and MCP reference, and common questions, on proxyma.ai.')}
+      caption={t('Manuals, API reference and FAQ on proxyma.ai.')}
       gap="list"
     >
       {/* Icons match proxyma.ai/docs one-for-one: a rack for the server manual, a laptop for the
@@ -289,7 +311,7 @@ function DocumentationSection() {
           <LinkRow
             icon={NotebookText}
             title={t('Release notes')}
-            description={t('What changed in each version, and what needs action before you upgrade.')}
+            description={t('What changed in each version.')}
             href="https://proxyma.ai/docs/release-notes/"
           />
         </List>
@@ -341,7 +363,7 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
       qc.invalidateQueries({ queryKey: keys.settings('privacy') })
       // Turning it off also deletes what was waiting - the server does that on the save itself
       // (DataCollectionChangedEvent), so the toast can say so truthfully.
-      addToast(allowed ? t('Diagnostics are now sent to Proxyma') : t('Diagnostics are no longer sent, and what was waiting has been deleted'), 'success')
+      addToast(allowed ? t('Diagnostics are now sent to Proxyma') : t('Diagnostics are off, and what was waiting is deleted'), 'success')
     },
     onError: (e: unknown) => addToast(withReason(t('Could not save that preference'), e), 'danger'),
   })
@@ -349,8 +371,8 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
     <SettingsSection
       title={t('Privacy')}
       caption={FEATURES.auth
-        ? t('Read how your data is handled, and the terms that govern your use of this service.')
-        : t('Read how your data is handled, and the terms for the services Proxyma runs.')}
+        ? t('How your data is handled, and the terms of use.')
+        : t('How your data is handled, and the terms of the services Proxyma runs.')}
       gap="list"
     >
       {/* The two documents, then the switch they describe, in ONE list. It had a heading of its
@@ -373,13 +395,13 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
                 })}
               </>
             )
-            : t('The terms for the services Proxyma runs, such as feedback and diagnostics.')}
+            : t('Terms for the services Proxyma runs.')}
           href="https://proxyma.ai/terms"
         />
         <LinkRow
           icon={Shield}
           title={t('Privacy Policy')}
-          description={t("What data is collected, how it's used, and your rights over it.")}
+          description={t('What data is collected and your rights.')}
           href="https://proxyma.ai/privacy"
         />
 
@@ -394,14 +416,14 @@ function PrivacySection({ onOpenTab }: { onOpenTab: OpenTab }) {
           <SwitchRow
             title={t('Send diagnostics to Proxyma')}
             caption={FEATURES.auth
-              ? t('Proxyma Enterprise Server never sends diagnostics or rated answers to Proxyma.')
-              : t('Error types, timings and enabled features once a day, and any answer you rate with its question.')}
+              ? t('Enterprise Server never sends diagnostics or ratings.')
+              : t('Error types, timings and features once a day, and answers you rate with their question.')}
             checked={dataCollectionAllowed && !telemetryBlockedByTier}
             onChange={v => dataCollectionMutation.mutate(v)}
             disabled={dataCollectionMutation.isPending || telemetryBlockedByTier}
             footnote={telemetryBlockedByTier ? (
               <Caption>
-                {t('Enterprise deployments never send diagnostics outside their own infrastructure, so this cannot be turned on.')}
+                {t('Enterprise never sends diagnostics, so this cannot be turned on.')}
               </Caption>
             ) : !FEATURES.auth && (
               // What was collected, what would go next and every send are in Logs since

@@ -51,9 +51,10 @@ public class SecurityHeadersConfig {
             "form-action 'self'",
             "frame-ancestors 'none'");
 
-    // The MCP sign-in's closing page (McpOAuthController) is written whole by the server from fixed
-    // sentences, and closes itself with one inline script. Nothing a user or a model wrote reaches
-    // it, so it keeps its inline script and loads nothing else.
+    // The sign-ins' closing pages - an MCP server's (McpOAuthController) and, since 2026-10-31, a
+    // connection's opened in the person's own browser (ConnectionOAuthController.page) - are written
+    // whole by the server from fixed sentences, and close themselves with one inline script. Nothing a
+    // user or a model wrote reaches them, so they keep their inline script and load nothing else.
     static final String CALLBACK_POLICY = String.join("; ",
             "default-src 'none'",
             "script-src 'unsafe-inline'",
@@ -63,6 +64,10 @@ public class SecurityHeadersConfig {
             "frame-ancestors 'none'");
 
     static final String MCP_OAUTH_CALLBACK = "/api/v1/mcp-oauth/callback";
+    static final String CONNECTION_OAUTH_CALLBACK = "/api/v1/connections/oauth/callback";
+    static final String OPENROUTER_CALLBACK = "/api/v1/providers/openrouter/callback";
+    static final java.util.Set<String> CALLBACK_PAGES = java.util.Set.of(MCP_OAUTH_CALLBACK, CONNECTION_OAUTH_CALLBACK,
+            OPENROUTER_CALLBACK);
 
     // First of all: every response, refusals from the filters after it included.
     @Bean
@@ -71,7 +76,7 @@ public class SecurityHeadersConfig {
         return (ServerWebExchange exchange, WebFilterChain chain) -> {
             HttpHeaders headers = exchange.getResponse().getHeaders();
             String path = exchange.getRequest().getPath().pathWithinApplication().value();
-            headers.set("Content-Security-Policy", MCP_OAUTH_CALLBACK.equals(path) ? CALLBACK_POLICY : POLICY);
+            headers.set("Content-Security-Policy", CALLBACK_PAGES.contains(path) ? CALLBACK_POLICY : POLICY);
             // No Referer anywhere. The app has no use for one, and a link out of a conversation
             // should not tell the site it leads to which conversation it was in.
             headers.set("Referrer-Policy", "no-referrer");

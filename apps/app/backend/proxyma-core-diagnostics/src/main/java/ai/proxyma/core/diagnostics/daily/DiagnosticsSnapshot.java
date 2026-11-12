@@ -12,7 +12,6 @@ import ai.proxyma.core.settings.dto.GuardrailSettings;
 import ai.proxyma.core.settings.dto.OcrSettings;
 import ai.proxyma.core.settings.dto.QueryExpansionSettings;
 import ai.proxyma.core.settings.dto.RerankingSettings;
-import ai.proxyma.core.settings.dto.SubAgentSettings;
 import ai.proxyma.core.settings.dto.WebSearchSettings;
 import ai.proxyma.core.settings.service.SettingsService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -71,13 +70,8 @@ public class DiagnosticsSnapshot {
         put(raw, "queryExpansion", () -> get(QueryExpansionSettings.PREFIX, QueryExpansionSettings.class).isEnabled());
         put(raw, "reranking", () -> get(RerankingSettings.PREFIX, RerankingSettings.class).isEnabled());
         put(raw, "knowledgeGraph", () -> get(GraphSettings.PREFIX, GraphSettings.class).isEnabled());
-        // Sub-agents are always on since 2026-10-03. What still varies is whether they were given a
-        // model of their own, which is what this now says - under a new name, so a reader of two
-        // reports never compares a switch with a model choice.
-        put(raw, "subAgentModel", () -> {
-            String model = get(SubAgentSettings.PREFIX, SubAgentSettings.class).getModel();
-            return model != null && !model.isBlank();
-        });
+        // No sub-agent entry: deployed agents are always on (2026-10-03) and have no model of their
+        // own to report since 2026-11-02 - subAgentModel went with that setting.
         put(raw, "evaluationMode", () -> get(EvaluationSettings.PREFIX, EvaluationSettings.class).isEnabled());
         put(raw, "webSearchConfigured", () -> get(WebSearchSettings.PREFIX, WebSearchSettings.class).isConfigured());
         put(raw, "guardrailInput", () -> get(GuardrailSettings.PREFIX, GuardrailSettings.class).isInputEnabled());

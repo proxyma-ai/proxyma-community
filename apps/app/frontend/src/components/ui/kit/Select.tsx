@@ -63,7 +63,28 @@ interface SelectProps<T extends string = string> {
   /** Shown in the trigger while `value` matches no option. */
   placeholder?: string
   ariaLabel?: string
+  /**
+   * `chip`: a button as wide as its words - a filter in a row of them, as a shop's "Brand v" (2026-11-09, the maintainer,
+   * pointing at one) - its border the brand's while `active`, and its panel wider than it when it needs to be. `field`,
+   * the default: a form field filling its box.
+   */
+  look?: 'field' | 'chip'
+  /** A chip's words, in place of the chosen option's - the filter's name, or its name and choice. */
+  chipLabel?: ReactNode
+  /** A chip with a choice in force. */
+  active?: boolean
+  /** A chip's 14px glyph, before its words - what the filter is about (a tag, a person, a video). */
+  chipIcon?: ReactNode
+  /**
+   * SEVERAL CHOSEN (2026-11-09, the maintainer: "I can select multiple tags"): each value listed here is ticked, a pick
+   * hands its value to `onChange` - the caller adds or removes it - and the menu stays open for the next. `value` is
+   * then the option that clears them all ("All tags"), ticked while none is chosen.
+   */
+  chosen?: readonly T[]
 }
+
+/** A chip's panel is at least this wide, so a short "Tag" does not open a list of truncated names. */
+const CHIP_PANEL_MIN = 240
 
 /**
  * Brand-styled replacement for a native <select>.
@@ -106,7 +127,15 @@ export function Select<T extends string = string>({
   emptyLabel = 'No matches',
   placeholder,
   ariaLabel,
+  look = 'field',
+  chipLabel,
+  active = false,
+  chipIcon,
+  chosen,
 }: SelectProps<T>) {
+  const multi = chosen !== undefined
+  const isChosen = (v: T) => (multi ? (chosen.length === 0 ? v === value : chosen.includes(v)) : v === value)
+  const chip = look === 'chip'
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [pos, setPos] = useState<PanelPosition | null>(null)
@@ -129,14 +158,17 @@ export function Select<T extends string = string>({
     // because above happens to be larger, which would send a menu upward in the middle of a page.
     const flip = below < MIN_PANEL && above > below
     const available = Math.max(MIN_PANEL, flip ? above : below)
+    // A chip's panel may be wider than the chip, kept inside the viewport.
+    const width = chip ? Math.min(Math.max(r.width, CHIP_PANEL_MIN), window.innerWidth - 2 * VIEWPORT_MARGIN) : r.width
+    const left = chip ? Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN)) : r.left
     setPos({
-      left: r.left,
-      width: r.width,
+      left,
+      width,
       top: flip ? undefined : r.bottom + GAP,
       bottom: flip ? window.innerHeight - r.top + GAP : undefined,
       listMaxHeight: Math.min(LIST_MAX, available),
     })
-  }, [])
+  }, [chip])
 
   const toggle = useCallback((next: boolean) => {
     if (next) measure()
@@ -151,16 +183,18 @@ export function Select<T extends string = string>({
 
   const choose = useCallback((v: T) => {
     onChange(v)
+    // Several chosen: the menu stays for the next pick.
+    if (multi) return
     setOpen(false)
     // Back to the trigger from the filter box, so the next Tab goes on from the field.
     if (searchable) triggerRef.current?.focus({ preventScroll: true })
-  }, [onChange, searchable])
+  }, [onChange, searchable, multi])
 
   const list = useListbox({
     open,
     setOpen: toggle,
     count: visibleOptions.length,
-    selectedIndex: visibleOptions.findIndex(o => o.value === value),
+    selectedIndex: visibleOptions.findIndex(o => isChosen(o.value)),
     labels: searchable ? undefined : visibleOptions.map(o => o.label),
     onPick: i => { const o = visibleOptions[i]; if (o) choose(o.value) },
     spaceSelects: !searchable,
@@ -204,7 +238,7 @@ export function Select<T extends string = string>({
   }, [open, searchable])
 
   return (
-    <div className={cn('relative', className)} ref={containerRef}>
+    <div className={cn('relative', chip && 'inline-block max-w-full', className)} ref={containerRef}>
       <button
         ref={triggerRef}
         type="button"
@@ -220,16 +254,24 @@ export function Select<T extends string = string>({
         // would do the same job and warn on every server render in the Next.js consumer.
         onClick={() => toggle(!open)}
         onKeyDown={list.onKeyDown}
-        className={cn(
+        className={chip ? cn(
+          'inline-flex max-w-full items-center gap-1.5 h-9 touch:h-tap pl-3 pr-2 rounded-md border bg-field text-sm font-ui whitespace-nowrap',
+          'outline-none focus-ring transition-colors duration-fast ease-out disabled:opacity-40',
+          active ? 'border-brand-solid/60 text-brand-legible font-medium'
+            : 'border-line text-ink-secondary mouse:hover:border-ink-disabled mouse:hover:text-ink-primary',
+          open && 'border-brand-solid',
+        ) : cn(
           FIELD_BASE,
           'flex items-center justify-between gap-1 pl-3 pr-2 text-left',
           fieldBorder(undefined),
           open && 'border-brand-solid',
         )}
       >
-        <span className="flex items-center gap-2 min-w-0">
-          {selectedOption?.icon}
-          <span className={cn('truncate', !selectedOption && 'text-ink-disabled')}>{selectedOption?.label ?? placeholder ?? ''}</span>
+        <span className={cn('flex items-center min-w-0', chip ? 'gap-1.5' : 'gap-2')}>
+          {chip && chipIcon !== undefined ? chipIcon : selectedOption?.icon}
+          <span className={cn('truncate', !chip && !selectedOption && 'text-ink-disabled')}>
+            {chip && chipLabel !== undefined ? chipLabel : selectedOption?.label ?? placeholder ?? ''}
+          </span>
         </span>
         <ChevronDown
           size={14}
@@ -267,6 +309,7 @@ export function Select<T extends string = string>({
             id={list.listId}
             role="listbox"
             aria-label={ariaLabel}
+            aria-multiselectable={multi || undefined}
             className="overflow-y-auto py-1"
             style={{ maxHeight: pos.listMaxHeight }}
           >
@@ -277,7 +320,7 @@ export function Select<T extends string = string>({
               <div
                 key={o.value}
                 role="option"
-                aria-selected={o.value === value}
+                aria-selected={isChosen(o.value)}
                 {...list.optionProps(i)}
                 // The pointer chooses on click; mousedown is held so focus stays on the field.
                 onMouseDown={e => e.preventDefault()}
@@ -287,14 +330,14 @@ export function Select<T extends string = string>({
                   // Rounded and inset 4px, as a menu's rows (2026-10-30); the text stays 12px in.
                   'flex items-center justify-between gap-2 w-[calc(100%-0.5rem)] mx-1 rounded-md text-left px-2 py-2 touch:min-h-tap text-sm cursor-pointer transition-colors',
                   'data-[active]:bg-ink-caption/10',
-                  o.value === value ? 'text-brand-legible font-medium' : 'text-ink-secondary data-[active]:text-ink-primary',
+                  isChosen(o.value) ? 'text-brand-legible font-medium' : 'text-ink-secondary data-[active]:text-ink-primary',
                 )}
               >
                 <span className="flex items-center gap-2 min-w-0">
                   {o.icon}
                   <span className="truncate">{o.label}</span>
                 </span>
-                {o.value === value && <Check size={14} className="shrink-0" aria-hidden="true" />}
+                {isChosen(o.value) && <Check size={14} className="shrink-0" aria-hidden="true" />}
               </div>
             ))}
           </div>

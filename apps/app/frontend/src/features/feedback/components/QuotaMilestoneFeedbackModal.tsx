@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, DialogBody, DialogFooter, DialogHeader, Textarea } from '@/components/ui/kit'
+import { Button, DialogBody, DialogFooter, DialogHeader, TEXT, Textarea } from '@/components/ui/kit'
 import { useToastStore } from '@/store/toastStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useSubmitFeedback } from '../hooks/useSubmitFeedback'
@@ -60,7 +60,7 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
     )
   }
 
-  const title = t("Enjoy using {product}? Leave feedback - it's significant in helping us improve {product}.",
+  const title = t('Enjoy {product}? Tell us what you think.',
     { product: productName })
 
   return (
@@ -76,7 +76,7 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
       <DialogBody className="space-y-4">
         {QUOTA_MILESTONE_QUESTIONS.map(({ id, label }) => (
           <div key={id} className="flex items-center justify-between gap-3">
-            <span className="text-sm text-ink-secondary">{t(label)}</span>
+            <span className={TEXT.option}>{t(label)}</span>
             <MoodPicker
               compact
               ariaLabel={t(label)}
@@ -103,7 +103,7 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
           </Button>
         )}
       >
-        <Button variant="primary" onClick={handleSubmit} disabled={submitFeedback.isPending}>
+        <Button variant="primary" onClick={handleSubmit} loading={submitFeedback.isPending}>
           {submitFeedback.isPending ? t('Sending...') : t('Submit')}
         </Button>
       </DialogFooter>

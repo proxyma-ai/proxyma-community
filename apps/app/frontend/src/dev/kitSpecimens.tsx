@@ -6,12 +6,12 @@ import {
 import {
   ActionMenu, ActivityFeed, ActivityLine, AppHeader, AppearanceIcon, AppearanceMenu, AppearanceMenuRow, AudioPlayer, AuthLayout, AutoHideHeader,
   Avatar, AvatarStack, BackLink, Badge, Banner, BarList, BootScreen, BrandMark, BulkActionBar, Button, ButtonLink, Callout, Caption, Card,
-  CardBody, CardHeader, ChartCard, ChatMessage, ChatMessageSkeleton, ChatStartHero, ChatStartLinks, Checkbox, Chip, ChoiceMark, ChoiceRow, CitationList,
+  CardBody, CardHeader, ChartCard, ChatMessage, ChatMessageSkeleton, ChatStartHero, ChatStartLinks, ChatStartStage, Checkbox, Chip, ChoiceMark, ChoiceRow, CitationList,
   CitationRow, CitationsFold, CodeBlock, Collapse, ColumnChart, Combobox, CompareTable, ComposerShell, ConfirmDialog, CopyButton, CopyField,
   DateTimePicker, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogNotice, DialogShell, DialogTitle, Disclosure,
   DisclosureButton, DisclosureChevron, DisplayHeading, Divider, DownloadRow, DropArea, DropOverlay, Elapsed, EmptyState, EmptyValue,
   ErrorBoundary, ErrorState, ExternalLink, ExternalMark, Eyebrow, FadeSwap, FaqItem, FeatureRow, Field, FieldHint, FieldLabel, FieldNote, FieldSkeleton,
-  FilePickerButton, FilterBar, FilterChips, FilterTiles, FormAlert, FormColumns, FormStack, Frame, HScroll, HoverActions, IconButton, IconCountButton,
+  ChoiceChips, FilePickerButton, FilterBar, FilterChips, FilterTiles, FormAlert, FormColumns, FormStack, Frame, HScroll, HoverActions, IconButton, IconCountButton,
   IconMenu, IconToggleButton, IdentityCell, IncludedList, InlineCode, InlineConfirm, InlineNotice, Input, ItemRow, ItemRowSkeleton,
   KeyValue, KeyValueGroup, KeyValueList, LanguageMenu, LanguageMenuRow, LegendSwatch, Lightbox, LinkCard, LinkColumn, LinkRow, List,
   ListEditor, ListGroupHeading, ListPager, ListRow, ListRowSkeleton, LoadMoreRow, LoadingState, Logo, MenuEmpty, MenuGroup, MenuIdentity,
@@ -23,8 +23,8 @@ import {
   SheetTable, Skeleton, Slider, SortTh, SourceListHeader, SourceRow, SourceRowSkeleton, Spinner, SplashScreen, SplitSection, StackedBar,
   StateMark, StatGrid, StatTile, StaticValue, StatusDot, StatusMark, StatusScreen, StepCard, StepItem, StepList, Stepper, SubAgentPanel,
   SubNavTabs, SubmenuRow, SwitchRow, SwitchRowSkeleton, TABLE_CLASS, TD, TD_COMPACT, THEAD_TR, TR, TR_INTERACTIVE, TableCard,
-  TableEmptyRow, TableFooter, TableSkeletonRows, Textarea, Th, TierBadge, Timeline, Title, Toast, ToggleSwitch, ToolCallGroup, ToolCallRow,
-  Toolbar, Tooltip, PointerTooltip, UsageRing, UserMenu, WorkingBadge, buttonClass, iconButton, menuRow, textLink, useFileDrop, MARK_PATHS, isMarkId,
+  TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter, TableSkeletonRows, Textarea, Th, TierBadge, Timeline, Title, Toast, ToggleSwitch, ToolCallGroup, ToolCallRow,
+  Toolbar, Tooltip, PointerTooltip, UsageRing, RingMeter, UserMenu, WorkingBadge, buttonClass, iconButton, menuRow, textLink, useFileDrop, MARK_PATHS, isMarkId,
   FIELD_BASE, fieldBorder, GlassFrame, AppSidebar, SidebarSection, sidebarRow, WindowControls, MODAL_SCRIM_DARK,
   SidebarChoiceRow, SidebarAppearanceRow, SidebarLanguageRow,
   type AppearancePreference, type BarListRow, type SortState,
@@ -413,6 +413,25 @@ function SelectableHeaderDemo() {
   return <div className="w-80"><SelectableListHeader state={picked} onToggle={() => setPicked(p => (p === 'all' ? 'none' : 'all'))} label="Select every entry shown">12 entries</SelectableListHeader></div>
 }
 
+function SortChipsDemo() {
+  const [sort, setSort] = useState<'new' | 'video' | 'viewer'>('new')
+  const [tag, setTag] = useState('')
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-sm text-ink-caption">Filter</span>
+        <Select look="chip" active={!!tag} chipLabel={tag ? `Tag: ${tag}` : 'Tag'} ariaLabel="Tag" value={tag} onChange={setTag}
+          options={[{ value: '', label: 'All tags' }, { value: 'thanks', label: 'thanks (12)' }, { value: 'question', label: 'question (4)' }]} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-sm text-ink-caption">Sort by</span>
+        <ChoiceChips ariaLabel="Sort by" active={sort} onChange={setSort}
+          options={[{ key: 'new', label: 'Newest first' }, { key: 'video', label: 'By video' }, { key: 'viewer', label: 'By viewer' }]} />
+      </div>
+    </div>
+  )
+}
+
 function FilterDemo() {
   const [filter, setFilter] = useState<'all' | 'jira' | 'web'>('all')
   const [search, setSearch] = useState('')
@@ -725,6 +744,13 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   StackedBar: [{ title: 'One bar in shares', render: () => <div className="w-72 space-y-3"><StackedBar label="Spend by service" segments={[{ value: 6, className: 'bg-chart-1', label: 'Chat' }, { value: 3, className: 'bg-chart-2', label: 'Embedding' }, { value: 1, className: 'bg-chart-3', label: 'Rerank' }]} /></div> }],
   LegendSwatch: [{ title: 'Legend entries', render: () => <div className="flex gap-4"><LegendSwatch swatchClass="bg-chart-1" label="Chat" value="$6.00" /><LegendSwatch swatchClass="bg-chart-2" label="Embedding" value="$3.00" /><LegendSwatch swatchClass="bg-chart-other" label="Other" /></div> }],
   UsageRing: [{ title: 'A percent ring', render: () => <div className="flex gap-3 text-ink-caption"><UsageRing value={24} /><span className="text-warning"><UsageRing value={84} /></span><span className="text-danger"><UsageRing value={97} size={24} /></span></div> }],
+  RingMeter: [{ title: 'Three rings', render: () => (
+    <div className="flex items-center gap-1">
+      <RingMeter value={72} label="Prompt cache warm for 3:36" valueText="3:36 left" />
+      <RingMeter value={12} label="Prompt cache warm for 0:36" tone="warning" valueText="0:36 left" />
+      <RingMeter value={84} label="Condense conversation - context window 84% full" tone="warning" onClick={() => {}} />
+    </div>
+  ) }],
   ColumnChart: [{ title: 'Cost per day (arrows move it)', wide: true, render: () => <ColumnDemo /> }],
   Tooltip: [{ title: 'Hover or keyboard focus', render: () => <div className="flex gap-3"><Tooltip label="A hint in words"><button type="button" className={iconButton('md')} aria-label="Settings"><Settings size={16} aria-hidden="true" /></button></Tooltip><Tooltip label="Below the trigger" side="bottom"><Button variant="secondary">Bottom</Button></Tooltip></div> }],
   PointerTooltip: [{ title: 'Over a drawn line', render: () => <PointerTooltipDemo /> }],
@@ -735,10 +761,9 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
 
   // Brand
   Logo: [
-    { title: 'The lockup at its sizes', wide: true, render: () => <div className="flex flex-wrap items-center gap-8"><Logo size={16} /><Logo size={24} /><Logo /><Logo size={40} /></div> },
-    { title: 'With a subtitle (the consoles)', render: () => <div className="flex flex-col gap-4"><Logo subtitle="License Manager" /><Logo subtitle="Telemetry" /></div> },
-    { title: 'Stacked, at hero size (the Community new chat)', render: () => <div className="flex items-end gap-10"><Logo size={64} stacked /><Logo size={72} stacked /></div> },
-    { title: 'Mark alone', render: () => <div className="flex items-end gap-4"><Logo markOnly size={16} /><Logo markOnly size={24} ariaLabel="Proxyma" /><Logo markOnly size={40} /><Logo markOnly size={72} /><Logo markOnly size={80} className="animate-mark-idle" /></div> },
+    { title: 'The lockup at its sizes', wide: true, render: () => <div className="flex flex-wrap items-center gap-8"><Logo still size={16} /><Logo still size={24} /><Logo still /><Logo still size={40} /></div> },
+    { title: 'With a subtitle (the consoles)', render: () => <div className="flex flex-col gap-4"><Logo still subtitle="License Manager" /><Logo still subtitle="Telemetry" /></div> },
+    { title: 'Mark alone', render: () => <div className="flex items-end gap-4"><Logo still markOnly size={16} /><Logo still markOnly size={24} ariaLabel="Proxyma" /><Logo still markOnly size={40} /><Logo still markOnly size={72} /><Logo markOnly size={80} /></div> },
   ],
   ProxymaIcon: [{ title: 'The mark itself', render: () => <div className="flex items-end gap-4"><ProxymaIcon size={16} /><ProxymaIcon size={32} /><ProxymaIcon size={64} /><ProxymaIcon size={128} /></div> }],
   BrandMark: [{ title: 'Every mark', wide: true, render: () => (
@@ -809,6 +834,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   LinkRow: [{ title: 'A document out', render: () => <LinkRow icon={FileText} title="Server manual" description="Install, upgrade, back up." href="https://proxyma.ai/docs/server/" /> }],
   BulkActionBar: [{ title: 'While rows are selected', wide: true, render: () => <BulkActionBar className="w-full" countText="3 selected"><Button variant="quiet">Clear</Button><Button variant="danger-quiet">Delete</Button></BulkActionBar> }],
   FilterChips: [{ title: 'One filter at a time', wide: true, render: () => <FilterDemo /> }],
+  ChoiceChips: [{ title: 'A sort, after a filter chip', wide: true, render: () => <SortChipsDemo /> }],
   FilterBar: [{ title: 'Filters, search, toggles', wide: true, render: () => <FilterDemo /> }],
   Toolbar: [{ title: 'Controls over a page', wide: true, render: () => <Toolbar className="w-full" label="Report options" start={<><SegmentedControl ariaLabel="Period" value="7d" onChange={noop} options={[{ value: '24h', label: '24h' }, { value: '7d', label: '7d' }, { value: '30d', label: '30d' }]} /></>} end={<><Button variant="secondary">Export</Button><IconButton icon={RefreshCw} label="Refresh" /></>} /> }],
   PickBox: [{ title: 'A bordered pick list', render: () => <PickBox className="w-80"><List>{['searchIndexedSources', 'delegate', 'askUser', 'readSkill'].map(n => <ListRow key={n} leading={<Checkbox checked onChange={noop} ariaLabel={n} />} title={n} />)}</List></PickBox> }],
@@ -836,6 +862,16 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   TableEmptyRow: [{ title: 'An empty table', wide: true, render: () => (
     <TableCard className="w-full">
       <table className={TABLE_CLASS}><thead><tr className={THEAD_TR}><Th>Name</Th><Th>Seats</Th></tr></thead><tbody><TableEmptyRow colSpan={2} action={<Button size="sm">Issue a license</Button>}>Licenses appear here once you issue one.</TableEmptyRow></tbody></table>
+    </TableCard>
+  ) }],
+  TableErrorRow: [{ title: 'A table that could not load', wide: true, render: () => (
+    <TableCard className="w-full">
+      <table className={TABLE_CLASS}><thead><tr className={THEAD_TR}><Th>Name</Th><Th>Seats</Th></tr></thead><tbody><TableErrorRow colSpan={2} title="Could not load the licenses." action={<Button variant="secondary" size="sm">Try again</Button>}>The server did not answer.</TableErrorRow></tbody></table>
+    </TableCard>
+  ) }],
+  RowOpenButton: [{ title: 'A row that opens a dialog', wide: true, render: () => (
+    <TableCard className="w-full">
+      <table className={TABLE_CLASS}><thead><tr className={THEAD_TR}><Th>Name</Th><Th>Seats</Th></tr></thead><tbody><tr className={`${TR} ${TR_INTERACTIVE}`}><td className={TD}><RowOpenButton onOpen={() => undefined}><IdentityCell name="Northwind Traders" sub="Enterprise" /></RowOpenButton></td><td className={TD}>25</td></tr></tbody></table>
     </TableCard>
   ) }],
   DropArea: [{ title: 'Click or drop', wide: true, render: () => <DropDemo /> }],
@@ -907,6 +943,14 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
       <ChatStartHero as="p" className="w-full" greeting="Hi, Avery" fact={<p className="text-center">Proxima Centauri, a small red dwarf about 4.25 light-years away, is the nearest star to the Sun.</p>} />
     ) },
   ],
+  ChatStartStage: [{ title: 'The stage of the new chat', wide: true, render: () => (
+    <div className="h-96 w-full flex flex-col">
+      <ChatStartStage>
+        <div className="chat-stage-column flex-1 flex flex-col justify-center"><ChatStartHero as="p" onStage /></div>
+        <ChatStartLinks onStage links={[{ key: 'a', render: cls => <button type="button" className={cls}>Skills</button> }, { key: 'b', render: cls => <a className={cls} href="#x">Help</a> }]} />
+      </ChatStartStage>
+    </div>
+  ) }],
   ChatStartLinks: [{ title: 'Under the new-chat composer', wide: true, render: () => (
     <ChatStartLinks primary={{ label: 'Connect a source', icon: Plus, render: (cls, body) => <button type="button" className={cls}>{body}</button> }}
       links={[{ key: 'a', render: cls => <button type="button" className={cls}>Try an example</button> }, { key: 'b', render: cls => <a className={cls} href="#x">Read the manual</a> }]} />
@@ -925,7 +969,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
     <List className="w-full max-w-xl">
       <ItemRow statusMark={<StatusMark state="ok" size={14} />} title="sbom-dx400-4.2.json" meta={['14 KB', '2 chunks']} />
       <ItemRow statusMark={<StatusMark state="ok" size={14} />} title="HTTP API reference | Proxyma" titleLink={cls => <ExternalLink href="https://proxyma.ai/docs/api/" className={cls} labelClassName="truncate">HTTP API reference | Proxyma</ExternalLink>} meta={['Indexed 12h ago', 'Added Oct 1, 2026']} />
-      <ItemRow statusMark={<StatusMark state="failed" size={14} />} title="scan-report.pdf" meta={['2.1 MB']} error="The PDF is password protected." actions={<ActionMenu label="More" size="sm" groups={[[{ label: 'Retry', onSelect: noop }]]} />} />
+      <ItemRow statusMark={<StatusMark state="failed" size={14} />} title="scan-report.pdf" meta={['2.1 MB']} error="The PDF is password protected." actions={<ActionMenu label="More" size="sm" groups={[[{ label: 'Try again', onSelect: noop }]]} />} />
       <ItemRow statusMark={<StatusMark state="deleted" size={14} />} title="old-notes.md" meta={['Deleted at the source']} struck />
     </List>
   ) }],
@@ -994,7 +1038,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   ) }],
   FormAlert: [{ title: 'A form verdict', render: () => <div className="w-80 space-y-2"><FormAlert>The email or password is wrong.</FormAlert><FormAlert tone="success">We sent a reset link.</FormAlert><FormAlert tone="info">The link expires in an hour.</FormAlert></div> }],
   OrDivider: [{ title: 'Or', render: () => <div className="w-72"><OrDivider label="or" /></div> }],
-  BootScreen: [{ title: 'Starting, and unreachable', wide: true, render: () => <div className="grid sm:grid-cols-2 gap-3 w-full"><div className={`${box} h-48`}><BootScreen logo={<Logo />} label="Starting" /></div><div className={`${box} h-48`}><BootScreen logo={<Logo />} message="The server cannot be reached. It may be restarting." action={<Button variant="secondary">Retry</Button>} /></div></div> }],
+  BootScreen: [{ title: 'Starting, and unreachable', wide: true, render: () => <div className="grid sm:grid-cols-2 gap-3 w-full"><div className={`${box} h-48`}><BootScreen logo={<Logo />} label="Starting" /></div><div className={`${box} h-48`}><BootScreen logo={<Logo />} message="The server cannot be reached. It may be restarting." action={<Button variant="secondary">Try again</Button>} /></div></div> }],
   StatusScreen: [{ title: 'Restarting', render: () => <StatusScreenDemo /> }],
   SplashScreen: [{ title: 'The desktop splash', render: () => <SplashDemo /> }],
   SettingsLayout: [{ title: 'The settings window, inside', wide: true, render: () => <SettingsLayoutDemo /> }],

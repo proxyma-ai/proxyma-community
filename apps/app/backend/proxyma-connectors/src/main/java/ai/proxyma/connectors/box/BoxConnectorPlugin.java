@@ -41,7 +41,7 @@ public class BoxConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.BOX)
             .protocol(ConnectionProtocol.BOX)
             .displayName("Box")
-            .description("Files in Box - PDF and Office files, text and Box Notes - from All Files or one folder.")
+            .description("Files in Box, from All Files or one folder.")
             .noun("Box folder", "Box folders")
             .addTitle("Add Box")
             .order(48)

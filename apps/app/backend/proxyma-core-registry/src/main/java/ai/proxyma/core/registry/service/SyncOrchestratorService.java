@@ -963,6 +963,9 @@ public class SyncOrchestratorService implements SmartLifecycle {
                 SyncService.PassResult result;
                 try (ConnectorSession session = plugin.open(contexts.build(connector))) {
                     result = syncService.reconcile(session, plugin.descriptor(), connector, forceFull);
+                    // The service's own name for the source, as the pass found it - a YouTube
+                    // channel's title. After the pass, so a rename never holds up a listing.
+                    if (result != null) syncService.applyLabel(connector.getId(), plugin, session);
                 }
                 if (result != null) recordPassOutcome(connector, result.ok());
                 auditPass(connector, trigger, result, null, startedAt);
@@ -1139,7 +1142,7 @@ public class SyncOrchestratorService implements SmartLifecycle {
 
     // The source says what to do about it, in the error its card and dialog already show.
     private void recordNoConnection(RegisteredConnector connector) {
-        String message = noConnectionMessage(connector.getConnectorType());
+        String message = noConnectionMessage(connector);
         connectorRepository.findById(connector.getId()).ifPresent(r -> {
             if (r.getStatus() == RegisteredConnector.Status.ERROR && message.equals(r.getLastSyncError())) return;
             connectorRepository.updateSyncState(r.getId(), RegisteredConnector.Status.ERROR,
@@ -1147,6 +1150,18 @@ public class SyncOrchestratorService implements SmartLifecycle {
         });
         log.info("[Orchestrator] Not syncing connector={} - it has no {} connection",
                 connector.getId(), connector.getConnectorType());
+    }
+
+    /**
+     * A source whose connection was deleted - kept, with everything it indexed, and not synced until
+     * another connection is chosen. In notice() so tools/i18n/server-messages.mjs lists it and the page
+     * translates it.
+     */
+    static final String CONNECTION_DELETED_MESSAGE =
+            notice("Its connection was deleted. Choose another connection in the source's settings.");
+
+    private static String notice(String sentence) {
+        return sentence;
     }
 
     static final String NOT_LICENSED_MESSAGE =
@@ -1162,7 +1177,14 @@ public class SyncOrchestratorService implements SmartLifecycle {
         log.info("[Orchestrator] Not syncing Enterprise-only connector={} - no Enterprise license in force", connector.getId());
     }
 
-    String noConnectionMessage(ConnectorType type) {
+    /**
+     * What a source that cannot sync for want of a connection says: that its connection was deleted,
+     * when it still names one that is gone (ConnectorConnectionService.delete keeps the sources), else
+     * that it has none.
+     */
+    String noConnectionMessage(RegisteredConnector connector) {
+        if (connector.getConnectionId() != null) return CONNECTION_DELETED_MESSAGE;
+        ConnectorType type = connector.getConnectorType();
         String service = catalog.displayName(catalog.protocolFor(type));
         return "This source has no " + service + " connection. Edit it and choose one, or add one in "
                 + "Settings > Connections.";
@@ -1266,12 +1288,18 @@ public class SyncOrchestratorService implements SmartLifecycle {
      * <p>A session over the candidate, closed at once; it shares nothing with any other source's. A
      * connector with no probe answers
      * {@link AccessCheck#unsupported()} and registration proceeds exactly as before.
+     *
+     * <p>A probe that passes may also name the candidate: what the session learned the service
+     * calls the source ({@link ConnectorSession#label()}, a YouTube channel's title) becomes the
+     * candidate's name and page, which registration then saves.
      */
     public AccessCheck verifyAccess(RegisteredConnector candidate) {
         ConnectorPlugin plugin = catalog.plugin(candidate.getConnectorType()).orElse(null);
         if (plugin == null) return AccessCheck.unsupported();
         try (ConnectorSession session = plugin.open(contexts.build(candidate))) {
-            return session.verifyAccess();
+            AccessCheck check = session.verifyAccess();
+            if (!check.rejected()) labelCandidate(candidate, plugin, session);
+            return check;
         } catch (Exception e) {
             // verifyAccess() must not throw, but opening a session reads settings and a
             // connector may still get this wrong. A probe that fails to RUN is not a refusal -
@@ -1279,6 +1307,19 @@ public class SyncOrchestratorService implements SmartLifecycle {
             log.warn("[Orchestrator] Access probe could not run for type={}: {}",
                     candidate.getConnectorType(), e.getMessage());
             return AccessCheck.unsupported();
+        }
+    }
+
+    // Never fails the probe: a candidate the label cannot name keeps the name it was given.
+    private static void labelCandidate(RegisteredConnector candidate, ConnectorPlugin plugin, ConnectorSession session) {
+        try {
+            SourceLabels.apply(plugin, candidate.getConnectorType(), candidate.getName(), candidate.getConfig(),
+                    session.label()).ifPresent(next -> {
+                candidate.setName(next.name());
+                candidate.setConfig(next.config());
+            });
+        } catch (RuntimeException e) {
+            log.debug("[Orchestrator] Could not name the candidate after its source: {}", e.getMessage());
         }
     }
 

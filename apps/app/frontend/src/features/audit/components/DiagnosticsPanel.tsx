@@ -49,9 +49,9 @@ export function DiagnosticsPanel() {
     <AuditTabBody
       tab="DIAGNOSTICS"
       title={t('Diagnostics')}
-      caption={t('Error types, timings and enabled features - never your documents, questions, file names or account. The switch is in Settings > About > Privacy.')}
+      caption={t('Error types, timings and features. Never your documents, questions or account.')}
       multiUser={false}
-      logCaption={t('Each send, failure, switch and deletion in the period, newest first. A send carries the report exactly as it went.')}
+      logCaption={t('Every send, failure, switch and deletion, newest first.')}
       summary={() => (
         <FadeSwap swapKey={isLoading || !status}>
         {isLoading || !status ? (
@@ -76,13 +76,13 @@ export function DiagnosticsPanel() {
               </Button>
             </div>
             <Presence show={!status.switchedOn}>
-              <Caption>{t('Nothing is collected while the switch is off; the preview shows what today would contain.')}</Caption>
+              <Caption>{t('Nothing is collected while this is off.')}</Caption>
             </Presence>
             {showPreview && <DiagnosticsPreviewModal onClose={() => setShowPreview(false)} />}
             {confirmDelete && (
               <ConfirmDialog
                 title={t('Delete collected data?')}
-                description={t('Diagnostics waiting to be sent are deleted, and nothing already sent is affected.')}
+                description={t('Diagnostics waiting to be sent are deleted.')}
                 confirmLabel={t('Delete')}
                 cancelLabel={t('Cancel')}
                 pendingLabel={t('Deleting...')}

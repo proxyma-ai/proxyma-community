@@ -38,13 +38,22 @@ public record ChatEvent(
     public enum Type {
         TEXT("text"),
         // A reasoning model is THINKING: data is the estimated number of thinking tokens so far
-        // in this model call, as a decimal string. Never the thinking text - the reader is shown
-        // that the model is working and how much, not what it said to itself, and the answer
-        // stream stays exactly the answer. See ModelThinking for where each protocol puts it.
+        // in this model call, as a decimal string. See ModelThinking for where each protocol puts it.
         THINKING("thinking"),
+        // WHAT IT THINKS, as it streams (2026-11-11, the maintainer: "can we have its thinking
+        // stream"): data is the next piece of the thinking's text, scrubbed as the answer is -
+        // the output guardrail's streaming rules, then server paths - and never stored. Only a
+        // provider that returns its thinking's text sends any (AnthropicThinkingDisplay); the
+        // answer stream stays exactly the answer.
+        THINKING_TEXT("thinking-text"),
         TOOL_START("tool-start"),
         TOOL_RESULT("tool-result"),
         TOOL_APPROVAL_REQUEST("tool-approval-request"),
+        // What a TOOL_APPROVAL_REQUEST's write is about, once its lookup answered (ApprovalContexts,
+        // a few seconds at most): callId is the request's, data an ApprovalContext as JSON - the
+        // video, viewer, comment and reply of a YouTube reply. Never sent when there is none; the
+        // card shows the arguments then, as it always did. Since 2026-10-31.
+        TOOL_APPROVAL_CONTEXT("tool-approval-context"),
         // Fired instead of TOOL_APPROVAL_REQUEST when a write-capable tool call is blocked solely
         // by the user's own missing personal consent (not org-mode/org-wide-blocked, which still
         // rejects immediately with no pause) - see ChatService.awaitEnableDecision. `data` is a

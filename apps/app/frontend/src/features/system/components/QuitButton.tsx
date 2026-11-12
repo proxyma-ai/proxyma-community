@@ -129,7 +129,7 @@ export function QuitDialogs() {
         <ConfirmDialog
           icon={Power}
           title={t('Quit Proxyma?')}
-          description={t('Indexing and any chat in progress will stop until you start Proxyma again. Nothing already indexed is lost.')}
+          description={t('Indexing and chats stop until you start Proxyma again. Nothing indexed is lost.')}
           cancelLabel={t('Cancel')}
           confirmLabel={t('Quit')}
           onCancel={cancel}

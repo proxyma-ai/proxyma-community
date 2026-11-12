@@ -18,7 +18,7 @@ import { useFeedbackModalStore } from '@/store/feedbackModalStore'
 import { QuitButton } from '@/features/system/components/QuitButton'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
-import { AppearanceMenuRow, LanguageMenuRow } from './PreferenceMenuRows'
+import { AccentMenuRow, AppearanceMenuRow, BackdropMenuRow, LanguageMenuRow } from './PreferenceMenuRows'
 
 // Every item in this menu carries an icon, navigation included. A menu where three entries have
 // icons and four do not reads as two lists that happen to share a border, and the un-iconed ones
@@ -90,7 +90,7 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
             {guest && (
               <MenuGroup>
                 <NavLink to="/login" onClick={close} className={menuRow()}>
-                  <LogIn size={15} /> {t('Sign in')}
+                  <LogIn size={15} className="shrink-0" aria-hidden="true" /> {t('Sign in')}
                 </NavLink>
               </MenuGroup>
             )}
@@ -107,7 +107,7 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
                     onClick={close}
                     className={menuRow(item.isActive ? 'active' : 'default')}
                   >
-                    <NavIcon size={15} /> {item.label}
+                    <NavIcon size={15} className="shrink-0" aria-hidden="true" /> {item.label}
                     <Presence show={!!item.workingPath} collapse={false} className="ml-auto flex">
                       <StatusDot label={t('An agent is still working - go back to it')} />
                     </Presence>
@@ -121,10 +121,11 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
                   so the row opened nothing. */}
               {!guest && (
                 <button
+                  type="button"
                   onClick={() => { close(); useSettingsModalStore.getState().open() }}
                   className={menuRow()}
                 >
-                  <Settings size={15} /> {t('Settings')}
+                  <Settings size={15} className="shrink-0" aria-hidden="true" /> {t('Settings')}
                 </button>
               )}
 
@@ -134,10 +135,11 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
                   surface to review submissions - but submissions go to Proxyma from either edition
                   (see FeedbackButton), and desktop's header menu carries this row too. */}
               <button
+                type="button"
                 onClick={() => { close(); useFeedbackModalStore.getState().open() }}
                 className={menuRow()}
               >
-                <MessageSquarePlus size={15} /> {t('Send feedback')}
+                <MessageSquarePlus size={15} className="shrink-0" aria-hidden="true" /> {t('Send feedback')}
               </button>
             </MenuGroup>
 
@@ -145,6 +147,8 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
                 PreferenceMenuRows, which is where the rows live now so the three menus share them. */}
             <MenuGroup>
               <AppearanceMenuRow />
+              <BackdropMenuRow />
+              <AccentMenuRow />
             </MenuGroup>
 
             <MenuGroup>
@@ -153,8 +157,8 @@ export function MobileMenu({ items, account, agentWorking }: MobileMenuProps) {
 
             {account && (
               <MenuGroup>
-                <button onClick={() => { close(); logout.mutate() }} className={menuRow('danger')}>
-                  <LogOut size={15} /> {t('Sign out')}
+                <button type="button" onClick={() => { close(); logout.mutate() }} className={menuRow('danger')}>
+                  <LogOut size={15} className="shrink-0" aria-hidden="true" /> {t('Sign out')}
                 </button>
               </MenuGroup>
             )}

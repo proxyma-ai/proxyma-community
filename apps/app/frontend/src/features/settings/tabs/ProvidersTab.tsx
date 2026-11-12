@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Plus, Pencil } from 'lucide-react'
+import { Trash2, Plus, Pencil, PlugZap } from 'lucide-react'
 import {
   BrandMark, Button, Callout, Caption, Checkbox, RuleChecklist, Combobox, DialogBody, DialogFooter,
   DialogHeader, Disclosure, EmptyState, Field, FormColumns, FormStack, InlineNotice, Input, List, ListRow,
   MetaList, Presence, Readout, RowActions, SecretInput, Select, SettingsSections, FadeSwap,
-  IconButton, Tooltip,
+  IconButton, StaticValue, Tooltip,
 } from '@/components/ui/kit'
+import { EditableText } from '@/components/ui/EditableText'
+import { SecretAutosave, quietly } from '@/components/ui/AutosaveFields'
+import { useAutosave } from '@/components/ui/useAutosave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { decimalProblem, wholeNumberProblem } from '@/components/ui/autosave'
 import { providerMarkId } from '@/features/indexing/utils/sourceMarks'
 import { costPricingApi, type ModelPricing } from '../services/costPricingApi'
 import { EMPTY_RATE_FORM, hasLongTier, rateFormOf, ratePayload, type RateForm } from '../utils/callCost'
@@ -15,7 +20,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { useDates } from '@/hooks/useDates'
 import { providerModelsApi } from '../services/providerModelsApi'
 import { providersApi } from '../services/providersApi'
-import type { ProviderInstance } from '../services/providersApi'
+import type { ProviderInstance, ProviderInstanceInput, ProviderProtocolInfo } from '../services/providersApi'
 import { apiErrorText, withReason } from '@/services/apiError'
 import { useSettings } from '../hooks/useSettings'
 import { ListSkeleton, TitleAction, useResolved } from '../pages/shared'
@@ -67,45 +72,35 @@ const PROVIDER_PRESETS: { label: string; protocol: string; baseUrl: string }[] =
 ]
 
 // Add or edit one provider. Deliberately a modal rather than an inline expander like the old
-// per-provider accordion: this is a create-or-edit form with its own validation and its own save,
-// not a group of fields belonging to the page's shared save button.
+// per-provider accordion. ADDING it is a form with its own validation and its own Add; an EXISTING
+// provider is edited in place, field by field, each saved as it is left or changed (the maintainer,
+// 2026-11-02) - never a group of fields behind the page's shared save button.
 function ProviderModal({ instance, onClose }: { instance: ProviderInstance | null; onClose: () => void }) {
+  return instance ? <ProviderEditModal instance={instance} onClose={onClose} /> : <ProviderAddModal onClose={onClose} />
+}
+
+function ProviderAddModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const secretLabels = useSecretLabels()
   const { data: protocols = [] } = useProviderProtocols()
-  const editing = instance !== null
 
-  const [name, setName] = useState(instance?.name ?? '')
-  const [protocol, setProtocol] = useState(instance?.protocol ?? 'OPENAI')
-  const [baseUrl, setBaseUrl] = useState(instance?.baseUrl ?? '')
+  const [name, setName] = useState('')
+  const [protocol, setProtocol] = useState('OPENAI')
+  const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [nativeRerank, setNativeRerank] = useState(instance?.nativeRerank ?? false)
-  const [gatewayApi, setGatewayApi] = useState(instance?.api ?? 'ANTHROPIC_MESSAGES')
-  const [blockingCalls, setBlockingCalls] = useState(instance?.blockingCalls ?? false)
-  const [headerRows, setHeaderRows] = useState<{ name: string; value: string }[]>(
-    Object.entries(instance?.headers ?? {}).map(([n, v]) => ({ name: n, value: v })))
+  const [nativeRerank, setNativeRerank] = useState(false)
+  const [gatewayApi, setGatewayApi] = useState('ANTHROPIC_MESSAGES')
+  const [blockingCalls, setBlockingCalls] = useState(false)
+  const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const { dirty } = useFormDirty({ name, protocol, baseUrl, apiKey, nativeRerank, gatewayApi, blockingCalls, headerRows })
 
   const protocolInfo = protocols.find(p => p.value === protocol)
 
   const save = useMutation({
-    mutationFn: () => {
-      const headers: Record<string, string> = {}
-      headerRows.forEach(h => { if (h.name.trim()) headers[h.name.trim()] = h.value })
-      const input = {
-        name, protocol, baseUrl,
-        // Only send a key when one was typed - an untouched field must not clear what is stored.
-        ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
-        headers,
-        nativeRerank,
-        // A gateway's own settings, sent only for a protocol that has them.
-        ...(protocolInfo?.apis.length ? { api: gatewayApi } : {}),
-        ...(protocolInfo?.mayCallWithoutStreaming ? { blockingCalls } : {}),
-      }
-      return editing ? providersApi.update(instance!.id, input) : providersApi.create(input)
-    },
+    mutationFn: () => providersApi.create(providerInput(
+      { name, protocol, baseUrl, headers: headerRows, nativeRerank, api: gatewayApi, blockingCalls }, protocolInfo, apiKey)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.providerInstances() })
       // The saved provider is one the backend is at this moment re-probing - saving publishes
@@ -127,45 +122,42 @@ function ProviderModal({ instance, onClose }: { instance: ProviderInstance | nul
       onClose={onClose}
       closable={!save.isPending}
       dirty={dirty}
-      initialFocus={editing ? 'panel' : 'first-field'}
+      initialFocus="first-field"
       size="form"
       // Capped to the window (the kit's `cap`), with the BODY as its one scrolling region: the
-      // headers and the rates are lists of no fixed length, and a provider with many of either
-      // scrolls the form rather than growing the dialog past the screen - or squeezing a list into a
-      // box of its own with a scrollbar beside its row actions, as the rates did until 0.28.0.
+      // headers are a list of no fixed length, and a provider with many scrolls the form rather than
+      // growing the dialog past the screen.
       cap
-      ariaLabel={editing ? t('Edit provider') : t('Add provider')}
+      ariaLabel={t('Add provider')}
     >
       {requestClose => (<>
-        <DialogHeader title={editing ? t('Edit provider') : t('Add provider')} />
+        <DialogHeader title={t('Add provider')} />
         <DialogBody scroll>
           {/* Two columns from `lg`: the provider and how to reach it on the left - its address, its
               key and the headers sent with every request (moved here from the right in the 0.28.0
-              feedback) - and what it can do and costs on the right. */}
+              feedback) - and what it can do on the right. */}
           <FormColumns from="lg" density="columns" className="items-start">
             <FormStack className="min-w-0">
-              {!editing && (
-                <Field
-                  label={t('Start from')}
-                  hint={t('Fills in the protocol and address. Anything speaking one of these protocols works, listed here or not.')}
-                >
-                  {id => (
-                    <Select
-                      id={id}
-                      value=""
-                      onChange={v => {
-                        const preset = PROVIDER_PRESETS.find(p => p.label === v)
-                        if (!preset) return
-                        setName(preset.label)
-                        setProtocol(preset.protocol)
-                        setBaseUrl(preset.baseUrl)
-                      }}
-                      options={[{ value: '', label: t('Blank') },
-                        ...PROVIDER_PRESETS.map(p => ({ value: p.label, label: p.label }))]}
-                    />
-                  )}
-                </Field>
-              )}
+              <Field
+                label={t('Start from')}
+                hint={t('Fills in the protocol and address.')}
+              >
+                {id => (
+                  <Select
+                    id={id}
+                    value=""
+                    onChange={v => {
+                      const preset = PROVIDER_PRESETS.find(p => p.label === v)
+                      if (!preset) return
+                      setName(preset.label)
+                      setProtocol(preset.protocol)
+                      setBaseUrl(preset.baseUrl)
+                    }}
+                    options={[{ value: '', label: t('Blank') },
+                      ...PROVIDER_PRESETS.map(p => ({ value: p.label, label: p.label }))]}
+                  />
+                )}
+              </Field>
 
               <FormColumns>
                 <Field label={t('Name')}>
@@ -189,30 +181,16 @@ function ProviderModal({ instance, onClose }: { instance: ProviderInstance | nul
                     id={id}
                     value={baseUrl}
                     onChange={e => setBaseUrl(e.target.value)}
-                    placeholder={protocol === 'AZURE_OPENAI'
-                      ? 'https://my-resource.openai.azure.com'
-                      : protocol === 'LITELLM'
-                        ? 'https://litellm.company.com'
-                        : t('Leave blank for this protocol default')}
+                    placeholder={baseUrlPlaceholder(protocol, t)}
                   />
                 )}
               </Field>
 
-              {/* THE ONE STORED-SECRET CONTROL (the kit SecretInput): the stored key shows masked,
-                  and typing replaces it. It was a raw password input with the masked key in its
-                  placeholder, beside the SecretInput every other secret in Settings used. */}
+              {/* THE ONE STORED-SECRET CONTROL (the kit SecretInput) - the same box an existing
+                  provider shows its stored key masked in. */}
               <Field label={t('API key')}>
                 {id => (
-                  <SecretInput
-                    id={id}
-                    value={apiKey}
-                    serverValue={instance?.apiKeyConfigured ? instance.apiKeyMasked ?? '' : undefined}
-                    onChange={setApiKey}
-                    placeholder={instance?.apiKeyConfigured
-                      ? t('Stored ({masked}) - type to replace', { masked: instance.apiKeyMasked ?? '' })
-                      : 'sk-...'}
-                    labels={secretLabels}
-                  />
+                  <SecretInput id={id} value={apiKey} onChange={setApiKey} placeholder="sk-..." labels={secretLabels} />
                 )}
               </Field>
 
@@ -220,55 +198,15 @@ function ProviderModal({ instance, onClose }: { instance: ProviderInstance | nul
             </FormStack>
 
             <FormStack className="min-w-0">
-              {/* "Runs locally" and "Cost reporting" used to sit either side of this. Both are gone:
-                  cost is now always the configured rate times the tokens counted, so neither a
-                  provider-reported figure nor a "this one is free" assertion has anything to change.
-                  Reranking is what is left, and one checkbox is not a two-column grid. */}
-              {/* What the chosen protocol can do: each eases in and out as the protocol changes. */}
-              <Presence show={!!protocolInfo?.maySupportNativeRerank}>
-                <Field
-                  label={t('Reranking')}
-                  hint={t('For servers with a /v1/rerank endpoint: vLLM, llama.cpp, Jina, Cohere, Together AI and others. Leave off and reranking uses embeddings instead.')}
-                >
-                  <Checkbox checked={nativeRerank} onChange={setNativeRerank}>
-                    {t('Serves /v1/rerank')}
-                  </Checkbox>
-                </Field>
-              </Presence>
-
-              <Presence show={!!protocolInfo && protocolInfo.apis.length > 0}>
-                <Field
-                  label={t('API')}
-                  hint={t('Anthropic Messages keeps Claude models in their own format, with prompt caching. OpenAI Chat Completions suits every other model.')}
-                >
-                  {id => (
-                    <Select
-                      id={id}
-                      value={gatewayApi}
-                      onChange={setGatewayApi}
-                      options={(protocolInfo?.apis ?? []).map(a => ({ value: a.value, label: a.label }))}
-                    />
-                  )}
-                </Field>
-              </Presence>
-
-              <Presence show={!!protocolInfo?.mayCallWithoutStreaming}>
-                <Field
-                  label={t('Streaming')}
-                  hint={t('For a deployment that answers with one reply instead of a stream once tools are in use. Answers then appear whole, step by step.')}
-                >
-                  <Checkbox checked={blockingCalls} onChange={setBlockingCalls}>
-                    {t('Wait for whole replies')}
-                  </Checkbox>
-                </Field>
-              </Presence>
-
-              {/* Editing only. Rates are keyed on the provider's NAME (see ProviderPricingModal), so
-                  there is nothing to hang one on until this provider has been saved once. Its own CRUD
-                  commits immediately and is deliberately NOT staged behind this form's Save - one button
-                  committing a credential change and a price change together would be two decisions
-                  wearing one label. */}
-              {editing && instance && <ProviderPricingSection instance={instance} />}
+              <ProviderCapabilities
+                protocolInfo={protocolInfo}
+                nativeRerank={nativeRerank}
+                onNativeRerank={setNativeRerank}
+                gatewayApi={gatewayApi}
+                onGatewayApi={setGatewayApi}
+                blockingCalls={blockingCalls}
+                onBlockingCalls={setBlockingCalls}
+              />
             </FormStack>
           </FormColumns>
         </DialogBody>
@@ -278,10 +216,242 @@ function ProviderModal({ instance, onClose }: { instance: ProviderInstance | nul
             onClick={() => { setError(null); save.mutate() }}
             disabled={!name.trim() || save.isPending}
           >
-            {save.isPending ? t('Saving...') : editing ? t('Save') : t('Add provider')}
+            {save.isPending ? t('Saving...') : t('Add provider')}
           </Button>
         </DialogFooter>
       </>)}
+    </ModalShell>
+  )
+}
+
+// A provider's fields as either dialog holds them. The key is never among them: the page is not sent
+// it, so it can only be given - see providerInput.
+interface ProviderForm {
+  name: string
+  protocol: string
+  baseUrl: string
+  headers: HeaderRow[]
+  nativeRerank: boolean
+  api: string
+  blockingCalls: boolean
+}
+
+function providerFormOf(p: ProviderInstance): ProviderForm {
+  return {
+    name: p.name,
+    protocol: p.protocol,
+    baseUrl: p.baseUrl ?? '',
+    headers: Object.entries(p.headers ?? {}).map(([n, v]) => ({ name: n, value: v })),
+    nativeRerank: p.nativeRerank,
+    api: p.api ?? 'ANTHROPIC_MESSAGES',
+    blockingCalls: p.blockingCalls,
+  }
+}
+
+// What is sent - the WHOLE provider, an edit's included, since one field's save is the provider with
+// that field changed. A key only when one was given: an untouched key must not clear what is stored.
+function providerInput(f: ProviderForm, protocolInfo: ProviderProtocolInfo | undefined, apiKey?: string): ProviderInstanceInput {
+  const headers: Record<string, string> = {}
+  f.headers.forEach(h => { if (h.name.trim()) headers[h.name.trim()] = h.value })
+  return {
+    name: f.name, protocol: f.protocol, baseUrl: f.baseUrl,
+    ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
+    headers,
+    nativeRerank: f.nativeRerank,
+    // A gateway's own settings, sent only for a protocol that has them.
+    ...(protocolInfo?.apis.length ? { api: f.api } : {}),
+    ...(protocolInfo?.mayCallWithoutStreaming ? { blockingCalls: f.blockingCalls } : {}),
+  }
+}
+
+function baseUrlPlaceholder(protocol: string, t: Translate): string {
+  return protocol === 'AZURE_OPENAI'
+    ? 'https://my-resource.openai.azure.com'
+    : protocol === 'LITELLM'
+      ? 'https://litellm.company.com'
+      : t('Leave blank for this protocol default')
+}
+
+// What the chosen protocol can do, each easing in and out as the protocol changes - shared by both
+// dialogs; on an existing provider each change is saved as it is made. "Runs locally" and "Cost
+// reporting" used to sit beside these. Both are gone: cost is now always the configured rate times
+// the tokens counted, so neither a provider-reported figure nor a "this one is free" assertion has
+// anything to change.
+function ProviderCapabilities({ protocolInfo, nativeRerank, onNativeRerank, gatewayApi, onGatewayApi, blockingCalls, onBlockingCalls }: {
+  protocolInfo: ProviderProtocolInfo | undefined
+  nativeRerank: boolean
+  onNativeRerank: (on: boolean) => void
+  gatewayApi: string
+  onGatewayApi: (api: string) => void
+  blockingCalls: boolean
+  onBlockingCalls: (on: boolean) => void
+}) {
+  const { t } = useTranslation()
+  return (<>
+    <Presence show={!!protocolInfo?.maySupportNativeRerank}>
+      <Field
+        label={t('Reranking')}
+        hint={t('For servers with a /v1/rerank endpoint. Off: reranking uses embeddings.')}
+      >
+        <Checkbox checked={nativeRerank} onChange={onNativeRerank}>
+          {t('Serves /v1/rerank')}
+        </Checkbox>
+      </Field>
+    </Presence>
+
+    <Presence show={!!protocolInfo && protocolInfo.apis.length > 0}>
+      <Field
+        label={t('API')}
+        hint={t('Anthropic Messages for Claude models, OpenAI Chat Completions for the rest.')}
+      >
+        {id => (
+          <Select
+            id={id}
+            value={gatewayApi}
+            onChange={onGatewayApi}
+            options={(protocolInfo?.apis ?? []).map(a => ({ value: a.value, label: a.label }))}
+          />
+        )}
+      </Field>
+    </Presence>
+
+    <Presence show={!!protocolInfo?.mayCallWithoutStreaming}>
+      <Field
+        label={t('Streaming')}
+        hint={t('For a deployment that does not stream when tools are used.')}
+      >
+        <Checkbox checked={blockingCalls} onChange={onBlockingCalls}>
+          {t('Wait for whole replies')}
+        </Checkbox>
+      </Field>
+    </Presence>
+  </>)
+}
+
+type ProviderEdit = ProviderForm & { apiKey?: string }
+
+// AN EXISTING PROVIDER, EDITED IN PLACE: each field saved on its own - a text when it is left, a
+// choice or a box as it changes, the key when a new one is typed and left (a blank one is never
+// sent). Each save sends the whole provider with that one field changed (useAutosave), and a refusal
+// - "Azure OpenAI needs a base URL", "There is already a provider called X", written by
+// ProviderInstanceService.validate to be read verbatim - is said in a toast and the field goes back.
+// No footer: there is nothing left to save, so Escape and the backdrop close it.
+function ProviderEditModal({ instance, onClose }: { instance: ProviderInstance; onClose: () => void }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const addToast = useToastStore(s => s.addToast)
+  const secretLabels = useSecretLabels()
+  const { data: protocols = [] } = useProviderProtocols()
+  // The provider as the server last answered - its key's mask and its name (the rates are keyed on
+  // it) follow each save; the row this dialog was opened from does not.
+  const [current, setCurrent] = useState(instance)
+  const base = providerFormOf(instance)
+
+  const { value: form = base, save, status } = useAutosave<ProviderEdit>(
+    base,
+    async (next, patch) => {
+      const info = protocols.find(p => p.value === next.protocol)
+      const saved = await providersApi.update(instance.id, providerInput(next, info, patch.apiKey))
+      setCurrent(saved)
+      queryClient.invalidateQueries({ queryKey: keys.providerInstances() })
+      // Saving re-probes the provider (see ProviderAddModal), so the verdict is read again.
+      queryClient.invalidateQueries({ queryKey: keys.providerConnectivity() })
+      // A rename carries the provider's rates to the new name on the server (they are keyed on it).
+      if (patch.name !== undefined) queryClient.invalidateQueries({ queryKey: keys.modelPricing() })
+      // The key is never kept: what the page holds of it is the server's mask.
+      return providerFormOf(saved)
+    },
+    {
+      failure: t('Could not save this provider.'),
+      onError: (e: unknown) => addToast(apiErrorText(e) ?? t('Could not save this provider.'), 'danger'),
+    },
+  )
+  const protocolInfo = protocols.find(p => p.value === form.protocol)
+  const set = (patch: Partial<ProviderEdit>) => quietly(save(patch))
+
+  return (
+    <ModalShell
+      onClose={onClose}
+      initialFocus="panel"
+      size="form"
+      // Capped to the window, with the BODY as its one scrolling region: the headers and the rates
+      // are lists of no fixed length, and a provider with many of either scrolls the body rather
+      // than growing the dialog past the screen - or squeezing a list into a box of its own with a
+      // scrollbar beside its row actions, as the rates did until 0.28.0.
+      cap
+      ariaLabel={t('Edit provider')}
+    >
+      <DialogHeader title={t('Edit provider')} actions={<SaveStatus word={status} />} />
+      <DialogBody scroll>
+        <FormColumns from="lg" density="columns" className="items-start">
+          <FormStack className="min-w-0">
+            <FormColumns>
+              <Field label={t('Name')}>
+                <EditableText
+                  value={form.name}
+                  label={t('Name')}
+                  required={t('Name is required')}
+                  onCommit={name => save({ name })}
+                />
+              </Field>
+              <Field label={t('Protocol')}>
+                {id => (
+                  <Select
+                    id={id}
+                    value={form.protocol}
+                    onChange={protocol => set({ protocol })}
+                    options={protocols.map(p => ({ value: p.value, label: p.label }))}
+                  />
+                )}
+              </Field>
+            </FormColumns>
+
+            <Field label={t('Base URL')}>
+              <EditableText
+                value={form.baseUrl}
+                label={t('Base URL')}
+                placeholder={baseUrlPlaceholder(form.protocol, t)}
+                onCommit={baseUrl => save({ baseUrl })}
+              />
+            </Field>
+
+            {/* The stored key masked, never shown as text; one typed over it is saved when the box is
+                left, and a blank box sends nothing. */}
+            <Field label={t('API key')}>
+              {id => (
+                <SecretAutosave
+                  id={id}
+                  serverValue={current.apiKeyConfigured ? current.apiKeyMasked ?? '' : undefined}
+                  onCommit={apiKey => save({ apiKey })}
+                  placeholder={current.apiKeyConfigured
+                    ? t('Stored ({masked}) - type to replace', { masked: current.apiKeyMasked ?? '' })
+                    : 'sk-...'}
+                  labels={secretLabels}
+                />
+              )}
+            </Field>
+
+            <SavedHeadersField rows={form.headers} onCommit={headers => save({ headers })} />
+          </FormStack>
+
+          <FormStack className="min-w-0">
+            <ProviderCapabilities
+              protocolInfo={protocolInfo}
+              nativeRerank={form.nativeRerank}
+              onNativeRerank={nativeRerank => set({ nativeRerank })}
+              gatewayApi={form.api}
+              onGatewayApi={api => set({ api })}
+              blockingCalls={form.blockingCalls}
+              onBlockingCalls={blockingCalls => set({ blockingCalls })}
+            />
+
+            {/* Rates are keyed on the provider's NAME (see ProviderPricingModal), so there is nothing
+                to hang one on until the provider exists - which is why they are here and not in the
+                add dialog. Each rate is its own row with its own endpoint. */}
+            <ProviderPricingSection instance={current} />
+          </FormStack>
+        </FormColumns>
+      </DialogBody>
     </ModalShell>
   )
 }
@@ -345,19 +515,14 @@ function ProviderInstanceRow({ instance, onEdit }: {
           </Presence>
         </>}
         action={
-          <RowActions
-            className="flex-wrap"
-            destructive={
-              <Button variant="danger-quiet" onClick={() => setConfirmDelete(true)}>
-                <Trash2 size={14} />
-                {t('Delete')}
-              </Button>
-            }
-          >
-            <Button variant="secondary" onClick={() => test.mutate()} disabled={test.isPending}>
-              {test.isPending ? t('Testing...') : t('Test')}
-            </Button>
-            <Button variant="secondary" onClick={onEdit}>{t('Edit')}</Button>
+          // ONE LINE OF ICON BUTTONS, as a connection's (the maintainer, 2026-11-03: "Use icon similar to
+          // the connectors"): Test, Edit, then Delete in danger ink, set apart - each named by its tooltip.
+          <RowActions destructive={
+            <IconButton icon={Trash2} tone="danger" label={t('Delete')} onClick={() => setConfirmDelete(true)} />
+          }>
+            <IconButton icon={PlugZap} label={test.isPending ? t('Testing...') : t('Test')} busy={test.isPending}
+              onClick={() => test.mutate()} />
+            <IconButton icon={Pencil} label={t('Edit')} onClick={onEdit} />
           </RowActions>
         }
       />
@@ -368,8 +533,8 @@ function ProviderInstanceRow({ instance, onEdit }: {
           verb={t('delete')}
           confirmLabel={t('Delete')}
           consequences={[
-            t('Any model role pointing at this provider stops working until you choose another one.'),
-            t('No other provider is selected in its place - that stays your choice.'),
+            t('Anything using this provider stops working until you choose another.'),
+            t('No other provider is chosen for you.'),
           ]}
           onConfirm={() => { remove.mutate(); setConfirmDelete(false) }}
           onCancel={() => setConfirmDelete(false)}
@@ -423,8 +588,8 @@ function ProviderNextSteps({ instances, onOpenTab, onOpenRates, pending }: {
 
   const steps: { key: string; label: string; done: boolean; open: () => void }[] = [
     { key: 'agent', label: t('Agents: choose the model that answers'), done: agentDone, open: () => onOpenTab('Agents') },
-    { key: 'embedding', label: t('Search: choose the embedding model that indexes your sources'), done: embeddingDone, open: () => onOpenTab('Search') },
-    { key: 'ocr', label: t('Conversion: choose a vision model to read scanned pages (optional)'), done: ocrDone, open: () => onOpenTab('Conversion') },
+    { key: 'embedding', label: t('Search: choose the embedding model'), done: embeddingDone, open: () => onOpenTab('Search') },
+    { key: 'ocr', label: t('Conversion: choose a vision model for scans (optional)'), done: ocrDone, open: () => onOpenTab('Conversion') },
     { key: 'rates', label: t('Model pricing: set rates to track cost (optional)'), done: ratesDone, open: () => { if (ratesFor) onOpenRates(ratesFor) } },
   ]
 
@@ -456,7 +621,7 @@ export function ProvidersTab({ pending, onOpenTab, canEdit }: TabProps & { onOpe
   const [editing, setEditing] = useState<ProviderInstance | null | undefined>(null)
 
   return (
-    <SettingsSections intro={t('Add any service that speaks a supported protocol. Two accounts on one service are two providers.')}>
+    <SettingsSections intro={t('Add any service that speaks a supported protocol.')}>
       <div>
         <TitleAction>
           <Presence show={!isLoading && instances.length > 0} collapse={false}>
@@ -474,7 +639,7 @@ export function ProvidersTab({ pending, onOpenTab, canEdit }: TabProps & { onOpe
             title={t('No providers configured yet.')}
             action={<Button onClick={() => setEditing(undefined)}><Plus size={14} />{t('Add provider')}</Button>}
           >
-            {t('Add the service you have an API key for, or a local one such as Ollama.')}
+            {t('Add a service you have an API key for, or a local one like Ollama.')}
           </EmptyState>
         ) : (
           <>
@@ -507,9 +672,8 @@ export function ProvidersTab({ pending, onOpenTab, canEdit }: TabProps & { onOpe
 
 // - Model pricing, inside one provider's dialog -
 //
-// Immediate CRUD, not part of the enclosing ProviderModal's own Save: a rate is its own row with
-// its own endpoint, exactly like ApiTokensTab's tokens, and staging it behind the provider form's
-// Save would mean one button committing two unrelated kinds of change.
+// Immediate CRUD, a rate being its own row with its own endpoint, exactly like ApiTokensTab's
+// tokens - saved through its own dialog, never as a field of the provider.
 //
 // Only rendered when EDITING an existing provider. Rates are keyed on the provider's name, so a
 // provider that has not been saved yet has no key to hang one on.
@@ -551,7 +715,7 @@ function ProviderPricingSection({ instance }: { instance: ProviderInstance }) {
     // rows mean before they are read.
     <Field
       label={t('Model pricing')}
-      description={t('What this provider charges per million tokens, used for every cost figure and spend quota. A model with no rate is priced at its list price where one is known, else at $0.')}
+      description={t('Price per million tokens, for costs and quotas. A model with no rate uses its list price or $0.')}
     >
       {isLoading ? (
         <ListSkeleton count={2} />
@@ -595,7 +759,7 @@ function ProviderPricingSection({ instance }: { instance: ProviderInstance }) {
           verb={t('delete')}
           confirmLabel={t('Delete')}
           pendingLabel={t('Deleting...')}
-          consequences={[t('Calls to this model will be priced at its list price where one is known, else at $0.')]}
+          consequences={[t('This model will use its list price or $0.')]}
           pending={remove.isPending}
           onConfirm={() => remove.mutate(deleteTarget.id)}
           onCancel={() => setDeleteTarget(null)}
@@ -674,11 +838,12 @@ function IconRowActions({ editLabel, deleteLabel, onEdit, onDelete }: {
 
 type HeaderRow = { name: string; value: string }
 
-// A provider's custom headers, as a list like its rates below (0.28.0 feedback): the header's name
+// A NEW provider's custom headers, as a list like its rates (0.28.0 feedback): the header's name
 // over its value - a credential's value shown by its ends only (headerValue.ts) - with Edit and
 // Delete, and "Add header" opening a small dialog like "Add model rate". Unlike the rates these are
 // part of the PROVIDER form: an add, edit or delete here changes the form, and the provider's own
-// Save writes them, in the same shape as ever (a name-to-value map, blank names dropped).
+// Add writes them, in the same shape as ever (a name-to-value map, blank names dropped). An existing
+// provider's are SavedHeadersField's.
 function ProviderHeadersField({ rows, onChange }: { rows: HeaderRow[]; onChange: (rows: HeaderRow[]) => void }) {
   const { t } = useTranslation()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
@@ -695,7 +860,7 @@ function ProviderHeadersField({ rows, onChange }: { rows: HeaderRow[]; onChange:
   return (
     <Field
       label={t('Custom headers')}
-      description={t('Sent with every request. Gateways often need one - OpenRouter uses HTTP-Referer and X-Title for attribution.')}
+      description={t('Sent with every request.')}
     >
       {shown.length > 0 ? (
         <>
@@ -737,25 +902,129 @@ function ProviderHeadersField({ rows, onChange }: { rows: HeaderRow[]; onChange:
   )
 }
 
-// Add or edit one header - the same small dialog as a model rate's. Nothing is saved from here: the
-// row goes back to the provider form, whose Save writes it.
+// AN EXISTING provider's custom headers, edited where they are read (the maintainer, 2026-11-02): each
+// row's name and value click-to-edit, saved as the row is left - the value shown at rest by its ends
+// when it is a credential (headerValue.ts), whole once opened, as the header dialog showed it - and a
+// removed row saved at once. A name another header already has is refused before anything is sent.
+// "Add header" keeps its small dialog, whose Add saves the provider. Every change sends the provider
+// with its whole header map (`onCommit`), as the form always did; there is no per-header endpoint.
+function SavedHeadersField({ rows, onCommit }: { rows: HeaderRow[]; onCommit: (rows: HeaderRow[]) => Promise<unknown> }) {
+  const { t } = useTranslation()
+  const [adding, setAdding] = useState(false)
+  // Rows saved before this list existed may have a blank name; they are never sent, so not shown.
+  const shown = rows.map((row, index) => ({ row, index })).filter(({ row }) => row.name.trim())
+  const takenBy = (index: number) => rows.filter((_, j) => j !== index).map(r => r.name.trim().toLowerCase())
+  const duplicateText = t('This provider already sends a header with that name.')
+  const change = (index: number, patch: Partial<HeaderRow>) => onCommit(rows.map((r, j) => (j === index ? { ...r, ...patch } : r)))
+
+  const addButton = (
+    <Button variant="hyperlink" type="button" onClick={() => setAdding(true)}>
+      <Plus size={14} />
+      {t('Add header')}
+    </Button>
+  )
+
+  return (
+    <Field
+      label={t('Custom headers')}
+      description={t('Sent with every request.')}
+    >
+      {shown.length > 0 ? (
+        <>
+          <List>
+            {shown.map(({ row, index }) => (
+              <ListRow
+                key={`${index}:${row.name}`}
+                title={(
+                  <EditableText
+                    value={row.name}
+                    label={t('Name')}
+                    className="break-all"
+                    required={t('Name is required')}
+                    validate={text => (takenBy(index).includes(text.trim().toLowerCase()) ? duplicateText : undefined)}
+                    onCommit={name => (takenBy(index).includes(name.trim().toLowerCase())
+                      ? Promise.reject(new Error(duplicateText))
+                      : change(index, { name: name.trim() }))}
+                  />
+                )}
+                caption={(
+                  <EditableText
+                    value={row.value}
+                    label={t('Value')}
+                    placeholder="-"
+                    trim={false}
+                    className="break-all"
+                    onCommit={value => change(index, { value })}
+                  >
+                    {displayHeaderValue(row.name, row.value) || '-'}
+                  </EditableText>
+                )}
+                action={(
+                  <RowActions
+                    icons
+                    destructive={(
+                      <IconButton
+                        icon={Trash2}
+                        size="sm"
+                        tone="danger"
+                        label={t('Remove header {name}', { name: row.name })}
+                        tooltip={t('Delete')}
+                        onClick={() => quietly(onCommit(rows.filter((_, j) => j !== index)))}
+                      />
+                    )}
+                  />
+                )}
+              />
+            ))}
+          </List>
+          <div className="mt-2">{addButton}</div>
+        </>
+      ) : (
+        <EmptyState className="py-0" action={addButton}>{t('No custom headers.')}</EmptyState>
+      )}
+
+      {adding && (
+        <ProviderHeaderModal
+          initial={null}
+          taken={rows.map(r => r.name.trim().toLowerCase())}
+          onSave={row => onCommit([...rows, row]).then(() => setAdding(false))}
+          onClose={() => setAdding(false)}
+        />
+      )}
+    </Field>
+  )
+}
+
+// Add or edit one header - the same small dialog as a model rate's. On a new provider nothing is
+// saved from here: the row goes back to the provider form, whose Add writes it. On an existing one
+// it only ever ADDS (SavedHeadersField - a saved header is edited in its row), and `onSave`'s
+// promise is the provider's save: the dialog waits for it and closes only once it is kept.
 function ProviderHeaderModal({ initial, taken, onSave, onClose }: {
   initial: HeaderRow | null
   taken: string[]
-  onSave: (row: HeaderRow) => void
+  onSave: (row: HeaderRow) => void | Promise<unknown>
   onClose: () => void
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initial?.name ?? '')
   const [value, setValue] = useState(initial?.value ?? '')
+  const [saving, setSaving] = useState(false)
   const { dirty } = useFormDirty({ name, value })
   const duplicate = taken.includes(name.trim().toLowerCase())
-  const canSave = name.trim().length > 0 && !duplicate
-  const save = () => { if (canSave) onSave({ name: name.trim(), value }) }
+  const canSave = name.trim().length > 0 && !duplicate && !saving
+  const save = () => {
+    if (!canSave) return
+    const result = onSave({ name: name.trim(), value })
+    if (result) {
+      setSaving(true)
+      result.then(() => undefined, () => setSaving(false))
+    }
+  }
 
   return (
     <ModalShell
       onClose={onClose}
+      closable={!saving}
       dirty={dirty}
       size="md"
       initialFocus="first-field"
@@ -791,47 +1060,92 @@ function ProviderHeaderModal({ initial, taken, onSave, onClose }: {
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={requestClose}>{t('Cancel')}</Button>
-          <Button onClick={save} disabled={!canSave}>{initial ? t('Save') : t('Add header')}</Button>
+          <Button onClick={save} disabled={!canSave}>
+            {saving ? t('Saving...') : initial ? t('Save') : t('Add header')}
+          </Button>
         </DialogFooter>
       </>)}
     </ModalShell>
   )
 }
 
-// One shared modal for both add and edit, always scoped to ONE provider - `instance` is the
-// provider whose dialog opened it, so there is no provider picker any more. When `editing` is set
-// the model is disabled too (provider + model identify the row; the PATCH endpoint takes the
-// rates only) and every rate is submitted as an update instead of a create - the PATCH replaces
-// them all.
-//
-// ADDING, a model picked or typed is looked up in the server's built-in LIST PRICES (debounced) and,
-// while no price has been typed, its rates fill the form, with a line saying so and as of when. A
-// price the user typed is never overwritten, and a model the list does not know changes nothing
+// One model's rate, always scoped to ONE provider - `instance` is the provider whose dialog opened
+// it, so there is no provider picker any more. ADDING it is a form with its own Add; an EXISTING rate
+// is edited in place, each box saved as it is left (RateEditModal).
+function ProviderPricingModal({ instance, editing, onClose }: {
+  instance: ProviderInstance
+  editing: ModelPricing | null
+  onClose: () => void
+}) {
+  return editing
+    ? <RateEditModal instance={instance} rate={editing} onClose={onClose} />
+    : <RateAddModal instance={instance} onClose={onClose} />
+}
+
+// The rate boxes both dialogs draw, in one order: three columns of the standard rates and the
+// schedule, then the less common long-context tier behind a disclosure - open from the start for a
+// row that has one. WIDER, NOT TALLER (no dialog scrolls).
+function RateBoxes({ box, schedule, longOpen, onLongOpen }: {
+  box: (label: string, key: Exclude<keyof RateForm, 'schedule'>, placeholder?: string) => ReactNode
+  schedule: ReactNode
+  longOpen: boolean
+  onLongOpen: (open: boolean) => void
+}) {
+  const { t } = useTranslation()
+  return (<>
+    <FormColumns cols={3}>
+      {box(t('Input $/1M tokens'), 'input')}
+      {box(t('Output $/1M tokens'), 'output')}
+      {box(t('Cache read $/1M tokens'), 'cacheRead')}
+      {box(t('Cache write, 5 min $/1M tokens'), 'cacheWrite')}
+      {box(t('Cache write, 1 hour $/1M tokens'), 'cacheWriteLong', t('1.6x the 5 min rate'))}
+      {schedule}
+    </FormColumns>
+
+    <Disclosure summary={t('Long context pricing')} open={longOpen} onToggle={onLongOpen}>
+      {/* The tier's description opens it, before its boxes - it was the grid's last cell. */}
+      <Caption className="pt-3 max-w-[60ch]">
+        {t('Above this prompt size, these rates apply to the whole call.')}
+      </Caption>
+      <FormColumns cols={3} className="pt-3">
+        {box(t('Threshold (prompt tokens)'), 'threshold', '200000')}
+        {box(t('Input $/1M tokens'), 'longInput', t('Standard rate'))}
+        {box(t('Output $/1M tokens'), 'longOutput', t('Standard rate'))}
+        {box(t('Cache read $/1M tokens'), 'longCacheRead', t('Standard rate'))}
+        {box(t('Cache write, 5 min $/1M tokens'), 'longCacheWrite', t('Standard rate'))}
+      </FormColumns>
+    </Disclosure>
+  </>)
+}
+
+function useScheduleOptions(): { value: RateForm['schedule']; label: string }[] {
+  const { t } = useTranslation()
+  return [
+    { value: '', label: t('Same price all day') },
+    { value: 'DEEPSEEK_OFF_PEAK', label: t('DeepSeek off-peak (half price outside peak hours)') },
+  ]
+}
+
+// ADDING a rate: a model picked or typed is looked up in the server's built-in LIST PRICES (debounced)
+// and, while no price has been typed, its rates fill the form, with a line saying so and as of when.
+// A price the user typed is never overwritten, and a model the list does not know changes nothing
 // typed - it only takes back a prefill the list made for an earlier model.
-//
-// WIDER, NOT TALLER (no dialog scrolls): three columns, the less common long-context tier behind a
-// disclosure - open from the start for a row that has one.
 //
 // THE MODEL COMBOBOX ACTUALLY WORKS NOW. GET /api/v1/providers/{provider}/models resolves its path
 // segment as an instance ID (see ProviderModelsController -> ProviderInstanceService.resolve),
 // and the old Cost Settings version had only the provider NAME to pass - so every dropdown there
 // failed to resolve and offered nothing to pick. Opened from the provider's own dialog, the id is
 // simply at hand.
-function ProviderPricingModal({ instance, editing, onClose }: {
-  instance: ProviderInstance
-  editing: ModelPricing | null
-  onClose: () => void
-}) {
+function RateAddModal({ instance, onClose }: { instance: ProviderInstance; onClose: () => void }) {
   const { t } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
-  const isEdit = editing !== null
   const comboboxLabels = useModelComboboxLabels()
-
+  const scheduleOptions = useScheduleOptions()
   const dates = useDates()
 
-  const [model, setModel] = useState(editing?.model ?? '')
-  const [form, setForm] = useState<RateForm>(() => rateFormOf(editing))
-  const [longOpen, setLongOpen] = useState(() => hasLongTier(rateFormOf(editing)))
+  const [model, setModel] = useState('')
+  const [form, setForm] = useState<RateForm>(EMPTY_RATE_FORM)
+  const [longOpen, setLongOpen] = useState(false)
   // A price the user typed: from then on no list price touches the form. The schedule chosen by
   // hand is kept apart - it is not a price, so it neither stops a prefill nor is replaced by one.
   const [typed, setTyped] = useState(false)
@@ -845,19 +1159,19 @@ function ProviderPricingModal({ instance, editing, onClose }: {
 
   const { options: modelOptions, status: modelStatus, errorText: modelsError, onOpen: openModels } = useProviderModels(instance.id)
 
-  // Adding only. 404 (a model the list does not know) arrives as null.
+  // 404 (a model the list does not know) arrives as null.
   const lookup = useDebounce(model.trim(), 400)
   const listPrice = useQuery({
     queryKey: keys.modelListPrice(lookup),
     queryFn: () => costPricingApi.listPrice(lookup),
-    enabled: !isEdit && lookup.length > 0,
+    enabled: lookup.length > 0,
     retry: false,
     staleTime: Infinity,
   })
   // No model is no list price; undefined while the answer is on its way.
   const found = lookup ? listPrice.data : null
   useEffect(() => {
-    if (isEdit || typed || found === undefined) return
+    if (typed || found === undefined) return
     if (found) {
       const prefill = rateFormOf(found)
       setForm(f => (scheduleChosen ? { ...prefill, schedule: f.schedule } : prefill))
@@ -872,34 +1186,29 @@ function ProviderPricingModal({ instance, editing, onClose }: {
   }, [found])
 
   const save = useMutation({
-    mutationFn: () => {
-      const data = ratePayload(form)
-      return isEdit
-        ? costPricingApi.update(editing.id, data)
-        // The NAME, not the id: that is what the cost ledger records for every call and therefore
-        // what a rate has to be keyed on to be found again. ProviderInstanceService carries these
-        // rows across a rename so the two cannot drift apart.
-        : costPricingApi.create({ provider: instance.name, model, ...data })
-    },
+    // The NAME, not the id: that is what the cost ledger records for every call and therefore what a
+    // rate has to be keyed on to be found again. ProviderInstanceService carries these rows across a
+    // rename so the two cannot drift apart.
+    mutationFn: () => costPricingApi.create({ provider: instance.name, model, ...ratePayload(form) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.modelPricing() })
-      addToast(isEdit ? t('Pricing updated') : t('Pricing added'), 'success')
+      addToast(t('Pricing added'), 'success')
       onClose()
     },
-    onError: (e: unknown) => addToast(withReason(isEdit ? t('Failed to update pricing') : t('Failed to add pricing'), e), 'danger'),
+    onError: (e: unknown) => addToast(withReason(t('Failed to add pricing'), e), 'danger'),
   })
 
   const canSave = model.trim().length > 0
   const { dirty } = useFormDirty({ model, form })
 
-  const numberField = (label: string, key: keyof RateForm, placeholder = '0.00', step = '0.01') => (
+  const box = (label: string, key: keyof RateForm, placeholder = '0.00') => (
     <Field label={label}>
       {id => (
         <Input
           id={id}
           type="number"
           min="0"
-          step={step}
+          step={key === 'threshold' ? '1000' : '0.01'}
           value={form[key]}
           onChange={e => edit(key)(e.target.value)}
           placeholder={placeholder}
@@ -914,14 +1223,12 @@ function ProviderPricingModal({ instance, editing, onClose }: {
       closable={!save.isPending}
       dirty={dirty}
       size="form"
-      ariaLabel={isEdit ? t('Edit rate') : t('Add model rate')}
+      ariaLabel={t('Add model rate')}
     >
       {requestClose => (<>
-        <DialogHeader title={isEdit ? t('Edit rate') : t('Add model rate')} subtitle={instance.name} />
+        <DialogHeader title={t('Add model rate')} subtitle={instance.name} />
         <DialogBody>
           <FormStack>
-            {/* Provider + model identify the row (the PATCH endpoint takes the rates only), so an
-                edit shows the model disabled. */}
             <Field label={t('Model')}>
               {id => (
                 <Combobox
@@ -933,7 +1240,6 @@ function ProviderPricingModal({ instance, editing, onClose }: {
                   errorText={modelsError}
                   onOpen={openModels}
                   placeholder={t('Model name')}
-                  disabled={isEdit}
                   labels={comboboxLabels}
                 />
               )}
@@ -942,50 +1248,32 @@ function ProviderPricingModal({ instance, editing, onClose }: {
             {/* What the rates below are, BEFORE them (the field rule of 2026-10-29 - these closed
                 the form, after every box they explain). */}
             <div className="space-y-1">
-              <Presence show={!isEdit && !typed && prefilledAsOf != null}>
+              <Presence show={!typed && prefilledAsOf != null}>
                 <Caption>
-                  {t("Prefilled from the list price as of {date}. Check it against your provider's bill.", {
+                  {t('List price as of {date}. Check your bill.', {
                     date: prefilledAsOf ? dates.date(`${prefilledAsOf}T12:00:00`) : '',
                   })}
                 </Caption>
               </Presence>
-              <Caption>{t('A cost the provider reports (OpenRouter, LiteLLM) is used instead of these rates.')}</Caption>
+              <Caption>{t('A cost the provider reports is used instead.')}</Caption>
             </div>
-            <FormColumns cols={3}>
-              {numberField(t('Input $/1M tokens'), 'input')}
-              {numberField(t('Output $/1M tokens'), 'output')}
-              {numberField(t('Cache read $/1M tokens'), 'cacheRead')}
-              {numberField(t('Cache write, 5 min $/1M tokens'), 'cacheWrite')}
-              {numberField(t('Cache write, 1 hour $/1M tokens'), 'cacheWriteLong', t('1.6x the 5 min rate'))}
-              <Field label={t('Time-of-day pricing')}>
-                {id => (
-                  <Select<RateForm['schedule']>
-                    id={id}
-                    value={form.schedule}
-                    onChange={schedule => { setScheduleChosen(true); setForm(f => ({ ...f, schedule })) }}
-                    options={[
-                      { value: '', label: t('Same price all day') },
-                      { value: 'DEEPSEEK_OFF_PEAK', label: t('DeepSeek off-peak (half price outside peak hours)') },
-                    ]}
-                  />
-                )}
-              </Field>
-            </FormColumns>
-
-            <Disclosure summary={t('Long context pricing')} open={longOpen} onToggle={setLongOpen}>
-              {/* The tier's description opens it, before its boxes - it was the grid's last cell. */}
-              <Caption className="pt-3 max-w-[60ch]">
-                {t('Above this prompt size, these rates price the whole call. Empty means the standard rate.')}
-              </Caption>
-              <FormColumns cols={3} className="pt-3">
-                {numberField(t('Threshold (prompt tokens)'), 'threshold', '200000', '1000')}
-                {numberField(t('Input $/1M tokens'), 'longInput', t('Standard rate'))}
-                {numberField(t('Output $/1M tokens'), 'longOutput', t('Standard rate'))}
-                {numberField(t('Cache read $/1M tokens'), 'longCacheRead', t('Standard rate'))}
-                {numberField(t('Cache write, 5 min $/1M tokens'), 'longCacheWrite', t('Standard rate'))}
-              </FormColumns>
-            </Disclosure>
-
+            <RateBoxes
+              box={box}
+              longOpen={longOpen}
+              onLongOpen={setLongOpen}
+              schedule={(
+                <Field label={t('Time-of-day pricing')}>
+                  {id => (
+                    <Select<RateForm['schedule']>
+                      id={id}
+                      value={form.schedule}
+                      onChange={schedule => { setScheduleChosen(true); setForm(f => ({ ...f, schedule })) }}
+                      options={scheduleOptions}
+                    />
+                  )}
+                </Field>
+              )}
+            />
           </FormStack>
         </DialogBody>
         <DialogFooter>
@@ -995,6 +1283,83 @@ function ProviderPricingModal({ instance, editing, onClose }: {
           </Button>
         </DialogFooter>
       </>)}
+    </ModalShell>
+  )
+}
+
+// AN EXISTING RATE, EDITED IN PLACE (the maintainer, 2026-11-02): each box click-to-edit and saved as
+// it is left, the schedule as it is chosen. Provider + model identify the row, so the model is shown
+// and not edited; the PATCH takes the rates only and replaces them ALL, so each save sends every rate
+// with the one change (useAutosave). A box that is not a price of zero or more - or, for the
+// threshold, a whole number of tokens - is refused before anything is sent. A blank long-context
+// rate is the standard rate, and the long rates go only with a threshold: one typed with none is not
+// kept, as the form never kept it.
+function RateEditModal({ instance, rate, onClose }: { instance: ProviderInstance; rate: ModelPricing; onClose: () => void }) {
+  const { t } = useTranslation()
+  const scheduleOptions = useScheduleOptions()
+  const base = rateFormOf(rate)
+  const [longOpen, setLongOpen] = useState(() => hasLongTier(base))
+  const { value: form = base, save, status } = useAutosave<RateForm>(
+    base,
+    async next => {
+      const saved = await costPricingApi.update(rate.id, ratePayload(next))
+      queryClient.invalidateQueries({ queryKey: keys.modelPricing() })
+      return rateFormOf(saved)
+    },
+    { failure: t('Failed to update pricing') },
+  )
+
+  const priceText = t('Must be a number of 0 or more')
+  const wholeText = t('Must be a whole number')
+  const problem = (key: keyof RateForm, text: string): string | undefined => {
+    if (key === 'threshold') return text.trim() !== '' && wholeNumberProblem(text, 0, Number.MAX_SAFE_INTEGER) ? wholeText : undefined
+    return decimalProblem(text) ? priceText : undefined
+  }
+
+  const box = (label: string, key: Exclude<keyof RateForm, 'schedule'>, placeholder = '0.00') => (
+    <Field label={label}>
+      <EditableText
+        value={form[key]}
+        label={label}
+        placeholder={placeholder}
+        className="data-readout"
+        validate={text => problem(key, text)}
+        onCommit={text => {
+          const refused = problem(key, text)
+          return refused ? Promise.reject(new Error(refused)) : save({ [key]: text.trim() })
+        }}
+      />
+    </Field>
+  )
+
+  return (
+    <ModalShell onClose={onClose} size="form" ariaLabel={t('Edit rate')}>
+      <DialogHeader title={t('Edit rate')} subtitle={instance.name} actions={<SaveStatus word={status} />} />
+      <DialogBody>
+        <FormStack>
+          <Field label={t('Model')}>
+            <StaticValue className="break-all">{rate.model}</StaticValue>
+          </Field>
+          <Caption>{t('A cost the provider reports is used instead.')}</Caption>
+          <RateBoxes
+            box={box}
+            longOpen={longOpen}
+            onLongOpen={setLongOpen}
+            schedule={(
+              <Field label={t('Time-of-day pricing')}>
+                {id => (
+                  <Select<RateForm['schedule']>
+                    id={id}
+                    value={form.schedule}
+                    onChange={schedule => quietly(save({ schedule }))}
+                    options={scheduleOptions}
+                  />
+                )}
+              </Field>
+            )}
+          />
+        </FormStack>
+      </DialogBody>
     </ModalShell>
   )
 }

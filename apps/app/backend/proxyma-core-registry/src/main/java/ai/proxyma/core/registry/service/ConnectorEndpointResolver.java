@@ -215,10 +215,22 @@ public class ConnectorEndpointResolver {
      * Matching is on the connector's name, which is what registration stores the key as.
      */
     public Endpoint forSource(ConnectorType type, String sourceKey, String userId) {
-        if (sourceKey == null || sourceKey.isBlank()) return forType(type, userId);
+        return namedSource(type, sourceKey, userId).orElseGet(() -> forType(type, userId));
+    }
+
+    /**
+     * The endpoint of the source of {@code type} a tool call NAMED, when that source contributes one: a
+     * source of the caller's own (or Desktop's, which has no owner), through its connection - EMPTY when
+     * that connection is gone. Empty when nothing is named, nothing visible matches, the name is
+     * ambiguous, or the source is somebody else's, which lends nothing ({@link #resolve(RegisteredConnector,
+     * String)}). What {@link #forSource} falls back from, and what a saved agent's pinned connection
+     * (ToolConnectorResolver) comes after.
+     */
+    public Optional<Endpoint> namedSource(ConnectorType type, String sourceKey, String userId) {
+        if (sourceKey == null || sourceKey.isBlank()) return Optional.empty();
         return findVisibleSource(type, sourceKey, userId)
-                .map(connector -> resolve(connector, userId))
-                .orElseGet(() -> forType(type, userId));
+                .filter(connector -> !isForeign(connector, userId))
+                .map(this::resolve);
     }
 
     /**

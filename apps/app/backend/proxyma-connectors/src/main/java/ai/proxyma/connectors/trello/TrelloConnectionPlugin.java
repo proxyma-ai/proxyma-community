@@ -31,9 +31,9 @@ public class TrelloConnectionPlugin implements ConnectionPlugin {
             .mark("trello")
             .auth(AuthMethod.of(AuthKind.TOKEN, "API key and token",
                     FieldSpec.secret(TrelloApi.API_KEY, "API key").asRequired()
-                            .help("On your Power-Up's page in the Trello Power-Up admin portal, under API key."),
+                            .help("In the Trello Power-Up admin portal, under API key."),
                     FieldSpec.secret(TrelloApi.TOKEN, "Token").asRequired()
-                            .help("Generated from the Token link beside the API key, with read access.")))
+                            .help("From the Token link beside the API key.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(TrelloApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.TRELLO)
             .docsAnchor("trello")

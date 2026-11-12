@@ -55,12 +55,12 @@ public class ZoomConnectionPlugin implements ConnectionPlugin {
             .mark("zoom")
             .auth(AuthMethod.of(AuthKind.KEY_PAIR, "Server-to-Server OAuth app",
                             FieldSpec.text(ZoomApi.ACCOUNT_ID, "Account ID").asRequired()
-                                    .help("From the app's App Credentials page in the Zoom App Marketplace."),
+                                    .help("From App Credentials in the Zoom App Marketplace."),
                             FieldSpec.text(ZoomApi.CLIENT_ID, "Client ID").asRequired(),
                             FieldSpec.secret(ZoomApi.CLIENT_SECRET, "Client secret").asRequired()),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Zoom",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("From the Zoom app you created for Proxyma, under App Credentials."),
+                                    .help("From your Zoom app, under App Credentials."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(ZoomApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave it as it is unless you are told otherwise."))

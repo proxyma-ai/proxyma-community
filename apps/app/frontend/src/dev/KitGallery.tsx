@@ -115,7 +115,7 @@ function Entry({ entry }: { entry: KitEntry }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
         {specimens.map((s, i) => (
           <div key={s.title} id={`${entry.name}-${i + 1}`} className={cn('min-w-0 scroll-mt-20', s.wide && 'md:col-span-2')}>
-            <p className="text-2xs font-mono text-ink-disabled mb-2">{s.title}</p>
+            <p className="text-xs font-mono text-ink-disabled mb-2">{s.title}</p>
             <div className="flex flex-wrap items-start gap-3 min-w-0">{s.render()}</div>
           </div>
         ))}
@@ -163,9 +163,9 @@ function Tokens() {
             {ramp.steps.map(s => (
               <div key={s.name} className="min-w-0">
                 <div className={cn('h-12 rounded-md border border-line/40', s.swatch)} />
-                <p className="mt-1 text-2xs font-mono text-ink-primary">{s.name}</p>
-                <p className="text-2xs data-readout text-ink-caption">{show(TOKENS.light[s.name])}</p>
-                {s.role && <p className="text-2xs text-ink-disabled leading-snug">{s.role}</p>}
+                <p className="mt-1 text-xs font-mono text-ink-primary">{s.name}</p>
+                <p className="text-xs data-readout text-ink-caption">{show(TOKENS.light[s.name])}</p>
+                {s.role && <p className="text-xs text-ink-disabled leading-snug">{s.role}</p>}
               </div>
             ))}
           </div>
@@ -193,7 +193,7 @@ function Tokens() {
           {FACES.map(f => <KeyValue key={f.name} label={`${f.name} - ${f.token}`}><span className={cn('text-base text-ink-primary', f.className)}>{f.sample}</span><Caption>{f.family}. {f.use}</Caption></KeyValue>)}
         </KeyValueList>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-          {FONT_SIZES.map(s => <span key={s.cls} className={cn('text-ink-primary', s.cls)}>{s.cls.replace('text-', '')} <span className="text-2xs data-readout text-ink-caption">{s.spec}</span></span>)}
+          {FONT_SIZES.map(s => <span key={s.cls} className={cn('text-ink-primary', s.cls)}>{s.cls.replace('text-', '')} <span className="text-xs data-readout text-ink-caption">{s.spec}</span></span>)}
         </div>
       </div>
 
@@ -202,7 +202,7 @@ function Tokens() {
           <SectionHeading caption="The 4-point rhythm: 4, 8, 12, 16, 24, 32, 48, 64 - and the control heights.">Spacing</SectionHeading>
           {SPACING.map(s => (
             <div key={s.cls} className="flex items-center gap-3">
-              <span className="w-14 text-2xs font-mono text-ink-caption">{s.cls}</span>
+              <span className="w-14 text-xs font-mono text-ink-caption">{s.cls}</span>
               <span className={cn('h-3 rounded-sm bg-brand-accent', SPACE_BAR[s.cls])} />
               <Caption as="span">{s.px}px - {s.use}</Caption>
             </div>
@@ -212,12 +212,12 @@ function Tokens() {
           <SectionHeading caption="By role: the control's 6px and the surface's 10px do almost everything.">Radius</SectionHeading>
           <div className="grid grid-cols-3 gap-3">
             {RADII.map(r => (
-              <div key={r.cls}><div className={cn('h-12 border border-line bg-surface', r.cls)} /><p className="mt-1 text-2xs font-mono text-ink-primary break-all">{r.cls} <span className="text-ink-caption">{r.px}</span></p><p className="text-2xs text-ink-disabled leading-snug">{r.use}</p></div>
+              <div key={r.cls}><div className={cn('h-12 border border-line bg-surface', r.cls)} /><p className="mt-1 text-xs font-mono text-ink-primary break-all">{r.cls} <span className="text-ink-caption">{r.px}</span></p><p className="text-xs text-ink-disabled leading-snug">{r.use}</p></div>
             ))}
           </div>
           <SectionHeading caption="One shadow, for what floats. A card in the page has a border and none.">Shadows</SectionHeading>
           <div className="grid grid-cols-3 gap-4">
-            {SHADOWS.map(s => <div key={s.cls}><div className={cn('h-14 rounded-lg surface-float border', s.cls)} /><p className="mt-2 text-2xs font-mono text-ink-primary break-all">{s.cls}</p><p className="text-2xs text-ink-disabled">{s.use}</p></div>)}
+            {SHADOWS.map(s => <div key={s.cls}><div className={cn('h-14 rounded-lg surface-float border', s.cls)} /><p className="mt-2 text-xs font-mono text-ink-primary break-all">{s.cls}</p><p className="text-xs text-ink-disabled">{s.use}</p></div>)}
           </div>
         </div>
       </div>
@@ -227,8 +227,8 @@ function Tokens() {
           <SectionHeading caption="Three durations and three curves; nothing bounces. Point at a row to see it ease.">Motion</SectionHeading>
           {MOTION.map(m => (
             <div key={m.token} className="flex items-center gap-3 rounded-md px-2 py-2 mouse:hover:bg-surface-alt transition-colors" >
-              <span className="w-28 text-2xs font-mono text-ink-primary">{m.token}</span>
-              <Readout tone="caption" className="text-2xs w-40">{m.value}</Readout>
+              <span className="w-28 text-xs font-mono text-ink-primary">{m.token}</span>
+              <Readout tone="caption" className="text-xs w-40">{m.value}</Readout>
               <Caption as="span">{m.use}</Caption>
             </div>
           ))}
@@ -256,9 +256,10 @@ function LogoSheet() {
         {(['Lockup', 'Console lockup', 'Mark alone'] as const).map(kind => (
           <Card key={kind} className="flex flex-col items-start gap-4">
             <Eyebrow>{kind}</Eyebrow>
-            {kind === 'Lockup' && <><Logo size={16} /><Logo size={24} /><Logo /><Logo size={40} /></>}
-            {kind === 'Console lockup' && <><Logo subtitle="License Manager" /><Logo subtitle="Telemetry" /></>}
-            {kind === 'Mark alone' && <div className="flex items-end gap-3"><Logo markOnly size={16} /><Logo markOnly size={28} /><Logo markOnly size={48} /><Logo markOnly size={80} /></div>}
+            {/* Specimens, held still: a sheet of turning marks would be noise. Every mark in use turns. */}
+            {kind === 'Lockup' && <><Logo still size={16} /><Logo still size={24} /><Logo still /><Logo still size={40} /></>}
+            {kind === 'Console lockup' && <><Logo still subtitle="License Manager" /><Logo still subtitle="Telemetry" /></>}
+            {kind === 'Mark alone' && <div className="flex items-end gap-3"><Logo still markOnly size={16} /><Logo still markOnly size={28} /><Logo still markOnly size={48} /><Logo still markOnly size={80} /></div>}
           </Card>
         ))}
       </div>
@@ -355,7 +356,7 @@ export function KitGallery() {
                 suggestions={['What is still missing?', 'Run the health review', 'Draft next moves']}
               />
             </div>
-            <p className="text-2xs font-mono text-ink-disabled">bound: {panelConversation ?? '-'}</p>
+            <p className="text-xs font-mono text-ink-disabled">bound: {panelConversation ?? '-'}</p>
           </Section>
         )}
         {visible.length === 0 && <Caption>No component matches.</Caption>}

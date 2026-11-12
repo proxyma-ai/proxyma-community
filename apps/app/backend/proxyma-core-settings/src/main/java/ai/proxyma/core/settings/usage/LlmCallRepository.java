@@ -16,6 +16,24 @@ import java.util.UUID;
 public interface LlmCallRepository extends JpaRepository<LlmCall, UUID> {
 
     /**
+     * Rows of [conversationId, recordedAt, costUsd]: every call made for these conversations since {@code from}. For a
+     * page that adds up work done outside any turn - a Constellations team's own model calls (CommentPipeline), which are
+     * billed to an agent's work conversation and are no run (ConstellationOverview). At most a few hundred ids a call.
+     */
+    @Query("""
+            select c.conversationId, c.recordedAt, c.costUsd from LlmCall c
+            where c.conversationId in :conversationIds and c.recordedAt >= :from
+            """)
+    List<Object[]> costsOf(@Param("conversationIds") java.util.Collection<String> conversationIds, @Param("from") Instant from);
+
+    /** Rows of [conversationId, cost]: what every call made for these conversations cost, all time. A few hundred ids a call. */
+    @Query("""
+            select c.conversationId, sum(c.costUsd) from LlmCall c
+            where c.conversationId in :conversationIds group by c.conversationId
+            """)
+    List<Object[]> totalCostOf(@Param("conversationIds") java.util.Collection<String> conversationIds);
+
+    /**
      * One page of calls, newest first, narrowed by whatever the caller supplied.
      *
      * <p>Every filter is optional and expressed as "null means all", so one query serves the whole
@@ -29,6 +47,9 @@ public interface LlmCallRepository extends JpaRepository<LlmCall, UUID> {
      * search box. The ORDER comes from the pageable, never from here, so the table's sortable
      * columns sort the whole filtered window on the server rather than one page of it in the
      * browser; the controller only ever passes a sort it has whitelisted.
+     *
+     * <p>{@code conversationId} narrows to the calls made for one conversation - one agent's work
+     * (LlmCall.conversationId).
      */
     @Query("""
             select c from LlmCall c
@@ -37,6 +58,7 @@ public interface LlmCallRepository extends JpaRepository<LlmCall, UUID> {
               and (:role is null or c.role = :role)
               and (:provider is null or c.provider = :provider)
               and (:model is null or c.model = :model)
+              and (:conversationId is null or c.conversationId = :conversationId)
               and (:text is null
                    or lower(c.role) like :text escape '\\'
                    or lower(c.provider) like :text escape '\\'
@@ -50,7 +72,43 @@ public interface LlmCallRepository extends JpaRepository<LlmCall, UUID> {
                          @Param("provider") String provider,
                          @Param("model") String model,
                          @Param("text") String text,
+                         @Param("conversationId") String conversationId,
                          Pageable pageable);
+
+    /**
+     * The same window and filters, one row per CONVERSATION - what one agent's work cost, the calls
+     * made for no conversation together under a null key. Each row is
+     * [conversationId, calls, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, cost,
+     * first call, last call], costliest first; the pageable bounds how many come back. For the log's
+     * conversation filter and the download grouped by conversation (LlmCallsController).
+     */
+    @Query("""
+            select c.conversationId, count(c), sum(c.inputTokens), sum(c.outputTokens),
+                   sum(c.cacheReadTokens), sum(c.cacheWriteTokens), sum(c.costUsd),
+                   min(c.recordedAt), max(c.recordedAt)
+            from LlmCall c
+            where c.recordedAt >= :from and c.recordedAt < :to
+              and (:subjectId is null or c.subjectId = :subjectId)
+              and (:role is null or c.role = :role)
+              and (:provider is null or c.provider = :provider)
+              and (:model is null or c.model = :model)
+              and (:conversationId is null or c.conversationId = :conversationId)
+              and (:text is null
+                   or lower(c.role) like :text escape '\\'
+                   or lower(c.provider) like :text escape '\\'
+                   or lower(c.model) like :text escape '\\'
+                   or lower(c.subjectId) like :text escape '\\')
+            group by c.conversationId order by sum(c.costUsd) desc
+            """)
+    List<Object[]> totalsByConversation(@Param("from") Instant from,
+                                        @Param("to") Instant to,
+                                        @Param("subjectId") String subjectId,
+                                        @Param("role") String role,
+                                        @Param("provider") String provider,
+                                        @Param("model") String model,
+                                        @Param("text") String text,
+                                        @Param("conversationId") String conversationId,
+                                        Pageable pageable);
 
     /**
      * The same window, grouped. Each returns

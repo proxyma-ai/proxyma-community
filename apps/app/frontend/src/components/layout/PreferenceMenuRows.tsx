@@ -1,7 +1,14 @@
+import { Palette, PanelsTopLeft } from 'lucide-react'
 import {
+  ACCENT_PREFERENCES,
+  ACCENT_SWATCH,
   AppearanceMenuRow as KitAppearanceMenuRow,
+  BACKDROP_PREFERENCES,
   LanguageMenuRow as KitLanguageMenuRow,
+  SubmenuRow,
+  type AccentPreference,
   type AppearancePreference,
+  type BackdropPreference,
 } from '@/components/ui/kit'
 import { useTranslation, useI18n, LOCALES, LOCALE_NAMES } from '@/i18n'
 import { useThemeStore } from '@/store/themeStore'
@@ -49,6 +56,57 @@ export function AppearanceMenuRow({ className }: { className?: string }) {
       names={names}
       current={preference}
       onChoose={setPreference}
+      className={className}
+    />
+  )
+}
+
+/**
+ * The BACKGROUND and the ACCENT COLOR beside the appearance, as rows of the same menus (since
+ * 2026-11-09 - the sidebar's Appearance list offers them from `lg`, and a phone has the menu instead,
+ * so these are how a phone reaches them). Neither closes on a choice, for the same reason Appearance
+ * does not: the page behind is the comparison.
+ */
+export function BackdropMenuRow({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  const backdrop = useThemeStore(s => s.backdrop)
+  const setBackdrop = useThemeStore(s => s.setBackdrop)
+  const names: Record<BackdropPreference, string> = { flat: t('Flat'), gradient: t('Gradient') }
+  return (
+    <SubmenuRow<BackdropPreference>
+      icon={<PanelsTopLeft size={15} className="shrink-0" aria-hidden="true" />}
+      title={t('Background')}
+      value={names[backdrop]}
+      valueText={names[backdrop]}
+      options={BACKDROP_PREFERENCES.map(b => ({ key: b, label: names[b] }))}
+      current={backdrop}
+      onPick={setBackdrop}
+      closeOnPick={false}
+      className={className}
+    />
+  )
+}
+
+export function AccentMenuRow({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  const accent = useThemeStore(s => s.accent)
+  const setAccent = useThemeStore(s => s.setAccent)
+  const names: Record<AccentPreference, string> = {
+    teal: t('Teal'), blue: t('Blue'), violet: t('Violet'), green: t('Green'), amber: t('Amber'), rose: t('Rose'),
+  }
+  const swatch = (a: AccentPreference) => (
+    <span aria-hidden="true" className="h-[15px] w-[15px] shrink-0 rounded-[4px]" style={{ backgroundColor: ACCENT_SWATCH[a] }} />
+  )
+  return (
+    <SubmenuRow<AccentPreference>
+      icon={<Palette size={15} className="shrink-0" aria-hidden="true" />}
+      title={t('Accent color')}
+      value={names[accent]}
+      valueText={names[accent]}
+      options={ACCENT_PREFERENCES.map(a => ({ key: a, label: names[a], icon: swatch(a) }))}
+      current={accent}
+      onPick={setAccent}
+      closeOnPick={false}
       className={className}
     />
   )

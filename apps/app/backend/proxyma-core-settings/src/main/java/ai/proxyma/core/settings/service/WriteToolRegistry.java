@@ -52,6 +52,11 @@ public final class WriteToolRegistry {
             "mergeBitbucketPr", "createBitbucketTag", "callBitbucketApi",
             "createBitbucketBranch", "deleteBitbucketBranch");
 
+    // A reply posted under a comment on the user's YouTube channel, as the channel (YouTubeTools) - public
+    // the moment it is written. Behind the YouTube connection's Write switch, which is also what decides
+    // whether Google was asked for the permission to reply at all.
+    public static final Set<String> YOUTUBE_NAMES = Set.of("replyToYouTubeComment");
+
     // Desktop's two tools that cross between the user's disk and a conversation's workspace. Write
     // tools here for the approval pause alone: each call asks, showing the path - reading a file off
     // the disk included (the maintainer's rule, 2026-09-26). No settings switch gates them, so
@@ -84,6 +89,11 @@ public final class WriteToolRegistry {
     // server. A write for the approval pause and Read-only everywhere - each call shows the command
     // and waits for the user in Ask. No settings switch gates it (McpGuardService lets it through).
     public static final Set<String> COMMAND_NAMES = Set.of("runCommand");
+
+    // A Constellations project's lead removing an agent from its team, from the person's own lead chat
+    // (ConstellationBuilderTools): it takes the agent's memory and workspace with it, so it asks first.
+    // No settings switch gates it (McpGuardService lets it through to the pause).
+    public static final Set<String> TEAM_NAMES = Set.of("removeTeamAgent");
 
     // Tools that write only inside the conversation's own workspace. NOT write tools - no approval,
     // the maintainer's choice - but still kept from an agent that runs outside any conversation,
@@ -119,10 +129,12 @@ public final class WriteToolRegistry {
         all.addAll(JIRA_NAMES);
         all.addAll(CONFLUENCE_NAMES);
         all.addAll(BITBUCKET_NAMES);
+        all.addAll(YOUTUBE_NAMES);
         all.addAll(LOCAL_FILE_NAMES);
         all.addAll(KEY_ACCOUNT_NAMES);
         all.addAll(SOURCE_CONTENT_NAMES);
         all.addAll(COMMAND_NAMES);
+        all.addAll(TEAM_NAMES);
         return Set.copyOf(all);
     }
 
@@ -207,6 +219,7 @@ public final class WriteToolRegistry {
         if (JIRA_NAMES.contains(toolName)) return new Connector(null, "Jira", ConnectorType.JIRA);
         if (CONFLUENCE_NAMES.contains(toolName)) return new Connector(null, "Confluence", ConnectorType.CONFLUENCE);
         if (BITBUCKET_NAMES.contains(toolName)) return new Connector(null, "Bitbucket", ConnectorType.BITBUCKET);
+        if (YOUTUBE_NAMES.contains(toolName)) return new Connector(null, "YouTube", ConnectorType.YOUTUBE_CHANNEL);
         return null;
     }
 

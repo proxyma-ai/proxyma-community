@@ -47,7 +47,7 @@ public class FreshdeskConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.FRESHDESK)
             .protocol(ConnectionProtocol.FRESHDESK)
             .displayName("Freshdesk")
-            .description("Freshdesk tickets with their conversations, and knowledge base articles if you choose.")
+            .description("Freshdesk tickets, and knowledge base articles if you choose.")
             .noun("Freshdesk source", "Freshdesk sources")
             .addTitle("Add Freshdesk tickets or articles")
             .order(61)
@@ -57,13 +57,12 @@ public class FreshdeskConnectorPlugin implements ConnectorPlugin {
                     FieldSpec.bool(TICKETS, "Tickets").defaultValue("true")
                             .help("Every ticket the agent can see, with its replies and notes."),
                     FieldSpec.bool(PRIVATE_NOTES, "Private notes").defaultValue("false")
-                            .help("Notes only agents can see. Off: replies and public notes are read."),
+                            .help("Notes only agents can see."),
                     FieldSpec.bool(ARTICLES, "Knowledge base articles").defaultValue("false")
                             .help("Published solution articles. Drafts are left out."),
                     FieldSpec.text(CATEGORIES, "Article categories").placeholder("43000123456")
                             .pattern("\\s*[0-9]+(\\s*,\\s*[0-9]+)*\\s*")
-                            .help("Category numbers, separated by commas - the number in a category's address. "
-                                    + "Every category when empty."))
+                            .help("Category numbers, comma-separated. Empty for all."))
             .capabilities(Capabilities.builder().incremental().shareable().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("freshdesk")

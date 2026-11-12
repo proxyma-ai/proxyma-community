@@ -16,7 +16,7 @@ export function FeedbackSection() {
   return (
     <SettingsSection
       title={t('Feedback')}
-      caption={t('You choose on the form whether to attach logs, the conversation or files.')}
+      caption={t('You choose what to attach on the form.')}
     >
       <div className="space-y-3">
         <Button onClick={() => openFeedback()}>

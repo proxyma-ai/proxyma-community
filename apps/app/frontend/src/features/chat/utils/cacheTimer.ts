@@ -36,3 +36,17 @@ export function cacheLifetime(lifetimeSeconds: number | null | undefined): 'hour
 export function nearlyCold(seconds: number): boolean {
   return seconds > 0 && seconds <= 60
 }
+
+/**
+ * How full the cache's ring is, 0-100 (the maintainer's request, 2026-11-02: a ring like the context
+ * window's, not a stopwatch and a clock). It DRAINS: full when a write or read has just started the
+ * lifetime, empty when it goes cold. Measured against the lifetime the server stated - an hour or
+ * five minutes - and, where none was stated, against five minutes or the time left, whichever is
+ * longer, so an unstated lifetime never shows a ring over full.
+ */
+export function cacheRingPercent(secondsLeft: number, lifetimeSeconds: number | null | undefined): number {
+  if (!Number.isFinite(secondsLeft) || secondsLeft <= 0) return 0
+  const stated = lifetimeSeconds != null && Number.isFinite(lifetimeSeconds) && lifetimeSeconds > 0 ? lifetimeSeconds : 0
+  const whole = Math.max(stated || 300, secondsLeft)
+  return Math.min(100, (secondsLeft / whole) * 100)
+}

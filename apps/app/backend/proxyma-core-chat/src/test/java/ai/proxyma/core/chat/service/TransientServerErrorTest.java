@@ -102,6 +102,18 @@ class TransientServerErrorTest {
     }
 
     @Test
+    @DisplayName("a connection closed part way through an answer that began with a 200 is transient")
+    void droppedAfterTheStatus() {
+        // The maintainer's Learner, 2026-11-10: it failed its run on the first such drop.
+        RuntimeException dropped = new RuntimeException("200 OK from POST https://api.anthropic.com/v1/messages, but response "
+                + "failed with cause: reactor.netty.http.client.PrematureCloseException: Connection prematurely closed DURING "
+                + "response", new java.io.IOException("Connection prematurely closed DURING response"));
+        assertThat(ModelCall.isTransientServerError(dropped)).isTrue();
+        assertThat(ModelCall.isRetryable(dropped)).isTrue();
+        assertThat(ModelCall.isTransientServerError(new RuntimeException("400 Bad Request: invalid model"))).isFalse();
+    }
+
+    @Test
     @DisplayName("a 500 that does not say it was transient fails at once, as the provider raised it")
     void permanentServerErrorIsNotRetried() {
         AtomicInteger calls = new AtomicInteger();

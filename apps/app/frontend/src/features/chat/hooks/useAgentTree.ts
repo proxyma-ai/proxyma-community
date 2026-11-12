@@ -15,10 +15,12 @@ const POLL_MS = 3_000
  * since laid over it - for the agents map, a deployed agent's panel and the strip over a deployed
  * agent's own conversation, which all read this one query.
  *
- * Read again every few seconds while anything in the tree is at work or the conversation's own
- * turn runs: a deployed agent's figures grow with every call, and a grandchild's state reaches no
- * stream this page follows. Under the conversation's own key, so the refresh after every turn
- * reaches it too.
+ * Read again every few seconds while anything in the tree is at work, or while the conversation's
+ * own turn runs in a tree that has agents: a deployed agent's figures grow with every call, and a
+ * grandchild's state reaches no stream this page follows. A turn in a conversation with no tree is
+ * not polled - the agent it deploys says so on the turn's own stream ('agent-status'), which reads
+ * the tree again (useChat). Under the conversation's own key, so the refresh after every turn reaches
+ * it too.
  */
 export function useAgentTree(conversationId: string | undefined) {
   const chat = useChatInstance()
@@ -29,15 +31,24 @@ export function useAgentTree(conversationId: string | undefined) {
     enabled: !!conversationId,
     // A conversation the server does not hold yet (an id minted for an attachment) answers 404.
     retry: false,
-    refetchInterval: q => (anyAtWork(q.state.data) || chat.store.getState().streaming ? POLL_MS : false),
+    refetchInterval: q => (anyAtWork(q.state.data) || (hasTree(q.state.data) && chat.store.getState().streaming) ? POLL_MS : false),
   })
   const agents = useMemo(() => withLive(query.data?.agents ?? [], live), [query.data, live])
   const self = query.data?.self ? agents.find(a => a.agentId === query.data!.self!.agentId) ?? query.data.self : undefined
   return { ...query, agents, self, rootConversationId: query.data?.rootConversationId }
 }
 
+/** Whether the conversation is in a tree at all: an agent of its own, or itself a deployed one. */
+function hasTree(data: AgentTreeData | undefined): boolean {
+  return !!data && (data.agents.length > 0 || !!data.self)
+}
+
+// An agent of the tree at work, or the main agent working or waiting on its work while the page is in
+// another conversation of the tree - the map shows its status and time worked (2026-11-03). A
+// conversation with no tree is still never polled for its own turn.
 function anyAtWork(data: AgentTreeData | undefined): boolean {
   return !!data?.agents.some(a => isWorking(a) || isBusy(a.status) || a.owesReport)
+    || (hasTree(data) && !!(data?.main?.working || data?.main?.waiting))
 }
 
 /** One agent of the tree, by its id - undefined while the tree has not listed it. */

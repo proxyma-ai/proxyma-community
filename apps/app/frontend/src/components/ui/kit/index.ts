@@ -40,7 +40,8 @@ export {
 } from './chartTheme'
 export type { ModalLayerOptions } from './useModalLayer'
 export { useWheelScrollX } from './useWheelScrollX'
-export { useIdleRotation, IDLE_DEG_PER_S } from './useIdleRotation'
+export { useIdleRotation } from './useIdleRotation'
+export { IDLE_DEG_PER_S } from './markTurn'
 export { useHideOnScroll, useHideOnSwipe } from './useAutoHide'
 export { installAppViewport } from './appViewport'
 export {
@@ -60,13 +61,19 @@ export { FadeSwap } from './FadeSwap'
 export { Presence } from './Presence'
 export { applyClick, headerState, toggleAllOnPage, type HeaderState } from './selection'
 export {
+  ACCENT_PREFERENCES,
+  ACCENT_SWATCH,
   APPEARANCE_PREFERENCES,
+  BACKDROP_PREFERENCES,
   SYSTEM_DARK_QUERY,
   applyAppearance,
+  applyLook,
+  parseAccent,
   parseAppearance,
+  parseBackdrop,
   resolveAppearance,
 } from './appearance'
-export type { AppearanceMode, AppearancePreference, AppearanceTarget, ResolvedAppearance } from './appearance'
+export type { AccentPreference, AppearanceMode, AppearancePreference, AppearanceTarget, BackdropPreference, ResolvedAppearance } from './appearance'
 export { themeColor } from './appearance'
 export { appearanceInitScript, THEME_COLOR } from './appearanceScript'
 export { createAppearanceStore, type AppearanceStore } from './appearanceStore'
@@ -108,7 +115,7 @@ export { Skeleton, ListRowSkeleton, SwitchRowSkeleton, FieldSkeleton, RadioGroup
 export { StateMark, StatusMark, StatusDot, WorkingBadge, type WorkState, type HealthState } from './StateMark'
 export { Avatar, AvatarStack, initials, type AvatarSize } from './Avatar'
 export { Stepper, type Step, type StepState } from './Stepper'
-export { ProgressBar, ProgressRow, Meter, BarList, StackedBar, LegendSwatch, UsageRing, meterTier, METER_TEXT, type MeterTone, type MeterTier, type BarListRow } from './Meter'
+export { ProgressBar, ProgressRow, Meter, BarList, StackedBar, LegendSwatch, UsageRing, RingMeter, meterTier, METER_TEXT, type MeterTone, type RingMeterTone, type MeterTier, type BarListRow } from './Meter'
 export { ColumnChart } from './ColumnChart'
 export { axisTicks, axisGroups, AXIS_STEPS, type AxisLabel, type AxisOptions } from './chartAxis'
 export { pageWindow, LIST_PAGE_SIZE, pageCount, clampPage, pageSlice } from './pageWindow'
@@ -145,10 +152,10 @@ export { Toast, TOAST_DOCK, TOAST_LAYER, TOAST_STACK, type ToastTone } from './T
 // -- L2 composites: forms, lists, tables --------------------------------------------------------
 export { Field, FormColumns, FormStack, StaticValue, type FieldAria } from './FormField'
 export { List, ListRow, SwitchRow, RowActions, HoverActions, InlineConfirm, LinkRow, BulkActionBar, SELECTED_ROW } from './List'
-export { FilterChips, FilterBar, Toolbar, type FilterOption } from './FilterBar'
+export { ChoiceChips, FilterChips, FilterBar, Toolbar, type ChoiceChip, type FilterOption } from './FilterBar'
 export { PickBox, SelectableListHeader, ListEditor, StepList, StepItem, StepCard } from './Collections'
 export {
-  TABLE_CLASS, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableFooter,
+  TABLE_CLASS, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter,
   IdentityCell, type SortDir, type SortState, type SkeletonColumn,
 } from './DataTable'
 export { useFileDrop, useFilePicker, DropArea, DropOverlay, FilePickerButton, type FileDropHandlers } from './DropArea'
@@ -171,7 +178,7 @@ export type { SubNavTab } from './SubNavTabs'
 // -- L2 composites: chat and sources (shared with the site's product scenes) --------------------
 export {
   THREAD_COLUMN, ChatMessage, Elapsed, ActivityLine, ActivityFeed, ToolCallRow, ToolCallGroup, SubAgentPanel, PromptCard, PromptSection, ChoiceRow, NoticeCard,
-  ComposerShell, ChatStartHero, ChatStartLinks, CitationsFold, CitationList, CitationRow, ChatMessageSkeleton,
+  ComposerShell, ChatStartHero, ChatStartStage, ChatStartLinks, CitationsFold, CitationList, CitationRow, ChatMessageSkeleton,
 } from './Chat'
 export { SOURCE_LIST_COLUMNS, SOURCE_LIST_BOX, SourceListHeader, ListGroupHeading, SourceRow, SourceRowSkeleton, ItemRow, ItemRowSkeleton } from './Sources'
 

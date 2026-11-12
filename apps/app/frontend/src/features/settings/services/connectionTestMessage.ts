@@ -16,6 +16,15 @@ export function connectionTestMessage(result: ConnectionTestResult, t: Translate
   switch (result.template) {
     case 'Signed in as {user}': return t('Signed in as {user}', p)
     case 'Signed in as {user} ({account})': return t('Signed in as {user} ({account})', p)
+    // YouTube: whether the channel's numbers can be read too (YouTubeConnectionPlugin).
+    case 'Signed in as {user}. YouTube Analytics is allowed.':
+      return t('Signed in as {user}. YouTube Analytics is allowed.', p)
+    case 'Signed in as {user}. YouTube Analytics is not allowed yet: sign in again to allow it.':
+      return t('Signed in as {user}. YouTube Analytics is not allowed yet: sign in again to allow it.', p)
+    case "Signed in as {user}. Enable the YouTube Analytics API in the Google Cloud project to read the channel's numbers.":
+      return t("Signed in as {user}. Enable the YouTube Analytics API in the Google Cloud project to read the channel's numbers.", p)
+    case 'Signed in as {user}. Enable the YouTube Reporting API in the Google Cloud project to read impressions and click-through rate.':
+      return t('Signed in as {user}. Enable the YouTube Reporting API in the Google Cloud project to read impressions and click-through rate.', p)
     case 'Signed in to {workspace} as {user}': return t('Signed in to {workspace} as {user}', p)
     case 'Signed in as {user} on {site}': return t('Signed in as {user} on {site}', p)
     case 'Signed in to portal {portal}': return t('Signed in to portal {portal}', p)
@@ -33,8 +42,8 @@ export function connectionTestMessage(result: ConnectionTestResult, t: Translate
       return t("Nothing answered at that URL (404). Check it is the server's root address.")
     case '{service} answered {status}.': return t('{service} answered {status}.', p)
     case 'Could not reach {url}: {reason}': return t('Could not reach {url}: {reason}', p)
-    case "The server's certificate expired on {date}. Its administrator has to renew it.":
-      return t("The server's certificate expired on {date}. Its administrator has to renew it.", p)
+    case "The server's certificate expired on {date}.":
+      return t("The server's certificate expired on {date}.", p)
     case "The server's certificate has expired. Its administrator has to renew it.":
       return t("The server's certificate has expired. Its administrator has to renew it.")
     case "The server's certificate is not valid yet. Check this computer's date and time.":
@@ -49,10 +58,10 @@ export function connectionTestMessage(result: ConnectionTestResult, t: Translate
     case 'Microsoft 365 could not be reached: {reason}': return t('Microsoft 365 could not be reached: {reason}', p)
     case 'Connected to {server}. Tools available: {count}.': return t('Connected to {server}. Tools available: {count}.', p)
     case 'Could not connect: {reason}': return t('Could not connect: {reason}', p)
-    case 'Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).':
-      return t('Could not connect: {reason}. MCP servers usually answer at an address ending in /mcp (or /sse for the older transport).', p)
-    case "That address answered, but not as a Subversion repository. Use the repository's root URL.":
-      return t("That address answered, but not as a Subversion repository. Use the repository's root URL.")
+    case 'Could not connect: {reason}. MCP servers usually end in /mcp or /sse.':
+      return t('Could not connect: {reason}. MCP servers usually end in /mcp or /sse.', p)
+    case "This is not a Subversion repository. Use the repository's root URL.":
+      return t("This is not a Subversion repository. Use the repository's root URL.")
     case 'GitLab answers at {address}. Use that address as the GitLab URL.':
       return t('GitLab answers at {address}. Use that address as the GitLab URL.', p)
     case "Zendesk has nothing at {address}. Check the connection's address.":

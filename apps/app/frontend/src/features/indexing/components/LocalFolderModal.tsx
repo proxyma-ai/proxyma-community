@@ -17,6 +17,7 @@ import { FileTypeFilter } from './FileTypeFilter'
 import { SubfoldersSwitch } from './SourceScopeFields'
 import { indexingApi } from '../services/indexingApi'
 import { useTranslation } from '@/i18n'
+import { serverText } from '@/i18n/serverText'
 import { ModalShell } from '@/components/ui/ModalShell'
 import { sameValue } from '@/components/ui/formSnapshot'
 import { SourceTypeMark } from '../utils/sourceMarks'
@@ -113,7 +114,7 @@ export function LocalFolderModal({ suggestedName, initialPath, resolvingDrop, dr
       // and "cancelled" comes back as a normal 200 rather than an error.
       const res = await indexingApi.browseFolder(suggestedName)
       if (res.cancelled) {
-        if (res.reason) setError(res.reason)
+        if (res.reason) setError(serverText(res.reason))
         return
       }
       if (res.path) setPath(res.path)
@@ -208,15 +209,15 @@ export function LocalFolderModal({ suggestedName, initialPath, resolvingDrop, dr
                 types at all. */}
             {inspection.hasSubdirectoryFiles ? (
               <>
-                {t('Nothing directly in this folder, but there are supported files in its subfolders.')}{' '}
+                {t('Supported files are only in subfolders.')}{' '}
                 {t('Turn on "Include subfolders" below to index them.')}
               </>
             ) : (
               // TWO WHOLE SENTENCES rather than one with a conditional fragment spliced into its
               // middle - which is not a quoted literal and could never have matched a catalog entry.
               effectiveRecursive
-                ? t('No supported files found. Only the file types highlighted below are indexed.')
-                : t('No supported files found directly in this folder. Only the file types highlighted below are indexed.')
+                ? t('No supported files found.')
+                : t('No supported files directly in this folder.')
             )}
           </InlineNotice>
         ),
@@ -265,7 +266,7 @@ export function LocalFolderModal({ suggestedName, initialPath, resolvingDrop, dr
         <FormColumns from="md" density="columns">
           <FormStack className="min-w-0">
           <DialogDescription>
-            {t('Proxyma indexes these files where they are. Nothing is copied, moved, or sent anywhere.')}
+            {t('Files stay where they are. Nothing is copied or sent.')}
           </DialogDescription>
 
           {/* Browse sits to the RIGHT of the path field, on the same row: it is the shortcut for
@@ -285,7 +286,7 @@ export function LocalFolderModal({ suggestedName, initialPath, resolvingDrop, dr
             <Button variant="secondary" onClick={browse} loading={browsing} disabled={saving}>
               {browsing
                 ? t('Waiting...')
-                : <><FolderOpen size={16} />{t('Browse...')}</>}
+                : <><FolderOpen size={16} />{t('Browse')}</>}
             </Button>
           </div>
 
@@ -298,7 +299,7 @@ export function LocalFolderModal({ suggestedName, initialPath, resolvingDrop, dr
           <Presence show={!!dropProblem && path === ''}>
             <InlineNotice tone="warning" icon={AlertTriangle}>
               {dropProblem === 'not-a-folder'
-                ? t('Drop a folder rather than individual files - Proxyma indexes a whole folder where it is. Or choose one with Browse.')
+                ? t('Drop a folder, not files. Or choose one with Browse.')
                 : suggestedName
                   ? t('Could not find "{name}" on this machine. Choose it with Browse, or paste its path.', { name: suggestedName })
                   : t('Could not find that folder on this machine. Choose it with Browse, or paste its path.')}

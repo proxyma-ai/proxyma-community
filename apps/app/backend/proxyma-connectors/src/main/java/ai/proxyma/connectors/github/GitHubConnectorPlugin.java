@@ -45,8 +45,7 @@ public class GitHubConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.GITHUB)
             .protocol(ConnectionProtocol.GITHUB)
             .displayName("GitHub")
-            .description("A GitHub repository's issues and pull requests, with their comments, and its "
-                    + "documentation files if you choose.")
+            .description("Issues and pull requests with comments, and documentation files if you choose.")
             .noun("GitHub repository", "GitHub repositories")
             .addTitle("Add a GitHub repository")
             .order(55)
@@ -58,7 +57,7 @@ public class GitHubConnectorPlugin implements ConnectorPlugin {
                     FieldSpec.bool(ISSUES, "Issues").defaultValue("true"),
                     FieldSpec.bool(PULL_REQUESTS, "Pull requests").defaultValue("true"),
                     FieldSpec.bool(DOCS, "Documentation files").defaultValue("false")
-                            .help("Markdown, reStructuredText and text files on the default branch."),
+                            .help("Markdown and text files on the default branch."),
                     FieldSpec.text(DOCS_PATH, "Only files under").placeholder("docs/").asAdvanced(),
                     FieldSpec.text(BRANCH, "Branch").asAdvanced().help("The repository's default branch when empty."))
             .capabilities(Capabilities.builder().incremental().cursor().shareable().liveRead().build())

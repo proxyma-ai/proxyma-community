@@ -37,12 +37,10 @@ public class BitbucketCloudConnectionPlugin implements ConnectionPlugin {
                             FieldSpec.text(AuthMethod.USERNAME, "Email address").asRequired().placeholder("you@example.com")
                                     .help("The email address you sign in to Atlassian with."),
                             FieldSpec.secret("token", "API token").asRequired()
-                                    .help("Create one at id.atlassian.com under Security > API tokens, with "
-                                            + "Bitbucket scopes to read repositories and pull requests.")),
+                                    .help("Create one at id.atlassian.com > Security > API tokens, with Bitbucket read scopes.")),
                     AuthMethod.of(AuthKind.TOKEN, "Access token",
                             FieldSpec.secret("token", "Access token").asRequired()
-                                    .help("A workspace, project or repository access token with read access to "
-                                            + "repositories and pull requests.")))
+                                    .help("A workspace, project or repository access token that can read.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.BITBUCKET_CLOUD)
             .docsAnchor("bitbucket-cloud")

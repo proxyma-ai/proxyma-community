@@ -122,6 +122,9 @@ class ConversationCountersTest {
         Conversation c = conversation("conv-1");
         assertThat(c.getInputTokens()).as("the prompt size, from the stream's first chunk").isEqualTo(5_000);
         assertThat(c.getOutputTokens()).isEqualTo(120);
+        // Filed under the conversation it condensed in the per-call log (LlmCaller.conversationId).
+        org.mockito.Mockito.verify(gateway).open(
+                org.mockito.ArgumentMatchers.argThat(caller -> "conv-1".equals(caller.conversationId())), any());
     }
 
     /** A stream shaped as Anthropic's: the prompt size first, then the text, then the output count. */

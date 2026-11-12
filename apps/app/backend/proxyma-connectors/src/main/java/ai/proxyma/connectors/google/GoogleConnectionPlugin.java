@@ -67,11 +67,11 @@ public class GoogleConnectionPlugin implements ConnectionPlugin {
             .auth(AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Google",
                             FieldSpec.text(CLIENT_ID, "Client ID")
                                     .placeholder("1234567890-abc.apps.googleusercontent.com")
-                                    .help("From the OAuth client you created in Google Cloud, under APIs & Services > Credentials."),
+                                    .help("From your OAuth client in Google Cloud > APIs & Services > Credentials."),
                             FieldSpec.secret(CLIENT_SECRET, "Client secret")),
                     AuthMethod.of(AuthKind.SERVICE_ACCOUNT, "Service account",
                             FieldSpec.secret(SERVICE_ACCOUNT_JSON, "Service account key").asRequired()
-                                    .help("The whole JSON key file of a service account with domain-wide delegation."),
+                                    .help("The JSON key file of a service account."),
                             FieldSpec.text(SUBJECT, "User to act as").asRequired()
                                     .placeholder("name@example.com")
                                     .pattern("[^@\\s]+@[^@\\s]+")
@@ -79,7 +79,7 @@ public class GoogleConnectionPlugin implements ConnectionPlugin {
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(GoogleApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave it as it is unless you are told otherwise."))
             .sourceTypes(ConnectorType.GOOGLE_DRIVE, ConnectorType.GMAIL, ConnectorType.GOOGLE_CALENDAR)
-            .docsAnchor("google")
+            .docsAnchor("google-cloud-setup")
             .build();
 
     private final OAuth2Spec oauth2;

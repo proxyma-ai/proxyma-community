@@ -74,6 +74,8 @@ class ConversationSurfaceTest {
         conversation("ka-1", "alice", "Kafka account review", "key-account");
         conversation("chat-2", "bob", "Kafka for Bob", null);
         conversation("ka-2", "alice", "Contoso review", "key-account-0b7c");
+        conversation("local-1", null, "Desktop, no owner", "constellation");
+        conversation("local-2", "_local", "Desktop, the local name", "constellation");
         message("chat-1", "What kafka retention did we pick?");
         message("ka-1", "Kafka spend at the account");
     }
@@ -117,6 +119,22 @@ class ConversationSurfaceTest {
                 Map.of("userId", "bob", "ids", ids))));
         assertEquals(List.of(), ids(run(ConversationRepository.class, "pageAmongOfUser",
                 Map.of("userId", "alice", "ids", List.of("chat-2")))));
+    }
+
+    @Test
+    @DisplayName("on Desktop and Home Server the list is the conversations with no owner; never an account's")
+    void listedByIdWithNoOwner() throws Exception {
+        List<String> ids = List.of("local-1", "local-2", "chat-1", "never-started");
+        assertEquals(List.of("local-1", "local-2"), ids(run(ConversationRepository.class, "pageAmongUnowned",
+                Map.of("ids", ids))).stream().sorted().toList());
+    }
+
+    @Test
+    @DisplayName("where there are accounts, the no-owner list answers nothing")
+    void noOwnerListRefusedWithAccounts() {
+        ConversationRepository repo = mock(ConversationRepository.class);
+        assertTrue(memory(repo).listLocalConversationsAmong(List.of("local-1"), Pageable.ofSize(5)).isEmpty());
+        verify(repo, never()).pageAmongUnowned(any(), any());
     }
 
     @Test

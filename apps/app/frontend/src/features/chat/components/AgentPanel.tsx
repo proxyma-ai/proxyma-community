@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight, Pause, Play, Square } from 'lucide-react'
-import { Caption, SubAgentPanel as KitAgentPanel, Tooltip, iconButton } from '@/components/ui/kit'
+import { Caption, IconButton, SubAgentPanel as KitAgentPanel } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { useChatStore } from '../instance/ChatInstanceContext'
+import { useOpenAgentTranscript } from './agentTranscriptContext'
 import { useAgentControl, useTreeAgent } from '../hooks/useAgentTree'
 import { useElapsedText } from '../hooks/useServerNow'
-import { controlsFor, deployResult, isBusy, isEnded, isWorking } from '../utils/agentTree'
-import { agentStatusLabel, agentWorkState, lifetimeLabel } from '../utils/agentState'
+import { controlsFor, deployResult, isBusy, isEnded, isWorking, stopReasonOf } from '../utils/agentTree'
+import { agentStatusTitle, agentWorkState, lifetimeLabel } from '../utils/agentState'
 import { extractErrorSummary } from '../utils/toolErrors'
 import { isFailedCall } from '../utils/toolActivity'
 import { toolIcon } from '../utils/toolIcon'
@@ -17,9 +17,9 @@ import type { AgentLifetime, AgentStatus, ToolCallInfo } from '../types/chat.typ
 // AN AGENT THE AGENT DEPLOYED, where its `deployAgent` call stands in the thread (since 2026-10-28,
 // the tree of agents). It works in a conversation of its own, so the panel does not draw its steps:
 // it says who it is, where it stands - live, from the conversation's 'agent-status' events laid over
-// the agent tree, else what the call returned - how long it lives, and offers Open (its own
-// conversation, where the person can talk to it), Pause or Resume, and Stop. Its last report folds
-// out under it.
+// the agent tree, else what the call returned - how long it lives, and offers Open (its transcript,
+// read-only in a dialog - AgentTranscriptDialog; the person talks to the agent that deployed it, never
+// to it), Pause or Resume, and Stop. Its last report folds out under it.
 //
 // The kit's panel, as the sub-agents' was: the mark in the color of how it stands (agentWorkState),
 // the name waving while it works, a dimmed word for where it stands, the time.
@@ -45,7 +45,7 @@ function argumentsOf(call: ToolCallInfo): { title?: string; lifetime?: AgentLife
 
 export function AgentPanel({ call, conversationId, onOpenDetail }: Props) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const openTranscript = useOpenAgentTranscript()
   const [userExpanded, setUserExpanded] = useState<boolean | null>(null)
   const args = argumentsOf(call)
   const result = deployResult(call.done ? call.result : undefined)
@@ -80,39 +80,24 @@ export function AgentPanel({ call, conversationId, onOpenDetail }: Props) {
   const canControl = !!conversationId && !!agentId
   const held = busy === agentId
 
-  const words = lifetime === 'LONG'
-    ? `${agentStatusLabel(status, t)} - ${lifetimeLabel(lifetime, t)}`
-    : agentStatusLabel(status, t)
+  // With why it ended, where the tree says - the same words as its row in the agents map.
+  const standing = agentStatusTitle(status, fromTree ? stopReasonOf({ status, stopReason: fromTree.stopReason }) : null, t)
+  const words = lifetime === 'LONG' ? `${standing} - ${lifetimeLabel(lifetime, t)}` : standing
 
-  const actions = (canControl || (conversationId && childConversation)) ? (
+  const canOpen = !!conversationId && !!childConversation && !!openTranscript
+  const actions = (canControl || canOpen) ? (
     <>
-      {conversationId && childConversation && (
-        <Tooltip label={t('Open its conversation')}>
-          <button type="button" onClick={() => navigate(`/chat/${childConversation}`)} aria-label={t('Open its conversation')} className={iconButton('sm')}>
-            <ArrowUpRight size={14} aria-hidden="true" />
-          </button>
-        </Tooltip>
+      {canOpen && (
+        <IconButton icon={ArrowUpRight} label={t('Open its transcript')} size="sm" onClick={() => openTranscript!(childConversation!)} />
       )}
       {canControl && controls.pause && (
-        <Tooltip label={t('Pause this agent')}>
-          <button type="button" onClick={() => control(agentId!, 'pause')} disabled={held} aria-label={t('Pause this agent')} className={iconButton('sm')}>
-            <Pause size={12} aria-hidden="true" />
-          </button>
-        </Tooltip>
+        <IconButton icon={Pause} label={t('Pause this agent')} size="sm" onClick={() => control(agentId!, 'pause')} disabled={held} />
       )}
       {canControl && controls.resume && (
-        <Tooltip label={t('Resume this agent')}>
-          <button type="button" onClick={() => control(agentId!, 'resume')} disabled={held} aria-label={t('Resume this agent')} className={iconButton('sm')}>
-            <Play size={12} aria-hidden="true" />
-          </button>
-        </Tooltip>
+        <IconButton icon={Play} label={t('Resume this agent')} size="sm" onClick={() => control(agentId!, 'resume')} disabled={held} />
       )}
       {canControl && controls.stop && (
-        <Tooltip label={t('Stop this agent')}>
-          <button type="button" onClick={() => control(agentId!, 'stop')} disabled={held} aria-label={t('Stop this agent')} className={iconButton('sm', 'danger')}>
-            <Square size={12} aria-hidden="true" />
-          </button>
-        </Tooltip>
+        <IconButton icon={Square} label={t('Stop this agent')} size="sm" tone="danger" onClick={() => control(agentId!, 'stop')} disabled={held} />
       )}
     </>
   ) : undefined

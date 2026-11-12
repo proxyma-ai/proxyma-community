@@ -102,6 +102,9 @@ public enum ConnectorType {
     /** Events of chosen Google calendars, in a window around today. */
     GOOGLE_CALENDAR("googlecalendar"),
 
+    /** The signed-in YouTube channel's recent videos and the comment threads on them. */
+    YOUTUBE_CHANNEL("youtube"),
+
     /** A user's own OneDrive, or one folder in it, read as the Microsoft 365 connection's account. */
     ONEDRIVE("onedrive"),
     /** A Bitbucket Cloud repository's pull requests and documentation files (api.bitbucket.org). */

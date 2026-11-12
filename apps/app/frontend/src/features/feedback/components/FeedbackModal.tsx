@@ -201,7 +201,7 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
                 <Checkbox
                   checked={includeLogs}
                   onChange={setIncludeLogs}
-                  hint={t('Can contain file, folder and connector names, errors, settings and the words of searches from this machine. Not the contents of your documents.')}
+                  hint={t('File and source names, errors, settings and search words. Not your documents.')}
                 >
                   {t('Include my latest log file')}
                 </Checkbox>
@@ -209,7 +209,7 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
                   <Checkbox
                     checked={includeConversation}
                     onChange={setIncludeConversation}
-                    hint={t('Your questions and the answers as written, including text quoted from your documents.')}
+                    hint={t('Your questions and the answers, with any quoted text.')}
                   >
                     {t('Include this conversation')}
                   </Checkbox>

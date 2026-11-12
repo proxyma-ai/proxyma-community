@@ -16,10 +16,9 @@ import {
 } from '../services/auditApi'
 import {
   ACTIVITY_CATEGORIES, actionLabel, actorText, categoryLabel, durationText, outcomeLabel, outcomeTone,
-  SERVER_ONLY_CATEGORIES, summaryText, words,
+  SERVER_ONLY_CATEGORIES, guardrailCategoryLabel, summaryText,
 } from '../utils/auditLabels'
 import { argumentLabel, argumentRows } from '@/features/chat/utils/argumentRows'
-import { DownloadMenu } from '@/components/ui/DownloadMenu'
 import { AuditEventDialog } from './AuditEventDialog'
 import { useDates } from '@/hooks/useDates'
 
@@ -36,16 +35,17 @@ import { useDates } from '@/hooks/useDates'
  * The filters' choices come from the tab's summary, which ignores them, so choosing one never hides
  * the others.
  */
-export function AuditEventLog({ tab, days, summary, multiUser }: {
+export function AuditEventLog({ tab, summary, multiUser, filters, setFilters, log }: {
   tab: AuditTab
-  days: number
   summary: AuditSummary | undefined
   multiUser: boolean
+  /** Held by the tab (AuditTabBody), whose heading's "Download log" asks for the same rows. */
+  filters: EventFilters
+  setFilters: (filters: EventFilters) => void
+  log: AuditEventsState
 }) {
   const { t } = useTranslation()
-  const [filters, setFilters] = useState<EventFilters>(NO_EVENT_FILTERS)
   const [openId, setOpenId] = useState<string | null>(null)
-  const log = useAuditEvents(tab, days, filters)
 
   const filtered = !!(filters.text.trim() || filters.action || filters.outcome || filters.target
     || filters.actor || filters.category)
@@ -142,7 +142,6 @@ export function AuditEventLog({ tab, days, summary, multiUser }: {
             ]}
           />
         )}
-        <DownloadMenu onDownload={format => auditApi.export(exportQuery(log.query), format)} />
       </FilterBar>
 
       <HScroll>
@@ -221,7 +220,7 @@ function argumentsText(summary: string): string {
 }
 
 /** The log's query, as a download asks for it: every row, so no page and no page size. */
-function exportQuery(q: Omit<AuditEventsQuery, 'page'>): Omit<AuditEventsQuery, 'page' | 'size'> {
+export function exportQuery(q: Omit<AuditEventsQuery, 'page'>): Omit<AuditEventsQuery, 'page' | 'size'> {
   const { size: _size, ...rest } = q
   return rest
 }
@@ -265,7 +264,7 @@ function Cell({ column, row, t }: { column: Column; row: AuditEventRow; t: Trans
     case 'check':
       return <td data-label={t('Check')} className={cn(TD_COMPACT, 'text-ink-secondary align-top whitespace-nowrap')}>{actionLabel(row.action, t)}</td>
     case 'fired':
-      return <td data-label={t('What fired')} className={cn(TD_COMPACT, 'text-ink-secondary align-top')}>{row.target ? words(row.target) : '-'}</td>
+      return <td data-label={t('What fired')} className={cn(TD_COMPACT, 'text-ink-secondary align-top')}>{row.target ? guardrailCategoryLabel(row.target, t) : '-'}</td>
     case 'event':
       return (
         <td data-label={t('Event')} className={cn(TD_COMPACT, 'align-top min-w-0')}>
@@ -292,7 +291,7 @@ function Cell({ column, row, t }: { column: Column; row: AuditEventRow; t: Trans
     case 'duration':
       return (
         <td data-label={t('Took')} className={cn(TD_COMPACT, 'text-right align-top')}>
-          <Readout tone="caption">{durationText(row.durationMs)}</Readout>
+          <Readout tone="caption">{durationText(row.durationMs, t)}</Readout>
         </td>
       )
   }
@@ -302,7 +301,7 @@ function Cell({ column, row, t }: { column: Column; row: AuditEventRow; t: Trans
 
 export type EventSortKey = 'time' | 'category' | 'action' | 'outcome' | 'target' | 'actor' | 'duration'
 
-interface EventFilters {
+export interface EventFilters {
   text: string
   category: string
   action: string
@@ -312,12 +311,18 @@ interface EventFilters {
   sort: SortState<EventSortKey>
 }
 
-const NO_EVENT_FILTERS: EventFilters = {
+export const NO_EVENT_FILTERS: EventFilters = {
   text: '', category: '', action: '', outcome: '', target: '', actor: '', sort: { key: 'time', dir: 'desc' },
 }
 
+/** One page of a tab's entries under its filters - the table's rows, and the query a download asks. */
+export type AuditEventsState = ReturnType<typeof useAuditEvents>
 
-function useAuditEvents(tab: AuditTab, days: number, filters: EventFilters) {
+/**
+ * The tab's entries under these filters: the search debounced so a word is one request, the first
+ * page again whenever the filters or the period change, the rows shown kept while the next load.
+ */
+export function useAuditEvents(tab: AuditTab, days: number, filters: EventFilters) {
   const text = useDebounce(filters.text.trim(), 300)
   const newestFirst = filters.sort.key === 'time' && filters.sort.dir === 'desc'
   const query: Omit<AuditEventsQuery, 'page'> = {

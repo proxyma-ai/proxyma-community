@@ -53,7 +53,8 @@ export function CodeBlock({ children, text, copyLabel, copiedLabel, wrap, maxHei
     <pre className={cn(
       font === 'mono' ? 'font-mono' : 'font-ui',
       'text-ink-primary px-3 py-2',
-      size === 'xs' ? 'text-xs leading-5' : 'text-sm',
+      // Code is the code face's own 13/20 at either size; `size` sizes a `ui` block (a transcript).
+      font === 'mono' ? 'text-code' : size === 'xs' ? 'text-xs' : 'text-sm',
       wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre w-max min-w-full',
       copyLabel && 'pr-10',
     )}>

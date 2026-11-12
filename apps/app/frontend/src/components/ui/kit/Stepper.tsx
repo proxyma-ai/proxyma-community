@@ -72,7 +72,7 @@ export function Stepper({ steps, orientation = 'vertical', label, className }: {
 
 /** One step's mark: 20px, round - a number, a tick, a cross or the Spinner. */
 function StepMark({ index, state }: { index: number; state: StepState }) {
-  const box = 'w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-2xs font-semibold data-readout transition-colors'
+  const box = 'w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold data-readout transition-colors'
   if (state === 'done') return <span aria-hidden="true" className={cn(box, 'bg-brand-pale text-brand-legible')}><Check size={12} strokeWidth={3} /></span>
   if (state === 'failed') return <span aria-hidden="true" className={cn(box, 'bg-danger/10 text-danger')}><X size={12} strokeWidth={3} /></span>
   if (state === 'running') return <span aria-hidden="true" className={cn(box, 'text-brand-legible')}><Spinner size={16} /></span>

@@ -31,7 +31,7 @@ export function ThirdPartyNoticesModal({ onClose }: { onClose: () => void }) {
       <DialogHeader title={t('Open-source licenses')} />
       <DialogBody className="flex-1 min-h-0 flex flex-col gap-3">
         <DialogDescription>
-          {t('Every third-party component Proxyma contains or downloads, its license, and how to get the source code of the GPL and LGPL ones. The same text is THIRD-PARTY-NOTICES.txt in the installation folder.')}
+          {t('Every third-party part in Proxyma, its license, and how to get GPL and LGPL source.')}
         </DialogDescription>
         {/* The text fades in over its skeleton as it arrives. */}
         <FadeSwap swapKey={isLoading ? 'loading' : !!data} className="flex-1 min-h-0 flex flex-col">
@@ -41,7 +41,7 @@ export function ThirdPartyNoticesModal({ onClose }: { onClose: () => void }) {
           <InlineNotice tone="danger" size="md">{t('Could not load the notices. Try again in a moment.')}</InlineNotice>
         </Presence>
         <Presence show={data === null}>
-          <InlineNotice tone="warning" size="md">{t('This build does not include the open-source notices. A release build always does.')}</InlineNotice>
+          <InlineNotice tone="warning" size="md">{t('This build has no open-source notices.')}</InlineNotice>
         </Presence>
       </DialogBody>
     </ModalShell>

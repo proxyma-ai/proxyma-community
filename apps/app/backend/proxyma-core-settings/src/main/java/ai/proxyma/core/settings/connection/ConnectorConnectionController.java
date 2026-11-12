@@ -6,8 +6,6 @@ import ai.proxyma.core.connector.spi.ConnectionTestResult;
 import ai.proxyma.core.connector.spi.ConnectionTokenProvider;
 import ai.proxyma.core.connector.spi.ConnectorCatalog;
 import ai.proxyma.core.connector.spi.ConnectorHttp;
-import ai.proxyma.core.connector.spi.ResolvedCredentials;
-import ai.proxyma.core.connector.spi.TokenSupplier;
 
 import ai.proxyma.core.connector.ConnectionProtocol;
 
@@ -178,6 +176,19 @@ public class ConnectorConnectionController {
                 .subscribeOn(Schedulers.boundedElastic()));
     }
 
+    /**
+     * The sources reading through one of the caller's connections - how many, and the first few by
+     * name - for the warning the Delete confirmation shows. 404 for a connection that is not theirs.
+     */
+    @GetMapping("/instances/{id}/usage")
+    public Mono<ResponseEntity<ConnectorConnectionService.UsageView>> usage(@PathVariable UUID id,
+                                                                            ServerWebExchange exchange) {
+        return userId(exchange).flatMap(uid -> Mono.fromCallable(() -> ResponseEntity.ok(service.usage(uid, id)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(NoSuchElementException.class, e -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    /** Deletes a connection, in use or not: its sources are kept and told it is gone (ConnectionUsage). */
     @DeleteMapping("/instances/{id}")
     public Mono<ResponseEntity<?>> delete(@PathVariable UUID id, ServerWebExchange exchange) {
         return userId(exchange).flatMap(uid -> Mono.<ResponseEntity<?>>fromCallable(() -> {
@@ -226,6 +237,11 @@ public class ConnectorConnectionController {
                                 .detail("error", result.message())
                                 .record();
                     }
+                    // A YouTube connection still under the name a page gave it before the channel was known takes the
+                    // channel's (2026-11-11: one connected while the daily limit was spent stayed "YouTube").
+                    if (result.ok() && c.protocol() == ConnectionProtocol.YOUTUBE && result.params() != null) {
+                        service.nameAfterAccount(id, ConnectionNaming.YOUTUBE_PLACEHOLDER, result.params().get("user"));
+                    }
                     // The template and its values are what the page translates (connectionTestMessage);
                     // the message is the English, for anything that does not know the template.
                     return ResponseEntity.ok(Map.of("ok", result.ok(), "message", result.message(),
@@ -245,17 +261,9 @@ public class ConnectorConnectionController {
     // An older service is tested with the whole connection its tester was written for; a service on
     // the connector framework with what a session would hold - its secrets, its settings and, for a
     // sign-in, a token supplier that refreshes. A plugin that throws is a failed test, never a 500.
+    // A person's Test: whose account the connection is may be read from the built-in client's reserve (asIdentityCheck).
     private ConnectionTestResult runTest(ConnectionPlugin plugin, ResolvedConnection c) {
-        try {
-            if (plugin instanceof LegacyConnectionPlugins.Adapter legacy) return legacy.test(c);
-            TokenSupplier tokens = tokenProviders == null ? null : tokenProviders.orderedStream()
-                    .filter(p -> p.supports(c.protocol(), c.authKind()))
-                    .findFirst().map(p -> p.tokensFor(c.id())).orElse(null);
-            return plugin.test(new ResolvedCredentials(c.id(), c.protocol(), c.authKind(), c.baseUrl(), c.username(),
-                    c.secrets(), c.settings(), tokens, ai.proxyma.core.connector.spi.ConfigJson.parse(c.accountJson())), http);
-        } catch (RuntimeException e) {
-            return ConnectionTestResult.failed(e.getMessage() == null ? "The test could not run." : e.getMessage());
-        }
+        return OAuth2ConnectionService.asIdentityCheck(() -> ConnectionNaming.test(plugin, c, tokenProviders, http));
     }
 
     static ConnectorConnectionService.ConnectionInput toInput(ConnectionRequest r) {

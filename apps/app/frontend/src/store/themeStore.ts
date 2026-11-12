@@ -3,9 +3,14 @@ import {
   SYSTEM_DARK_QUERY,
   applyAppearance,
   applyAppearanceSmoothly,
+  applyLook,
+  parseAccent,
   parseAppearance,
+  parseBackdrop,
   resolveAppearance,
+  type AccentPreference,
   type AppearancePreference,
+  type BackdropPreference,
 } from '@/components/ui/kit'
 
 // Wire shape returned by GET /api/v1/config's `branding` field - see ProductIdentity
@@ -27,6 +32,19 @@ export const DEFAULT_BRANDING: ProductBranding = {
 // script (/appearance-init.js, emitted by vite.config.ts from the kit's appearanceInitScript) reads
 // it too, under this same key - keep the two in step.
 const MODE_STORAGE_KEY = 'proxyma-theme-mode'
+
+// The background and the accent (the maintainer, 2026-11-09: "Make an appearance setting so we can
+// choose. Also, allow the user to select the accent color as well"), per browser like the appearance,
+// and read by the same pre-paint script (vite.config.ts passes these keys) - keep them in step.
+export const BACKDROP_STORAGE_KEY = 'proxyma-backdrop'
+export const ACCENT_STORAGE_KEY = 'proxyma-accent'
+
+function readStored<T>(key: string, parse: (v: string | null) => T): T {
+  try { return parse(localStorage.getItem(key)) } catch { return parse(null) }
+}
+function store(key: string, value: string) {
+  try { localStorage.setItem(key, value) } catch { /* private browsing, ignore */ }
+}
 
 // System, when nothing is stored: follow the operating system, as every Proxyma app and the
 // landing site do (decided 2026-09-25). A choice already stored is kept. The pre-paint script's
@@ -61,11 +79,18 @@ interface ThemeState {
   // Personal, per-browser preference - persisted to localStorage.
   preference: AppearancePreference
   setPreference: (preference: AppearancePreference) => void
+  backdrop: BackdropPreference
+  setBackdrop: (backdrop: BackdropPreference) => void
+  accent: AccentPreference
+  setAccent: (accent: AccentPreference) => void
   _setBrandingFromServer: (branding: ProductBranding) => void
 }
 
 const initialPreference = readStoredPreference()
 applyPreference(initialPreference)
+const initialBackdrop = readStored(BACKDROP_STORAGE_KEY, parseBackdrop)
+const initialAccent = readStored(ACCENT_STORAGE_KEY, parseAccent)
+applyLook(document.documentElement, initialBackdrop, initialAccent)
 
 export const useThemeStore = create<ThemeState>(set => ({
   branding: DEFAULT_BRANDING,
@@ -77,6 +102,18 @@ export const useThemeStore = create<ThemeState>(set => ({
       return { preference }
     })
   },
+  backdrop: initialBackdrop,
+  setBackdrop: (backdrop) => set(s => {
+    applyLook(document.documentElement, backdrop, s.accent)
+    store(BACKDROP_STORAGE_KEY, backdrop)
+    return { backdrop }
+  }),
+  accent: initialAccent,
+  setAccent: (accent) => set(s => {
+    applyLook(document.documentElement, s.backdrop, accent)
+    store(ACCENT_STORAGE_KEY, accent)
+    return { accent }
+  }),
   _setBrandingFromServer: (branding) => set({ branding }),
 }))
 

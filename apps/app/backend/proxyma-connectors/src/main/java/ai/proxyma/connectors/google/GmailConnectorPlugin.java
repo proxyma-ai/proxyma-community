@@ -48,7 +48,7 @@ public class GmailConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.GMAIL)
             .protocol(ConnectionProtocol.GOOGLE)
             .displayName("Gmail")
-            .description("Conversations in a Gmail mailbox, under the labels you choose - the inbox by default.")
+            .description("Gmail conversations under the labels you choose.")
             .noun("Gmail mailbox", "Gmail mailboxes")
             .addTitle("Add a Gmail mailbox")
             .order(42)
@@ -56,10 +56,9 @@ public class GmailConnectorPlugin implements ConnectorPlugin {
             .mark("gmail")
             .fields(
                     FieldSpec.list(LABELS, "Labels").defaultValue("INBOX").placeholder("INBOX")
-                            .help("Each label to read, by its name: INBOX, SENT, or one of your own. Drafts, spam "
-                                    + "and trash are never read."),
+                            .help("Label names: INBOX, SENT, or your own."),
                     FieldSpec.number(DAYS, "Days of mail").defaultValue(String.valueOf(DEFAULT_DAYS)).range(1, 3650)
-                            .help("Only conversations with a message from this many days before today."))
+                            .help("Only conversations from the last this many days."))
             .capabilities(Capabilities.builder().incremental().cursor().liveRead().build())
             .syncEvery(Duration.ofMinutes(30))
             .docsAnchor("gmail")

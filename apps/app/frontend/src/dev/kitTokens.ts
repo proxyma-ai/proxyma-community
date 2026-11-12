@@ -70,8 +70,9 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
     tokens: [
       { name: 'canvas', swatch: 'bg-canvas', classes: 'bg-canvas', role: 'The page, behind everything: a cool gray in Light, near black in Dark. In an app shell (the glass) the solid color the glass sheet composites to - for what must hide what is under it, like the pinned question\'s fade.' },
       { name: 'surface', swatch: 'bg-surface', classes: 'bg-surface shadow-card', role: 'The card plane: white in Light, a step up in Dark. In an app shell a card is GLASS (.surface-card) and this is its solid equivalent - a sticky row or bar inside a card.' },
-      { name: 'surface-alt', swatch: 'bg-surface-alt', classes: 'bg-surface-alt shadow-well', role: 'A SUNKEN well: a rail, a segmented control\'s track, a code block; a hover or SELECTED row fill (with a teal indicator or ink), a neutral badge.' },
-      { name: 'surface-float', swatch: 'bg-surface-float', classes: '.surface-float shadow-float', role: 'What floats: menus, popovers, dialogs, toasts, tooltips; a pill lifted out of a well. White in Light, the lightest plane in Dark.' },
+      { name: 'surface-alt', swatch: 'bg-surface-alt', classes: 'bg-surface-alt shadow-well', role: 'A SUNKEN well: a rail, a segmented control\'s track, a code block; a SELECTED row fill (with a teal indicator or ink), a neutral badge. A RELATIVE shade: one step down from whatever it sits on, so a neighbor is never two steps away.' },
+      { name: 'lift', swatch: 'bg-lift', classes: 'bg-lift shadow-card', role: 'LIFTED one step up from whatever it sits on, a relative light: the pill lifted out of a well, the sidebar\'s current row. bg-lift/60 for a hover.' },
+      { name: 'surface-float', swatch: 'bg-surface-float', classes: '.surface-float shadow-float', role: 'What floats: menus, popovers, dialogs, toasts, tooltips, the composer - one step over the page. White in Light, the card\'s gray in Dark, told apart by its border and shadow.' },
       { name: 'field', swatch: 'bg-field', classes: 'bg-field (FIELD_BASE)', role: 'A text control\'s fill: white in Light, so a field on a white card is drawn by its line; a well in Dark.' },
       { name: 'line', swatch: 'bg-line', classes: 'border-line, border-line/40', role: 'Hairlines and borders - a card\'s at full strength, rules usually at an opacity. Decorative - not held to 3:1.' },
     ],
@@ -79,7 +80,7 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
   {
     title: 'Glass (an app shell)',
     tokens: [
-      { name: 'field-base', swatch: 'app-field', classes: '.app-field (the shell\'s body; ProxymaBackground)', role: 'THE FIELD behind the glass: one flat cool color - airy in Light, #101011 in Dark. The only light is the sheet light, in its bottom-right corner. No text sits on it.' },
+      { name: 'field-base', swatch: 'app-field', classes: '.app-field (the shell\'s body; ProxymaBackground)', role: 'THE FIELD behind the glass: one flat cool color - airy in Light, #181818 in Dark (the VS Code side bar). The only light is the sheet light, in its bottom-right corner. No text sits on it.' },
       { name: 'glass', swatch: 'app-glass', classes: '.app-glass', role: 'The FRAME from `lg` holding the sidebar: --glass at --glass-alpha (0.64 Light, 0.6 Dark), a 24px blur, the --glass-edge and --shadow-frame.' },
       { name: 'sheet', swatch: 'app-sheet', classes: '.app-sheet', role: 'The PAGE: --sheet at --sheet-alpha (white 0.85 Light, near black 0.85 Dark), a 16px blur, and --sheet-accent light in its bottom-right corner (6.5% / 5%).' },
       { name: 'card', swatch: 'surface-card', classes: '.surface-card shadow-card (Card, cardClass)', role: 'A card on the sheet: --card at --card-alpha (white 0.62 Light, white 0.025 Dark), the --card-edge and the card shadow\'s top highlight. NO blur. In a card it is a well (--well).' },
@@ -125,8 +126,8 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
     title: 'Charts',
     tokens: [
       { name: 'chart-series-1', swatch: 'bg-chart-1', classes: 'bg-chart-1, CHART_SERIES[0]', role: 'Blue - first category.' },
-      { name: 'chart-series-2', swatch: 'bg-chart-2', classes: 'bg-chart-2, CHART_SERIES[1]', role: 'Green.' },
-      { name: 'chart-series-3', swatch: 'bg-chart-3', classes: 'bg-chart-3, CHART_SERIES[2]', role: 'Magenta.' },
+      { name: 'chart-series-2', swatch: 'bg-chart-2', classes: 'bg-chart-2, CHART_SERIES[1]', role: 'Orange.' },
+      { name: 'chart-series-3', swatch: 'bg-chart-3', classes: 'bg-chart-3, CHART_SERIES[2]', role: 'Aqua.' },
       { name: 'chart-series-4', swatch: 'bg-chart-4', classes: 'bg-chart-4, CHART_SERIES[3]', role: 'Yellow. The order is CVD-validated - do not reorder.' },
       { name: 'chart-series-other', swatch: 'bg-chart-other', classes: 'bg-chart-other', role: 'The grouped remainder.' },
     ],
@@ -135,31 +136,31 @@ export const SEMANTIC: { title: string; tokens: ColorToken[] }[] = [
 
 /** The type roles (typeScale.ts `TEXT`), largest first, with the component that draws each. */
 export const TYPE_ROLES: { role: string; spec: string; component: string; use: string }[] = [
-  { role: 'pageTitle', spec: '24/32, 600, ink-primary', component: 'PageHeader, PageTitle', use: 'A page\'s own name.' },
-  { role: 'title', spec: '18/26, 600, ink-primary', component: 'Title, DialogTitle, PageTitle level="tab"', use: 'A dialog\'s or a Settings tab\'s name; a card\'s heading.' },
-  { role: 'lead', spec: '18/28, 400, ink-secondary', component: 'Paragraph size="lead"', use: 'The paragraph that opens a page or a site section.' },
-  { role: 'section', spec: '16/24, 600, ink-primary', component: 'SectionHeading', use: 'A sub-section of a page, tab or dialog.' },
-  { role: 'body', spec: '16/26, 400, ink-secondary', component: 'Paragraph, DialogDescription, PROSE_CHAT, .prose-doc', use: 'Reading text: a chat answer, a manual, a paragraph read rather than scanned. At most about 70ch a line.' },
-  { role: 'label', spec: '14/20, 500, ink-primary', component: 'FieldLabel, ListRow', use: 'The name of a field, a switch row, a list item.' },
-  { role: 'option', spec: '14/20, 400, ink-secondary', component: 'RadioGroup, Checkbox, field text', use: 'UI text: a choice, a field\'s value, the quieter line of a row. Buttons are 14/20 600.' },
-  { role: 'caption', spec: '13/18, 400, ink-caption', component: 'Caption', use: 'Everything that explains.' },
-  { role: 'eyebrow', spec: '13/18, 500, ink-caption, sentence case', component: 'Eyebrow', use: 'The label inside a card naming what it shows.' },
-  { role: 'code', spec: '13/20, 400, the mono face', component: 'CodeBlock, InlineCode (0.9em)', use: 'Code only - a block, a command, a key.' },
+  { role: 'pageTitle', spec: '16/22, 600, ink-primary', component: 'PageHeader, PageTitle', use: 'A page\'s own name.' },
+  { role: 'title', spec: '14/20, 600, ink-primary', component: 'Title, DialogTitle, PageTitle level="tab"', use: 'A dialog\'s or a Settings tab\'s name; a card\'s heading.' },
+  { role: 'lead', spec: '14/20, 400, ink-secondary', component: 'Paragraph size="lead"', use: 'The paragraph that opens a page or a site section.' },
+  { role: 'section', spec: '13/18, 600, ink-primary', component: 'SectionHeading', use: 'A sub-section of a page, tab or dialog.' },
+  { role: 'body', spec: '13/20, 400, ink-secondary', component: 'Paragraph, DialogDescription, PROSE_CHAT, .prose-doc', use: 'Reading text: a chat answer, a manual, a paragraph read rather than scanned. At most about 70ch a line.' },
+  { role: 'label', spec: '13/18, 500, ink-primary', component: 'FieldLabel, ListRow', use: 'The name of a field, a switch row, a list item.' },
+  { role: 'option', spec: '13/18, 400, ink-secondary', component: 'RadioGroup, Checkbox, field text', use: 'UI text: a choice, a field\'s value, the quieter line of a row. Buttons are 13/18 600.' },
+  { role: 'caption', spec: '12/16, 400, ink-caption', component: 'Caption', use: 'Everything that explains.' },
+  { role: 'eyebrow', spec: '12/16, 500, ink-caption, sentence case', component: 'Eyebrow', use: 'The label inside a card naming what it shows.' },
+  { role: 'code', spec: '12/18, 400, the mono face', component: 'CodeBlock, InlineCode (0.9em)', use: 'Code only - a block, a command, a key.' },
 ]
 
 /** The faces. */
 export const FACES: { name: string; token: string; family: string; use: string; sample: string; className: string }[] = [
-  { name: 'UI', token: '--font-ui', family: 'Space Grotesk 400-600', use: 'Every word and every number. No 700 below the 24px page title.', sample: 'The quick brown fox jumps over the lazy dog', className: 'font-ui' },
+  { name: 'UI', token: '--font-ui', family: 'Inter 400-600', use: 'Every word and every number. No 700 in the app.', sample: 'The quick brown fox jumps over the lazy dog', className: 'font-ui' },
   { name: 'Brand', token: '--font-brand', family: 'Orbitron 700 (900 on the splash)', use: 'The wordmark ONLY.', sample: 'Proxyma', className: 'font-brand font-bold tracking-wider' },
   { name: 'Readout', token: '--font-readout', family: 'The UI face, tabular figures (tnum)', use: 'Anything carrying figures - counts, costs, dates, ids (.data-readout). Digits keep their width; a figure and its word are one face.', sample: 'input 12.3k - 10/5/2026, 7:25 AM - $0.012', className: 'data-readout' },
   { name: 'Code', token: '--font-mono', family: 'Consolas, Cascadia Code, Space Mono', use: 'Code only - a block, a command, a key. Never a number.', sample: 'docker compose up -d', className: 'font-mono' },
 ]
 
-/** The size steps of the preset (fontSize), each with its one leading. */
+/** The size steps of the preset (fontSize), each with its one leading. 3xl-5xl are the site's display only. */
 export const FONT_SIZES: { cls: string; spec: string }[] = [
-  { cls: 'text-2xs', spec: '12/16' }, { cls: 'text-xs', spec: '13/18' }, { cls: 'text-sm', spec: '14/20' },
-  { cls: 'text-base', spec: '16/26' }, { cls: 'text-lg', spec: '18/26' }, { cls: 'text-xl', spec: '20/28' },
-  { cls: 'text-2xl', spec: '24/32' }, { cls: 'text-3xl', spec: '30/38' }, { cls: 'text-4xl', spec: '36/44' }, { cls: 'text-5xl', spec: '48/56' },
+  { cls: 'text-xs', spec: '12/16' }, { cls: 'text-sm', spec: '13/18' }, { cls: 'text-base', spec: '13/20' },
+  { cls: 'text-lg', spec: '14/20' }, { cls: 'text-xl', spec: '16/22' }, { cls: 'text-code', spec: '12/18' },
+  { cls: 'text-3xl', spec: '30/38' }, { cls: 'text-4xl', spec: '36/44' }, { cls: 'text-5xl', spec: '48/56' },
 ]
 
 /** Spacing: the 4-point rhythm every kit component keeps (since 2026-10-28), plus the control sizes. */
@@ -178,10 +179,10 @@ export const SPACING: { cls: string; px: number; use: string }[] = [
 ]
 
 export const RADII: { cls: string; px: string; use: string }[] = [
-  { cls: 'rounded-sm', px: '6px', use: 'A tiny chip only: a kbd, a checkbox square, a skeleton bar; a pill inside an 8px track (concentric).' },
-  { cls: 'rounded-md', px: '8px', use: 'THE control radius (bare rounded is the same): buttons, fields, badges, chips, menu rows, code.' },
+  { cls: 'rounded-sm', px: '6px', use: 'A small box: a badge and a chip (the corner of a button in proportion, never a pill, since 2026-11-08), a kbd, a checkbox square, a skeleton bar; a pill inside an 8px track (concentric).' },
+  { cls: 'rounded-md', px: '8px', use: 'THE control radius (bare rounded is the same): buttons, fields, menu rows, code.' },
   { cls: 'rounded-lg', px: '12px', use: 'THE surface radius: cards, panels, dialogs, popovers, menus, the composer.' },
-  { cls: 'rounded-full', px: '9999px', use: 'Only what is round by nature: dots, switches, avatars, pills.' },
+  { cls: 'rounded-full', px: '9999px', use: 'Only what is round by nature: dots, switches, avatars. Never a badge, a chip or a button.' },
 ]
 
 export const SHADOWS: { cls: string; use: string }[] = [
@@ -210,7 +211,7 @@ export const ANIMATIONS: { cls: string; use: string }[] = [
   { cls: 'text-wave', use: 'WORDS at work - a band of opacity sweeping across them (working.ts).' },
   { cls: 'animate-shake', use: 'A field that failed a submit (useShake).' },
   { cls: 'animate-reveal', use: 'A place the reader was just sent to.' },
-  { cls: 'animate-mark-idle', use: 'The mark\'s idle turn where nothing measures it.' },
+  { cls: 'animate-mark-idle', use: 'The mark\'s one turn in --mark-turn (12s); Logo\'s own .mark-turn is the usual way.' },
 ]
 
 export const LAYERS: { cls: string; value: number; use: string }[] = [

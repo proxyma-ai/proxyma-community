@@ -1,9 +1,10 @@
-import { FadeSwap, Field, Input, RadioGroupSkeleton, SettingsSection, SettingsSections } from '@/components/ui/kit'
+import { FadeSwap, RadioGroupSkeleton, SettingsSection, SettingsSections } from '@/components/ui/kit'
 import { useSettings } from '../hooks/useSettings'
-import { useResolved } from '../pages/shared'
+import { useResolved, useSaveSetting } from '../pages/shared'
 import { useTranslation } from '@/i18n'
 import type { TabProps } from '../pages/shared'
 import { ChoiceField, ProviderModelRow } from '../components/settingsParts'
+import { SettingText } from '../components/SettingFields'
 
 // Conversion tab: two method radio groups, then the OCR engine radio group (whose own
 // provider/model or languages fields only exist once the engine is known).
@@ -56,7 +57,7 @@ function ConversionMethodField({ trackChange, pending }: TabProps) {
   return (
     <ChoiceField
       label={t('Method for indexing')}
-      hint={t('Used for every source; Auto runs OCR only where a document has no text.')}
+      hint={t('For every source. Auto reads scans only where there is no text.')}
       value={indexingMethod}
       onChange={v => trackChange('doc-conversion', 'indexing-method', v)}
       options={CONVERSION_METHOD_OPTIONS}
@@ -69,13 +70,14 @@ function OcrEngineFields({ trackChange, pending }: TabProps) {
   const { t } = useTranslation()
   const engine = useResolved('ocr', 'engine', pending, 'vision')
   const languages = useResolved('ocr', 'languages', pending, 'eng')
+  const saveLanguages = useSaveSetting('ocr', 'languages')
   return (
     <>
       <ChoiceField
         label={t('OCR engine')}
         hint={engine === 'tesseract'
-          ? t('Free and offline, plain text only; needs tesseract and pytesseract.')
-          : t('Reads layout, tables and handwriting far better; one model call per page.')}
+          ? t('Free and offline, plain text only.')
+          : t('Reads layouts, tables and handwriting. One model call per page.')}
         value={engine}
         onChange={v => trackChange('ocr', 'engine', v)}
         options={OCR_ENGINE_OPTIONS}
@@ -90,24 +92,19 @@ function OcrEngineFields({ trackChange, pending }: TabProps) {
           providerLabel="OCR provider"
           modelLabel="OCR model"
           modelPlaceholder="qwen3-vl:32b"
-          modelHint={t('Must be a vision-capable model. Leave blank to leave OCR switched off.')}
+          modelHint={t('A vision model. Leave blank to turn OCR off.')}
           trackChange={trackChange}
           pending={pending}
         />
       ) : (
-        <Field
+        // Edited where it is read, saved when it is left (the click-to-edit rule, 2026-11-02).
+        <SettingText
           label={t('Tesseract languages')}
-          hint={t("Tesseract language codes joined with \"+\", e.g. eng+deu. Each needs its traineddata file on the server.")}
-        >
-          {id => (
-            <Input
-              id={id}
-              value={languages}
-              onChange={e => trackChange('ocr', 'languages', e.target.value)}
-              placeholder="eng"
-            />
-          )}
-        </Field>
+          hint={t('Language codes joined with "+", like eng+vie.')}
+          value={languages}
+          onCommit={saveLanguages}
+          placeholder="eng"
+        />
       )}
       </FadeSwap>
     </>
@@ -125,12 +122,12 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
   if (conversionLoading || ocrLoading) return <DocumentsTabSkeleton />
 
   return (
-    <SettingsSections intro={t('How documents are turned into text. Scanned pages need OCR.')}>
+    <SettingsSections intro={t('How documents are turned into text.')}>
       <SettingsSection title={t('Method')}>
         <ConversionMethodField trackChange={trackChange} pending={pending} />
         <ChoiceField
           label={t('Method for chat attachments')}
-          hint={t('Used for chat attachments and documents the agent fetches from a URL.')}
+          hint={t('For chat attachments and pages the agent fetches.')}
           value={attachmentMethod}
           onChange={v => trackChange('doc-conversion', 'attachment-method', v)}
           options={CONVERSION_METHOD_OPTIONS}
@@ -141,7 +138,7 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
         <OcrEngineFields trackChange={trackChange} pending={pending} />
         <ChoiceField
           label={t('Page resolution (DPI)')}
-          hint={t('200 suits body text; higher is sharper but costs more with a vision model.')}
+          hint={t('Higher is sharper and costs more.')}
           value={dpi}
           onChange={v => trackChange('ocr', 'dpi', v)}
           options={OCR_DPI_OPTIONS}
@@ -150,7 +147,7 @@ export function DocumentsTab({ trackChange, pending }: TabProps) {
         />
         <ChoiceField
           label={t('Max pages per document')}
-          hint={t('A hard cap per document; pages past it are noted in the text.')}
+          hint={t('Pages past this are skipped.')}
           value={maxPages}
           onChange={v => trackChange('ocr', 'max-pages', v)}
           options={OCR_MAX_PAGES_OPTIONS}

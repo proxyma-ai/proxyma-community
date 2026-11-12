@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * A copy of Constellations' test fake (itself a copy of key accounts'), with LessThanEqual and a
+ * A copy of Constellations' test fake (itself a copy of key accounts'), with LessThan(Equal), findTopN and a
  * hook for the queries a name cannot say (CUSTOM): Spring Data repositories backed by a map, for driving the services in a test without a database or
  * a Spring context - the suite stays at seconds, as the rest of test:backend does.
  *
@@ -126,6 +126,12 @@ final class InMemoryRepositories {
     private static Object derived(Map<Object, Object> store, Method method, Object[] args) throws Exception {
         String name = method.getName();
         String prefix;
+        int limit = Integer.MAX_VALUE;
+        java.util.regex.Matcher top = java.util.regex.Pattern.compile("^findTop(\\d+)By").matcher(name);
+        if (top.find()) {
+            limit = Integer.parseInt(top.group(1));
+            name = "findBy" + name.substring(top.end());
+        }
         if (name.startsWith("findFirstBy")) prefix = "findFirstBy";
         else if (name.startsWith("findBy")) prefix = "findBy";
         else if (name.startsWith("deleteBy")) prefix = "deleteBy";
@@ -142,8 +148,11 @@ final class InMemoryRepositories {
         }
         List<Criterion> criteria = new ArrayList<>();
         for (String part : rest.split("And")) {
-            if (part.endsWith("IsNull")) criteria.add(new Criterion(part.substring(0, part.length() - 6), "null"));
+            if (part.endsWith("IsNotNull")) criteria.add(new Criterion(part.substring(0, part.length() - 9), "notnull"));
+            else if (part.endsWith("IsNull")) criteria.add(new Criterion(part.substring(0, part.length() - 6), "null"));
             else if (part.endsWith("LessThanEqual")) criteria.add(new Criterion(part.substring(0, part.length() - 13), "lte"));
+            else if (part.endsWith("LessThan")) criteria.add(new Criterion(part.substring(0, part.length() - 8), "lt"));
+            else if (part.endsWith("After")) criteria.add(new Criterion(part.substring(0, part.length() - 5), "gt"));
             else if (part.endsWith("In")) criteria.add(new Criterion(part.substring(0, part.length() - 2), "in"));
             else criteria.add(new Criterion(part, "eq"));
         }
@@ -156,12 +165,25 @@ final class InMemoryRepositories {
                 Object value = property(row, c.property());
                 switch (c.kind()) {
                     case "null" -> ok &= value == null;
+                    case "notnull" -> ok &= value != null;
                     case "in" -> ok &= ((Collection<?>) args[arg++]).contains(value);
                     case "lte" -> {
                         Object bound = args[arg++];
                         @SuppressWarnings({"unchecked", "rawtypes"})
                         boolean le = value != null && ((Comparable) value).compareTo(bound) <= 0;
                         ok &= le;
+                    }
+                    case "lt" -> {
+                        Object bound = args[arg++];
+                        @SuppressWarnings({"unchecked", "rawtypes"})
+                        boolean lt = value != null && ((Comparable) value).compareTo(bound) < 0;
+                        ok &= lt;
+                    }
+                    case "gt" -> {
+                        Object bound = args[arg++];
+                        @SuppressWarnings({"unchecked", "rawtypes"})
+                        boolean gt = value != null && ((Comparable) value).compareTo(bound) > 0;
+                        ok &= gt;
                     }
                     default -> ok &= Objects.equals(value, args[arg++]);
                 }
@@ -176,6 +198,7 @@ final class InMemoryRepositories {
                     Comparator.nullsLast(Comparator.naturalOrder()));
             matches.sort(desc ? cmp.reversed() : cmp);
         }
+        if (matches.size() > limit) matches = new ArrayList<>(matches.subList(0, limit));
 
         switch (prefix) {
             case "deleteBy":
@@ -190,6 +213,21 @@ final class InMemoryRepositories {
             default:
                 if (method.getReturnType() == org.springframework.data.domain.Page.class) {
                     org.springframework.data.domain.Pageable page = (org.springframework.data.domain.Pageable) args[args.length - 1];
+                    // The Pageable's own sort, as a database applies it: each order in turn, nulls last.
+                    Comparator<Object> bySort = null;
+                    for (org.springframework.data.domain.Sort.Order o : page.getSort()) {
+                        String property = Character.toUpperCase(o.getProperty().charAt(0)) + o.getProperty().substring(1);
+                        boolean ascending = o.isAscending();
+                        @SuppressWarnings({"unchecked", "rawtypes"})
+                        Comparator<Object> one = (a, b) -> {
+                            Comparable x = (Comparable) property(a, property);
+                            Comparable y = (Comparable) property(b, property);
+                            if (x == null || y == null) return x == y ? 0 : x == null ? 1 : -1;
+                            return ascending ? x.compareTo(y) : y.compareTo(x);
+                        };
+                        bySort = bySort == null ? one : bySort.thenComparing(one);
+                    }
+                    if (bySort != null) matches.sort(bySort);
                     int from = (int) Math.min(matches.size(), page.getOffset());
                     int to = Math.min(matches.size(), from + page.getPageSize());
                     return new org.springframework.data.domain.PageImpl<>(matches.subList(from, to), page, matches.size());

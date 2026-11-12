@@ -109,7 +109,8 @@ class GatewaySettlesCostTest {
         assertThat(seen.settledCostUsd()).isCloseTo(2.0, within(1e-9));
         assertThat(seen.costSource()).isEqualTo(CostSource.RATE);
         verify(callLog).record(eq(USER), eq("CHAT"), eq("Provider"), eq("m"), any(),
-                org.mockito.ArgumentMatchers.doubleThat(c -> Math.abs(c - 2.0) < 1e-9), eq(CostSource.RATE));
+                org.mockito.ArgumentMatchers.doubleThat(c -> Math.abs(c - 2.0) < 1e-9), eq(CostSource.RATE),
+                any(), any(), any());
     }
 
     @Test

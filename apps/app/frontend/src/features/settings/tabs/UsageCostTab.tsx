@@ -66,7 +66,7 @@ export function UsageCostTab({ trackChange, pending, onOpenTab }: TabProps & { o
           will look here first - a tab that silently lost a section reads as a regression. */}
       <SignpostSection
         title={t('Model pricing')}
-        caption={t('Rates are set per provider; a model without one uses its list price or $0.')}
+        caption={t('Set per provider. A model with no rate uses its list price or $0.')}
         action={
           <Button variant="hyperlink" onClick={() => onOpenTab('AI Providers')}>
             {t('Open AI Providers')}

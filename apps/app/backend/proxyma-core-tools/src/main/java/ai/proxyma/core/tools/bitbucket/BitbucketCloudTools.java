@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools.bitbucket;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.ItemMetadata;
 import ai.proxyma.core.connector.spi.ConnectorCatalog;
@@ -135,7 +136,7 @@ public class BitbucketCloudTools {
         boolean truncated = text.length() > MAX_CHARS;
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("success", true);
-        out.put("content", SensitivePaths.scrub(truncated ? text.substring(0, MAX_CHARS) : text));
+        out.put("content", SensitivePaths.scrub(truncated ? Utf16.cut(text, MAX_CHARS) : text));
         out.put("truncated", truncated);
         return out;
     }

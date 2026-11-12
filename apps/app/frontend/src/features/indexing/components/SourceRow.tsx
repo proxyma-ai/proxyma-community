@@ -160,7 +160,7 @@ function statusParts(connector: ConnectorConfig, activeOperation: ConnectorOpera
     return [{
       text: t('paused - quota exceeded'),
       tone: 'warning',
-      detail: t('Storage quota exceeded - processing resumes automatically once usage drops back under the limit'),
+      detail: t('Storage quota full. Resumes when usage drops.'),
     }]
   }
   const parts: StatusPart[] = []
@@ -179,8 +179,8 @@ function statusParts(connector: ConnectorConfig, activeOperation: ConnectorOpera
       tone: 'work',
       text: t('reindexing'),
       detail: connector.reindexTargetModel
-        ? t('Reindexing to {model} - old results still shown until it finishes', { model: connector.reindexTargetModel })
-        : t('Reindexing to a new model - old results still shown until it finishes'),
+        ? t('Reindexing to {model}', { model: connector.reindexTargetModel })
+        : t('Reindexing to a new model'),
     })
   } else if (s.graphReading) {
     parts.push({ tone: 'work', text: t('building the knowledge graph') })
@@ -287,16 +287,17 @@ export const SourceRow = memo(function SourceRow({ connector, onOpenDetail, onDr
       mark={getTypeIcon(connector.type, 16)}
       name={displayName}
       nameLink={destUrl ? cls => (
-        <ExternalLink
-          href={destUrl}
-          stopPropagation
-          className={cls}
-          labelClassName="truncate"
-          iconSize={12}
-          title={connector.name}
-        >
-          {displayName}
-        </ExternalLink>
+        <Tooltip label={connector.name} className="flex min-w-0">
+          <ExternalLink
+            href={destUrl}
+            stopPropagation
+            className={cls}
+            labelClassName="truncate"
+            iconSize={12}
+          >
+            {displayName}
+          </ExternalLink>
+        </Tooltip>
       ) : undefined}
       badges={connector.priority && (
         <Tooltip label={t('Processed first')}>

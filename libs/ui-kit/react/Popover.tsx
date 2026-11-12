@@ -181,7 +181,8 @@ export function MenuRow({ icon, title, description, trailing, tone = 'default', 
         tone === 'locked' && 'text-ink-disabled',
       )}
     >
-      {icon && <span className={cn('shrink-0 flex items-center text-ink-caption [&>svg]:w-4 [&>svg]:h-4', description && 'mt-0.5', tone === 'brand' && 'text-brand-legible')}>{icon}</span>}
+      {/* A danger row's glyph is the row's red, as Sign out's and Quit's are in the account menus (2026-11-10, the UI review). */}
+      {icon && <span className={cn('shrink-0 flex items-center text-ink-caption [&>svg]:w-4 [&>svg]:h-4', description && 'mt-0.5', tone === 'brand' && 'text-brand-legible', tone === 'danger' && 'text-danger')}>{icon}</span>}
       <span className="flex-1 min-w-0">
         <span className="block truncate">{title}</span>
         {description && <span className="block text-xs text-ink-caption whitespace-normal">{description}</span>}

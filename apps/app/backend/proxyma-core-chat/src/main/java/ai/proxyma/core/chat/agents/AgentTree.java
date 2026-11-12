@@ -49,8 +49,12 @@ import java.util.function.Function;
  * peer's note. A child REPORTS by ending a turn: the final answer of a turn that worked on something
  * for its parent goes to the parent's inbox - unless the child still has work of its own running
  * (its own children, a background job, a write waiting for approval), in which case it waits, and the
- * turn that ends after that work reports. What the USER says to a child goes to its parent too, every
- * time, with the answer.
+ * turn that ends after that work reports.
+ *
+ * <p>A PERSON READS A CHILD AND DOES NOT TALK TO IT (the maintainer, 2026-11-04: "The intention is not
+ * to allow the user to talk with it."). The page shows a child's conversation as a read-only transcript,
+ * and the server refuses a person's message into one (ChatController, ChatService.inject and turn):
+ * a child takes its work from the agent that deployed it, and the person talks to that agent.
  *
  * <p>The parent has full control of its children - message, pause, resume, stop, dismiss - and of
  * theirs; the user, of every agent in a tree they own. A child can do no more than its parent: it
@@ -78,6 +82,8 @@ public class AgentTree {
     public static final Duration AWAIT_MAX = Duration.ofMinutes(10);
     /** The tool that waits on {@link #await}; ChatService gives it a timeout as long as its wait. */
     public static final String AWAIT_TOOL = "awaitAgents";
+    /** How a turn that gave up on a provider's rate limit begins its failure (ChatService.failureText). */
+    public static final String RATE_LIMITED_PREFIX = "RATE LIMITED";
     // Bumped by abandonWaits: a wait started under an older value has been given up by its caller.
     private final Map<String, java.util.concurrent.atomic.AtomicLong> waitGenerations = new ConcurrentHashMap<>();
     // The waits running in each conversation, each with how many agents it is still for - what a page
@@ -104,10 +110,18 @@ public class AgentTree {
     private final ChatEventSink sink;
     private final ApplicationEventPublisher events;
 
-    // conversation id -> its node id; a conversation known to be no agent's maps to NONE. Asked on
-    // every step of every turn, so read from the database once per conversation.
-    private static final UUID NONE = new UUID(0, 0);
-    private final ConcurrentHashMap<String, UUID> nodeOf = new ConcurrentHashMap<>();
+    // conversation id -> who it is in the tree: its node's id, its tree's root and its depth, none of
+    // which changes once the node is deployed; a conversation known to be no agent's maps to NONE.
+    // Asked on every step of every turn, so read from the database once per conversation - and rootOf,
+    // isChild and depthOf read no row at all after that. Bounded: past IDENTS_KEPT it starts over.
+    private record Ident(UUID id, String root, int depth) {
+        static Ident of(AgentNode n) {
+            return new Ident(n.getId(), n.getRootConversationId(), n.getDepth());
+        }
+    }
+    private static final Ident NONE = new Ident(new UUID(0, 0), null, 0);
+    static final int IDENTS_KEPT = 50_000;
+    private final ConcurrentHashMap<String, Ident> nodeOf = new ConcurrentHashMap<>();
     // Where a child's turns run: a worker of their own, never the deploying agent's thread.
     private java.util.concurrent.Executor executor = BlockingWork.executor();
 
@@ -172,10 +186,6 @@ public class AgentTree {
         this.costOf = costOf;
     }
 
-    // Conversations whose next turn was started by the tree (a task), not by a person.
-    private final Set<String> dispatched = ConcurrentHashMap.newKeySet();
-    // What the user typed into a child's running turn, to forward with its answer.
-    private final ConcurrentHashMap<String, List<String>> userSaid = new ConcurrentHashMap<>();
     // One lock per tree, so two deployments at once cannot both pass a cap.
     private final ConcurrentHashMap<String, Object> treeLocks = new ConcurrentHashMap<>();
     // When each agent last messaged each other one, for PAIR_RATE.
@@ -201,26 +211,55 @@ public class AgentTree {
     /** The node of a child conversation, or empty for a conversation the user opened. */
     public Optional<AgentNode> node(String conversationId) {
         if (conversationId == null) return Optional.empty();
-        UUID id = nodeOf.get(conversationId);
-        if (NONE.equals(id)) return Optional.empty();
-        Optional<AgentNode> n = id != null ? nodes.findById(id) : nodes.findByConversationId(conversationId);
-        nodeOf.put(conversationId, n.map(AgentNode::getId).orElse(NONE));
+        Ident known = nodeOf.get(conversationId);
+        if (NONE.equals(known)) return Optional.empty();
+        Optional<AgentNode> n = known != null ? nodes.findById(known.id()) : nodes.findByConversationId(conversationId);
+        remember(conversationId, n.map(Ident::of).orElse(NONE));
         return n;
+    }
+
+    // Who a conversation is in the tree, from memory once it has been read.
+    private Ident ident(String conversationId) {
+        Ident known = nodeOf.get(conversationId);
+        if (known != null) return known;
+        Ident read = nodes.findByConversationId(conversationId).map(Ident::of).orElse(NONE);
+        remember(conversationId, read);
+        return read;
+    }
+
+    private void remember(String conversationId, Ident ident) {
+        if (nodeOf.size() >= IDENTS_KEPT && !nodeOf.containsKey(conversationId)) nodeOf.clear();
+        nodeOf.put(conversationId, ident);
+    }
+
+    /**
+     * The nodes of whichever of these conversations are deployed agents, by conversation id - one query
+     * for the batch (the per-call log's agent labels, ConversationCallLabels).
+     */
+    public Map<String, AgentNode> nodesOf(Collection<String> conversationIds) {
+        if (conversationIds == null || conversationIds.isEmpty()) return Map.of();
+        Map<String, AgentNode> out = new java.util.HashMap<>();
+        for (AgentNode n : nodes.findByConversationIdIn(conversationIds)) out.put(n.getConversationId(), n);
+        return out;
     }
 
     /** Whether a conversation is an agent another agent deployed. */
     public boolean isChild(String conversationId) {
-        return node(conversationId).isPresent();
+        return conversationId != null && !NONE.equals(ident(conversationId));
     }
 
     /** The conversation the user opened at the top of this one's tree - itself for a root. */
     public String rootOf(String conversationId) {
-        return node(conversationId).map(AgentNode::getRootConversationId).orElse(conversationId);
+        if (conversationId == null) return null;
+        Ident i = ident(conversationId);
+        return NONE.equals(i) || i.root() == null ? conversationId : i.root();
     }
 
     /** How deep a conversation sits: 0 for the one the user opened. */
     public int depthOf(String conversationId) {
-        return node(conversationId).map(AgentNode::getDepth).orElse(0);
+        if (conversationId == null) return 0;
+        Ident i = ident(conversationId);
+        return NONE.equals(i) ? 0 : i.depth();
     }
 
     public int maxDepth() {
@@ -299,6 +338,18 @@ public class AgentTree {
             providerId = c.providerId();
             model = c.model();
         }
+        // NONE NAMED: the parent's model, when the parent is a deployed agent that has one of its own -
+        // so a cheaper model chosen for a branch stays on that branch. A parent the user opened runs on
+        // its root's or the chat's, which is what a child with no model gets (AgentTreeModule.runsOn).
+        if (model == null) {
+            Optional<AgentNode> parent = node(parentConversationId);
+            if (parent.isPresent() && parent.get().getModel() != null) {
+                providerId = parent.get().getProviderId();
+                model = parent.get().getModel();
+            } else {
+                providerId = null;
+            }
+        }
         AgentFiles handing = in.files() == null || in.files().isEmpty() || files == null ? null : files.getIfAvailable();
         if (handing != null) {
             String bad = handing.checkDown(parentConversationId, userId, in.files());
@@ -339,7 +390,7 @@ public class AgentTree {
             n.setVerifiesAgentId(at.verifiesAgentId());
             saved = nodes.save(n);
         }
-        nodeOf.put(saved.getConversationId(), saved.getId());
+        remember(saved.getConversationId(), Ident.of(saved));
         ChatService c = chat.getObject();
         // The parent's permission mode: a child can do no more without asking than its parent can.
         c.setPermissionMode(saved.getConversationId(), c.permissionMode(parentConversationId));
@@ -371,13 +422,11 @@ public class AgentTree {
 
     // Starts a turn on the child with this message - its task, or what reached it while idle.
     private void start(AgentNode n, String message) {
-        dispatched.add(n.getConversationId());
         executor.execute(() -> {
             try {
                 chat.getObject().runUnattended(n.getConversationId(), message, n.getUserId(), SURFACE,
                         chat.getObject().permissionMode(n.getConversationId()), List.of());
             } catch (RuntimeException e) {
-                dispatched.remove(n.getConversationId());
                 log.warn("[Agents] agentId={} could not start: {}", n.getId(), e.getMessage());
                 settle(n.getConversationId(), null, e.getMessage());
             }
@@ -403,7 +452,7 @@ public class AgentTree {
             String limited = rateCheck(fromConversationId, me.get().getParentConversationId(), "your parent");
             if (limited != null) return failure(limited);
             inbox.post(me.get().getParentConversationId(), AgentInbox.Kind.MESSAGE, fromId, title, text.strip());
-            recordEvent(me.get(), AgentEvent.MESSAGE, null, null, "to its parent");
+            recordEvent(me.get(), AgentEvent.MESSAGE, null, null, null);
             return Map.of("success", true, "note", "Delivered. Its answer, if any, arrives as a message to you.");
         }
         Optional<AgentNode> target = byId(to);
@@ -424,7 +473,7 @@ public class AgentTree {
         giveWork(t, AgentInbox.Kind.MESSAGE, fromId, title, text.strip());
         if (record != null) {
             record.write(t.getRootConversationId(), fromConversationId, fromId, AgentEvent.MESSAGE, null, t.getId(),
-                    "to " + t.getTitle());
+                    null);
         }
         return Map.of("success", true, "status", t.getStatus(),
                 "note", "Delivered. " + t.getTitle() + " reads it at its next step; its report arrives as a message to you.");
@@ -450,6 +499,7 @@ public class AgentTree {
         t.setReportOwed(true);
         if (!AgentNode.PAUSED.equals(t.getStatus())) t.setStatus(AgentNode.RUNNING);
         t.setEndedAt(null);
+        t.setStopReason(null);
         nodes.save(t);
         publishStatus(t);
         inbox.post(t.getConversationId(), kind, fromId, fromTitle, text);
@@ -640,7 +690,7 @@ public class AgentTree {
         if (!isAncestor(fromConversationId, target.get())) {
             return failure("You can control only the agents you deployed and theirs.");
         }
-        return apply(target.get(), action);
+        return apply(target.get(), action, AgentNode.REASON_PARENT);
     }
 
     /** The same, for the person who owns the tree: they can do anything to any agent in it. */
@@ -649,7 +699,7 @@ public class AgentTree {
         if (target.isEmpty() || !java.util.Objects.equals(target.get().getUserId(), userId)) {
             return failure("No such agent.");
         }
-        return apply(target.get(), action);
+        return apply(target.get(), action, AgentNode.REASON_USER);
     }
 
     /**
@@ -661,18 +711,22 @@ public class AgentTree {
         if (target.isEmpty() || !target.get().getRootConversationId().equals(rootOf(conversationId))) {
             return failure("No such agent in this conversation.");
         }
-        return apply(target.get(), action);
+        return apply(target.get(), action, AgentNode.REASON_USER);
     }
 
-    private Map<String, Object> apply(AgentNode n, String action) {
+    // `by` is who asked, as the stop reason of what this stops (REASON_PARENT or REASON_USER).
+    private Map<String, Object> apply(AgentNode n, String action, String by) {
         String a = action == null ? "" : action.strip().toLowerCase(Locale.ROOT);
         switch (a) {
             case "stop" -> {
-                for (AgentNode d : subtree(n)) end(d, AgentNode.STOPPED);
+                for (AgentNode d : subtree(n)) end(d, AgentNode.STOPPED, by);
                 return Map.of("success", true, "status", AgentNode.STOPPED);
             }
             case "dismiss" -> {
-                for (AgentNode d : subtree(n)) end(d, d.getId().equals(n.getId()) ? AgentNode.DONE : AgentNode.STOPPED);
+                for (AgentNode d : subtree(n)) {
+                    if (d.getId().equals(n.getId())) end(d, AgentNode.DONE, null);
+                    else end(d, AgentNode.STOPPED, by);
+                }
                 return Map.of("success", true, "status", AgentNode.DONE);
             }
             case "pause" -> {
@@ -707,9 +761,11 @@ public class AgentTree {
         }
     }
 
-    private void end(AgentNode n, String status) {
+    // `reason` is why, for a STOPPED one (AgentNode.REASON_*); null for one that is done.
+    private void end(AgentNode n, String status, String reason) {
         if (n.isEnded() && !AgentNode.DONE.equals(status)) return;
         n.setStatus(status);
+        n.setStopReason(reason);
         n.setReportOwed(false);
         n.setEndedAt(Instant.now());
         nodes.save(n);
@@ -767,42 +823,17 @@ public class AgentTree {
 
     // -- A turn ended -------------------------------------------------------------------------------
 
-    /** What the user typed into a child's RUNNING turn - forwarded to its parent with the answer. */
-    public void userSpoke(String conversationId, String text) {
-        if (text == null || text.isBlank() || !isChild(conversationId)) return;
-        userSaid.computeIfAbsent(conversationId, k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(text);
-    }
-
     /**
-     * A turn of a conversation has ended (ChatService.turn, last thing). For a child: what the user
-     * said goes to its parent with the answer; and a turn that worked on something for its parent
-     * reports, unless the child still has work of its own running - then it waits, and the turn that
-     * ends after that work reports.
+     * A turn of a conversation has ended (ChatService.turn, last thing). For a child: a turn that
+     * worked on something for its parent reports, unless the child still has work of its own running -
+     * then it waits, and the turn that ends after that work reports. Every turn of a child is the
+     * tree's or its mail's: a person's message into one is refused before it starts.
      *
-     * @param userMessage the message that opened the turn when a person sent it, else null
-     * @param answer      the turn's final answer, or null when it failed
-     * @param error       why it failed, or null
+     * @param answer the turn's final answer, or null when it failed
+     * @param error  why it failed, or null
      */
-    public void turnEnded(String conversationId, String userMessage, String answer, String error) {
-        Optional<AgentNode> found = node(conversationId);
-        boolean byTree = dispatched.remove(conversationId);
-        if (found.isEmpty()) return;
-        AgentNode n = nodes.findById(found.get().getId()).orElse(null);
-        if (n == null) return;
-        List<String> said = new ArrayList<>();
-        if (userMessage != null && !byTree) said.add(userMessage);
-        List<String> typed = userSaid.remove(conversationId);
-        if (typed != null) said.addAll(typed);
-        if (!said.isEmpty()) {
-            String reply = answer != null ? answer : "(its turn ended without an answer" + (error == null ? "" : ": " + error) + ")";
-            inbox.post(n.getParentConversationId(), AgentInbox.Kind.USER_TALK, n.getId(), n.getTitle(),
-                    "The user said:\n" + String.join("\n\n", said) + "\n\n" + n.getTitle() + " answered:\n"
-                            + AgentInbox.clip(reply, REPORT_MAX));
-            recordEvent(n, AgentEvent.USER_TALK, null, null, "the user talked to it");
-            // A person's own question is no report on the task: only a turn the tree started, or
-            // one that took the agent's mail, reports.
-            if (userMessage != null && !byTree) return;
-        }
+    public void turnEnded(String conversationId, String answer, String error) {
+        if (node(conversationId).isEmpty()) return;
         settle(conversationId, answer, error);
     }
 
@@ -821,10 +852,14 @@ public class AgentTree {
         }
         String report = answer != null ? AgentInbox.clip(answer, REPORT_MAX)
                 : "I could not finish: my turn failed" + (error == null ? "." : " - " + error);
+        // Why, should it fail: a rate limit has a code of its own (ChatService.failureText).
+        String why = answer != null ? null
+                : error != null && error.startsWith(RATE_LIMITED_PREFIX) ? AgentNode.REASON_RATE_LIMITED : AgentNode.REASON_ERROR;
         AgentVerifier v = verifier == null ? null : verifier.getIfAvailable();
         if (n.isVerifier()) {
-            complete(n, report, answer == null);
+            complete(n, report, why);
             if (v != null) v.verdict(n, report, answer == null);
+            publishStatus(n);
             return;
         }
         // Checked before it is delivered: the agent waits, holding its report, until the verifier's
@@ -837,16 +872,29 @@ public class AgentTree {
             if (v.check(n, report)) return;
             report = report + "\n\n[Not verified: no verifier could be deployed.]";
         }
-        complete(n, report, answer == null);
+        complete(n, report, why);
         deliverReport(n, report);
+        publishStatus(n);
     }
 
-    // The agent's work on this report is over: it stops owing one, and ends unless it lives on.
-    private void complete(AgentNode n, String report, boolean failed) {
+    /**
+     * The agent's work on this report is over: it stops owing one, and ends unless it lives on.
+     * {@code failedWhy} is null for a report, else why its turn failed (AgentNode.REASON_*).
+     *
+     * <p>ITS STATUS IS PUBLISHED BY THE CALLER, AFTER THE REPORT IS DELIVERED (0.40.1 feedback). The
+     * parent's page keeps its stream open while a child works or owes a report, and closes it on the
+     * status that says neither. Published here, that status reached the page before the report's
+     * delivery woke the parent - so the page closed its stream, and the turn the report started
+     * (its 'turn-start', the report, the answer) reached nobody until the conversation was reloaded.
+     * Delivered first, the wake's 'turn-start' is numbered ahead of the status, and the page is
+     * already following a turn when it hears the child is done.
+     */
+    private void complete(AgentNode n, String report, String failedWhy) {
         n.setReportOwed(false);
         n.setLastReport(report);
-        if (failed && !n.isLong()) {
+        if (failedWhy != null && !n.isLong()) {
             n.setStatus(AgentNode.FAILED);
+            n.setStopReason(failedWhy);
             n.setEndedAt(Instant.now());
         } else if (n.isLong()) {
             n.setStatus(AgentNode.IDLE);
@@ -855,7 +903,6 @@ public class AgentTree {
             n.setEndedAt(Instant.now());
         }
         nodes.save(n);
-        publishStatus(n);
         slotFreed(n);
     }
 
@@ -874,15 +921,16 @@ public class AgentTree {
     void deliverChecked(UUID agentId, String report) {
         AgentNode n = nodes.findById(agentId).orElse(null);
         if (n == null || n.isEnded() || !n.isReportOwed()) return;
-        complete(n, report, false);
+        complete(n, report, null);
         deliverReport(n, report);
+        publishStatus(n);
     }
 
     // To the fan-out the agent works an item of, or to its parent.
     private void deliverReport(AgentNode n, String report) {
         AgentFanOuts f = n.getFanOutId() == null || fanOuts == null ? null : fanOuts.getIfAvailable();
         if (f != null) {
-            recordEvent(n, AgentEvent.REPORT, null, null, "to its fan-out");
+            recordEvent(n, AgentEvent.REPORT, null, null, null);
             f.itemEnded(n);
             return;
         }
@@ -906,13 +954,15 @@ public class AgentTree {
         for (int hop = 0; cur != null && hop <= SubAgentSettings.MAX_DEPTH_CEILING + 1; hop++) {
             if (cur.isEnded() && cur.getStopNote() != null) return Optional.of("Stopped: " + cur.getStopNote());
             if (cur.getDeadlineAt() != null && !now.isBefore(cur.getDeadlineAt())) {
-                return Optional.of(enforce(cur, "its deadline (" + cur.getDeadlineAt() + ") has passed"));
+                return Optional.of(enforce(cur, "its deadline (" + cur.getDeadlineAt() + ") has passed",
+                        AgentNode.REASON_DEADLINE));
             }
             if (cur.getBudgetUsd() != null) {
                 double spent = spendOf(cur.getConversationId());
                 if (spent >= cur.getBudgetUsd()) {
                     return Optional.of(enforce(cur, String.format(Locale.ROOT,
-                            "its budget of $%.2f is spent ($%.2f with the agents it deployed)", cur.getBudgetUsd(), spent)));
+                            "its budget of $%.2f is spent ($%.2f with the agents it deployed)", cur.getBudgetUsd(), spent),
+                            AgentNode.REASON_BUDGET));
                 }
             }
             String parent = cur.getParentConversationId();
@@ -922,7 +972,8 @@ public class AgentTree {
     }
 
     // Stops the agent whose limit it is, and its subtree, once; tells its parent; returns the sentence.
-    private String enforce(AgentNode limited, String why) {
+    // `reason` is which limit it was (AgentNode.REASON_DEADLINE or REASON_BUDGET), for the page.
+    private String enforce(AgentNode limited, String why, String reason) {
         String note = limited.getTitle() + " was stopped: " + why + ".";
         synchronized (treeLocks.computeIfAbsent(limited.getRootConversationId(), k -> new Object())) {
             AgentNode fresh = nodes.findById(limited.getId()).orElse(limited);
@@ -931,9 +982,9 @@ public class AgentTree {
             for (AgentNode d : subtree(fresh)) {
                 if (d.isEnded()) continue;
                 d.setStopNote(d.getId().equals(fresh.getId()) ? note : "Stopped with " + fresh.getTitle() + ": " + why + ".");
-                end(d, AgentNode.STOPPED);
+                end(d, AgentNode.STOPPED, reason);
             }
-            recordEvent(fresh, AgentEvent.LIMIT, AgentNode.STOPPED, null, why);
+            recordEvent(fresh, AgentEvent.LIMIT, AgentNode.STOPPED, null, reason);
             log.info("[Agents] agentId={} stopped by its limit: {}", fresh.getId(), why);
             String report = "Stopped by the tree: " + why + ". "
                     + (last == null || last.isBlank() ? "It had not reported yet." : "Its last report:\n" + last);
@@ -956,7 +1007,7 @@ public class AgentTree {
             for (AgentNode n : nodes.findByRootConversationIdOrderByCreatedAtAsc(rootConversationId)) {
                 if (n.isEnded()) continue;
                 n.setStopNote(AgentInbox.clip(why, 480));
-                end(n, AgentNode.STOPPED);
+                end(n, AgentNode.STOPPED, AgentNode.REASON_RUN_LIMIT);
             }
         }
     }
@@ -968,7 +1019,7 @@ public class AgentTree {
             Instant now = Instant.now();
             for (AgentNode n : nodes.findByStatusIn(LIVE)) {
                 if (n.getDeadlineAt() != null && !now.isBefore(n.getDeadlineAt())) {
-                    enforce(n, "its deadline (" + n.getDeadlineAt() + ") has passed");
+                    enforce(n, "its deadline (" + n.getDeadlineAt() + ") has passed", AgentNode.REASON_DEADLINE);
                 }
             }
         } catch (RuntimeException e) {
@@ -980,6 +1031,16 @@ public class AgentTree {
      * What a conversation and every agent under it have spent, in US dollars - trusted for
      * {@value #SPEND_TTL_MS} ms, since it is asked before every step of every agent under a budget.
      */
+    /**
+     * The same, read now rather than through the few seconds' cache the budget checks share: what a finished run spent
+     * (RunJournal). A turn's usage is added to its conversation as the turn ends, so a figure cached by a check during
+     * the turn misses its last calls - a run's cost was recorded as half of what it spent (2026-11-11).
+     */
+    public double spendNow(String conversationId) {
+        if (conversationId != null) spendCache.remove(conversationId);
+        return spendOf(conversationId);
+    }
+
     public double spendOf(String conversationId) {
         if (conversationId == null) return 0;
         long now = System.currentTimeMillis();

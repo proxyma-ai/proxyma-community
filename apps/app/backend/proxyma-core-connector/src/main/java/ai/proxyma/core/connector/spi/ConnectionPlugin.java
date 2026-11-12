@@ -1,6 +1,11 @@
 package ai.proxyma.core.connector.spi;
 
+import org.springframework.http.HttpMethod;
+
+import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * One SERVICE a connection talks to: a stateless Spring bean that describes it (how it signs in,
@@ -33,5 +38,38 @@ public interface ConnectionPlugin {
      */
     default OAuth2Spec oauth2(Map<String, String> settings, String baseUrl) {
         return oauth2();
+    }
+
+    /**
+     * GRANULAR CONSENT (2026-11-08): what a sign-in's GRANTED scopes leave this connection unable to do,
+     * as a sentence the person reads beside "Sign in again" - or empty when the grant serves it. A
+     * consent screen lets a person untick a scope (Google's does), and the token answer's {@code scope}
+     * says what was allowed; a connection signed in without what it needs is marked as needing a new
+     * sign-in rather than reading as fine. Asked only when the answer names its scopes.
+     *
+     * @param granted the scopes the service says it granted
+     * @param write   whether the connection's Write switch is on
+     */
+    default Optional<String> consentShortfall(Set<String> granted, boolean write) {
+        return Optional.empty();
+    }
+
+    /**
+     * What one request costs against the service's daily quota, in the service's own units - 0 for a
+     * service that meters none. Counted only where a quota is shared by many installs: a built-in OAuth
+     * client's (BuiltInQuota). Every request is counted, a refused or invalid one included, as Google
+     * counts it.
+     */
+    default int requestUnits(HttpMethod method, URI uri) {
+        return 0;
+    }
+
+    /**
+     * Whether a request only asks whose account the connection signs in as - YouTube's {@code channels.list mine}. A
+     * page's such request goes through a small daily reserve once the built-in client's share is spent
+     * (BuiltInQuota.spendReserve), so a channel connected then is still named after itself (2026-11-11).
+     */
+    default boolean identityRequest(HttpMethod method, URI uri) {
+        return false;
     }
 }

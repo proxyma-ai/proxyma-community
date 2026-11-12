@@ -42,7 +42,7 @@ class LlmCallLogQueryTest {
         repository = mock(LlmCallRepository.class);
         controller = new LlmCallsController(repository, mock(ModelPricingService.class));
         ReflectionTestUtils.setField(controller, "multiUser", false);
-        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
         when(repository.totalsByProvider(any(), any(), any())).thenReturn(List.of());
         when(repository.totalsByModel(any(), any(), any())).thenReturn(List.of());
@@ -52,9 +52,9 @@ class LlmCallLogQueryTest {
     }
 
     private Pageable pageableFor(String sort, String dir) {
-        controller.calls(30, 0, 50, null, null, null, null, null, sort, dir, null).block();
+        controller.calls(30, 0, 50, null, null, null, null, null, sort, dir, null, null).block();
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(repository).search(any(), any(), any(), any(), any(), any(), any(), pageable.capture());
+        verify(repository).search(any(), any(), any(), any(), any(), any(), any(), any(), pageable.capture());
         return pageable.getValue();
     }
 
@@ -113,8 +113,8 @@ class LlmCallLogQueryTest {
     @Test
     @DisplayName("the search and the filters reach the query together")
     void searchAndFiltersReachTheQuery() {
-        controller.calls(30, 0, 50, "CHAT", "OpenAI", "gpt-4o", null, "Mini", "cost", "desc", null).block();
-        verify(repository).search(any(), any(), any(), eq("CHAT"), eq("OpenAI"), eq("gpt-4o"), eq("%mini%"), any(Pageable.class));
+        controller.calls(30, 0, 50, "CHAT", "OpenAI", "gpt-4o", null, "Mini", "cost", "desc", null, null).block();
+        verify(repository).search(any(), any(), any(), eq("CHAT"), eq("OpenAI"), eq("gpt-4o"), eq("%mini%"), any(), any(Pageable.class));
     }
 
     @Test
@@ -122,9 +122,9 @@ class LlmCallLogQueryTest {
     void searchKeepsTheScope() {
         ReflectionTestUtils.setField(controller, "multiUser", true);
         var auth = new UsernamePasswordAuthenticationToken("u-7", null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
-        controller.calls(30, 0, 50, null, null, null, null, "u-8", null, null, null)
+        controller.calls(30, 0, 50, null, null, null, null, "u-8", null, null, null, null)
                 .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth))
                 .block();
-        verify(repository).search(any(), any(), eq("u-7"), any(), any(), any(), eq("%u-8%"), any(Pageable.class));
+        verify(repository).search(any(), any(), eq("u-7"), any(), any(), any(), eq("%u-8%"), any(), any(Pageable.class));
     }
 }

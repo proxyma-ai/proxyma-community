@@ -22,5 +22,17 @@ public final class ChatOnlyTools {
             // A shell command runs in a conversation's workspace (RunCommandTool).
             "runCommand");
 
+    /**
+     * The agent tree's ADVANCED tools - a fan-out and the reading of its items, a verifier, a
+     * deliberating panel and its decision, handing a file on, alarms and background calls. What a
+     * typical worker needs is the four this leaves: deployAgent, tellAgent, awaitAgents and
+     * controlAgent. Every tool here is sent with every model call that offers it (about 5,300
+     * characters of schema together), so a module whose agents are workers - a saved agent of a team,
+     * often on a cheap model - withholds this set (AgentProfile.withheldTools) unless the agent's
+     * work calls for one. Nothing withholds it by default: an ordinary chat offers all of them.
+     */
+    public static final Set<String> ADVANCED_AGENT_TREE = Set.of("deployAgents", "readAgentReport", "verifyReport",
+            "deliberate", "recordDecision", "handFile", "alarm", "background");
+
     private ChatOnlyTools() {}
 }

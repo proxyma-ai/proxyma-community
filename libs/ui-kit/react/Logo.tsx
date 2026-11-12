@@ -3,8 +3,16 @@ import { cn } from './cn'
 import { ProxymaIcon } from './ProxymaIcon'
 
 export interface LogoProps {
-  /** Forwarded to the mark so a header can drive its idle rotation. */
+  /**
+   * Forwarded to the mark so a sidebar can drive its turn (useIdleRotation, at the same speed). The
+   * mark then takes no `.mark-turn`: a CSS animation would override the transform the loop writes.
+   */
   iconRef?: React.Ref<SVGSVGElement>
+  /**
+   * Holds the mark still. Every other mark turns; this is for the kit gallery's specimens, where a
+   * sheet of turning marks would be noise.
+   */
+  still?: boolean
   size?: number
   /**
    * Renders the mark alone, with no wordmark beside it - for surfaces that already name the
@@ -20,12 +28,6 @@ export interface LogoProps {
    * a logo. Since 2026-09-24; the consoles used to put their name after a divider.
    */
   subtitle?: ReactNode
-  /**
-   * The name UNDER the mark, both centered, instead of beside it. Only the Community new chat's
-   * hero (ChatStartHero) stacks, since 2026-10-15 (maintainer's request); everywhere else the
-   * name sits beside the mark.
-   */
-  stacked?: boolean
   /** Classes for the subtitle line, e.g. `hidden sm:block` where the bar is too narrow for it. */
   subtitleClassName?: string
   /** Names a mark-only logo that stands for the product by itself (an image with no words). */
@@ -45,35 +47,26 @@ export interface LogoProps {
  * the mark never under 16px, the lockup never under a 24px mark; the wordmark always "Proxyma"
  * in Orbitron 700 at tracking 0.05em in `brand-legible` ink - never upper case, never another face.
  *
- * `className` reaches the MARK (a turning mark in Settings > About sizes it with it); a mark-only
- * logo that stands for the product by itself takes `ariaLabel`, and is decorative without one.
+ * `className` reaches the MARK (Settings > About sizes its mark with it); a mark-only logo that
+ * stands for the product by itself takes `ariaLabel`, and is decorative without one.
+ *
+ * THE MARK TURNS, wherever a Logo is shown - a header, a sidebar, a sign-in card, an error screen,
+ * the site's footer - at ONE speed, one turn in `--mark-turn` (12s), through the kit's `.mark-turn`
+ * (the maintainer, 2026-11-08: "Ensure the logo rotates at the same speed everywhere"). Until then
+ * the site's header turned once in 80 seconds and every sign-in card and the footer held still.
+ * `still` is the exception, and an `iconRef` hands the turn to its owner's frame loop.
  */
 const LOGO_HEIGHT = 28
 
-// THE NAME GROWS WITH A HERO-SIZED MARK, since 2026-10-15 (the new chat opens on the lockup,
-// maintainer's request). Up to a 44px mark - the header's 28, the footer's 40 - the wordmark stays
-// at 16px, as it always was. From 48px it is sized with the mark, at about the header's own ratio
-// (16 beside 28), on the type scale: 29px beside 48-56, 37px beside anything larger.
+// THE NAME GROWS WITH A HERO-SIZED MARK, since 2026-10-15 (the new chat opened on a stacked
+// lockup until 2026-11-08, when the stage gave it the wordmark alone and the stacked variant
+// went). Up to a 44px mark - the header's 28, the footer's 40 - the wordmark stays at 16px, as it
+// always was. From 48px it is sized with the mark, at about the header's own ratio
+// (16 beside 28), on the type scale: 30px beside 48-56, 36px beside anything larger.
 function wordmarkSize(mark: number): string {
   if (mark < 48) return 'text-base'
   if (mark <= 56) return 'text-3xl'
   return 'text-4xl'
-}
-
-// THE STACKED LOCKUP'S NAME is a step under the side-by-side one: under the mark it is measured
-// against the mark's WIDTH, and at the side-by-side size "Proxyma" ran to three marks wide and
-// buried the mark. 25px under a 64px mark, 29px under anything larger; the gap between them is a
-// fifth of the mark, so the pair reads as one sign rather than a picture with a caption.
-function stackedWordmarkSize(mark: number): string {
-  if (mark < 48) return 'text-base'
-  if (mark <= 64) return 'text-2xl'
-  return 'text-3xl'
-}
-
-function stackGap(mark: number): string {
-  if (mark <= 32) return 'gap-2'
-  if (mark <= 56) return 'gap-3'
-  return 'gap-4'
 }
 
 // The lockup's gap is OPTICAL, a share of the mark's height, so it is the one spacing in the kit
@@ -85,31 +78,17 @@ function lockupGap(mark: number): string {
   return 'gap-3'
 }
 
-export function Logo({ iconRef, size, markOnly = false, productName = 'Proxyma', subtitle, stacked = false, subtitleClassName, ariaLabel, className }: LogoProps) {
+export function Logo({ iconRef, still = false, size, markOnly = false, productName = 'Proxyma', subtitle, subtitleClassName, ariaLabel, className }: LogoProps) {
   const mark = size ?? LOGO_HEIGHT
+  const markClass = cn(!still && !iconRef && 'mark-turn', className) || undefined
   if (markOnly) {
-    const icon = <ProxymaIcon ref={iconRef} size={mark} className={className} />
+    const icon = <ProxymaIcon ref={iconRef} size={mark} className={markClass} />
     return ariaLabel ? <span role="img" aria-label={ariaLabel} className="inline-flex shrink-0">{icon}</span> : icon
-  }
-
-  if (stacked) {
-    // leading-none, so the gap is the whole of the space between the mark and the name's glyphs.
-    return (
-      <span className={cn('inline-flex flex-col items-center shrink-0 min-w-0 text-center', stackGap(mark))}>
-        <ProxymaIcon ref={iconRef} size={mark} className={className} />
-        <span className={cn('font-brand font-bold text-brand-legible tracking-wider leading-none', stackedWordmarkSize(mark))}>
-          {productName}
-        </span>
-        {subtitle && (
-          <span className={cn('text-xs text-ink-caption leading-none whitespace-nowrap', subtitleClassName)}>{subtitle}</span>
-        )}
-      </span>
-    )
   }
 
   return (
     <span className={cn('inline-flex items-center shrink-0 min-w-0', lockupGap(mark))}>
-      <ProxymaIcon ref={iconRef} size={mark} className={className} />
+      <ProxymaIcon ref={iconRef} size={mark} className={markClass} />
       {/* text-brand-legible, not text-brand-solid: the wordmark is TEXT sitting on the
           header's own surface, so it needs the per-mode legibility tuning that brand-solid
           deliberately skips. */}

@@ -4,7 +4,7 @@ import {
   Bell, Copy, Download, Filter, MoreHorizontal, Pencil, Send, Share2, Star, ThumbsUp, X,
 } from 'lucide-react'
 import {
-  ActivityLine, Badge, BrandMark, Button, Caption, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, DialogNotice,
+  ActivityLine, Badge, BrandMark, Button, Caption, ChatStartHero, ChatStartStage, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, DialogNotice,
   DialogShell, Eyebrow, FormColumns, FormStack, IconButton, IconCountButton, IconToggleButton, InlineCode, InlineNotice, Input,
   Lightbox, ListRowSkeleton, Logo, MENU_PANEL, MenuGroup, MenuIdentity, MenuRow, Modal, POPOVER_PANEL, Paragraph, ProgressBar,
   ProxymaIcon, Readout, SettingsSection, SettingsSections, SettingsWindow, Skeleton, SplashScreen, StateMark, StatusDot, StatusScreen,
@@ -55,7 +55,7 @@ const SPACE_BAR: Record<string, string> = {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[9rem_1fr] gap-x-6 gap-y-1 items-baseline py-2 border-b border-line/30 last:border-b-0">
-      <span className="text-2xs font-mono text-ink-caption">{label}</span>
+      <span className="text-xs font-mono text-ink-caption">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
   )
@@ -142,7 +142,7 @@ export const PICTURES: Record<string, Picture> = {
     title: 'The size steps (display type and anything that is not a role)',
     render: () => (
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        {FONT_SIZES.map(s => <span key={s.cls} className={cn('text-ink-primary', s.cls)}>{s.cls.replace('text-', '')} <span className="text-2xs data-readout text-ink-caption">{s.spec}</span></span>)}
+        {FONT_SIZES.map(s => <span key={s.cls} className={cn('text-ink-primary', s.cls)}>{s.cls.replace('text-', '')} <span className="text-xs data-readout text-ink-caption">{s.spec}</span></span>)}
       </div>
     ),
     wide: true,
@@ -165,7 +165,7 @@ export const PICTURES: Record<string, Picture> = {
       <div className="w-full space-y-2">
         {SPACING.map(s => (
           <div key={s.cls} className="flex items-center gap-3">
-            <span className="w-14 shrink-0 text-2xs font-mono text-ink-caption">{s.cls}</span>
+            <span className="w-14 shrink-0 text-xs font-mono text-ink-caption">{s.cls}</span>
             <span className={cn('h-3 shrink-0 rounded-sm bg-brand-accent', SPACE_BAR[s.cls])} />
             <Caption as="span">{s.px}px - {s.use}</Caption>
           </div>
@@ -178,7 +178,7 @@ export const PICTURES: Record<string, Picture> = {
     title: 'Radius',
     render: () => (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full">
-        {RADII.map(r => <div key={r.cls} className="min-w-0"><div className={cn('h-12 border border-line bg-surface', r.cls)} /><p className="mt-1 text-2xs font-mono text-ink-primary">{r.cls} <span className="text-ink-caption">{r.px}</span></p><p className="text-2xs text-ink-caption leading-snug">{r.use}</p></div>)}
+        {RADII.map(r => <div key={r.cls} className="min-w-0"><div className={cn('h-12 border border-line bg-surface', r.cls)} /><p className="mt-1 text-xs font-mono text-ink-primary">{r.cls} <span className="text-ink-caption">{r.px}</span></p><p className="text-xs text-ink-caption leading-snug">{r.use}</p></div>)}
       </div>
     ),
     wide: true,
@@ -187,8 +187,8 @@ export const PICTURES: Record<string, Picture> = {
     title: 'Elevation: only what floats casts a shadow',
     render: () => (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-        <div className="min-w-0"><div className="h-14 rounded-lg bg-surface/40 border border-line/40" /><p className="mt-2 text-2xs font-mono text-ink-primary">none</p><p className="text-2xs text-ink-caption">A card in the flow: a border.</p></div>
-        {SHADOWS.map(s => <div key={s.cls} className="min-w-0"><div className={cn('h-14 rounded-lg surface-float border border-line/45', s.cls)} /><p className="mt-2 text-2xs font-mono text-ink-primary">{s.cls}</p><p className="text-2xs text-ink-caption">{s.use}</p></div>)}
+        <div className="min-w-0"><div className="h-14 rounded-lg bg-surface/40 border border-line/40" /><p className="mt-2 text-xs font-mono text-ink-primary">none</p><p className="text-xs text-ink-caption">A card in the flow: a border.</p></div>
+        {SHADOWS.map(s => <div key={s.cls} className="min-w-0"><div className={cn('h-14 rounded-lg surface-float border border-line/45', s.cls)} /><p className="mt-2 text-xs font-mono text-ink-primary">{s.cls}</p><p className="text-xs text-ink-caption">{s.use}</p></div>)}
       </div>
     ),
     wide: true,
@@ -246,12 +246,13 @@ export const PICTURES: Record<string, Picture> = {
     render: () => <div className="flex flex-wrap items-center gap-8"><Logo size={24} /><Logo /><Logo size={40} /></div>,
     wide: true,
   },
-  'logo-stacked': {
-    title: 'The one stacked lockup: the Community new chat\'s hero (Logo stacked, a 72px mark)',
+  'logo-hero': {
+    title: "The new chat's stage: the whole pane, the wordmark on the left, the mark at the edge (ChatStartStage, ChatStartHero onStage)",
     render: () => (
-      <div className="flex flex-wrap items-center gap-10">
-        <Logo size={72} stacked />
-        <Caption className="max-w-xs">Only here is the name under the mark. Enterprise Server opens the same screen on "Hi, {'{name}'}" instead, and every bar, footer, card and document keeps the name beside the mark.</Caption>
+      <div className="h-96 w-full flex flex-col">
+        <ChatStartStage>
+          <div className="chat-stage-column flex-1 flex flex-col justify-center"><ChatStartHero as="p" onStage /></div>
+        </ChatStartStage>
       </div>
     ),
     wide: true,

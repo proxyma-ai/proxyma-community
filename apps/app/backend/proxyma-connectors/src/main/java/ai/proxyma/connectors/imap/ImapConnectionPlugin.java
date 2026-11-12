@@ -49,15 +49,14 @@ public class ImapConnectionPlugin implements ConnectionPlugin {
                                     new FieldSpec.Option("starttls", "STARTTLS"),
                                     new FieldSpec.Option("none", "None (this computer only)")))
                             .defaultValue("tls")
-                            .help("TLS on port 993 for almost every mail service. STARTTLS is port 143."),
+                            .help("TLS on port 993 for most services."),
                     FieldSpec.number(ImapAccount.PORT, "Port").range(1, 65535).placeholder("993")
-                            .help("Leave it empty for the usual port: 993 with TLS, 143 otherwise.").asAdvanced(),
+                            .help("Empty for 993 with TLS, or 143.").asAdvanced(),
                     FieldSpec.text(AuthMethod.USERNAME, "User name").asRequired()
                             .placeholder("ana@example.com")
                             .help("Usually your whole email address."),
                     FieldSpec.secret(ImapAccount.PASSWORD, "Password").asRequired()
-                            .help("An app password where your mail service offers them. "
-                                    + "Microsoft 365 and Outlook.com mailboxes accept no password over IMAP.")))
+                            .help("An app password if your mail service has them.")))
             .sourceTypes(ConnectorType.IMAP)
             .docsAnchor("imap")
             .build();

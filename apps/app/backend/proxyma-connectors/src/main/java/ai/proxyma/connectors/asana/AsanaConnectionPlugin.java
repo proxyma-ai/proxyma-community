@@ -44,10 +44,10 @@ public class AsanaConnectionPlugin implements ConnectionPlugin {
             .mark("asana")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Personal access token",
                             FieldSpec.secret("token", "Personal access token").asRequired()
-                                    .help("Create one in the Asana developer console, under Personal access tokens.")),
+                                    .help("Created in the Asana developer console.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Asana",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("An app created in the Asana developer console, with read scopes."),
+                                    .help("An Asana app with read scopes."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(AsanaApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.ASANA)

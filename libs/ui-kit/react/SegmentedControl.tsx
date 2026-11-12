@@ -30,6 +30,12 @@ interface Props<T extends string> {
    * outweigh the chart it governs.
    */
   variant?: 'boxed' | 'text'
+  /**
+   * `well` (the default) sinks the track into the page or card it sits on. `float` is for a switch
+   * floating over a canvas beside its other floating controls: the track is the float's glass, and
+   * the chosen option the neutral selected fill a menu's chosen row wears.
+   */
+  surface?: 'well' | 'float'
   disabled?: boolean
   className?: string
 }
@@ -43,10 +49,17 @@ interface Props<T extends string> {
  * look and reads as "press this", not "this is chosen". Since 2026-10-29 (the depth review) the track
  * is a WELL (`surface-alt`, `shadow-well`) and the choice a pill LIFTED out of it - the floating
  * plane with `shadow-card` - in the brand's ink; it was the neutral selected fill on the page plane.
+ *
+ * ONE WELL FOR EVERY SWITCH (the maintainer, 2026-11-10, a channel's Canvas/Figures switch beside the Approvals page's
+ * Waiting/Decided: "this is not follow the same height ... ensure we have a common design in the UI kit and it's used
+ * everywhere"): the track, the 32px options and the chosen one's primary ink are SubNavTabs' and FilterChips' - no
+ * border, no brand ink - and `md` is the default. `sm` (24px) is kept for a caller that asks for it.
  */
 export function SegmentedControl<T extends string>({
-  options, value, onChange, ariaLabel, size = 'sm', variant = 'boxed', disabled, className,
+  options, value, onChange, ariaLabel, size = 'md', variant = 'boxed', surface = 'well', disabled, className,
 }: Props<T>) {
+  const float = surface === 'float'
+  const chosenFill = float ? 'bg-brand-pale' : 'bg-lift shadow-card'
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const trackRef = useRef<HTMLDivElement>(null)
   // With no option chosen every option was tabIndex -1, and the group could not be reached from
@@ -100,7 +113,8 @@ export function SegmentedControl<T extends string>({
       aria-disabled={disabled || undefined}
       className={cn(
         'inline-flex items-center',
-        variant === 'boxed' ? 'relative rounded-lg border border-line bg-surface-alt shadow-well p-1 gap-0.5' : 'gap-3',
+        variant === 'boxed' && cn('relative rounded-lg p-1 gap-0.5', float ? 'surface-float border shadow-float' : 'bg-surface-alt shadow-well'),
+        variant === 'text' && 'gap-3',
         disabled && 'opacity-40 pointer-events-none',
         className,
       )}
@@ -111,7 +125,7 @@ export function SegmentedControl<T extends string>({
           className={cn(
             // rounded-md: the track's 12px less its 4px inset, so the two corners are concentric - the
             // same shape as SubNavTabs' well (the maintainer, 2026-10-30).
-            'absolute top-1 bottom-1 left-0 rounded-md pointer-events-none bg-surface-float shadow-card',
+            'absolute top-1 bottom-1 left-0 rounded-md pointer-events-none', chosenFill,
             placed && 'transition-[transform,width,background-color] duration-base ease-out',
             warning && 'bg-warning/15',
           )}
@@ -141,10 +155,10 @@ export function SegmentedControl<T extends string>({
               variant === 'boxed' && cn(
                 // Above the sliding fill; the chosen one's fill IS that fill, so only its ink is here.
                 'relative rounded-md font-medium touch:min-h-tap-sm',
-                size === 'sm' ? 'h-6 px-2 text-xs' : 'h-8 px-3 text-sm',
+                size === 'sm' ? 'h-6 px-2 text-xs' : 'h-8 touch:h-10 px-3 text-sm',
                 on
-                  ? cn(o.tone === 'warning' ? 'text-warning' : 'text-brand-chip-text', !slot && (o.tone === 'warning' ? 'bg-warning/15' : 'bg-surface-float shadow-card'))
-                  : 'text-ink-caption mouse:hover:text-ink-primary',
+                  ? cn(o.tone === 'warning' ? 'text-warning' : 'text-ink-primary', !slot && (o.tone === 'warning' ? 'bg-warning/15' : chosenFill))
+                  : 'text-ink-secondary mouse:hover:text-ink-primary',
               ),
               variant === 'text' && cn(
                 size === 'sm' ? 'text-xs' : 'text-sm',

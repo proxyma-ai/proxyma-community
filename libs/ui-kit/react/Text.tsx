@@ -11,7 +11,7 @@ import { TEXT } from './typeScale'
 
 type RoleProps = { children: ReactNode; as?: ElementType; className?: string; id?: string }
 
-/** A dialog's or a Settings tab's own name, a card's heading - 18/26 600. A PAGE's is `PageTitle`. */
+/** A dialog's or a Settings tab's own name, a card's heading - 16/24 600. A PAGE's is `PageTitle`. */
 export function Title({ children, as: As = 'h2', className, id }: RoleProps) {
   return <As id={id} className={cn(TEXT.title, className)}>{children}</As>
 }
@@ -21,8 +21,8 @@ export function Title({ children, as: As = 'h2', className, id }: RoleProps) {
  * "Connect" - top-aligned with it, so the action reads as the page's rather than the first row's.
  * `meta` is the caption line under the title (a count, a last-synced time).
  *
- * A PAGE's title is 24/32 600 (`TEXT.pageTitle`, since 2026-10-28); `level="tab"` is a Settings
- * tab's, 18/26 - the tab is a page inside a dialog, and its name a dialog title's size.
+ * A PAGE's title is 20/28 600 (`TEXT.pageTitle`, since 2026-10-30); `level="tab"` is a Settings
+ * tab's, 16/24 - the tab is a page inside a dialog, and its name a dialog title's size.
  */
 export function PageTitle({ children, actions, meta, as: As = 'h1', level = 'page', className, actionsRef }: {
   children: ReactNode
@@ -103,7 +103,7 @@ const CAPTION_TONE: Record<CaptionTone, string> = {
 }
 
 /**
- * Small explanatory text - 13/18. `tone` colours a warning or a verdict; never a
+ * Small explanatory text - 12/16. `tone` colours a warning or a verdict; never a
  * filled box (that is `Callout`). `icon` is a 14px glyph top-aligned with the first line.
  */
 export function Caption({ children, tone = 'default', icon: Icon, as: As = 'p', className, role, id }: {
@@ -188,11 +188,11 @@ export function Readout({ children, tone = 'inherit', className, title }: {
 /**
  * THE GREETING OF AN EMPTY PAGE - a display-size line and a narrower one under it. The new chat
  * draws its Enterprise Server greeting ("Hi, {name}", or the question for a guest) with this,
- * through `ChatStartHero`'s `greeting`; on Community it opens on the logo instead.
- * Display size (30px, 36px from `sm`), bold - 700 is kept for display sizes only - balanced, one
- * line from `sm`. `leading-[1.35]` because a tighter leading clipped the descenders of fonts deeper
- * than the one it was tuned on. The subtitle is narrower and a step smaller (14/20), so it reads as
- * a light touch under the heading rather than a second headline.
+ * through `ChatStartHero`'s `greeting`; on Community it opens on the wordmark instead.
+ * The page title's size (20/28; it was a 30-36px display line until the 2026-10-30 type scale,
+ * whose largest text is a page title), balanced, one line from `sm`. The subtitle is narrower and a
+ * step smaller (14/20), so it reads as a light touch under the heading rather than a second
+ * headline.
  *
  * `as` for a picture of the page (the site's scenes are not the page's heading - `p` there), and
  * `centered` for the greeting the new-chat screen centres from `sm`.
@@ -208,7 +208,7 @@ export function PageHero({ title, subtitle, as: As = 'h1', centered, className }
     <div className={cn(centered && 'text-center', className)}>
       {/* Semibold in secondary ink since 2026-10-29 (the maintainer's review: the greeting "too
           harsh"): a welcome, not a headline shouting over the page. */}
-      <As className="text-3xl sm:text-4xl leading-[1.35] tracking-tight mb-4 pb-1 text-balance sm:whitespace-nowrap font-semibold text-ink-secondary">
+      <As className="text-xl mb-2 text-balance sm:whitespace-nowrap font-semibold text-ink-secondary">
         {title}
       </As>
       {subtitle && (
@@ -219,8 +219,8 @@ export function PageHero({ title, subtitle, as: As = 'h1', centered, className }
 }
 
 /**
- * RUNNING TEXT - a paragraph at one of the scale's three reading sizes: `body` (16/26, the default),
- * `lead` (18/28, a page's or a section's opening paragraph) and `small` (13/18, a note under a block),
+ * RUNNING TEXT - a paragraph at one of the scale's three reading sizes: `body` (14/22, the default),
+ * `lead` (16/24, a page's or a section's opening paragraph) and `small` (12/16, a note under a block),
  * in primary, secondary (the default) or caption ink. The landing site set these sizes by hand on
  * sixty elements in six combinations; a page file should not name a text size at all.
  */

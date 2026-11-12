@@ -1,9 +1,9 @@
+import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import {
-  Button, Caption, EmptyState, ExternalLink, FieldLabel, FilePickerButton, InlineNotice, List,
-  ListRow, MetaList, Presence, FadeSwap, SettingsSection, SettingsSections, SwitchRow,
+  Button, Caption, EmptyState, ExternalLink, FieldLabel, FilePickerButton, InlineNotice, List, ListRow, MetaList, Presence, FadeSwap, SettingsSection, SettingsSections, SwitchRow, IconButton,
 } from '@/components/ui/kit'
 import { useSettings } from '../hooks/useSettings'
 import { ListSkeleton, SignpostSection, TabFieldsSkeleton, useResolved } from '../pages/shared'
@@ -107,7 +107,7 @@ function GuardrailStageAction({ stage, trackChange, pending }: TabProps & { stag
         : t('When something the agent read matches')}
       // Kept, shortened, because both halves change what an operator would choose: neither
       // option ends the turn, and the injection exception is not configurable.
-      hint={stage === 'retrieval' ? t('Neither ends the conversation; prompt injection withholds the source.') : undefined}
+      hint={stage === 'retrieval' ? t('Neither ends the chat. Prompt injection hides the source.') : undefined}
       value={action}
       onChange={v => trackChange('guardrail', spec.actionField, v)}
       options={stage === 'retrieval' ? GUARDRAIL_RETRIEVAL_ACTIONS : GUARDRAIL_ACTIONS}
@@ -160,7 +160,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
 
   return (
     <SettingsSections intro={<>
-      {t('Guardrails check what people send, what the agent reads and what it answers.')}{' '}
+      {t('Check what people send, what the agent reads and what it answers.')}{' '}
       <ExternalLink href="https://proxyma.ai/docs/manual/#guardrails">{t('How guardrails work')}</ExternalLink>
     </>}>
       {/* Mode first, because it governs everything below it. An operator arriving to turn
@@ -168,7 +168,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           enforcing, rather than discovering it after the first refused message. */}
       <SettingsSection title={t('Mode')}>
         <ChoiceField
-          hint={t('Monitor runs every check but applies none; results appear in Logs.')}
+          hint={t('Monitor checks but blocks nothing. Results are in Logs.')}
           value={mode}
           onChange={v => trackChange('guardrail', 'mode', v)}
           options={GUARDRAIL_MODES}
@@ -191,7 +191,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           checking mid-answer possible at all. */}
       <SettingsSection
         title={t('Check what the agent answers')}
-        caption={t('Replies, as they are written, so nothing matching is ever shown.')}
+        caption={t('Checks replies as they are written.')}
         toggle={toggle('output-enabled', outputEnabled)}
       >
         <Presence show={outputEnabled}><GuardrailStageAction stage="output" trackChange={trackChange} pending={pending} /></Presence>
@@ -208,7 +208,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           turn by an amount nobody could predict from this screen. */}
       <SettingsSection
         title={t('Check what the agent reads')}
-        caption={t('Retrieved content, before the agent sees it. Pattern checks only.')}
+        caption={t('Checks content before the agent reads it.')}
         toggle={toggle('retrieval-enabled', retrievalEnabled)}
       >
         <Presence show={retrievalEnabled}><GuardrailStageAction stage="retrieval" trackChange={trackChange} pending={pending} /></Presence>
@@ -220,7 +220,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           that is the half an operator cannot guess. */}
       <SettingsSection
         title={t('What to look for')}
-        caption={t('Pattern checks. They recognize shapes, not meaning.')}
+        caption={t('Simple pattern checks.')}
         gap="list"
       >
         <List>
@@ -235,7 +235,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               answer to most of the questions people ask this product. */}
           <GuardrailCheck
             title={t('Personal data')}
-            description="Emails, phone numbers and card numbers. Messages and answers only."
+            description='Emails, phone and card numbers. Messages and answers only.'
             checked={detectPii}
             onChange={v => trackChange('guardrail', 'detect-pii', String(v))}
           />
@@ -244,7 +244,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               otherwise has mispriced their whole exposure. */}
           <GuardrailCheck
             title={t('Prompt injection')}
-            description="Attempts to talk the agent out of its instructions. A speed bump, not a lock."
+            description='Attempts to trick the agent. Not a full guard.'
             checked={detectInjection}
             onChange={v => trackChange('guardrail', 'detect-prompt-injection', String(v))}
           />
@@ -253,7 +253,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           {hasServerPaths && (
             <GuardrailCheck
               title={t('Server file paths')}
-              description="Full paths on this machine, appearing in an answer. Answers only."
+              description='Full paths on this machine. Answers only.'
               checked={detectPaths}
               onChange={v => trackChange('guardrail', 'detect-path-leak', String(v))}
             />
@@ -264,7 +264,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
       {/* The paid layer, and the description says so before the toggle rather than after it. */}
       <SettingsSection
         title={t('Judge meaning with a model')}
-        caption={t('Judges the text against your rules. One model call per message.')}
+        caption={t('A model checks each message against your rules.')}
         toggle={toggle('llm-enabled', llmEnabled)}
       >
         {/* The model layer opens under its switch and closes with it (Presence). */}
@@ -275,7 +275,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               providerLabel="Guardrail provider"
               modelLabel="Guardrail model"
               modelPlaceholder="claude-haiku-4-5"
-              modelHint={t('Nothing is checked until a model is chosen. The pattern checks above keep working either way.')}
+              modelHint={t('Nothing is checked until you choose a model.')}
               trackChange={trackChange}
               pending={pending}
             />
@@ -300,7 +300,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               <div>
                 <SwitchRow
                   title={t('Rules from your documents')}
-                  caption={t('Upload your policies as files. Only the clauses that bear on a message are sent.')}
+                  caption={t('Upload your policies as files.')}
                   checked={semanticEnabled}
                   onChange={v => trackChange('guardrail', 'semantic-enabled', String(v))}
                 />
@@ -308,7 +308,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
                   <div className="pb-3">
                     <PolicyDocumentsSection
                       kind="RULES"
-                      emptyText="Nothing here yet. Until a document is added, this layer does nothing and costs nothing."
+                      emptyText='Nothing here yet.'
                     />
                   </div>
                 </Presence>
@@ -316,14 +316,14 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               <Presence show={semanticEnabled}>
                 <SwitchRow
                   title={t('Also check answers')}
-                  caption={t('Hold replies to the same policy. Doubles what this adds per turn.')}
+                  caption={t('Checks replies too. Doubles the cost.')}
                   checked={semanticOnOutput}
                   onChange={v => trackChange('guardrail', 'semantic-on-output', String(v))}
                 />
               </Presence>
               <SwitchRow
                 title={t('Refuse when the model cannot be reached')}
-                caption={t('A timeout or a non-verdict currently lets the message through. This refuses it instead.')}
+                caption={t('Block the message when the check cannot finish.')}
                 checked={failClosed}
                 onChange={v => trackChange('guardrail', 'fail-closed', String(v))}
               />
@@ -343,7 +343,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               nowhere else in the world. */}
           <GuardrailCheck
             title={t('Detect a leaked system prompt')}
-            description="Refuses any answer repeating a hidden marker. Catches quoting, not paraphrase."
+            description='Blocks answers that repeat the system prompt word for word.'
             checked={canaryEnabled}
             onChange={v => trackChange('guardrail', 'canary-enabled', String(v))}
           />
@@ -360,13 +360,13 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
               out is a worse outcome than the one this prevents. */}
           <GuardrailCheck
             title={t('Slow down repeated attempts')}
-            description="Pauses someone refused several times in a row. Forgotten on restart."
+            description='Pauses someone refused several times in a row.'
             checked={repeatOn}
             onChange={v => trackChange('guardrail', 'repeat-threshold', v ? REPEAT_ON_THRESHOLD : '0')}
             footnote={
               <Presence show={repeatOn}>
                 <Caption>
-                  {t('Legitimate work can trip this - pasting several logs that each contain a token is enough.')}
+                  {t('Normal work can trigger this, like pasting several logs with tokens.')}
                 </Caption>
               </Presence>
             }
@@ -385,12 +385,12 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           the person who needs to weigh that is standing here, about to decide. */}
       <SettingsSection
         title={t('Keep the matched text')}
-        caption={t('Also records the text each rule matched, to check its findings.')}
+        caption={t('Records the text each rule matched.')}
         toggle={toggle('capture-matched-text', captureMatchedText)}
       >
         <Presence show={!!captureMatchedText}>
           <Caption tone="warning">
-            {t('A credential a rule finds is now recorded, in memory only, where any administrator can read it.')}
+            {t('Found credentials are now kept in memory, readable by any administrator.')}
           </Caption>
         </Presence>
       </SettingsSection>
@@ -399,7 +399,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
           period, rather than the last 200 since the app started. The heading stays as the way there. */}
       <SignpostSection
         title={t('Logs')}
-        caption={t('Every check, its decision and the rules that fired are recorded in Logs.')}
+        caption={t('Every check is recorded in Logs.')}
         action={<edition.AuditLogsLink log="guardrails" onOpenTab={onOpenTab}>{t('Open Logs')}</edition.AuditLogsLink>}
       />
     </SettingsSections>
@@ -475,12 +475,12 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
           {/* One key, with the emphasised word as a slot a translation can move (Rich). */}
           <Caption className="mt-1 max-w-[60ch]">
             <Rich
-              text={t('Similarity only decides which clauses are {relevant}, and the model decides whether the message actually breaks one.')}
+              text={t('Similarity picks the {relevant} clauses. The model decides if a message breaks one.')}
               parts={{ relevant: <em>{t('relevant')}</em> }}
             />
           </Caption>
           <Caption className="mt-1 max-w-[60ch]">
-            {t('Up to {size} MB each; rebuild the index after changing the embedding model.', { size: maxMb })}
+            {t('Up to {size} MB each.', { size: maxMb })}
           </Caption>
         </div>
         <Presence show={documents.length > 0} collapse={false}>
@@ -496,7 +496,7 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
       ) : documents.length === 0 ? (
         <EmptyState className="py-0">{t(emptyText)}</EmptyState>
       ) : (
-        // A named row with a caption, so a TEXT action - Remove in the danger ink, last.
+        // ROW ACTIONS ARE ICONS in every Settings list (the maintainer, 2026-11-10), as Connections' and Providers' are.
         <PagedItems items={documents}>
           {page => (
             <List>
@@ -511,13 +511,9 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
                     doc.sourceUrl && doc.status !== 'FAILED' && doc.sourceUrl,
                   ]} />}
                   action={
-                    <Button
-                      variant="danger-quiet"
-                      onClick={() => setRemoving({ id: doc.id, name: doc.displayName })}
-                      aria-label={t('Remove {name}', { name: doc.displayName })}
-                    >
-                      {t('Remove')}
-                    </Button>
+                    <IconButton icon={Trash2} tone="danger" tooltip={t('Remove')}
+                      label={t('Remove {name}', { name: doc.displayName })}
+                      onClick={() => setRemoving({ id: doc.id, name: doc.displayName })} />
                   }
                 />
               ))}
@@ -547,7 +543,7 @@ function PolicyDocumentsSection({ kind, emptyText }: { kind: PolicyKind; emptyTe
           verb={t('remove')}
           confirmLabel={t('Remove')}
           pendingLabel={t('Removing...')}
-          consequences={[t('Its rules leave the policy index, and messages are no longer checked against them.')]}
+          consequences={[t('Messages are no longer checked against its rules.')]}
           pending={remove.isPending}
           onConfirm={() => remove.mutate(removing.id)}
           onCancel={() => setRemoving(null)}

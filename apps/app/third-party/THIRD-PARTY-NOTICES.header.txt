@@ -78,9 +78,9 @@ Inno Setup - the Windows installer and uninstaller
   https://jrsoftware.org/isinfo.php
   License: Inno Setup License.
 
-Orbitron and Space Grotesk - the start-up screen, Desktop
+Orbitron and Inter - the start-up screen and the tray menu, Desktop
   License: SIL Open Font License 1.1. The fonts and their license texts (OFL.txt,
-  OFL-SpaceGrotesk.txt) are in the application jar under fonts/. The web interface's own fonts
+  OFL-Inter.txt) are in the application jar under fonts/. The web interface's own fonts
   are listed in section 3 with their license.
 
 The Docker images

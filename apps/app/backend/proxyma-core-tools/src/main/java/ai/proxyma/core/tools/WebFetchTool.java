@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.common.net.OutboundAddressPolicy;
 import ai.proxyma.core.system.util.Failures;
 import ai.proxyma.core.ingest.service.DocumentConversionService;
@@ -604,7 +605,7 @@ public class WebFetchTool {
 
     private static String cap(String text) {
         if (text == null) return null;
-        return text.length() > MAX_TEXT_CHARS ? text.substring(0, MAX_TEXT_CHARS) : text;
+        return Utf16.cut(text, MAX_TEXT_CHARS);
     }
 
     // `truncated` covers BOTH cuts. It reported only the download cap, so a page whose text was cut

@@ -8,7 +8,6 @@ import ai.proxyma.core.settings.dto.GuardrailSettings;
 import ai.proxyma.core.settings.dto.OcrSettings;
 import ai.proxyma.core.settings.dto.QueryExpansionSettings;
 import ai.proxyma.core.settings.dto.RerankingSettings;
-import ai.proxyma.core.settings.dto.SubAgentSettings;
 import ai.proxyma.core.settings.event.ProviderSettingsChangedEvent;
 import ai.proxyma.core.settings.provider.ProviderInstanceService;
 import ai.proxyma.core.settings.provider.ProviderProtocol;
@@ -162,10 +161,6 @@ class ProviderServicesTest {
         rerank.setProvider(P);
         rerank.setModel("m");
         when(settings.getSettings(RerankingSettings.PREFIX, RerankingSettings.class)).thenReturn(rerank);
-        SubAgentSettings sub = new SubAgentSettings();
-        sub.setProvider(P);
-        sub.setModel("small");
-        when(settings.getSettings(SubAgentSettings.PREFIX, SubAgentSettings.class)).thenReturn(sub);
         OcrSettings ocr = new OcrSettings();
         ocr.setEngine(OcrSettings.Engine.VISION);
         ocr.setProvider(P);
@@ -199,7 +194,6 @@ class ProviderServicesTest {
         assertThat(factory.getEmbeddingModel()).isNotNull();
         assertThat(factory.getQueryExpansionChatModel()).isNotNull();
         assertThat(factory.getRerankingChatModel()).isNotNull();
-        assertThat(factory.getSubAgentChatModel()).isNotNull();
         assertThat(factory.getOcrChatModel()).isNotNull();
         assertThat(factory.getGraphChatModel()).isNotNull();
         assertThat(factory.getGuardrailChatModel()).isNotNull();

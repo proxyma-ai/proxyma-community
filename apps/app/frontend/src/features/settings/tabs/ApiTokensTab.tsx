@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Trash2, Plus } from 'lucide-react'
 import {
-  Button, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap, Field, FormStack, InlineCode,
-  Input, List, ListRow, MetaList, OneTimeSecret, Presence, Readout, SettingsSections,
+  Button, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap, Field, FormStack, InlineCode, Input, List, ListRow, MetaList, OneTimeSecret, Presence, Readout, SettingsSections, IconButton,
 } from '@/components/ui/kit'
 import { mcpTokenApi, type McpToken } from '../services/mcpTokenApi'
 import { withReason } from '@/services/apiError'
@@ -61,7 +60,7 @@ export function ApiTokensTab() {
   })
 
   return (
-    <SettingsSections intro={t('Tokens for MCP clients and API calls; each one acts as you.')}>
+    <SettingsSections intro={t('Tokens for MCP clients and the API. Each acts as you.')}>
       <div className="space-y-6">
         {/* On the title's row once there is a list; under the empty state's sentence while there is
             none - one Generate on screen either way, and it eases in and out of its place. */}
@@ -113,7 +112,7 @@ export function ApiTokensTab() {
               </Presence>
             }
           >
-            {t('Generate one for each client, so each can be revoked on its own.')}
+            {t('Make one per client, so each can be revoked alone.')}
           </EmptyState>
         )}
         </FadeSwap>
@@ -134,7 +133,7 @@ export function ApiTokensTab() {
           verb={t('revoke')}
           confirmLabel={t('Revoke')}
           pendingLabel={t('Revoking...')}
-          consequences={[t('Any client currently using this token will immediately lose access.')]}
+          consequences={[t('Anything using this token loses access now.')]}
           pending={revoke.isPending}
           onConfirm={() => revoke.mutate(revokeTarget.id)}
           onCancel={() => setRevokeTarget(null)}
@@ -221,12 +220,8 @@ function TokenRow({ token, onRevokeClick }: { token: McpToken; onRevokeClick: ()
           </Readout>
         ),
       ]} />}
-      action={
-        <Button variant="danger-quiet" onClick={onRevokeClick}>
-          <Trash2 size={14} />
-          {t('Revoke')}
-        </Button>
-      }
+      // ROW ACTIONS ARE ICONS in every Settings list (the maintainer, 2026-11-10), as Connections' and Providers' are.
+      action={<IconButton icon={Trash2} tone="danger" label={t('Revoke')} onClick={onRevokeClick} />}
     />
   )
 }

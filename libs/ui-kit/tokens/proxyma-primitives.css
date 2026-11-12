@@ -252,6 +252,63 @@ html[data-app-shell] #root {
     backdrop-filter: blur(var(--blur-sheet));
   }
 
+  /* THE GRADIENT BACKGROUND (`data-backdrop="gradient"`, appearance.ts `applyLook`; the maintainer,
+     2026-11-09: "Make an appearance setting so we can choose"): the landing site's page behind the whole
+     app - near black in the lower left rising to the accent in the upper right in Dark, near white to a
+     faint accent in Light, drawn from whichever accent is chosen. The frame and the page let it through,
+     as the site's header and slides do: the sidebar stands straight on it and the page is its rounded
+     edge over it, the cards on the page the app's own. It is a wash, not a see-through material, so it
+     holds with transparency effects off too. The solid planes a page still uses to hide what scrolls
+     under it (`--canvas`: a sticky row, a table's head, the lead chat's dock) take the page's own color in Dark - the frame
+     and the sheet over the gradient's middle - so none reads
+     as a gray patch on it (proxyma-tokens.css, at its end - a token, so unlayered). */
+  /* Quiet (the maintainer, 2026-11-09: "too bright and too much color"): the accent's darker shade, and little of it -
+     a hint of the color at the upper right, never the color itself, whichever accent is chosen. */
+  /* THREE LAYERS OF GLASS (the maintainer, 2026-11-10: "the background should have different level of glass transparent,
+     just similar to the color palette we use when flat ... imagine that we have multiple layers"): the frame (layer 1),
+     the sheet - the page and the panels on it (layer 2) - and a card (layer 3) each a translucent tint of its flat
+     color, a step apart as #181818 / #1f1f1f / #252525 are, the gradient showing through every one. */
+  html[data-backdrop='gradient'] {
+    --look-frame: 233 236 238;
+    --look-frame-alpha: 0.55;
+    --look-sheet: 255 255 255;
+    --look-sheet-alpha: 0.4;
+    --look-low: rgb(246 247 248);
+    --look-mid: color-mix(in srgb, rgb(var(--p600)) 3%, rgb(242 244 245));
+    --look-high: color-mix(in srgb, rgb(var(--p600)) 7%, rgb(242 244 245));
+  }
+  html[data-backdrop='gradient'][data-mode='dark'] {
+    --look-frame: 24 24 24;
+    --look-frame-alpha: 0.4;
+    --look-sheet: 32 32 32;
+    --look-sheet-alpha: 0.5;
+    --look-low: rgb(7 8 9);
+    --look-mid: color-mix(in srgb, rgb(var(--p900)) 10%, rgb(10 11 12));
+    --look-high: color-mix(in srgb, rgb(var(--p800)) 16%, rgb(12 13 14));
+  }
+  html[data-app-shell][data-backdrop='gradient'] body,
+  :where(html[data-app-shell][data-backdrop='gradient']) .app-field,
+  :where(html[data-app-shell][data-backdrop='gradient']) .proxyma-background {
+    background: linear-gradient(to top right, var(--look-low) 0%, var(--look-mid) 50%, var(--look-high) 100%) fixed;
+  }
+  :where(html[data-app-shell][data-backdrop='gradient']) .app-glass {
+    background: rgb(var(--look-frame) / var(--look-frame-alpha));
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* A card on the gradient blurs what is behind it - glass, its fill the tokens' (proxyma-tokens.css). */
+  :where(html[data-app-shell][data-backdrop='gradient']) .surface-card {
+    -webkit-backdrop-filter: blur(var(--blur-sheet));
+    backdrop-filter: blur(var(--blur-sheet));
+  }
+  :where(html[data-app-shell][data-backdrop='gradient']) .app-sheet {
+    background: rgb(var(--look-sheet) / var(--look-sheet-alpha));
+    border-color: rgb(var(--line) / 0.7);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   /* A PICTURE OF THE SHELL (the landing site's product scenes: `data-scene-glass` on the field a
      scene draws). The site is no app shell, so each pane is its SOLID plane - the color the glass
      composites to - and the page keeps its one faint teal light in the bottom-right corner, as the
@@ -325,7 +382,7 @@ html[data-app-shell] #root {
   /* LESS TRANSPARENCY, OR NO BACKDROP BLUR: no blur anywhere but the scrim's, and every plane its
      solid equivalent (the tokens swap the colors). */
   @media (prefers-reduced-transparency: reduce) {
-    .app-glass, .app-sheet, .surface-float, .header-bar {
+    .app-glass, .app-sheet, .surface-float, .surface-card, .header-bar {
       -webkit-backdrop-filter: none !important;
       backdrop-filter: none !important;
     }
@@ -606,6 +663,22 @@ html:not([data-motion-ready]) *::after {
   animation: proxyma-spinner 1s linear infinite;
 }
 
+/* THE MARK TURNING - one turn in `--mark-turn` (12s), linear, for ever, about the mark's own center
+   (the drawing's box is centered on its disc, 256,256 of 512, so nothing wobbles). One speed for
+   every Proxyma mark on every surface (the maintainer, 2026-11-08: "the same speed everywhere"):
+   `Logo` puts this class on its mark unless told `still`, and a bare ProxymaIcon that turns (the new
+   chat's stage, the in-window splash, the site's slides) takes it. Its own keyframes, as the
+   spinner's. Only when motion is allowed: under reduced motion the class does nothing and the mark
+   stands as drawn. A paused one (`[animation-play-state:paused]`, the splash once nothing is under
+   way) holds the angle it reached. */
+@keyframes mark-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  .mark-turn {
+    transform-origin: 50% 50%;
+    animation: mark-turn var(--mark-turn) linear infinite;
+  }
+}
+
 /* REDUCED MOTION: nothing moves and nothing lingers - every animation and transition ends at once,
    and motion.ts skips the exits, the fades and the appearance crossfade altogether. */
 @media (prefers-reduced-motion: reduce) {
@@ -708,7 +781,7 @@ html:not([data-motion-ready]) *::after {
    padding of its own, its columns on the card's text edge. */
 .kit-card .kit-card {
   box-shadow: none;
-  background-color: rgb(var(--surface-alt));
+  background-color: rgb(var(--sunk) / var(--sunk-alpha));
   border-color: transparent;
 }
 /* In an app shell the well is a translucent SHADE of the glass card it is sunk into (--well), so the
@@ -762,11 +835,12 @@ html:not([data-motion-ready]) *::after {
 /* The pinned question (and the hero's copy of it): no background; the answer scrolls under it
    into the plane the thread is drawn on, nearly opaque under the question and fading to nothing
    below it. That plane is the canvas unless a thread on another one says so with `--pin-plane`
-   (a chat panel on the card plane, since 2026-10-29). */
+   (a chat panel on the card plane, since 2026-10-29). SOLID under the question's own line - the
+   answer's words showed through it in a panel (the maintainer, 2026-10-31) - then fading. */
 .pin-fade {
   background: linear-gradient(to bottom,
-    rgb(var(--pin-plane, var(--canvas)) / 0.96) 0,
-    rgb(var(--pin-plane, var(--canvas)) / 0.85) 2.5rem,
+    rgb(var(--pin-plane, var(--canvas))) 0,
+    rgb(var(--pin-plane, var(--canvas))) 2.5rem,
     rgb(var(--pin-plane, var(--canvas)) / 0) 4rem);
 }
 
@@ -776,76 +850,263 @@ html:not([data-motion-ready]) *::after {
    (a check mark's 3.5) is kept. */
 svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 
-/* THE COMPOSER'S LIGHT (ComposerShell) - after Gemini's prompt box, in the brand's one colour: a
-   conic gradient turning round the composer as a thin ring over its border, and the same gradient
-   blurred softly behind it. THE ONE GLOW IN THE PRODUCT (maintainer, 2026-09-27); the rule against
-   glow holds everywhere else. Since 2026-10-30 (the maintainer: "I like the old light effect, but
-   less strong") the 2026-09-27 light is back, quieter: a 1px ring at about half its brightness, the
-   glow at about a third, a slower turn. At rest the composer is a raised card (the float shadow)
-   and unlit; it lights on focus, and turns faster while the agent works. The angle is a registered
-   property so the gradient itself turns; PAUSED, not removed, when idle, so a fading light holds its
-   angle. Reduced motion stills it. */
-@property --composer-light-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-@keyframes composer-light-turn { to { --composer-light-angle: 360deg; } }
+/* THE COMPOSER'S EDGE AND ITS LIGHT (ComposerShell; the maintainer, 2026-10-31, after Gemini's prompt box,
+   replacing the turning conic light of 2026-09-27 and, the same day, a static border and then a star waiting
+   at the corner on focus). The edge has NO border and NO light at rest, under the pointer or focused - the
+   frame is its glass and its float shadow, and the whole of it takes a text cursor.
+   ON A SEND ONE light crosses the TOP EDGE once, "charging and then shooting" (the maintainer, 2026-11-02;
+   it was two comets running the whole border to the bottom-right):
+   - CHARGE, the first 350ms: a small glow appears ON the top-left corner's curve and brightens from nothing
+     to full where it is.
+   - SHOT, the last 280ms: it leaves for the top-right corner on an ease-in curve - slow off the mark, then a
+     rush - fading out as it goes (still plain past the middle, gone on arrival), its tail growing behind it.
+   It lights the border itself (the BAND: seen only through a 2px ring at the edge, by a mask) inside a soft
+   glow that spills either side of the edge (the HALO, the same light blurred, behind the frame). The head
+   starts and stops ON a corner's curve (6px in from the side, where the 12px curve is 1.6px down), so its
+   glow wraps the corner rather than sitting off it. The one light in the product; the rule against glow
+   holds everywhere else. Reduced motion shows no light. */
 .composer-light { isolation: isolate; }
-.composer-light-ring,
-.composer-light-glow {
+.composer-band,
+.composer-halo {
   position: absolute;
   inset: 0;
   border-radius: 12px;
   pointer-events: none;
-  opacity: 0;
-  background: conic-gradient(from var(--composer-light-angle),
-    rgb(var(--brand-accent) / 0.12) 0deg,
-    rgb(var(--brand-accent) / 0.5) 70deg,
-    rgb(var(--brand-accent) / 0.7) 110deg,
-    rgb(var(--brand-accent) / 0.5) 150deg,
-    rgb(var(--brand-accent) / 0.12) 220deg,
-    rgb(var(--brand-accent) / 0.3) 290deg,
-    rgb(var(--brand-accent) / 0.12) 360deg);
-  animation: composer-light-turn 8s linear infinite paused;
-  transition: opacity var(--motion-slow) var(--ease-out);
 }
-.composer-light-ring {
-  z-index: 2;
-  padding: 1px;
+.composer-band {
+  z-index: 3;
+  padding: 2px;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
-.composer-light-glow {
-  z-index: -1;
-  inset: -2px;
-  filter: blur(18px);
-  transform: scale(0.97);
-  transition: opacity var(--motion-slow) var(--ease-out), transform var(--motion-slow) var(--ease-out);
+.composer-halo { z-index: -1; filter: blur(10px); }
+/* The spot is a zero-height line as wide as the run (corner curve to corner curve), so translating it by its
+   own width carries the head, drawn at its left end, exactly to the top-right curve. */
+.composer-spot {
+  position: absolute;
+  top: 1.5px;
+  left: 6px;
+  width: calc(100% - 12px);
+  height: 0;
+  opacity: 0;
+  animation: composer-shot-travel 630ms both, composer-shot-fade 630ms both;
 }
-.composer-light:focus-within .composer-light-ring,
-.composer-light.is-working .composer-light-ring,
-.composer-light.is-lit .composer-light-ring { opacity: 1; animation-play-state: running; }
-.composer-light:focus-within .composer-light-glow,
-.composer-light.is-lit .composer-light-glow { opacity: 0.16; transform: scale(1); animation-play-state: running; }
-.composer-light.is-working .composer-light-glow { opacity: 0.22; transform: scale(1); animation-play-state: running; }
-.composer-light.is-working .composer-light-ring,
-.composer-light.is-working .composer-light-glow { animation-duration: 3.5s; }
-:root:not([data-mode="dark"]) .composer-light:focus-within .composer-light-glow,
-:root:not([data-mode="dark"]) .composer-light.is-lit .composer-light-glow { opacity: 0.1; }
-:root:not([data-mode="dark"]) .composer-light.is-working .composer-light-glow { opacity: 0.14; }
-@media (prefers-reduced-motion: reduce) {
-  .composer-light-ring, .composer-light-glow { animation: none; }
+/* The head (::before) is a round glow centered on the spot's left end; the tail (::after) ends there and
+   reaches back to the left, its length grown from nothing by the shot. A LIGHT in either appearance: the
+   accent at its brightest in Light, where the legible teal is a dark ink and would run as a dark streak;
+   the pale legible teal at its heart in Dark. */
+.composer-spot::before,
+.composer-spot::after {
+  content: '';
+  position: absolute;
 }
+.composer-spot::before { animation: composer-shot-charge 630ms both; }
+.composer-spot::after {
+  transform-origin: 100% 50%;
+  animation: composer-shot-tail 630ms both;
+}
+.composer-band .composer-spot::before { left: -14px; top: -14px; width: 28px; height: 28px; }
+.composer-band .composer-spot::after { left: -200px; top: -4px; width: 200px; height: 8px; }
+.composer-halo .composer-spot::before { left: -24px; top: -20px; width: 48px; height: 40px; }
+.composer-halo .composer-spot::after { left: -180px; top: -12px; width: 180px; height: 24px; }
+.composer-band .composer-spot::before {
+  background: radial-gradient(closest-side, rgb(var(--brand-accent)), rgb(var(--brand-accent) / 0.7) 40%, rgb(var(--brand-accent) / 0));
+}
+.composer-band .composer-spot::after {
+  background: radial-gradient(farthest-side at 100% 50%, rgb(var(--brand-accent)), rgb(var(--brand-accent) / 0.6) 30%, rgb(var(--brand-accent) / 0));
+}
+:root[data-mode="dark"] .composer-band .composer-spot::before {
+  background: radial-gradient(closest-side, rgb(var(--brand-legible)), rgb(var(--brand-accent) / 0.75) 40%, rgb(var(--brand-accent) / 0));
+}
+:root[data-mode="dark"] .composer-band .composer-spot::after {
+  background: radial-gradient(farthest-side at 100% 50%, rgb(var(--brand-legible)), rgb(var(--brand-accent) / 0.65) 30%, rgb(var(--brand-accent) / 0));
+}
+.composer-halo .composer-spot::before,
+.composer-halo .composer-spot::after {
+  background: radial-gradient(closest-side, rgb(var(--brand-accent) / 0.75), rgb(var(--brand-accent) / 0));
+}
+.composer-halo .composer-spot::after {
+  background: radial-gradient(farthest-side at 100% 50%, rgb(var(--brand-accent) / 0.6), rgb(var(--brand-accent) / 0));
+}
+:root:not([data-mode="dark"]) .composer-halo .composer-spot::before {
+  background: radial-gradient(closest-side, rgb(var(--brand-accent) / 0.45), rgb(var(--brand-accent) / 0));
+}
+:root:not([data-mode="dark"]) .composer-halo .composer-spot::after {
+  background: radial-gradient(farthest-side at 100% 50%, rgb(var(--brand-accent) / 0.35), rgb(var(--brand-accent) / 0));
+}
+/* 350ms of 630 is 55.556%: the charge, held at the corner; then the 280ms shot. */
+@keyframes composer-shot-travel {
+  0%, 55.556% { transform: translateX(0); animation-timing-function: cubic-bezier(0.4, 0, 0.8, 0.5); }
+  100% { transform: translateX(100%); }
+}
+/* In the shot the light fades as it goes - keyed to the DISTANCE (about 1 - d^2.5 at each step of the travel
+   curve above), so it is still plain past the middle of the edge and gone at the top-right corner. A fade
+   keyed to time alone, on an ease-in travel, was out before the light was halfway across. */
+@keyframes composer-shot-fade {
+  0% { opacity: 0; animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  55.556% { opacity: 1; animation-timing-function: linear; }
+  82.222% { opacity: 0.93; animation-timing-function: linear; }
+  91.111% { opacity: 0.71; animation-timing-function: linear; }
+  95.556% { opacity: 0.46; animation-timing-function: linear; }
+  97.778% { opacity: 0.27; animation-timing-function: linear; }
+  100% { opacity: 0; }
+}
+/* The glow swells a little as it charges, and keeps its size in the shot. */
+@keyframes composer-shot-charge {
+  0% { transform: scale(0.5); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  55.556%, 100% { transform: scale(1); }
+}
+/* No tail while it charges; in the shot it grows with the distance, on the travel's own curve. */
+@keyframes composer-shot-tail {
+  0%, 55.556% { transform: scaleX(0); animation-timing-function: cubic-bezier(0.4, 0, 0.8, 0.5); }
+  100% { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) { .composer-band, .composer-halo { display: none; } }
+.composer-sweep { cursor: text; }
+/* The frame's own edge is transparent: the light above is all the border the composer shows. */
 .composer-sweep.focus-border {
+  border-color: transparent;
   box-shadow: var(--shadow-float);
-  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+  transition: box-shadow var(--motion-base) var(--ease-out);
 }
-.composer-sweep.focus-border:hover:not(:focus-within) { border-color: rgb(var(--line) / 0.9); }
+/* ...under the pointer and focused too. `.focus-border:hover` (in the components layer, emitted AFTER this
+   file) has this rule's specificity without the pseudo-class, so it won on hover alone and drew the teal
+   focus line round the composer - in the chat page and in every chat panel (the maintainer, 2026-11-01). */
+.composer-sweep.focus-border:hover,
 .composer-sweep.focus-border:focus-within,
-.composer-light.is-working .composer-sweep.focus-border,
-.composer-light.is-lit .composer-sweep.focus-border { border-color: rgb(var(--brand-accent) / 0.2); }
+.composer-sweep.focus-border:focus-visible { border-color: transparent; }
+
+/* THE NEW CHAT'S STAGE (ChatStartStage in Chat.tsx, since 2026-11-08 - the maintainer: "based on
+   shot-b-dark.png, redesign the chat home as well", the landing hero's "B - Stage"; reshaped the
+   same day: "Light must be real light", and "that's the entire screen"). The stage IS the chat
+   pane: full width and height, no margin, no corner, no border, no background of its own - the
+   page sheet shows through and the layers are drawn on it, in the reader's appearance. Behind the
+   content: "PROXYMA" huge in Orbitron, fading downward; the mark at the pane's right edge, its left
+   half whole and its right half fading out; a soft wash of the accent behind the mark. In front, on
+   the left: the title, the space fact, the composer, and the links along the bottom.
+
+   One exception, the maintainer's for this pane (and the landing hero's stage) alone: the radial
+   wash ("no glow").
+
+   Light and Dark from the tokens: the name in the primary ink at a few percent (texture, never
+   text anyone reads), a little fainter in Light, where dark ink on a pale page shows sooner; the
+   mark in its own brand colors, which are mode-invariant; the wash fainter in Light, where a teal
+   haze on a pale page reads as a stain sooner than on near black.
+
+   A SIZE CONTAINER (`chat-pane`): every layer and the column's width are measured on the pane, so
+   a narrow window, a phone and a scaled picture on the site compose alike. Custom properties
+   holding container units resolve where they are used - in the pane's children, against it.
+
+   NO READABLE TEXT SITS ON THE MARK WHILE IT IS BRIGHT: from an 880px pane the mark is as large as
+   the room right of a 480px column allows (up to 760px, 52% of the width, 78% of the height) and
+   the column stops 24px short of it. Narrower, the mark is small and FAINT in the top right corner,
+   behind the text, and the wash is off: at 0.12, worked out from the tokens over the sheet, the
+   mark's darkest point leaves the caption ink 4.6:1 in Light and its lightest 4.8:1 in Dark. The
+   name's few percent leave the caption ink 4.7:1 or better in both.
+
+   Reduced transparency: nothing changes here - these are colors painted on the sheet, and the
+   sheet and the composer go solid as everywhere. Reduced motion: no ease-in, and the mark does not
+   turn (the global rule ends both). */
+.chat-stage-pane {
+  --stage-pad: clamp(24px, 5cqw, 64px);
+  --stage-mark: clamp(0px, 100cqw - var(--stage-pad) - 504px, min(52cqw, 78cqh, 760px));
+  --stage-word-alpha: 0.07;
+  --stage-wash-alpha: 0.08;
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  container: chat-pane / size;
+  animation: proxyma-fade-in 500ms var(--ease-out) backwards;
+}
+:root[data-mode="dark"] .chat-stage-pane {
+  --stage-word-alpha: 0.1;
+  --stage-wash-alpha: 0.12;
+}
+.chat-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.chat-stage-word {
+  position: absolute;
+  left: 50%;
+  top: 6cqh;
+  transform: translateX(-50%);
+  font-family: var(--font-brand);
+  font-weight: 900;
+  font-size: min(15cqw, 26cqh);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(180deg, rgb(var(--ink-primary) / var(--stage-word-alpha)) 0%, rgb(var(--ink-primary) / 0) 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.chat-stage-mark {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: var(--stage-mark);
+  height: var(--stage-mark);
+  margin-top: calc(var(--stage-mark) / -2);
+  opacity: 0.92;
+  -webkit-mask-image: linear-gradient(90deg, #000 50%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 50%, transparent 100%);
+  animation: chat-stage-mark-in 900ms var(--ease-out) backwards;
+}
+/* The mark's drawing fills its box; it turns with the kit's `.mark-turn`, at the one speed every mark
+   turns at (once in two minutes here until the maintainer, 2026-11-08: "the same speed everywhere"). */
+.chat-stage-mark-turn { display: block; width: 100%; height: 100%; }
+@keyframes chat-stage-mark-in {
+  from { opacity: 0; translate: 32px 0; }
+}
+/* The wash: centered on the mark, 1.6 times its size, fading to nothing at its own edge. */
+.chat-stage-wash {
+  position: absolute;
+  width: calc(var(--stage-mark) * 1.6);
+  height: calc(var(--stage-mark) * 1.6);
+  right: calc(var(--stage-mark) * -0.3);
+  top: 50%;
+  margin-top: calc(var(--stage-mark) * -0.8);
+  background: radial-gradient(closest-side, rgb(var(--brand-accent) / var(--stage-wash-alpha)), rgb(var(--brand-accent) / 0));
+}
+/* The content: the pane's padding, its column, and the title's display size. On a phone the
+   padding is the conversation's own 12px beside the composer (ChatPage's `px-3`), so the docked
+   composer is exactly as wide as a conversation's. */
+.chat-stage-body {
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.chat-stage-column { width: 100%; max-width: 40rem; }
+@container chat-pane (min-width: 560px) {
+  .chat-stage-body { padding: 40px var(--stage-pad); }
+}
+@container chat-pane (max-height: 479.98px) {
+  .chat-stage-body { padding-top: 12px; padding-bottom: 12px; }
+}
+@container chat-pane (min-width: 880px) {
+  .chat-stage-column { max-width: min(40rem, 100cqw - var(--stage-pad) - var(--stage-mark) - 24px); }
+  /* 64px: the draft's headline size, past the type scale's 48 - the one place. */
+  .chat-stage-pane .chat-stage-title { font-size: 4rem; line-height: 4.5rem; }
+}
+@container chat-pane (max-width: 879.98px) {
+  .chat-stage-mark, .chat-stage-wash {
+    --stage-mark: min(46cqw, 36cqh);
+    top: calc(var(--stage-mark) * 0.5 + 16px);
+  }
+  .chat-stage-mark { opacity: 0.12; }
+  .chat-stage-wash { display: none; }
+}
 
 /* ONE MINIMUM SIZE FOR EVERY DIALOG (maintainer, 2026-09-29), phone-safe: DialogShell marks its
    panel `data-dialog-panel`, keyed on `surface-float` too so a bare tour wrapper is left alone. The
@@ -891,8 +1152,8 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
     flex-shrink: 0;
     text-align: left;
     font-family: var(--font-ui, inherit);
-    font-size: 0.8125rem;
-    line-height: 1.125rem;
+    font-size: 0.75rem;   /* the caption step, 12/16 */
+    line-height: 1rem;
     color: rgb(var(--ink-caption));
   }
   table.table-stack > tbody > tr > td:not([data-label]):first-child { padding-bottom: 0.375rem; }
@@ -904,20 +1165,20 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 /* =====================================================================================
    PROSE - `.prose-doc`, the type of anything authored as HTML or markdown rather than as
    components: the customer manuals, the release notes and the legal pages on the site. The kit's
-   one scale (typeScale.ts, since 2026-10-28): h1 24/32 600 (a page's title), h2 18/26 600, h3 16/24
-   600, h4 16/24 500, body 16/26 secondary (`TEXT.body` - read at length), the lede `TEXT.lead`
-   18/28, `rounded-md` code, tables ruled between rows with sentence-case caption headers. No 700
-   anywhere. `.note` and `.warn` are the kit `Callout`, its body at 14. `.prose-doc-sm` is the same
-   at 13px - an agent's report in its panel.
+   one scale (typeScale.ts, since 2026-10-30 at 14px): h1 20/28 600 (a page's title), h2 16/24 600,
+   h3 14/20 600, h4 14/20 500, body 14/22 secondary (`TEXT.body` - read at length), the lede
+   `TEXT.lead` 16/24, `rounded-md` code at 13, tables ruled between rows with sentence-case caption
+   headers. No 700 anywhere. `.note` and `.warn` are the kit `Callout`, its body at 14.
+   `.prose-doc-sm` is the same at 12px - an agent's report in its panel.
 
    A LINE IS AT MOST ABOUT 70 CHARACTERS (since 2026-10-28; the review measured legal pages at
    137-142 and chat answers at 99-113): every text block is capped at 70ch of its own size, while a
    table, a code block and a note keep the column's full width.
    ===================================================================================== */
-.prose-doc h1 { @apply text-2xl font-semibold text-ink-primary mb-2; }
-.prose-doc h2 { @apply text-lg font-semibold text-ink-primary mt-12 mb-3; }
-.prose-doc h3 { @apply text-base leading-6 font-semibold text-ink-primary mt-8 mb-2; }
-.prose-doc h4 { @apply text-base leading-6 font-medium text-ink-primary mt-6 mb-2; }
+.prose-doc h1 { @apply text-xl font-semibold text-ink-primary mb-2; }
+.prose-doc h2 { @apply text-lg font-semibold text-ink-primary mt-10 mb-3; }
+.prose-doc h3 { @apply text-sm font-semibold text-ink-primary mt-6 mb-2; }
+.prose-doc h4 { @apply text-sm font-medium text-ink-primary mt-4 mb-1; }
 .prose-doc p  { @apply text-ink-secondary text-base mb-4; }
 .prose-doc ul, .prose-doc ol { @apply pl-6 text-ink-secondary text-base mb-4 space-y-2; }
 .prose-doc ul { @apply list-disc; }
@@ -930,8 +1191,8 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 .prose-doc strong { @apply text-ink-primary font-semibold; }
 .prose-doc blockquote { @apply border-l-2 border-line pl-4 text-ink-caption mb-4; }
 .prose-doc hr { @apply border-0 border-t border-line/40 my-8; }
-.prose-doc .lede { @apply text-lg leading-7 text-ink-secondary mb-8; }
-.prose-doc .legal-meta { @apply text-sm text-ink-caption mb-8; }
+.prose-doc .lede { @apply text-lg text-ink-secondary mb-8; }
+.prose-doc .legal-meta { @apply text-xs text-ink-caption mb-8; }
 .prose-doc .note,
 .prose-doc .warn { @apply rounded-lg border px-4 py-3 mb-6; }
 .prose-doc .note { @apply border-brand-solid/40 bg-surface; }
@@ -948,14 +1209,14 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 .prose-doc .table-wrap table { @apply mb-0; }
 .prose-doc th { @apply text-left text-xs font-medium text-ink-caption border-b border-line/40 px-3 py-2 whitespace-nowrap; }
 .prose-doc td { @apply text-ink-secondary border-b border-line/20 px-3 py-2 align-top; }
-/* Inline code is 0.9em of its sentence ROUNDED TO A WHOLE PIXEL, never under 12px: Consolas's x-height
-   is Space Grotesk's own (both 0.49 of the em, measured in Edge), so a smaller step only made code read
-   smaller than the words around it, and the unrounded 0.9em was 12.6 and 14.4px - off the scale. Rounded,
-   it lands on a step for every text size: 16 -> 14, 14 -> 13, 13 -> 12. The first declaration is for a
-   browser without CSS round(). InlineCode uses the same class. */
+/* Inline code is 0.9em of its sentence ROUNDED TO A WHOLE PIXEL, never under 12px: Consolas reads about
+   as large as the UI face at the same size, so a smaller step only made code read smaller than the
+   words around it, and the unrounded 0.9em was 12.6px - off the scale. Rounded, it lands on a step for
+   every text size: 16 -> 14, 14 -> 13 (the code size), 12 -> 12. The first declaration is for a browser
+   without CSS round(). InlineCode uses the same class. */
 .code-inline-size { font-size: max(12px, 0.9em); font-size: max(12px, round(nearest, 0.9em, 1px)); }
 .prose-doc code { @apply font-mono bg-surface-alt border border-line/60 rounded-md px-1 py-0.5 text-ink-primary; font-size: max(12px, 0.9em); font-size: max(12px, round(nearest, 0.9em, 1px)); }
-.prose-doc pre { @apply font-mono bg-surface-alt shadow-well border border-line/50 rounded-md px-3 py-2 mb-6 overflow-x-auto text-xs leading-5; }
+.prose-doc pre { @apply font-mono bg-surface-alt shadow-well border border-line/50 rounded-md px-3 py-2 mb-6 overflow-x-auto text-code; }
 .prose-doc pre code { @apply bg-transparent border-0 p-0 text-[1em]; }
 .prose-doc .table-wrap :is(th, td) { @apply px-4 py-3; }
 .prose-doc .table-wrap tbody tr:last-child td { @apply border-b-0; }
@@ -985,11 +1246,11 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
   .prose-doc pre::-webkit-scrollbar,
   .prose-doc .table-wrap::-webkit-scrollbar { display: none; }
 }
-/* The words of an agent's text and report, at its panel's caption size, 13/18. Element-qualified,
+/* The words of an agent's text and report, at its panel's caption size, 12/16. Element-qualified,
    so (0,1,1) beats the thread's own reading size (PROSE_CHAT, 0,1,0) whichever comes later in the
    sheet. Code keeps the CodeBlock's own size. */
 .prose-doc-sm,
 .prose-doc-sm :is(p, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, div, span, a, strong, em, table, th, td) {
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
 }

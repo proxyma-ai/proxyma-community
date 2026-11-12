@@ -1,5 +1,9 @@
 package ai.proxyma.core.connector.spi;
 
+import org.springframework.http.HttpMethod;
+
+import java.net.URI;
+
 /**
  * Hands out a current access token for one connection, refreshing it when it has expired - an
  * OAuth2 sign-in, a client-credentials grant, a service account's signed assertion, or Microsoft's
@@ -22,4 +26,14 @@ public interface TokenSupplier {
      * for a new one. One refusal is one refresh - never a loop.
      */
     default void invalidate() {}
+
+    /**
+     * Asked before every request sent with this connection's token, retries included: null to send it,
+     * or the answer to give in its place, unsent - a budget of the connection's own spent (BuiltInQuota,
+     * the built-in OAuth client's daily share), answered as the service itself answers a spent quota so
+     * every caller's handling of that answer applies unchanged.
+     */
+    default ApiResponse refuseBeforeSending(HttpMethod method, URI uri) {
+        return null;
+    }
 }

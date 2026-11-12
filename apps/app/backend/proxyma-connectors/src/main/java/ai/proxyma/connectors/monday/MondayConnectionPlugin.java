@@ -47,7 +47,7 @@ public class MondayConnectionPlugin implements ConnectionPlugin {
                                     .help("In monday.com, your avatar > Developers > API token.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with monday.com",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("An app created in the monday.com Developer Center, with read scopes."),
+                                    .help("A monday.com app with read scopes."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(MondayApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.MONDAY)

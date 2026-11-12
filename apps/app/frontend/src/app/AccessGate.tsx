@@ -73,7 +73,7 @@ function AccessCodeScreen() {
       <AuthLayout
         logo={<Logo size={22} />}
         title={t('Enter the access code')}
-        description={t('Proxyma prints it in its log when it starts. On the computer Proxyma runs on, its window and tray icon open it without one.')}
+        description={t('Proxyma prints it in its log at startup.')}
       >
         <form onSubmit={submit} className="flex flex-col gap-4">
           <Input

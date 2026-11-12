@@ -49,12 +49,10 @@ public class HubSpotConnectionPlugin implements ConnectionPlugin {
             .mark("hubspot")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Service Key or private app token",
                             FieldSpec.secret("token", "Service Key").asRequired()
-                                    .help("Create one in HubSpot under Settings > Integrations > Service Keys, with "
-                                            + "read scopes for the records to index. A legacy private app's access "
-                                            + "token works too.")),
+                                    .help("Created in HubSpot > Settings > Integrations > Service Keys, with read scopes.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with HubSpot",
                             FieldSpec.text("clientId", "Client ID")
-                                    .help("A HubSpot app created in a HubSpot developer account, with the CRM read scopes."),
+                                    .help("A HubSpot app with CRM read scopes."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(HubSpotApi.DEFAULT_BASE_URL).asAdvanced())
             .sourceTypes(ConnectorType.HUBSPOT)

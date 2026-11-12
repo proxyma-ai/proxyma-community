@@ -14,7 +14,7 @@ import { axisGroups, axisTicks } from './chartAxis'
 
 /** The plot width assumed until the chart has been measured - about a Settings column. */
 const ASSUMED_WIDTH = 640
-/** A character at the axis's 12px (`text-2xs`, the floor since 2026-10-15 - it was 10px). */
+/** A character at the axis's 12px (`text-xs`, the floor since 2026-10-15 - it was 10px). */
 const AXIS_CHAR_WIDTH = 7
 
 /**
@@ -132,7 +132,7 @@ export function ColumnChart({ values, active, onActive, readout, labels, groups,
         ))}
       </div>
       {ticks.length > 0 && (
-        <div className="relative h-4 mt-2 text-2xs text-ink-caption data-readout whitespace-nowrap" aria-hidden="true">
+        <div className="relative h-4 mt-2 text-xs text-ink-caption data-readout whitespace-nowrap" aria-hidden="true">
           {ticks.map(tick => {
             // Centred under its column by the browser, not by the width estimate - except where the
             // estimate pushed it in from an edge, where it is pinned to that edge.
@@ -150,7 +150,7 @@ export function ColumnChart({ values, active, onActive, readout, labels, groups,
         </div>
       )}
       {groupLabels.length > 0 && (
-        <div className="relative h-4 text-2xs text-ink-caption whitespace-nowrap" aria-hidden="true">
+        <div className="relative h-4 text-xs text-ink-caption whitespace-nowrap" aria-hidden="true">
           {groupLabels.map(g => (
             <span key={g.index} className="absolute top-0" style={{ left: g.left }}>{g.label}</span>
           ))}

@@ -55,7 +55,7 @@ export function FilterChips<K extends string>({ options, active, onChange, ariaL
             className={cn(
               'shrink-0 flex items-center gap-2 whitespace-nowrap h-8 touch:h-10 px-3 rounded-md text-sm font-medium focus-ring',
               'transition-[background-color,color,box-shadow] duration-base ease-out',
-              on ? 'bg-surface-float text-ink-primary shadow-card' : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-surface/50',
+              on ? 'bg-lift text-ink-primary shadow-card' : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-lift/50',
             )}
           >
             <span>{o.label}</span>
@@ -67,6 +67,51 @@ export function FilterChips<K extends string>({ options, active, onChange, ariaL
   )
   if (wrap) return <div className={className}>{row}</div>
   return <HScroll focusable={false} className={className}>{row}</HScroll>
+}
+
+export interface ChoiceChip<K extends string> {
+  key: K
+  label: ReactNode
+  /** A 14px glyph before the label. */
+  icon?: ReactNode
+}
+
+/**
+ * CHOICE CHIPS - one of a few ways to see a list, a shop's "Popular, Price low to high" (2026-11-09, the maintainer,
+ * pointing at one for the Approvals page's sort): outlined buttons as tall as a field, each with its glyph, the chosen
+ * one in the brand's border and ink. Buttons with `aria-pressed` in a labelled group; they wrap.
+ */
+export function ChoiceChips<K extends string>({ options, active, onChange, ariaLabel, className }: {
+  options: readonly ChoiceChip<K>[]
+  active: K
+  onChange: (key: K) => void
+  ariaLabel: string
+  className?: string
+}) {
+  return (
+    <div role="group" aria-label={ariaLabel} className={cn('flex flex-wrap items-center gap-2', className)}>
+      {options.map(o => {
+        const on = o.key === active
+        return (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(o.key)}
+            className={cn(
+              'inline-flex items-center gap-1.5 h-9 touch:h-tap px-3 rounded-md border bg-field text-sm font-ui whitespace-nowrap focus-ring',
+              'transition-colors duration-fast ease-out',
+              on ? 'border-brand-solid/60 text-brand-legible font-medium'
+                : 'border-line text-ink-secondary mouse:hover:border-ink-disabled mouse:hover:text-ink-primary',
+            )}
+          >
+            {o.icon}
+            <span>{o.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 /**
@@ -83,10 +128,16 @@ export function FilterBar({ filters, search, children, className }: {
   return (
     <div className={cn('space-y-3', className)}>
       {filters}
+      {/* The row WRAPS rather than overflow (the maintainer, 2026-11-05: the call log's search shrank to
+          nothing and its Download ran off the edge in a narrow Settings window). The search keeps a
+          usable width and the controls move under it when both do not fit; the controls wrap among
+          themselves too, so the last of them is never cut off. Spread to the row's two ends rather than pushed
+          right (the maintainer, 2026-11-10, the call log: the controls under the search sat at the right edge,
+          lined up with nothing): on one line the controls end at the right; wrapped, they start under the search. */}
       {(search || children) && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {search && <div className="flex-1 min-w-0 sm:max-w-sm">{search}</div>}
-          {children && <div className="flex items-center gap-3 sm:ml-auto">{children}</div>}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
+          {search && <div className="flex-1 min-w-0 sm:min-w-[16rem] sm:max-w-sm">{search}</div>}
+          {children && <div className="flex flex-wrap items-center gap-3 min-w-0">{children}</div>}
         </div>
       )}
     </div>

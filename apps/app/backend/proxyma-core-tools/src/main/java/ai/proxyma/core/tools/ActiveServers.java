@@ -17,7 +17,8 @@ import java.util.UUID;
 /**
  * Which of the caller's connections THIS conversation uses for a service - picked with the
  * useServer tool. Every tool of that service then resolves to it (ToolConnectorResolver), keys and
- * all; with nothing picked, a tool uses the source it named, else the default connection.
+ * all; with nothing picked, a tool uses the source it named, else the connection the conversation's
+ * saved agent is pinned to ({@link #pinned}), else the default connection.
  *
  * <p>A conversation-level choice rather than a parameter on each tool: there are about fifty of
  * those tools, and a connection parameter on every one would be sent on every call. Stored on the
@@ -51,9 +52,38 @@ public class ActiveServers {
         }
     }
 
-    /** The id of the connection tools of {@code type} use in this conversation when no source is named. */
+    // A saved agent's profile (AgentProfiles), for its pinned connections. Setter-injected, so where there is
+    // none - a test that builds this by hand - nothing is pinned.
+    private ai.proxyma.core.chat.module.AgentProfiles profiles;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAgentProfiles(ai.proxyma.core.chat.module.AgentProfiles profiles) {
+        this.profiles = profiles;
+    }
+
+    /**
+     * The connection this conversation's AGENT is pinned to for {@code type} (AgentProfile.connectionPins) -
+     * a saved agent's, or its root's for an agent it deployed - if that connection is still the caller's own
+     * and serves the type. A pin to a connection that was deleted, or that is somebody else's (the agent's
+     * pin was set for its run-as person, and another member is talking to it), is empty: the caller's
+     * default is used, and nobody's credential is ever lent.
+     */
+    public Optional<Endpoint> pinned(ConnectorType type) {
+        String conversationId = SearchContext.getConversationId();
+        if (profiles == null || conversationId == null || conversationId.isBlank()) return Optional.empty();
+        String userId = SearchContext.getUserId();
+        Optional<UUID> pin = profiles.of(conversationId, userId).flatMap(p -> p.connectionPin(type.wireName()));
+        if (pin.isEmpty()) return Optional.empty();
+        Endpoint e = endpoints.byId(type, pin.get(), userId);
+        return e.exists() ? Optional.of(e) : Optional.empty();
+    }
+
+    /**
+     * The id of the connection tools of {@code type} use in this conversation when no source is named: its
+     * useServer pick, else its agent's pin, else the caller's default.
+     */
     public UUID activeId(ConnectorType type) {
-        return active(type).map(Endpoint::connectionId)
+        return active(type).or(() -> pinned(type)).map(Endpoint::connectionId)
                 .orElseGet(() -> endpoints.forType(type, SearchContext.getUserId()).connectionId());
     }
 

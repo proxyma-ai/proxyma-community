@@ -1,7 +1,7 @@
 import { Building2 } from 'lucide-react'
 import { rememberPostLoginTarget } from '../services/postLoginRedirect'
 import { useTranslation } from '@/i18n'
-import { buttonClass } from '@/components/ui/kit'
+import { ButtonLink } from '@/components/ui/kit'
 
 // ONE BUTTON SHAPE FOR EVERY PROVIDER, the kit's secondary `md` button, since the 2026-10 rebuild.
 // Google's was a white raised button on raw `bg-white text-gray-800` and two arbitrary shadows; the
@@ -70,15 +70,17 @@ export function OAuthButtons({ providers, ssoDisplayName, next }: Props) {
           : PROVIDERS[key]
         if (!p) return null
         return (
-          <a
+          <ButtonLink
             key={key}
             href={`/oauth2/authorization/${key}`}
             onClick={() => next && rememberPostLoginTarget(next)}
-            className={buttonClass('secondary', 'md', 'w-full')}
+            variant="secondary"
+            size="md"
+            className="w-full"
           >
             {p.logo}
             {t('Continue with {provider}', { provider: p.name })}
-          </a>
+          </ButtonLink>
         )
       })}
     </div>

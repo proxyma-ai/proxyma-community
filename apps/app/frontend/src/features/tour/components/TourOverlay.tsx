@@ -1,12 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { Button, Caption, FadeSwap, Logo, MODAL_SCRIM, TEXT, cn } from '@/components/ui/kit'
 import { configApi } from '@/services/configApi'
-import { findKeyAccountIdByName, useKeyAccountsAllowed } from '@edition'
+import { findKeyAccountIdByName, useEditionWalkthroughs, useKeyAccountsAllowed } from '@edition'
 import { SANDBOX_KEY_ACCOUNT_NAME } from '../data/tourSteps'
-import { useTourStore } from '@/store/tourStore'
+import { PRODUCT_TOUR, useTourStore } from '@/store/tourStore'
+import { TOUR_SIGNAL } from '../signal'
 import { useSettingsModalStore } from '@/store/settingsModalStore'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { AuthUser } from '@/store/authStore'
@@ -57,7 +59,10 @@ function clampRectToViewport(r: DOMRect): DOMRect {
 
 /** What a stop points at: its tour id, a selector for a kit part with none, or nothing (centred). */
 function findTarget(step: TourStep): Element | null {
-  if (step.targetId) return document.querySelector(`[data-tour-id="${step.targetId}"]`)
+  if (step.targetId) {
+    return document.querySelector(`[data-tour-id="${step.targetId}"]`)
+      ?? (step.orTargetId ? document.querySelector(`[data-tour-id="${step.orTargetId}"]`) : null)
+  }
   if (step.targetSelector) return document.querySelector(step.targetSelector)
   return null
 }
@@ -185,7 +190,12 @@ export function TourOverlay() {
   const deadlineForStep = useRef<number | null>(null)
   const stepDeadline = useRef(0)
 
-  const steps = useMemo(() => getTourSteps(), [])
+  // The product's tour, or one of the edition's walkthroughs by name (YouTube assistant, Constellations).
+  const tourName = useTourStore(s => s.tour)
+  const product = tourName === PRODUCT_TOUR
+  const walkthroughs = useEditionWalkthroughs().tours
+  const steps = useMemo(() => (product ? getTourSteps() : walkthroughs.find(w => w.name === tourName)?.steps ?? []),
+    [product, walkthroughs, tourName])
   const step: TourStep | undefined = steps[stepIndex]
 
   // "Step 4 of 14" counted against the raw array told a plain VIEWER they were on step 4 of 14
@@ -199,7 +209,15 @@ export function TourOverlay() {
     [steps, user, keyAccountsAllowed])
   const visibleIndex = step ? visibleSteps.indexOf(step) : -1
   // The welcome is not a stop: "1 of 4" counts the stops after it.
-  const stops = visibleSteps.filter(s => s.kind !== 'welcome')
+  // Nor is a step passed over because what it would add is there already (`onlyIfAbsent`) - remembered for the run, so
+  // the count stays right on the next page, where what it looked for is no longer drawn (a channel's card).
+  const passedOver = useRef(new Set<string>())
+  for (const s of visibleSteps) {
+    if (s.onlyIfAbsent && typeof document !== 'undefined' && document.querySelector(`[data-tour-id="${s.onlyIfAbsent}"]`)) {
+      passedOver.current.add(s.id)
+    }
+  }
+  const stops = visibleSteps.filter(s => s.kind !== 'welcome' && !passedOver.current.has(s.id))
   const stopIndex = step ? stops.indexOf(step) : -1
 
   // The sandbox is where the demo key account is seeded (SandboxScenarioSeeder); only there does
@@ -219,13 +237,23 @@ export function TourOverlay() {
   // Skip/finish end the tour without necessarily changing stepIndex (so the main step effect
   // below never re-runs to close it) - closes the settings modal if the tour opened it. No-op if
   // it wasn't open.
+  // A PAGE'S WALKTHROUGH BEGINS ON THE PAGE, never under Settings (2026-11-10, the maintainer: "the walkthrough
+  // sometime did not open the corresponding page/section" - the YouTube assistant's started under Settings > Add-ons
+  // the moment its trial began, and pointed at the channel card through the Settings window). Closed once, as it
+  // starts; a Settings window the reader opens during a step (another AI provider) is theirs.
+  useEffect(() => {
+    if (active && tourName !== PRODUCT_TOUR) useSettingsModalStore.getState().close()
+  }, [active, tourName])
+
   useEffect(() => {
     if (!active) {
-      useSettingsModalStore.getState().close()
+      // Only the product's tour opens Settings; a walkthrough leaves a Settings window the reader opened alone.
+      if (useTourStore.getState().tour === PRODUCT_TOUR) useSettingsModalStore.getState().close()
       // Cleared so a replay from Settings > About starts from a blank slate. Without this, a tour
       // that ended on step 0 and is restarted at step 0 would find enteredStep already 0 and skip
       // its own reset, reusing the previous run's rect.
       enteredStep.current = null
+      passedOver.current = new Set()
       navigatedForStep.current = null
       deadlineForStep.current = null
     }
@@ -240,7 +268,7 @@ export function TourOverlay() {
     if (stepIndex >= steps.length) { completeRef.current(); finish(); return }
     const current = steps[stepIndex]
     if (shouldSkipStep(current, user, keyAccountsAllowed)) { next(); return }
-    const cap = ELEMENT_WAIT_CAP_MS
+    const cap = current.waitMs ?? ELEMENT_WAIT_CAP_MS
 
     // ONCE per step, not once per run of this effect. The reset is still immediate on a genuine
     // step change - any stale rect/popover from the previous step must disappear right away
@@ -272,7 +300,7 @@ export function TourOverlay() {
     // somehow lands here with it already open for an unrelated reason.
     if (current.openSettingsTab) {
       useSettingsModalStore.getState().open(current.openSettingsTab)
-    } else {
+    } else if (useTourStore.getState().tour === PRODUCT_TOUR) {
       useSettingsModalStore.getState().close()
     }
 
@@ -299,6 +327,12 @@ export function TourOverlay() {
       if (cancelled) return
       const el = findTarget(current)
       if (el) {
+        // "Add one" when there is one already: passed over (a channel's or a project's card on the page).
+        if (current.onlyIfAbsent && document.querySelector(`[data-tour-id="${current.onlyIfAbsent}"]`)) {
+          passedOver.current.add(current.id)
+          next()
+          return
+        }
         el.scrollIntoView({ block: 'center', behavior: 'smooth' })
         // Let the smooth scroll settle before measuring final position.
         window.setTimeout(() => {
@@ -333,11 +367,41 @@ export function TourOverlay() {
     }
     window.addEventListener('scroll', update, true)
     window.addEventListener('resize', update)
+    // While the reader acts, the target changes on its own - a dialog's step, a list arriving - so it is measured again.
+    const timer = step.waitFor ? window.setInterval(update, 250) : undefined
     return () => {
       window.removeEventListener('scroll', update, true)
       window.removeEventListener('resize', update)
+      window.clearInterval(timer)
     }
   }, [settled, step])
+
+  // A STEP THE READER DOES: on to the next once the highlighted control is clicked, or once the page says what the step
+  // waits for happened (tourSignal) - after the page has handled the click, so a dialog it opens is there to point at.
+  useEffect(() => {
+    if (!active || !step?.waitFor) return
+    const wait = step.waitFor
+    let done = false
+    const advance = () => {
+      if (done) return
+      done = true
+      window.setTimeout(() => {
+        if (useTourStore.getState().stepIndex !== stepIndex) return
+        if (stepIndex >= steps.length - 1) { completeRef.current(); finish() } else next()
+      }, 0)
+    }
+    if (wait === 'click') {
+      const onClick = (e: MouseEvent) => {
+        const el = findTarget(step)
+        if (el && e.target instanceof Node && el.contains(e.target)) advance()
+      }
+      document.addEventListener('click', onClick, true)
+      return () => document.removeEventListener('click', onClick, true)
+    }
+    const onSignal = (e: Event) => { if ((e as CustomEvent<string>).detail === wait.signal) advance() }
+    window.addEventListener(TOUR_SIGNAL, onSignal)
+    return () => window.removeEventListener(TOUR_SIGNAL, onSignal)
+  }, [active, step, stepIndex, steps.length, next, finish])
 
   // Measure the popover's real size once it's settled and mounted, then compute its on-screen
   // position from that (rather than a guessed size) to avoid a visible resize jump.
@@ -364,7 +428,8 @@ export function TourOverlay() {
     if (isLast) {
       completeTour()
       finish()
-      navigate('/')
+      // The product's tour ends on the chat; a page's walkthrough leaves the reader where they are.
+      if (product) navigate('/')
       return
     }
     next()
@@ -380,6 +445,95 @@ export function TourOverlay() {
 
   const welcome = step.kind === 'welcome'
   const label = t(step.title)
+  const acting = !!step.waitFor
+
+  const card = settled && (
+    <div
+      ref={popoverRef}
+      role={acting ? 'dialog' : 'document'}
+      aria-label={acting ? label : undefined}
+      data-motion-panel=""
+      className={cn(
+        // Beside its control, or centred when it has none. A title, two or three sentences and
+        // at most three points - never the old 640px deck that sat on top of what it described.
+        // Raised inside the tour's own layer, over its scrim halves.
+        'fixed z-raised max-w-[calc(100vw-32px)] surface-float border rounded-lg shadow-float pointer-events-auto',
+        welcome ? 'w-[420px] px-6 py-6' : 'w-[380px] px-6 py-4',
+        pos ? 'animate-slide-up' : 'opacity-0 pointer-events-none',
+      )}
+      style={{ top: pos?.top ?? 0, left: pos?.left ?? 0 }}
+    >
+      {/* Each step's words fade in over the last; the card itself moves to its new control. */}
+      <FadeSwap swapKey={stopIndex}>
+        {welcome ? (
+          <div className="mb-4"><Logo size={28} /></div>
+        ) : (
+          // A count rather than the kit Stepper: a card 380px wide cannot carry a mark per stop
+          // of a tour that runs to ten, and the count is the one fact the reader needs.
+          <p className={cn(TEXT.caption, 'mb-2 data-readout')}>
+            {t('{current} of {total}', { current: Math.max(stopIndex, 0) + 1, total: stops.length })}
+          </p>
+        )}
+        <h2 className={welcome ? TEXT.title : TEXT.section}>{label}</h2>
+        <p className={cn(TEXT.body, 'mt-2')}>{t(step.text)}</p>
+        {step.points && step.points.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {step.points.map(point => (
+              <li key={point} className={cn(TEXT.caption, 'flex items-start gap-2 leading-relaxed text-ink-secondary')}>
+                <Check size={14} className="shrink-0 mt-0.5 text-brand-legible" aria-hidden="true" />
+                <span>{t(point)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {isSandbox && step.sandboxNote && <Caption className="mt-3">{t(step.sandboxNote)}</Caption>}
+      </FadeSwap>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button variant="quiet" onClick={handleSkip}>{welcome ? t('Not now') : t('Skip tour')}</Button>
+        {acting ? (
+          // No Next: the step moves on when the reader has done it.
+          <Caption className="text-wave">{t('Your turn')}</Caption>
+        ) : (
+          <div className="flex items-center gap-3">
+            {isSandbox && step.sandboxAction && (
+              <Button variant="secondary" onClick={() => handleAction(demoAccountId ? `/key-accounts/${demoAccountId}` : step.sandboxAction!.route)}>{t(step.sandboxAction.label)}</Button>
+            )}
+            <Button onClick={handleNext} data-autofocus>
+              {welcome ? t('Show me around') : isLast ? t('Done') : t('Next')}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  if (acting) {
+    // A STEP THE READER DOES is no modal: the highlighted control - a button, a dialog the page opened - keeps its clicks
+    // and its keys, and the rest of the screen is dimmed and does not take a click.
+    return createPortal(
+      <div className="fixed inset-0 z-tour pointer-events-none">
+        {rect && (
+          <>
+            <div aria-hidden="true" data-scrim=""
+              className="fixed inset-0 backdrop-blur-sm transition-[clip-path] duration-base ease-in-out animate-fade-in"
+              style={{ clipPath: highlightHole(rect) }} />
+            <div aria-hidden="true" data-scrim=""
+              className="fixed rounded-lg transition-all duration-base ease-in-out animate-fade-in"
+              style={{
+                top: rect.top - HIGHLIGHT_INFLATE,
+                left: rect.left - HIGHLIGHT_INFLATE,
+                width: rect.width + HIGHLIGHT_INFLATE * 2,
+                height: rect.height + HIGHLIGHT_INFLATE * 2,
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px rgba(255,255,255,0.35)',
+              }} />
+            <ClickShield rect={rect} />
+          </>
+        )}
+        {card}
+      </div>,
+      document.body,
+    )
+  }
 
   return (
     // The kit's named `z-tour` layer (not `z-dialog`, every other modal's): the settings-credentials
@@ -438,59 +592,24 @@ export function TourOverlay() {
 
       {/* No arc arrow any more: the card sits BESIDE the highlighted control (computePlacement),
           so the hole in the scrim is the pointer. */}
-      {settled && (
-        <div
-          ref={popoverRef}
-          role="document"
-          data-motion-panel=""
-          className={cn(
-            // Beside its control, or centred when it has none. A title, two or three sentences and
-            // at most three points - never the old 640px deck that sat on top of what it described.
-            // Raised inside the tour's own layer, over its scrim halves.
-            'fixed z-raised max-w-[calc(100vw-32px)] surface-float border rounded-lg shadow-float',
-            welcome ? 'w-[420px] px-6 py-6' : 'w-[380px] px-6 py-4',
-            pos ? 'animate-slide-up' : 'opacity-0 pointer-events-none',
-          )}
-          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0 }}
-        >
-          {/* Each step's words fade in over the last; the card itself moves to its new control. */}
-          <FadeSwap swapKey={stopIndex}>
-            {welcome ? (
-              <div className="mb-4"><Logo size={28} /></div>
-            ) : (
-              // A count rather than the kit Stepper: a card 380px wide cannot carry a mark per stop
-              // of a tour that runs to ten, and the count is the one fact the reader needs.
-              <p className={cn(TEXT.caption, 'mb-2 data-readout')}>
-                {t('{current} of {total}', { current: Math.max(stopIndex, 0) + 1, total: stops.length })}
-              </p>
-            )}
-            <h2 className={welcome ? TEXT.title : TEXT.section}>{label}</h2>
-            <p className={cn(TEXT.body, 'mt-2')}>{t(step.text)}</p>
-            {step.points && step.points.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {step.points.map(point => (
-                  <li key={point} className={cn(TEXT.caption, 'flex items-start gap-2 leading-relaxed text-ink-secondary')}>
-                    <Check size={14} className="shrink-0 mt-0.5 text-brand-legible" aria-hidden="true" />
-                    <span>{t(point)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {isSandbox && step.sandboxNote && <Caption className="mt-3">{t(step.sandboxNote)}</Caption>}
-          </FadeSwap>
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <Button variant="quiet" onClick={handleSkip}>{welcome ? t('Not now') : t('Skip tour')}</Button>
-            <div className="flex items-center gap-3">
-              {isSandbox && step.sandboxAction && (
-                <Button variant="secondary" onClick={() => handleAction(demoAccountId ? `/key-accounts/${demoAccountId}` : step.sandboxAction!.route)}>{t(step.sandboxAction.label)}</Button>
-              )}
-              <Button onClick={handleNext} data-autofocus>
-                {welcome ? t('Show me around') : isLast ? t('Done') : t('Next')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {card}
     </ModalShell>
+  )
+}
+
+/** Four panes around the highlight that take the clicks outside it, so only the highlighted part can be used. */
+function ClickShield({ rect }: { rect: DOMRect }): ReactNode {
+  const x1 = rect.left - HIGHLIGHT_INFLATE
+  const y1 = rect.top - HIGHLIGHT_INFLATE
+  const x2 = rect.right + HIGHLIGHT_INFLATE
+  const y2 = rect.bottom + HIGHLIGHT_INFLATE
+  const pane = 'fixed pointer-events-auto'
+  return (
+    <>
+      <div aria-hidden="true" className={pane} style={{ left: 0, top: 0, right: 0, height: Math.max(0, y1) }} />
+      <div aria-hidden="true" className={pane} style={{ left: 0, top: y2, right: 0, bottom: 0 }} />
+      <div aria-hidden="true" className={pane} style={{ left: 0, top: y1, width: Math.max(0, x1), height: y2 - y1 }} />
+      <div aria-hidden="true" className={pane} style={{ left: x2, top: y1, right: 0, height: y2 - y1 }} />
+    </>
   )
 }

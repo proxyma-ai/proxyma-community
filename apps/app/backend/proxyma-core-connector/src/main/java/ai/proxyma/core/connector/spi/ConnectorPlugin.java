@@ -42,7 +42,8 @@ public interface ConnectorPlugin {
      * types, whose name (read through one connection) is what makes them one source. True for an
      * Outlook folder or calendar: two calendars both called "Calendar" (the owner's and a shared
      * mailbox's) are two sources. The registry then matches an existing source by
-     * {@link #storedIdentity} rather than by name.
+     * {@link #storedIdentity} rather than by name - which is also what lets a session's
+     * {@link ConnectorSession#label()} rename the source (a YouTube channel, named after its title).
      */
     default boolean identifiedByConfig() {
         return false;

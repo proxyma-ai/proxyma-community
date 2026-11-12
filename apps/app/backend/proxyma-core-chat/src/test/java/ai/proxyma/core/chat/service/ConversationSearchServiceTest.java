@@ -94,6 +94,31 @@ class ConversationSearchServiceTest {
                 read.stream().map(ConversationSearchService.Message::text).toList());
     }
 
+    @Test
+    @DisplayName("an earlier message reads as the person wrote it, without the notes appended for the model")
+    void readAndExcerptLeaveTheModelsNotesOut() {
+        Conversation c1 = new Conversation();
+        c1.setId("c1");
+        c1.setTitle("Channel");
+        String stored = "Summarize the channel." + ChatService.skillMentionBlock(List.of("YouTube"));
+        when(conversations.findById("c1")).thenReturn(Optional.of(c1));
+        when(messages.findDisplayMessagesByConversationId("c1")).thenReturn(List.of(row(1, stored)));
+        ConversationSearchService service = new ConversationSearchService(messages, conversations, false);
+
+        assertEquals(List.of("Summarize the channel."), service.read(null, "c1", 0).orElseThrow().messages().stream()
+                .map(ConversationSearchService.Message::text).toList());
+
+        when(messages.searchContent(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), any())).thenReturn(List.of(row(1, stored)));
+        when(conversations.findAllById(any())).thenReturn(List.of(c1));
+        // "skills" is in the note alone: the person never wrote it, so the message is no hit for it.
+        assertTrue(service.search(null, "c0", "skills", 5).isEmpty());
+        List<ConversationSearchService.Hit> hits = service.search(null, "c0", "channel", 5);
+        assertEquals(1, hits.size());
+        assertTrue(hits.get(0).matches().stream().noneMatch(m -> m.excerpt().contains("[Context:")),
+                hits.get(0).matches().toString());
+    }
+
     private static ChatMessage row(long id, String content) {
         ChatMessage m = new ChatMessage();
         m.setId(id);

@@ -14,6 +14,8 @@ public interface AgentNodeRepository extends JpaRepository<AgentNode, UUID> {
 
     Optional<AgentNode> findByConversationId(String conversationId);
 
+    List<AgentNode> findByConversationIdIn(Collection<String> conversationIds);
+
     List<AgentNode> findByParentConversationIdOrderByCreatedAtAsc(String parentConversationId);
 
     List<AgentNode> findByRootConversationIdOrderByCreatedAtAsc(String rootConversationId);

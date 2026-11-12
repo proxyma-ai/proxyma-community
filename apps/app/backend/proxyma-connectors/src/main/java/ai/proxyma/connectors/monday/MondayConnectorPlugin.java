@@ -47,7 +47,7 @@ public class MondayConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.MONDAY)
             .protocol(ConnectionProtocol.MONDAY)
             .displayName("monday.com")
-            .description("monday.com items with their columns, updates and subitems, from the boards you choose.")
+            .description("monday.com items with updates, from the boards you choose.")
             .noun("monday.com source", "monday.com sources")
             .addTitle("Add monday.com items")
             .order(60)
@@ -55,8 +55,7 @@ public class MondayConnectorPlugin implements ConnectorPlugin {
             .mark("monday")
             .fields(FieldSpec.text(BOARDS, "Boards").placeholder("1234567890")
                     .pattern("\\s*(\\d+|https?://\\S+/boards/\\d+\\S*)(\\s*,\\s*(\\d+|https?://\\S+/boards/\\d+\\S*))*\\s*")
-                    .help("Board IDs or links, separated by commas - the number after /boards/ in a board's address. "
-                            + "Every board the connection can see when empty."))
+                    .help("Board IDs or links, comma-separated. Empty for all."))
             .capabilities(Capabilities.builder().shareable().liveRead().build())
             .syncEvery(Duration.ofHours(2))
             .docsAnchor("monday")

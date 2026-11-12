@@ -64,10 +64,10 @@ export function AuditLogs({ initialTab }: { initialTab?: string | null }) {
             tab="ACTIVITY"
             title={t('Activity')}
             caption={multiUser
-              ? t('Sign-ins, account changes, settings, sources, access, limits, updates and maintenance.')
-              : t('Settings, sources, access, limits, updates, and anything cleared or deleted.')}
+              ? t('Sign-ins, accounts, settings, sources, access, limits and updates.')
+              : t('Settings, sources, access, limits, updates and deletions.')}
             multiUser={multiUser}
-            logCaption={t('Each event in the period, newest first. Open a row to see what was recorded with it.')}
+            logCaption={t('Every event, newest first.')}
           />
         )}
       </SettingsSections>
@@ -82,14 +82,14 @@ export function AuditLogs({ initialTab }: { initialTab?: string | null }) {
  * given, after the guardrails, cut to its first few thousand characters.
  */
 function ToolCallsPanel({ multiUser }: { multiUser: boolean }) {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   return (
     <AuditTabBody
       tab="TOOL"
       title={t('Tool calls')}
-      caption={t('What each call was given and what it returned, as the model saw it. Long results are cut short.')}
+      caption={t('What each call was given and what it returned.')}
       multiUser={multiUser}
-      logCaption={t('Each tool call in the period, newest first. Open a row to see its input and result.')}
+      logCaption={t('Every tool call, newest first.')}
       summary={d => {
         const failed = d.byOutcome.FAILED ?? 0
         const refused = d.byOutcome.DENIED ?? 0
@@ -99,7 +99,7 @@ function ToolCallsPanel({ multiUser }: { multiUser: boolean }) {
               <StatTile label={t('Calls')} value={formatCompactCount(d.total)} />
               <StatTile label={t('Failed')} value={formatCompactCount(failed)} />
               <StatTile label={t('Refused')} value={formatCompactCount(refused)} sub={refused > 0 ? t('Writes denied or not allowed.') : undefined} />
-              <StatTile label={t('Median time')} value={d.latency.p50 != null ? durationText(d.latency.p50) : '-'} />
+              <StatTile label={t('Median time')} value={d.latency.p50 != null ? durationText(d.latency.p50, t) : '-'} />
             </StatGrid>
             <Presence show={d.total === 0}>
               <Caption>{t('No tool was called in this period.')}</Caption>
@@ -112,8 +112,8 @@ function ToolCallsPanel({ multiUser }: { multiUser: boolean }) {
                 value: g.count,
                 figures: [
                   t('1 call|{count} calls', { count: g.count }),
-                  ...(g.failed > 0 ? [t('{count} failed', { count: g.failed.toLocaleString() })] : []),
-                  durationText(g.avgMs),
+                  ...(g.failed > 0 ? [t('{count} failed', { count: g.failed.toLocaleString(locale) })] : []),
+                  durationText(g.avgMs, t),
                 ],
               }))}
             />

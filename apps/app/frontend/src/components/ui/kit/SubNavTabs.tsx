@@ -38,7 +38,7 @@ interface Props<T extends string> {
   /** Names the tab list for a screen reader - "Administration sections", say. */
   ariaLabel?: string
   /**
-   * `compact` - 13px words in tighter pills - for a row inside a narrow panel (a Constellations agent's
+   * `compact` - 12px words in tighter pills - for a row inside a narrow panel (a Constellations agent's
    * seven tabs in a 32rem panel, maintainer's review 2026-10-29), so it fits rather than scrolls.
    */
   density?: 'regular' | 'compact'
@@ -111,8 +111,8 @@ export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel
                 t.locked
                   ? 'text-ink-disabled'
                   : isActive
-                    ? 'bg-surface-float text-ink-primary shadow-card'
-                    : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-surface/50',
+                    ? 'bg-lift text-ink-primary shadow-card'
+                    : 'text-ink-secondary mouse:hover:text-ink-primary mouse:hover:bg-lift/50',
               )}
             >
               {/* Quiet: the tab's own ink, at the rules' 14px for marks in tabs. */}

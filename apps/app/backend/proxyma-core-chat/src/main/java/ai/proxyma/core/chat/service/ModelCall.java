@@ -114,6 +114,12 @@ final class ModelCall {
         /** The model is thinking; {@code tokens} is its estimated thinking so far in this call. */
         default void thinking(int tokens) {}
 
+        /**
+         * What the model thinks, as it streams - raw, unscrubbed; a listener that shows it to anyone scrubs it first
+         * (ChatService). Only a protocol that returns its thinking's text calls it (AnthropicThinkingDisplay).
+         */
+        default void thinkingText(String text) {}
+
         /** The provider failed in a way worth waiting out, and attempt {@code attempt} is next. */
         default void retry(int attempt, Throwable failure) {}
 
@@ -228,6 +234,7 @@ final class ModelCall {
             ModelThinking.Piece piece = splitter.accept(chunk);
             if (piece.thinkingSignal()) {
                 thinkingChars[0] += piece.thinking().length();
+                if (!piece.thinking().isEmpty()) listener.thinkingText(piece.thinking());
                 long now = System.nanoTime();
                 if (!thinkingAnnounced[0] || now - lastThinkingNanos[0] >= THINKING_EVENT_INTERVAL_NANOS) {
                     thinkingAnnounced[0] = true;
@@ -508,11 +515,24 @@ final class ModelCall {
      * patience a busy provider is given.
      */
     static boolean isTransientServerError(Throwable e) {
+        // A CONNECTION DROPPED PART WAY THROUGH AN ANSWER (2026-11-10, the maintainer's Learner: "200 OK from POST
+        // https://api.anthropic.com/v1/messages, but response failed with cause: reactor.netty.http.client.
+        // PrematureCloseException: Connection prematurely closed DURING response"): the status was a 200, so nothing below
+        // took it for transient and the run failed on its first try. The same safe retry - no tool of the step has run.
+        if (droppedMidAnswer(e)) return true;
         int status = httpStatus(e);
         if (status == 502 || status == 504) return true;
         if (status != 500) return false;
         String said = failureText(e).toLowerCase(Locale.ROOT);
         return TRANSIENT_SERVER_MARKERS.stream().anyMatch(said::contains);
+    }
+
+    /** Whether the connection closed while the answer was coming - Reactor Netty's PrematureCloseException. */
+    static boolean droppedMidAnswer(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if ("reactor.netty.http.client.PrematureCloseException".equals(t.getClass().getName())) return true;
+        }
+        return failureText(e).toLowerCase(Locale.ROOT).contains("connection prematurely closed");
     }
 
     private static final List<String> TRANSIENT_SERVER_MARKERS = List.of(

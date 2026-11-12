@@ -211,6 +211,38 @@ class SyncStateWritesTest {
         assertThat(tx(r -> r.documents().findById(a).orElseThrow()).getRetryCount()).isZero();
     }
 
+    @Test
+    @DisplayName("a source's label renames it only while its config is the one the label was worked out from")
+    void labelKeepsAnEdit() {
+        UUID id = source();
+        String read = "{\"maxVideos\":\"200\"}";
+        tx(r -> {
+            r.connectors().findById(id).orElseThrow().setConfig(read);
+            return null;
+        });
+        int written = tx(r -> r.connectors().updateLabel(id, "Cam Am Tieu Dao",
+                "{\"maxVideos\":\"200\",\"webUrl\":\"https://www.youtube.com/@camamtieudao\"}", read));
+        assertThat(written).isEqualTo(1);
+        assertThat(read(id).getName()).isEqualTo("Cam Am Tieu Dao");
+        assertThat(read(id).getConfig()).contains("@camamtieudao");
+
+        // The person changed the config during the pass: the label does not put the old one back.
+        tx(r -> {
+            r.connectors().findById(id).orElseThrow().setConfig("{\"maxVideos\":\"50\"}");
+            return null;
+        });
+        int stale = tx(r -> r.connectors().updateLabel(id, "Another name", read, read));
+        assertThat(stale).isZero();
+        assertThat(read(id).getName()).isEqualTo("Cam Am Tieu Dao");
+        assertThat(read(id).getConfig()).isEqualTo("{\"maxVideos\":\"50\"}");
+
+        // A source with no config at all is matched by the empty string.
+        UUID bare = source();
+        int unconfigured = tx(r -> r.connectors().updateLabel(bare, "Named", null, ""));
+        assertThat(unconfigured).isEqualTo(1);
+        assertThat(read(bare).getName()).isEqualTo("Named");
+    }
+
     private TrackedDocument.Status status(UUID doc) {
         return tx(r -> r.documents().findById(doc).orElseThrow()).getStatus();
     }

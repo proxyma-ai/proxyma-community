@@ -87,6 +87,8 @@ export interface Connection {
   statusDetail: string | null
   /** The signed-in Microsoft 365 account. */
   accountLabel: string | null
+  /** The last sign-in that came back refused or failed since one succeeded - remembered by the server in memory. */
+  signInFailure?: { outcome: string; at: string } | null
   connectedAt: string | null
   /** MCP servers only. */
   mcp?: McpView | null
@@ -118,6 +120,12 @@ export interface ConnectionInput {
   fields?: Record<string, string>
 }
 
+/** ConnectorConnectionService.UsageView: how many sources read through a connection, and the first few names. */
+export interface ConnectionUsage {
+  sources: number
+  names: string[]
+}
+
 export interface ConnectionTestResult {
   ok: boolean
   // The English sentence. `template` is the same with {placeholders} filled from `params` - the
@@ -134,8 +142,12 @@ export const connectionsApi = {
     http.post<Connection>('/api/v1/connections/instances', input).then(r => r.data),
   update: (id: string, input: ConnectionInput) =>
     http.patch<Connection>(`/api/v1/connections/instances/${id}`, input).then(r => r.data),
+  // In use or not: its sources are kept and say their connection is gone (ConnectionUsage).
   remove: (id: string) =>
     http.delete<void>(`/api/v1/connections/instances/${id}`).then(() => undefined),
+  // The sources reading through it - how many, and the first few by name - for the Delete warning.
+  usage: (id: string) =>
+    http.get<ConnectionUsage>(`/api/v1/connections/instances/${encodeURIComponent(id)}/usage`).then(r => r.data),
   // Always 200 with a verdict - a failed test is an answer, not an error.
   test: (id: string) =>
     http.post<ConnectionTestResult>(`/api/v1/connections/instances/${id}/test`).then(r => r.data),
@@ -143,6 +155,10 @@ export const connectionsApi = {
   // the sign-in on its callback; the page learns of it by reading the connection again.
   mcpSignIn: (id: string) =>
     http.post<{ authorizeUrl: string }>(`/api/v1/connections/instances/${id}/mcp-sign-in`).then(r => r.data.authorizeUrl),
+  // Desktop and Home Server: the service's sign-in address, to open in the person's own browser
+  // (useStartConnectionSignIn). Enterprise Server navigates to connectionSignInUrl instead.
+  beginSignIn: (id: string) =>
+    http.post<{ authorizeUrl: string }>(`/api/v1/connections/instances/${encodeURIComponent(id)}/oauth/begin`).then(r => r.data.authorizeUrl),
 }
 
 // `enabled` defers the fetch, for a dialog that only needs the list for some source types.
@@ -181,7 +197,10 @@ export function connectionSignInUrl(connection: Pick<Connection, 'id' | 'protoco
   return `${ENV.apiBaseUrl ?? ''}/api/v1/connections/instances/${encodeURIComponent(connection.id)}/oauth/start`
 }
 
-/** Leaves the SPA for the service's sign-in page. */
+/**
+ * Leaves the SPA for the service's sign-in page - Enterprise Server's way, and an edition's own
+ * service's. Desktop and Home Server open it in the browser instead (useStartConnectionSignIn).
+ */
 export function startConnectionSignIn(connection: Pick<Connection, 'id' | 'protocol'>): void {
   window.location.assign(connectionSignInUrl(connection))
 }

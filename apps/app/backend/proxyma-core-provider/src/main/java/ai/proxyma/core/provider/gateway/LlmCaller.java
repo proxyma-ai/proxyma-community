@@ -23,12 +23,29 @@ import java.util.Objects;
  *
  * <p>On Desktop and Home Server there is one person, and the ledgers file every subject under
  * {@link SpendSubject#LOCAL} whatever arrives here - see LlmCallLogService.
+ *
+ * <p>{@code conversationId} is the conversation the call was made FOR, or null for a call made for
+ * none (an embedding batch, a rerank, a background sweep). Every agent - the one the user talks to, a
+ * deployed one, a saved agent of a team - is a conversation of its own on the one turn loop, so this
+ * is what lets the per-call log tell one agent's calls from another's (LlmCall.conversationId). An
+ * argument for the same reason as the subject: a turn's model call runs on another thread.
  */
-public record LlmCaller(LlmRole service, SpendSubject subject) {
+public record LlmCaller(LlmRole service, SpendSubject subject, String conversationId) {
 
     public LlmCaller {
         Objects.requireNonNull(service, "service");
         Objects.requireNonNull(subject, "subject");
+        if (conversationId != null && conversationId.isBlank()) conversationId = null;
+    }
+
+    /** A call made for no conversation. */
+    public LlmCaller(LlmRole service, SpendSubject subject) {
+        this(service, subject, null);
+    }
+
+    /** The same caller, for this conversation (null for none). */
+    public LlmCaller inConversation(String id) {
+        return new LlmCaller(service, subject, id);
     }
 
     /** A call on behalf of this subject. */

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { appearanceInitScript, THEME_COLOR } from './appearanceScript.ts'
-import { parseAppearance, resolveAppearance } from './appearance.ts'
+import { ACCENT_PREFERENCES, parseAccent, parseAppearance, parseBackdrop, resolveAppearance } from './appearance.ts'
 
 // A document with just what the script touches: attributes on <html>, one meta, a head.
 function run(script: string, stored: string | null, osDark: boolean, opts: { storageThrows?: boolean; writeThrows?: boolean; noMatchMedia?: boolean } = {}) {
@@ -78,4 +78,41 @@ test('a stored gray or black is rewritten as dark, and nothing else is written',
 test('the storage key is quoted, never spliced in raw', () => {
   const script = appearanceInitScript("it's")
   assert.ok(script.includes(JSON.stringify("it's")))
+})
+
+// The background and the accent, each under its own key.
+function runLook(stored: Record<string, string | null>) {
+  const attrs = new Map<string, string>()
+  const document = {
+    documentElement: { setAttribute: (n: string, v: string) => { attrs.set(n, v) }, removeAttribute: (n: string) => { attrs.delete(n) } },
+    head: { appendChild: () => {} },
+    querySelector: () => ({ setAttribute: () => {} }),
+    createElement: () => ({ setAttribute: () => {} }),
+  }
+  const localStorage = { getItem: (k: string) => stored[k] ?? null, setItem: () => {} }
+  const script = appearanceInitScript('m', 'system', { backdropKey: 'b', accentKey: 'a' })
+  new Function('localStorage', 'window', 'document', script)(localStorage, { matchMedia: () => ({ matches: true }) }, document)
+  return { backdrop: attrs.get('data-backdrop') ?? null, accent: attrs.get('data-accent') ?? null }
+}
+
+test('the script stamps the background and the accent as applyLook does', () => {
+  for (const b of [null, '', 'flat', 'gradient', 'neon']) {
+    for (const a of [null, '', 'teal', ...ACCENT_PREFERENCES, 'neon']) {
+      const got = runLook({ b, a })
+      assert.equal(got.backdrop, parseBackdrop(b) === 'gradient' ? 'gradient' : null, `${b} ${a}`)
+      const accent = parseAccent(a)
+      assert.equal(got.accent, accent === 'teal' ? null : accent, `${b} ${a}`)
+    }
+  }
+})
+
+test('without the look keys the script stamps neither', () => {
+  const attrs = new Map<string, string>()
+  const document = {
+    documentElement: { setAttribute: (n: string, v: string) => { attrs.set(n, v) }, removeAttribute: () => {} },
+    head: { appendChild: () => {} }, querySelector: () => ({ setAttribute: () => {} }), createElement: () => ({ setAttribute: () => {} }),
+  }
+  new Function('localStorage', 'window', 'document', appearanceInitScript('m'))({ getItem: () => 'gradient', setItem: () => {} }, {}, document)
+  assert.equal(attrs.has('data-backdrop'), false)
+  assert.equal(attrs.has('data-accent'), false)
 })

@@ -1,3 +1,5 @@
+import type { ApprovalContext } from '../utils/approvalContext'
+
 export type MessageRole = 'user' | 'assistant'
 
 export interface ChatSource {
@@ -40,12 +42,20 @@ export interface AgentStatusUpdate {
 }
 
 // What reached a running turn from its inbox - one line each in the thread, never a user bubble.
-// `agentId` and `title` are null for what no agent sent (an alarm).
-export type AgentMailKind = 'report' | 'message' | 'alarm' | 'background' | 'user_talk' | 'approval' | 'context' | 'memory'
+// `agentId` and `title` are null for what no agent sent (an alarm). `reply` is a teammate's answer to a
+// message the agent sent; `told` is what the agent told the person from another of its conversations
+// (a Constellations lead's tellPerson). `text` is what it says, for the kinds that are words to read -
+// a message, a reply, what was told - and absent for the rest.
+// The rest are lines a product module's own messages are drawn as (ChatModule.shownOpening and shownMail on
+// the server - a Constellations run's opening and its task, a note for the lead, a teammate that could not
+// answer), so a header written for the model never reaches the page.
+export type AgentMailKind = 'report' | 'message' | 'reply' | 'told' | 'alarm' | 'background' | 'user_talk' | 'approval' | 'context' | 'memory'
+  | 'run_schedule' | 'run_webhook' | 'run_source' | 'run_member' | 'learning' | 'revising' | 'lead_note' | 'reply_failed'
 export interface AgentMailEntry {
   agentId: string | null
   title: string | null
   kind: AgentMailKind
+  text?: string
 }
 
 // One invocation of a workflow: the plan and the live state of every step, as ONE object. The
@@ -159,6 +169,9 @@ export interface ChatAttachment {
 export interface Conversation {
   id: string
   title: string
+  // Set for a conversation a module or an agent opened (a Constellations run): the page words it, and
+  // `title` is only its data - see conversationTitle.ts.
+  titleKind?: string | null
   messageCount: number
   updatedAt: string
   pinned: boolean
@@ -192,6 +205,13 @@ export interface ConversationUsage {
   cacheWarmUntil?: string | null
   cacheLifetimeSeconds?: number | null
   cacheSecondsLeft?: number | null
+  /**
+   * The model the conversation runs on when it is not the chat settings' - a saved agent's own
+   * (ChatService.agentModelOf) - and its provider's name when the server can name it. Absent for an
+   * ordinary conversation (utils/conversationModel.ts).
+   */
+  model?: string | null
+  providerName?: string | null
 }
 
 // Server-mode-only per-user monthly + rolling 5h/weekly $ quota snapshot (see
@@ -233,7 +253,9 @@ export interface ChatRequest {
 export type PermissionMode = 'ASK' | 'AUTO' | 'READ_ONLY'
 
 export interface ChatSseEvent {
-  type: 'text' | 'thinking' | 'tool-start' | 'tool-result' | 'tool-approval-request' | 'tool-enable-request' | 'user-question' | 'user-injected' | 'condense-start' | 'condense-end'
+  type: 'text' | 'thinking' | 'thinking-text' | 'tool-start' | 'tool-result' | 'tool-approval-request' | 'tool-enable-request' | 'user-question' | 'user-injected' | 'condense-start' | 'condense-end'
+    // What an approval's write is about, once the server's lookup answered (data: ApprovalContext JSON).
+    | 'tool-approval-context'
     | 'usage' | 'title' | 'workflow-run' | 'retry' | 'guardrail' | 'step-limit' | 'prompt-closed' | 'error' | 'session-expired' | 'done'
     | 'agent-status' | 'agent-mail' | 'turn-start'
     // The stream's own first event, no event of the conversation's: which server this is and
@@ -292,6 +314,9 @@ export interface PendingApproval {
   decisionSent?: boolean
   // The workflow step whose call this is, when it is made from inside one.
   parentCallId?: string
+  // What the write is about, as the server described it (a YouTube reply's video, viewer, comment
+  // and reply) - arriving a moment after the prompt, or never; the card shows the arguments then.
+  context?: ApprovalContext | null
   // Wall-clock moment (Date.now()) this approval was queued - set once in chatStore's
   // addPendingApproval (not by the SSE payload itself), and used as the anchor for the five-minute
   // auto-deny countdown (see useApprovalCountdown). Anchoring to this instead of the countdown
@@ -327,6 +352,8 @@ export interface PendingPrompt {
   toolName?: string | null
   data?: string | null
   parentCallId?: string | null
+  // An approval's context, when its lookup answered before the conversation was loaded.
+  context?: unknown
 }
 
 // A conversation as the server hands it to a page that is about to follow its event stream: the

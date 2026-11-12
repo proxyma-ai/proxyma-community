@@ -2,7 +2,7 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { argLines, buildMcpInput, initialMcpForm, mcpFormReady, namedMap } from './mcpForm.ts'
+import { argLines, buildMcpInput, initialMcpForm, mcpFormReady, mcpMissing, namedMap } from './mcpForm.ts'
 import type { McpView } from '../services/connectionsApi.ts'
 
 const VIEW: McpView = {
@@ -64,5 +64,24 @@ describe('an MCP server form', () => {
     assert.equal(mcpFormReady(initialMcpForm(null, ' ')), false)
     assert.equal(mcpFormReady(initialMcpForm(null, 'https://x.example/mcp')), true)
     assert.equal(mcpFormReady({ ...initialMcpForm(VIEW, null), command: '' }), false)
+  })
+})
+
+describe('an existing MCP server saved field by field', () => {
+  const remote = initialMcpForm(null, 'https://mcp.example.com/mcp')
+  test('a switch to a local command waits for the command', () => {
+    assert.equal(mcpMissing({ ...remote, transport: 'STDIO' }, false, false), 'command')
+    assert.equal(mcpMissing({ ...remote, transport: 'STDIO', command: 'npx' }, false, false), null)
+  })
+  test('a switch from a local command waits for the address', () => {
+    const local = initialMcpForm(VIEW, null)
+    assert.equal(mcpMissing({ ...local, transport: 'SSE' }, false, false), 'url')
+    assert.equal(mcpMissing({ ...local, transport: 'SSE', url: 'https://mcp.example.com/sse' }, false, false), null)
+  })
+  test('a bearer sign-in waits for a token unless one is stored or typed', () => {
+    assert.equal(mcpMissing({ ...remote, auth: 'BEARER' }, false, false), 'token')
+    assert.equal(mcpMissing({ ...remote, auth: 'BEARER' }, true, false), null)
+    assert.equal(mcpMissing({ ...remote, auth: 'BEARER' }, false, true), null)
+    assert.equal(mcpMissing({ ...remote, auth: 'HEADERS' }, false, false), null)
   })
 })

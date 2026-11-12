@@ -36,7 +36,7 @@ export function RememberDialog({ onClose }: { onClose: () => void }) {
       ariaLabel={t('Remember something')}>
       {requestClose => (<>
         <DialogHeader title={t('Remember something')}
-          subtitle={t('The agent reads its memory before it searches, in every conversation.')} />
+          subtitle={t('The agent reads its memory in every conversation.')} />
         <DialogBody>
           <FormStack>
             <Field label={t('What to remember')}>

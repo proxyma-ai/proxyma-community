@@ -66,7 +66,7 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
     // size; it was a 14px paragraph here alone. Then two sections: where the assistants connect,
     // and how each one is set up.
     <SettingsSections intro={<>
-      {t('Claude, ChatGPT and Gemini can search your sources through Proxyma, on their own subscription.')}{' '}
+      {t('Let Claude, ChatGPT and Gemini search your sources.')}{' '}
       {t('What they read from your sources goes to their provider.')}
     </>}>
       <div className="space-y-4">
@@ -88,13 +88,13 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
             </Button>
           )}
         >
-          {t('Each assistant needs an access token. Generate one under API Tokens and put it where the examples say {token}.', { token: TOKEN })}
+          {t('Each assistant needs an access token from API Tokens. Put it where you see {token}.', { token: TOKEN })}
         </Callout>
       </Presence>
 
       <Presence show={!!remoteWithoutAuth}>
         <Callout tone="warning">
-          {t('You are on another machine. Assistants work here only if the server sets PROXYMA_EXPOSE_MCP=true, which lets anyone holding this token use its tools.')}
+          {t('From another computer, assistants work only if the server sets PROXYMA_EXPOSE_MCP=true. Anyone with this token can then use its tools.')}
         </Callout>
       </Presence>
       </div>
@@ -109,7 +109,7 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
           {client === 'copilot' && <Copilot url={url} needsToken={needsToken} token={token} />}
         </FadeSwap>
         <Caption>
-          {t('ChatGPT and Gemini on the web cannot reach a server on your computer. Use the apps above instead.')}{' '}
+          {t('Web versions of ChatGPT and Gemini cannot connect. Use the apps above.')}{' '}
           <ExternalLink href="https://proxyma.ai/docs/api/#mcp">{t('MCP setup guide')}</ExternalLink>
         </Caption>
       </div>
@@ -124,7 +124,7 @@ function ClaudeCode({ url, needsToken, token }: ClientProps) {
   const command = `claude mcp add --transport http proxyma ${url}`
     + (needsToken ? ` --header "Authorization: Bearer ${token}"` : '')
   return (
-    <StepList intro={t("Anthropic's coding assistant, in the terminal and in VS Code. It comes with a Claude Pro or Max subscription.")}>
+    <StepList intro={t("Anthropic's coding assistant for the terminal and VS Code.")}>
       <StepItem text={t('Run this in a terminal:')}><CodeBlock text={command} /></StepItem>
       <StepItem text={t('Start Claude Code and ask it about your documents.')} />
     </StepList>
@@ -142,7 +142,7 @@ function ClaudeDesktop({ url, needsToken, token }: ClientProps) {
   if (needsToken) server.env = { AUTH_HEADER: `Bearer ${token}` }
   const config = JSON.stringify({ mcpServers: { proxyma: server } }, null, 2)
   return (
-    <StepList intro={t('The Claude app for Windows and macOS. It reaches Proxyma through a small bridge that needs Node.js 18 or later.')}>
+    <StepList intro={t('The Claude desktop app. Needs Node.js 18 or later.')}>
       <StepItem text={t('Install Node.js from nodejs.org if you do not have it.')} />
       <StepItem text={t('In Claude, open Settings > Developer > Edit Config, and add this to the file:')}><CodeBlock text={config} /></StepItem>
       <StepItem text={t('Quit Claude completely and open it again.')} />
@@ -155,12 +155,12 @@ function ChatGpt({ url, needsToken }: ClientProps) {
   const command = `codex mcp add proxyma --url ${url}`
     + (needsToken ? ' --bearer-token-env-var PROXYMA_TOKEN' : '')
   return (
-    <StepList intro={t('The ChatGPT desktop app, the Codex CLI and the Codex extension for VS Code share one setting. Sign in with your ChatGPT account.')}>
+    <StepList intro={t('The ChatGPT desktop app and Codex share one setting.')}>
       <StepItem text={t('Install the Codex CLI, then run this in a terminal:')}><CodeBlock text={command} /></StepItem>
       {needsToken && (
-        <StepItem text={t('Set the environment variable PROXYMA_TOKEN to your access token, then restart the app.')} />
+        <StepItem text={t('Set the environment variable PROXYMA_TOKEN to your access token, then restart ChatGPT and Codex.')} />
       )}
-      <StepItem text={t('Proxyma now appears in the ChatGPT desktop app, the Codex CLI and the Codex extension.')} />
+      <StepItem text={t('Proxyma now shows up in ChatGPT and Codex.')} />
     </StepList>
   )
 }
@@ -171,7 +171,7 @@ function Gemini({ url, needsToken, token }: ClientProps) {
     + (needsToken ? ` --header "Authorization: Bearer ${token}"` : '')
     + ` proxyma ${url}`
   return (
-    <StepList intro={t("Google's assistant in the terminal. Sign in with a Google account; a Gemini subscription raises its limits.")}>
+    <StepList intro={t("Google's assistant for the terminal.")}>
       <StepItem text={t('Install Gemini CLI, then run this in a terminal:')}><CodeBlock text={command} /></StepItem>
       <StepItem text={t('Start Gemini CLI and ask it about your documents.')} />
     </StepList>
@@ -185,7 +185,7 @@ function Copilot({ url, needsToken, token }: ClientProps) {
   const config = JSON.stringify({ servers: { proxyma: server } }, null, 2)
   return (
     <StepList intro={t('Copilot Chat in VS Code, in agent mode.')}>
-      <StepItem text={t('Add this to .vscode/mcp.json, or run MCP: Open User Configuration from the Command Palette for every workspace:')}><CodeBlock text={config} /></StepItem>
+      <StepItem text={t('Add this to .vscode/mcp.json:')}><CodeBlock text={config} /></StepItem>
     </StepList>
   )
 }

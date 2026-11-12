@@ -46,7 +46,7 @@ public class DropboxConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.DROPBOX)
             .protocol(ConnectionProtocol.DROPBOX)
             .displayName("Dropbox")
-            .description("Files in Dropbox - PDF and Office files, text and Paper docs - from the whole Dropbox or one folder.")
+            .description("Files in Dropbox, from all of it or one folder.")
             .noun("Dropbox folder", "Dropbox folders")
             .addTitle("Add Dropbox")
             .order(46)

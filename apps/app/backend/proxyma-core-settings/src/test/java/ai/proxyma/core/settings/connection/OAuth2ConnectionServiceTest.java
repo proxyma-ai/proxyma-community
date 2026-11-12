@@ -232,6 +232,103 @@ class OAuth2ConnectionServiceTest {
     }
 
     @Test
+    @DisplayName("on a single-user edition a sign-in opened in the system browser completes on its state alone, once")
+    void browserSignInOnStateAlone() {
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+
+        String url = service.begin(null, c.getId(), "http://127.0.0.1:4246/cb");
+        Map<String, String> q = query(url);
+        assertThat(q).containsEntry("code_challenge_method", "S256").containsEntry("redirect_uri", "http://127.0.0.1:4246/cb");
+        String state = q.get("state");
+        // The callback learns it may answer with its own page, and for which service.
+        assertThat(service.unboundService(state)).contains("Wiki");
+
+        // No cookie: the system browser shares none with the window that began it.
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(state, "the-code", null, null, null)))
+                .isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+        // The verifier stayed here: the code was exchanged with it.
+        assertThat(OAuth2ConnectionService.challenge(query("http://x/?" + auth.last().body()).get("code_verifier")))
+                .isEqualTo(q.get("code_challenge"));
+        assertThat(rows.get(c.getId()).getStatus()).isEqualTo(ConnectionStatus.CONNECTED);
+
+        // Single use.
+        assertThat(service.unboundService(state)).isEmpty();
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(state, "the-code", null, null, null)))
+                .isEqualTo(OAuth2ConnectionService.Outcome.EXPIRED);
+        assertThat(auth.requests("/token")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("on Desktop a connection with no client of its own signs in through the built-in client; a typed one wins; never on a Home Server or Enterprise Server")
+    void builtInClient() {
+        // 2026-11-07: a creator signs in to YouTube with no Google Cloud project of their own (BuiltInOAuthClients).
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("proxyma.oauth.builtin.confluence.client-id", "builtin-1")
+                .withProperty("proxyma.oauth.builtin.confluence.client-secret", "bs");
+        service.setBuiltInClients(new BuiltInOAuthClients(env, false, false));
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of());
+        c.setSettingsJson(ConfigJson.write(Map.of()));
+        repository.save(c);
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+
+        Map<String, String> q = query(service.begin(null, c.getId(), "http://127.0.0.1:4246/cb"));
+        assertThat(q).containsEntry("client_id", "builtin-1");
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(q.get("state"), "the-code", null, null, null)))
+                .isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+        Map<String, String> form = query("http://x/?" + auth.last().body());
+        assertThat(form).containsEntry("client_id", "builtin-1").containsEntry("client_secret", "bs");
+
+        ConnectorConnection own = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        assertThat(query(service.begin(null, own.getId(), "http://127.0.0.1:4246/cb"))).as("the person's own client wins")
+                .containsEntry("client_id", "client-1");
+
+        assertThat(new BuiltInOAuthClients(env, false, true).available(ConnectionProtocol.CONFLUENCE)).as("Home Server").isFalse();
+        assertThat(new BuiltInOAuthClients(env, true, false).available(ConnectionProtocol.CONFLUENCE)).as("Enterprise Server").isFalse();
+        assertThat(new BuiltInOAuthClients(new org.springframework.mock.env.MockEnvironment(), false, false)
+                .available(ConnectionProtocol.CONFLUENCE)).as("none set").isFalse();
+        assertThat(new BuiltInOAuthClients(env, false, false).available(ConnectionProtocol.YOUTUBE)).as("another service's").isFalse();
+
+        // Behind the add-ons it names: Proxyma's one Google project's quota serves the people it was made for.
+        env.withProperty("proxyma.oauth.builtin.confluence.requires-addon", "youtube-assistant, constellations");
+        BuiltInOAuthClients gated = new BuiltInOAuthClients(env, false, false);
+        gated.setAddonsForTest(java.util.Set::of);
+        assertThat(gated.available(ConnectionProtocol.CONFLUENCE)).as("no add-on in force").isFalse();
+        gated.setAddonsForTest(() -> java.util.Set.of("constellations"));
+        assertThat(gated.available(ConnectionProtocol.CONFLUENCE)).as("either one opens it").isTrue();
+    }
+
+    @Test
+    @DisplayName("a browser sign-in expires after ten minutes, and is only the owner's to begin")
+    void browserSignInExpiresAndIsTheOwners() {
+        ConnectorConnection c = connection("ana", AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        assertThatThrownBy(() -> service.begin("bo", c.getId(), "http://h/cb")).isInstanceOf(IllegalArgumentException.class);
+
+        String state = query(service.begin("ana", c.getId(), "http://h/cb")).get("state");
+        now = now.plus(OAuth2ConnectionService.FLOW_LIFETIME).plusSeconds(1);
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(state, "code", null, null, null)))
+                .isEqualTo(OAuth2ConnectionService.Outcome.EXPIRED);
+        assertThat(auth.requests("/token")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("where there are accounts no sign-in is unbound: begin is refused and a bound flow still needs its cookie")
+    void noUnboundFlowWithAccounts() {
+        ConnectorConnection c = connection("ana", AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        OAuth2ConnectionService server = service(true);
+        assertThatThrownBy(() -> server.begin("ana", c.getId(), "http://h/cb")).isInstanceOf(IllegalStateException.class);
+
+        // A bound flow on a single-user edition is not reported unbound, and a missing cookie fails it.
+        OAuth2ConnectionService.FlowStart bound = service.start("ana", c.getId(), "http://h/cb");
+        String state = query(bound.authorizeUrl()).get("state");
+        assertThat(service.unboundService(state)).isEmpty();
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(state, "code", null, null, null)))
+                .isEqualTo(OAuth2ConnectionService.Outcome.FAILED);
+        assertThat(server.unboundService(state)).isEmpty();
+        assertThat(auth.requests("/token")).isEmpty();
+    }
+
+    @Test
     @DisplayName("an expired token is refreshed; a rotated refresh token is stored before the new access token is used")
     void refreshWithRotation() {
         ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of(
@@ -420,6 +517,34 @@ class OAuth2ConnectionServiceTest {
     }
 
     @Test
+    @DisplayName("a refused consent and a failed exchange are remembered for that connection, leave it as it was, and a later success clears them")
+    void refusedOrFailedSignInIsRemembered() {
+        // The maintainer, 2026-11-09: the page waiting on a sign-in must know when the person said no or it failed.
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        assertThat(service.lastFailure(c.getId())).isEmpty();
+
+        OAuth2ConnectionService.FlowStart refused = service.start(null, c.getId(), "http://localhost/cb");
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest(query(refused.authorizeUrl()).get("state"),
+                null, "access_denied", refused.browserBinding(), null))).isEqualTo(OAuth2ConnectionService.Outcome.DENIED);
+        assertThat(service.lastFailure(c.getId())).hasValueSatisfying(f -> assertThat(f.outcome()).isEqualTo("DENIED"));
+        assertThat(rows.get(c.getId()).getStatus()).isNull();
+
+        auth.on("POST", "/token").json("{'ok':false,'error':'invalid_code'}");
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.FAILED);
+        assertThat(service.lastFailure(c.getId())).hasValueSatisfying(f -> assertThat(f.outcome()).isEqualTo("FAILED"));
+
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+        assertThat(service.lastFailure(c.getId())).isEmpty();
+
+        // A callback that is not this connection's own flow - an unknown state - is remembered for nobody.
+        assertThat(service.complete(new OAuth2ConnectionService.CallbackRequest("no-such-state", null, "access_denied",
+                null, null))).isEqualTo(OAuth2ConnectionService.Outcome.EXPIRED);
+        assertThat(service.lastFailure(c.getId())).isEmpty();
+    }
+
+    @Test
     @DisplayName("a client-credentials grant sends the parameters the service takes from the connection's settings, and no scope where it takes none (Box)")
     void clientCredentialsWithProviderParameters() {
         useSpec(OAuth2Spec.builder(auth.url("/authorize"), auth.url("/token")).scopes(List.of("root_readonly"))
@@ -478,5 +603,218 @@ class OAuth2ConnectionServiceTest {
 
         service.signOut(null, c.getId());
         assertThat(rows.get(c.getId()).getAccountJson()).isNull();
+    }
+
+    // -- 2026-11-08: the built-in YouTube sign-in's review ----------------------------------------
+
+    // The test service with a spec, a consent rule and a price per request.
+    private void useYouTubeLike(OAuth2Spec spec, java.util.function.BiFunction<java.util.Set<String>, Boolean,
+            Optional<String>> shortfall, int units) {
+        ConnectionPlugin base = plugin(spec);
+        catalog = ConnectorCatalog.of(List.of(), List.of(new ConnectionPlugin() {
+            @Override public ProtocolDescriptor descriptor() { return base.descriptor(); }
+            @Override public ConnectionTestResult test(ResolvedCredentials c, ConnectorHttp http) { return ConnectionTestResult.ok("ok"); }
+            @Override public OAuth2Spec oauth2() { return spec; }
+            @Override public Optional<String> consentShortfall(java.util.Set<String> granted, boolean write) {
+                return shortfall.apply(granted, write);
+            }
+            @Override public int requestUnits(org.springframework.http.HttpMethod method, URI uri) { return units; }
+            @Override public boolean identityRequest(org.springframework.http.HttpMethod method, URI uri) {
+                return uri.getRawPath().endsWith("/channels");
+            }
+        }));
+        service = service(false);
+        service.setRevokerForTest(Runnable::run);
+    }
+
+    private OAuth2Spec youTubeSpec() {
+        return OAuth2Spec.builder(auth.url("/authorize"), auth.url("/token")).scopes(List.of("read", "numbers"))
+                .writeScopes(List.of("write")).writeReplaces(List.of("read")).keepGrantField("scope")
+                .revokeUrl(auth.url("/revoke")).build();
+    }
+
+    // Needs the read scope, or with Write on the write scope (as YouTubeConnectionPlugin's rule).
+    private static Optional<String> needsWhatItAsked(java.util.Set<String> granted, boolean write) {
+        if (!granted.contains("read") && !granted.contains("write")) return Optional.of("Cannot read.");
+        if (write && !granted.contains("write")) return Optional.of("Cannot post.");
+        return Optional.empty();
+    }
+
+    @Test
+    @DisplayName("with Write on, the sign-in asks the write scope without the read scope it covers")
+    void writeScopeReplacesRead() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 0);
+        ConnectorConnection reader = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        ConnectorConnection writer = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        writer.setAllowWrite(true);
+
+        assertThat(query(service.start(null, reader.getId(), "http://localhost/cb").authorizeUrl())).containsEntry("scope", "read numbers");
+        assertThat(query(service.start(null, writer.getId(), "http://localhost/cb").authorizeUrl())).containsEntry("scope", "numbers write");
+    }
+
+    @Test
+    @DisplayName("granular consent: a grant missing what the connection needs is kept but needs a new sign-in, with the reason; a whole one is connected")
+    void partialConsentNeedsSignIn() {
+        useYouTubeLike(youTubeSpec(), OAuth2ConnectionServiceTest::needsWhatItAsked, 0);
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        c.setAllowWrite(true);
+        // The person unticked the write scope on the consent screen.
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600,'scope':'numbers'}");
+
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.INCOMPLETE);
+        assertThat(rows.get(c.getId()).getStatus()).isEqualTo(ConnectionStatus.NEEDS_RECONNECT);
+        assertThat(rows.get(c.getId()).getStatusDetail()).isEqualTo("Cannot read.");
+        assertThat(stored(c.getId())).containsEntry("accessToken", "at-1").containsEntry("scope", "numbers");
+        assertThat(rows.get(c.getId()).getConnectedAt()).isNotNull();
+
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-2','refresh_token':'rt-2','expires_in':3600,'scope':'read numbers'}");
+        assertThat(signIn(c)).as("reads, cannot post").isEqualTo(OAuth2ConnectionService.Outcome.INCOMPLETE);
+        assertThat(rows.get(c.getId()).getStatusDetail()).isEqualTo("Cannot post.");
+
+        // A later answer naming no scopes is judged on nothing - never on the scope the last grant left behind.
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-2b','refresh_token':'rt-2b','expires_in':3600}");
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-3','refresh_token':'rt-3','expires_in':3600,'scope':'numbers write'}");
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+        assertThat(rows.get(c.getId()).getStatus()).isEqualTo(ConnectionStatus.CONNECTED);
+        assertThat(rows.get(c.getId()).getStatusDetail()).isNull();
+
+        // An answer that names no scopes is not second-guessed.
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-4','refresh_token':'rt-4','expires_in':3600}");
+        assertThat(signIn(c)).isEqualTo(OAuth2ConnectionService.Outcome.CONNECTED);
+    }
+
+    @Test
+    @DisplayName("signing out revokes the grant at the service - the refresh token, once - and forgets it here")
+    void signOutRevokes() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 0);
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+        auth.on("POST", "/revoke").json("{}");
+        signIn(c);
+
+        service.signOut(null, c.getId());
+
+        assertThat(auth.requests("/revoke")).hasSize(1);
+        assertThat(query("http://x/?" + auth.requests("/revoke").get(0).body())).containsExactly(Map.entry("token", "rt-1"));
+        assertThat(stored(c.getId())).doesNotContainKeys("accessToken", "refreshToken");
+    }
+
+    @Test
+    @DisplayName("a revocation the service refuses never stops the sign-out; a service with no revoke address is not asked")
+    void revocationIsBestEffort() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 0);
+        ConnectorConnection c = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+        auth.on("POST", "/revoke").status(503).json("{}");
+        signIn(c);
+        service.signOut(null, c.getId());
+        assertThat(rows.get(c.getId()).getSecret()).doesNotContain("rt-1");
+
+        useSpec(OAuth2Spec.builder(auth.url("/authorize"), auth.url("/token")).build());
+        ConnectorConnection plain = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        auth.reset();
+        auth.on("POST", "/token").json("{'access_token':'at-1','refresh_token':'rt-1','expires_in':3600}");
+        signIn(plain);
+        service.signOut(null, plain.getId());
+        assertThat(auth.requests("/revoke")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("the built-in client's daily share: its requests are counted and one past the budget is answered as a spent quota, unsent; a person's own client is never counted")
+    void builtInDailyShare() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 50);
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("proxyma.oauth.builtin.confluence.client-id", "builtin-1")
+                .withProperty("proxyma.oauth.builtin.confluence.daily-units", "120");
+        service.setBuiltInClients(new BuiltInOAuthClients(env, false, false));
+        service.setBuiltInQuota(new BuiltInQuota(env, null, Clock.fixed(now, ZoneOffset.UTC)));
+        ConnectorConnection builtIn = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of());
+        builtIn.setSettingsJson(ConfigJson.write(Map.of()));
+        repository.save(builtIn);
+        ConnectorConnection own = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        URI reply = URI.create("https://www.googleapis.com/youtube/v3/comments");
+        org.springframework.http.HttpMethod post = org.springframework.http.HttpMethod.POST;
+
+        var tokens = service.tokensFor(builtIn.getId());
+        assertThat(tokens.refuseBeforeSending(post, reply)).isNull();
+        assertThat(tokens.refuseBeforeSending(post, reply)).isNull();
+        var refused = tokens.refuseBeforeSending(post, reply);
+        assertThat(refused).isNotNull();
+        assertThat(refused.status()).isEqualTo(403);
+        assertThat(ai.proxyma.core.connector.spi.GoogleError.reasons(refused)).contains("quotaExceeded", BuiltInQuota.REASON);
+
+        for (int i = 0; i < 5; i++) {
+            assertThat(service.tokensFor(own.getId()).refuseBeforeSending(post, reply))
+                    .as("the person's own project, their own quota").isNull();
+        }
+        // On a server with accounts there is no built-in client, so nothing is counted either.
+        OAuth2ConnectionService server = service(true);
+        server.setBuiltInQuota(new BuiltInQuota(env, null, Clock.fixed(now, ZoneOffset.UTC)));
+        assertThat(server.tokensFor(builtIn.getId()).refuseBeforeSending(post, reply)).isNull();
+    }
+
+    @Test
+    @DisplayName("past the spent share, a Test asking whose channel this is goes through a small reserve; anything else never does (2026-11-11)")
+    void identityFromTheReserve() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 1);
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("proxyma.oauth.builtin.confluence.client-id", "builtin-1")
+                .withProperty("proxyma.oauth.builtin.confluence.daily-units", "1");
+        service.setBuiltInClients(new BuiltInOAuthClients(env, false, false));
+        service.setBuiltInQuota(new BuiltInQuota(env, null, Clock.fixed(now, ZoneOffset.UTC)));
+        ConnectorConnection builtIn = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of());
+        builtIn.setSettingsJson(ConfigJson.write(Map.of()));
+        repository.save(builtIn);
+        URI channel = URI.create("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true");
+        URI threads = URI.create("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet");
+        org.springframework.http.HttpMethod get = org.springframework.http.HttpMethod.GET;
+        var tokens = service.tokensFor(builtIn.getId());
+        assertThat(tokens.refuseBeforeSending(get, threads)).as("the day's share").isNull();
+        assertThat(tokens.refuseBeforeSending(get, threads)).as("spent").isNotNull();
+        assertThat(OAuth2ConnectionService.asIdentityCheck(() -> tokens.refuseBeforeSending(get, channel)))
+                .as("a Test asking whose channel: the reserve").isNull();
+        assertThat(tokens.refuseBeforeSending(get, channel)).as("the same read outside a Test: never the reserve").isNotNull();
+        assertThat(OAuth2ConnectionService.asIdentityCheck(() -> tokens.refuseBeforeSending(get, threads)))
+                .as("a Test reading anything else: never the reserve").isNotNull();
+        for (int i = 1; i < BuiltInQuota.IDENTITY_RESERVE; i++) {
+            assertThat(OAuth2ConnectionService.asIdentityCheck(() -> tokens.refuseBeforeSending(get, channel))).isNull();
+        }
+        assertThat(OAuth2ConnectionService.asIdentityCheck(() -> tokens.refuseBeforeSending(get, channel)))
+                .as("the reserve spent too").isNotNull();
+    }
+
+    @Test
+    @DisplayName("a connection signed in through the built-in client stops when its add-on lapses - refused unsent, with why; a person's own client goes on (2026-11-11 review)")
+    void builtInClientOffAfterTheAddOn() {
+        useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 1);
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("proxyma.oauth.builtin.confluence.client-id", "builtin-1")
+                .withProperty("proxyma.oauth.builtin.confluence.requires-addon", "youtube-assistant");
+        BuiltInOAuthClients clients = new BuiltInOAuthClients(env, false, false);
+        java.util.concurrent.atomic.AtomicReference<java.util.Set<String>> inForce =
+                new java.util.concurrent.atomic.AtomicReference<>(java.util.Set.of("youtube-assistant"));
+        clients.setAddonsForTest(inForce::get);
+        service.setBuiltInClients(clients);
+        service.setBuiltInQuota(new BuiltInQuota(env, null, Clock.fixed(now, ZoneOffset.UTC)));
+        ConnectorConnection builtIn = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of());
+        builtIn.setSettingsJson(ConfigJson.write(Map.of()));
+        repository.save(builtIn);
+        ConnectorConnection own = connection(ConnectorConnection.LOCAL_OWNER, AuthKind.OAUTH2_CODE, Map.of("clientSecret", "cs"));
+        URI threads = URI.create("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet");
+        org.springframework.http.HttpMethod get = org.springframework.http.HttpMethod.GET;
+
+        assertThat(service.tokensFor(builtIn.getId()).refuseBeforeSending(get, threads)).as("add-on in force").isNull();
+        inForce.set(java.util.Set.of());
+        var off = service.tokensFor(builtIn.getId()).refuseBeforeSending(get, threads);
+        assertThat(off).isNotNull();
+        assertThat(off.status()).isEqualTo(403);
+        assertThat(off.text()).contains("only while its add-on is active");
+        assertThat(service.tokensFor(own.getId()).refuseBeforeSending(get, threads)).as("their own client").isNull();
     }
 }

@@ -47,7 +47,8 @@ class TurnActivityTest {
     @Test
     @DisplayName("the latest tool still in flight is the one shown; none once it ends; nothing once the turn ends")
     void toolsInFlight() {
-        TurnActivity activity = new TurnActivity();
+        long[] now = {0};
+        TurnActivity activity = new TurnActivity(() -> now[0]);
         assertThat(activity.of("c")).isNull();
         activity.toolStarted("c", "t0", "searchSources");
         assertThat(activity.of("c")).as("no turn runs, so a call outside one is not recorded").isNull();
@@ -61,11 +62,55 @@ class TurnActivityTest {
         assertThat(activity.of("c").tool()).isEqualTo("searchSources");
         activity.toolEnded("c", "t1");
         activity.toolEnded("c", "t1");
+        now[0] += TurnActivity.LINGER_MS;
         assertThat(activity.of("c").tool()).isNull();
 
         activity.toolStarted("c", "t3", "readSource");
         activity.end("c", turn);
         assertThat(activity.of("c")).as("the turn's end takes its calls with it").isNull();
+    }
+
+    @Test
+    @DisplayName("a call's subject: the keys a page names it by, short and scrubbed, gone when the call ends")
+    void subject() {
+        long[] now = {0};
+        TurnActivity activity = new TurnActivity(() -> now[0]);
+        Object turn = activity.begin("c");
+        activity.toolStarted("c", "t1", "searchIndexedSources",
+                "{\"query\":\"dizi keys\",\"limit\":5,\"content\":\"never this\"}");
+        assertThat(activity.of("c").subject()).isEqualTo("{\"query\":\"dizi keys\"}");
+        activity.toolEnded("c", "t1");
+        now[0] += TurnActivity.LINGER_MS;
+        assertThat(activity.of("c").subject()).as("no call in flight, no subject").isNull();
+
+        // A file is its NAME, never the path to it; an absolute path in a value is scrubbed.
+        activity.toolStarted("c", "t2", "read", "{\"path\":\"C:\\\\Users\\\\hau\\\\guides\\\\Bay loi hay gap.md\"}");
+        assertThat(activity.of("c").subject()).isEqualTo("{\"fileName\":\"Bay loi hay gap.md\"}");
+        activity.toolStarted("c", "t3", "webSearch", "{\"query\":\"see /home/hau/secret/notes.txt\"}");
+        assertThat(activity.of("c").subject()).doesNotContain("/home/hau");
+        activity.end("c", turn);
+        activity.begin("c");
+
+        // A REST passthrough keeps its API address; an id says nothing unless it is remember's.
+        assertThat(TurnActivity.subjectOf("callJiraApi", "{\"method\":\"GET\",\"path\":\"/rest/api/2/issue/SAI-1\"}"))
+                .isEqualTo("{\"method\":\"GET\",\"path\":\"/rest/api/2/issue/SAI-1\"}");
+        // A workspace file keeps its address in the project, which the page reads to say what the file
+        // holds and never shows; no bare name is made of it (2026-11-05).
+        assertThat(TurnActivity.subjectOf("readWorkspaceFile", "{\"path\":\"memory/channel.md\"}"))
+                .isEqualTo("{\"path\":\"memory/channel.md\"}");
+        assertThat(TurnActivity.subjectOf("getThing", "{\"id\":\"3f2a\"}")).isNull();
+        assertThat(TurnActivity.subjectOf("remember", "{\"id\":\"3f2a\",\"fact\":\"likes D5\"}"))
+                .isEqualTo("{\"fact\":\"likes D5\",\"id\":\"3f2a\"}");
+
+        // Bounded: a long value is cut, a huge call is not read, and something that is not JSON is nothing.
+        String longQuery = "x".repeat(5000);
+        assertThat(TurnActivity.subjectOf("webSearch", "{\"query\":\"" + longQuery + "\"}").length())
+                .isLessThanOrEqualTo(TurnActivity.SUBJECT_MAX);
+        assertThat(TurnActivity.subjectOf("saveToSource", "{\"title\":\"a\",\"content\":\"" + "y".repeat(70_000) + "\"}"))
+                .isNull();
+        assertThat(TurnActivity.subjectOf("webSearch", "not json")).isNull();
+        assertThat(TurnActivity.subjectOf("listYouTubeComments", "{\"videoId\":\"dQw4w9WgXcQ\",\"limit\":20}"))
+                .as("a bare id is no subject").isNull();
     }
 
     @Test
@@ -124,6 +169,28 @@ class TurnActivityTest {
                 });
 
         assertThat(seen).containsExactly("attempt", "rate-limited", "attempt", "rate-limited", "attempt");
+    }
+
+    @Test
+    @DisplayName("a call that ended is still named for a while, so a call answered between two looks is seen (2026-11-11)")
+    void endedCallLingers() {
+        long[] now = {1_000};
+        TurnActivity activity = new TurnActivity(() -> now[0]);
+        activity.begin("c");
+        activity.toolStarted("c", "t1", "listYouTubeChannelReplies", "{\"query\":\"flute\"}");
+        now[0] += 3;
+        activity.toolEnded("c", "t1");
+        assertThat(activity.of("c").tool()).as("answered in 3ms, still named").isEqualTo("listYouTubeChannelReplies");
+        assertThat(activity.of("c").subject()).isEqualTo("{\"query\":\"flute\"}");
+        now[0] += TurnActivity.LINGER_MS - 1;
+        assertThat(activity.of("c").tool()).isEqualTo("listYouTubeChannelReplies");
+        now[0] += 1;
+        assertThat(activity.of("c").tool()).as("then the turn is thinking again").isNull();
+
+        activity.toolStarted("c", "t2", "getYouTubeChannelStats");
+        activity.toolEnded("c", "t2");
+        activity.toolStarted("c", "t3", "listYouTubeVideos");
+        assertThat(activity.of("c").tool()).as("a call in flight comes before one that ended").isEqualTo("listYouTubeVideos");
     }
 
     @Test

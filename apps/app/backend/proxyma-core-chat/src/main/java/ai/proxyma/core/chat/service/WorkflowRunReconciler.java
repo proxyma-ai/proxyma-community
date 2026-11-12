@@ -37,7 +37,7 @@ class WorkflowRunReconciler {
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowRunReconciler.class);
 
-    private static final String MESSAGE = "Interrupted by a restart.";
+    private static final String MESSAGE = "Interrupted when Proxyma restarted.";
 
     private final WorkflowRunRepository repository;
 

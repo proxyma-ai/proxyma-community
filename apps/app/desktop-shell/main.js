@@ -181,7 +181,7 @@ function createWindow() {
     // The field color of the appearance the OS asks for - System resolves a dark OS to Dark - so
     // the first frame before the page paints is not a white flash on a dark desktop. Matches
     // Dark's and Light's --field-base in proxyma-tokens.css.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#101011' : '#e9ecee',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#181818' : '#e9ecee',
     show: false,
     webPreferences: {
       contextIsolation: true,

@@ -62,17 +62,9 @@ public class AgentTools {
     }
 
     @Tool(name = DEPLOY, description = """
-            Deploy an agent to work on a task on its own, in a conversation of its own, with your tools \
-            and your access (never more). It sees none of this conversation: write the task so it can \
-            act without asking - the goal, exact identifiers (keys, ids, paths, URLs copied character \
-            for character), what its report must contain. Returns at once; its report arrives later as \
-            a message beginning "[Report from". Carry on or end your turn; call awaitAgents only when \
-            your next step needs the report. lifetime SHORT (default) ends with its report; LONG stays \
-            after it for more work you give it with tellAgent, until you dismiss it. budgetUsd and minutes \
-            bound what it and the agents it deploys may spend and how long they may take: past either, \
-            they stop and you are told. verify true has a verifier check every claim of its report \
-            against the cited sources before the report reaches you, with the scorecard under it. For the \
-            same task over many items, use deployAgents.""")
+            Deploy an agent for one self-contained part of the work. It sees nothing of this \
+            conversation: give the goal, exact ids/paths/URLs, and what to report. Returns at once; the report \
+            arrives as a message beginning "[Report from". Use awaitAgents only if your next step needs it.""")
     @ToolResult({
             @ToolResultField(name = "agentId", type = ToolFieldType.STRING,
                     description = "The new agent's id: its reports name it, and tellAgent, awaitAgents and controlAgent take it."),
@@ -80,55 +72,50 @@ public class AgentTools {
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happens next.")
     })
     public Map<String, Object> deployAgent(
-            @ToolParam(required = true, description = "2-6 word title the user sees, e.g. 'Compare release notes'") String title,
-            @ToolParam(required = true, description = "Its task, complete: goal, identifiers, context, what to report and in what shape") String task,
-            @ToolParam(required = false, description = "SHORT (default): done after its report. LONG: stays for more work until dismissed") String lifetime,
-            @ToolParam(required = false, description = "A model of its own, only when the user asked for one: a name a provider lists and Settings allow - a name it does not know is refused with the ones you may use. Left out, it runs on the default") String model,
-            @ToolParam(required = false, description = "What it and the agents it deploys may spend, in US dollars") Double budgetUsd,
-            @ToolParam(required = false, description = "Minutes it and the agents it deploys have before they are stopped") Integer minutes,
-            @ToolParam(required = false, description = "true: a verifier checks its report's claims against their sources first") Boolean verify,
-            @ToolParam(required = false, description = "Files of yours it needs - names in your outputs/ or attachments/ - copied into its attachments") List<String> files) {
+            @ToolParam(required = true, description = "2-6 word title the user sees") String title,
+            @ToolParam(required = true, description = "The whole task: goal, exact identifiers, what to report") String task,
+            @ToolParam(required = false, description = "SHORT (default) ends with its report; LONG stays for more work until dismissed") String lifetime,
+            @ToolParam(required = false, description = "Only if the user asked for one: a model name") String model,
+            @ToolParam(required = false, description = "Spend cap in USD, for it and its agents") Double budgetUsd,
+            @ToolParam(required = false, description = "Time cap in minutes, for it and its agents") Integer minutes,
+            @ToolParam(required = false, description = "true: its claims are checked against their sources first") Boolean verify,
+            @ToolParam(required = false, description = "Names of your files (outputs/, attachments/) to copy to it") List<String> files) {
         return tree.deploy(SearchContext.getConversationId(), SearchContext.getUserId(),
                 new AgentTree.Deploy(title, task, lifetime, null, model, budgetUsd, minutes, Boolean.TRUE.equals(verify), files));
     }
 
     @Tool(name = HAND_FILE, description = """
-            Hand a file you made (outputs/) or were given (attachments/) to another agent: to "parent" - \
-            your table, chart or draft for the agent that deployed you, instead of pasting it into your \
-            report - or to an agent you deployed, by its agentId. It is copied into their attachments, \
-            where their scripts read it, and they are told. Name it as it is in your folder.""")
+            Copy a file of yours (outputs/ or attachments/) into another agent's attachments, and \
+            tell it: "parent", or an agent you deployed. Use it instead of pasting a file into a report.""")
     @ToolResult({
             @ToolResultField(name = "name", type = ToolFieldType.STRING, description = "Its name in the recipient's attachments."),
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happened.")
     })
     public Map<String, Object> handFile(
-            @ToolParam(required = true, description = "The file's name, e.g. exposure.csv") String name,
-            @ToolParam(required = true, description = "\"parent\", or the agentId of an agent you deployed") String to,
-            @ToolParam(required = false, description = "What it is and how to read it, in a sentence") String note) {
+            @ToolParam(required = true, description = "Its name in your folder, e.g. exposure.csv") String name,
+            @ToolParam(required = true, description = "\"parent\", or an agentId you deployed") String to,
+            @ToolParam(required = false, description = "One sentence: what it is") String note) {
         return files.hand(SearchContext.getConversationId(), SearchContext.getUserId(), name, to, note);
     }
 
     @Tool(name = DEPLOY_MANY, description = """
-            Run the same task over a list: one agent per item (an ECU, an account, a contract, a \
-            repository), at most maxParallel at a time (default 4, most 8) and queued past every cap, \
-            up to 200 items. Write the task once with {item} where each item goes; each agent sees only \
-            its own. Returns a fanOutId at once; ONE report with every item's result arrives later as a \
-            message beginning "[Report from <title>" - each item's report cut short, readAgentReport \
-            gives one in full. awaitAgents with the fanOutId waits for it; controlAgent stop stops it.""")
+            Run one task over a list: one agent per item, up to 200 items, maxParallel at a \
+            time. Put {item} in the task where each item goes. Returns a fanOutId at once; ONE report with every \
+            item arrives as a message beginning "[Report from". readAgentReport gives one item's report in full.""")
     @ToolResult({
             @ToolResultField(name = "fanOutId", type = ToolFieldType.STRING, description = "The fan-out's id, for awaitAgents and controlAgent."),
             @ToolResultField(name = "total", type = ToolFieldType.INTEGER, description = "How many items."),
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happens next.")
     })
     public Map<String, Object> deployAgents(
-            @ToolParam(required = true, description = "2-6 word title for the whole run, e.g. 'Check each ECU'") String title,
-            @ToolParam(required = true, description = "The task for every item, complete, with {item} where the item goes") String task,
-            @ToolParam(required = true, description = "The items, one entry each - written exactly as each agent should see it") List<String> items,
-            @ToolParam(required = false, description = "How many work at once, 1-8 (default 4)") Integer maxParallel,
-            @ToolParam(required = false, description = "What each item's agent may spend, in US dollars") Double budgetUsdEach,
-            @ToolParam(required = false, description = "Minutes each item's agent has") Integer minutesEach,
-            @ToolParam(required = false, description = "true: each item's report is checked by a verifier first") Boolean verify,
-            @ToolParam(required = false, description = "A model for them, only when the user asked for one: a name a provider lists and Settings allow") String model) {
+            @ToolParam(required = true, description = "2-6 word title for the run") String title,
+            @ToolParam(required = true, description = "The task for every item, with {item} where the item goes") String task,
+            @ToolParam(required = true, description = "The items, each as its agent should see it") List<String> items,
+            @ToolParam(required = false, description = "1-8 at once (default 4)") Integer maxParallel,
+            @ToolParam(required = false, description = "Spend cap in USD per item") Double budgetUsdEach,
+            @ToolParam(required = false, description = "Time cap in minutes per item") Integer minutesEach,
+            @ToolParam(required = false, description = "true: each report is checked first") Boolean verify,
+            @ToolParam(required = false, description = "Only if the user asked for one: a model name") String model) {
         String badModel = tree.modelRefusal(model);
         if (badModel != null) return Map.of("success", false, "error", badModel);
         List<AgentFanOuts.Item> list = new java.util.ArrayList<>();
@@ -146,8 +133,8 @@ public class AgentTools {
     }
 
     @Tool(name = READ_REPORT, description = """
-            The latest report of an agent you deployed, or one yours deployed, in full - with its \
-            verifier's scorecard when it was checked, and why it stopped when the tree stopped it.""")
+            An agent's latest report in full - yours or one your agents deployed - with its \
+            verifier's scorecard if it was checked.""")
     @ToolResult({
             @ToolResultField(name = "report", type = ToolFieldType.STRING, description = "The report, whole."),
             @ToolResultField(name = "verification", type = ToolFieldType.STRING, description = "The scorecard, as JSON, when checked.")
@@ -158,34 +145,31 @@ public class AgentTools {
     }
 
     @Tool(name = VERIFY, description = """
-            Have a verifier check a report already delivered - every factual claim against the source it \
-            cites: supported, unsupported or uncited. Returns at once; the scorecard arrives as a message \
-            beginning "[Report from Check:", and is kept on the agent's card.""")
+            Have a verifier check a delivered report's claims against their cited sources. Returns \
+            at once; the scorecard arrives as a message beginning "[Report from Check:".""")
     @ToolResult({
             @ToolResultField(name = "agentId", type = ToolFieldType.STRING, description = "The verifier's id, for awaitAgents."),
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happens next.")
     })
     public Map<String, Object> verifyReport(
-            @ToolParam(required = true, description = "The agentId of the agent whose report to check") String agentId) {
+            @ToolParam(required = true, description = "The agentId whose report to check") String agentId) {
         return verifier.verifyReport(SearchContext.getConversationId(), agentId);
     }
 
     @Tool(name = DELIBERATE, description = """
-            Put a hard question to a panel of 2-7 agents, each with a brief of its own (a skeptic, the \
-            safety engineer, the customer's counsel): each argues from evidence and votes; from round 2 \
-            each reads the others and keeps or changes its vote. Returns a deliberationId at once; the \
-            tally and the final arguments arrive as a message beginning "[Report from Deliberation". Then \
-            YOU decide and call recordDecision - whoever voted otherwise is kept on record as dissent.""")
+            Put a hard question to a panel of 2-7 agents with different briefs; they argue from \
+            evidence and vote, round by round. Returns a deliberationId at once; the tally arrives as a message \
+            beginning "[Report from Deliberation". Then decide yourself with recordDecision.""")
     @ToolResult({
             @ToolResultField(name = "deliberationId", type = ToolFieldType.STRING, description = "For awaitAgents and recordDecision."),
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happens next.")
     })
     public Map<String, Object> deliberate(
-            @ToolParam(required = true, description = "The question, complete: what is decided, the evidence to use, identifiers") String question,
-            @ToolParam(required = true, description = "The panelists, one entry each: \"Name: brief\"") List<String> panel,
-            @ToolParam(required = false, description = "The choices they vote among; none for a free answer") List<String> options,
-            @ToolParam(required = false, description = "Rounds, 1-3 (default 2)") Integer rounds,
-            @ToolParam(required = false, description = "A model for the panel, only when the user asked for one: a name a provider lists and Settings allow") String model) {
+            @ToolParam(required = true, description = "The whole question: what is decided, the evidence, identifiers") String question,
+            @ToolParam(required = true, description = "One entry per panelist: \"Name: brief\"") List<String> panel,
+            @ToolParam(required = false, description = "Choices to vote among; none for a free answer") List<String> options,
+            @ToolParam(required = false, description = "1-3 rounds (default 2)") Integer rounds,
+            @ToolParam(required = false, description = "Only if the user asked for one: a model name") String model) {
         String badModel = tree.modelRefusal(model);
         if (badModel != null) return Map.of("success", false, "error", badModel);
         return deliberations.start(SearchContext.getConversationId(), SearchContext.getUserId(), question, options, panel,
@@ -193,8 +177,7 @@ public class AgentTools {
     }
 
     @Tool(name = DECIDE, description = """
-            Record your decision on a finished deliberation, and why. The panelists whose final vote \
-            differs are kept on record as dissent, and returned.""")
+            Record your decision on a finished deliberation, and why. Returns who voted otherwise.""")
     @ToolResult({
             @ToolResultField(name = "decision", type = ToolFieldType.STRING, description = "The decision as kept."),
             @ToolResultField(name = "dissent", type = ToolFieldType.STRING_ARRAY, description = "Who voted otherwise, and how.")
@@ -202,31 +185,28 @@ public class AgentTools {
     public Map<String, Object> recordDecision(
             @ToolParam(required = true, description = "The deliberationId") String deliberationId,
             @ToolParam(required = true, description = "The decision, in a few words") String decision,
-            @ToolParam(required = true, description = "Why - the evidence and the arguments that carried it") String rationale) {
+            @ToolParam(required = true, description = "Why: the evidence and arguments") String rationale) {
         return deliberations.decide(SearchContext.getConversationId(), deliberationId, decision, rationale);
     }
 
     @Tool(name = TELL, description = """
-            Message another agent: to "parent" (the agent that deployed you - a question it must answer, \
-            or progress it needs now), or an agent you deployed by its agentId (more information, a \
-            change of course, the answer to its question, new work for a LONG agent). It reads it at \
-            its next step; its answer arrives as a message to you. Do not ask how it is doing - its \
-            report comes by itself.""")
+            Message "parent" (the agent that deployed you) or an agent you deployed: more information, \
+            a change of course, an answer, new work for a LONG agent. Its reply arrives as a message. Do not ask \
+            for status: reports come by themselves.""")
     @ToolResult({
             @ToolResultField(name = "status", type = ToolFieldType.STRING, description = "Where the recipient stands."),
             @ToolResultField(name = "note", type = ToolFieldType.STRING, description = "What happens next.")
     })
     public Map<String, Object> tellAgent(
-            @ToolParam(required = true, description = "\"parent\", or the agentId of an agent you deployed") String to,
-            @ToolParam(required = true, description = "What to tell it, written to it") String message) {
+            @ToolParam(required = true, description = "\"parent\", or an agentId you deployed") String to,
+            @ToolParam(required = true, description = "The message, written to it") String message) {
         return tree.tell(SearchContext.getConversationId(), to, message);
     }
 
     @Tool(name = AWAIT, description = """
-            Wait for reports from agents you deployed - only when your very next step needs them. Waits \
-            at most timeoutSeconds (default and most 600); reports not in by then still arrive later \
-            as messages. With no agentIds, waits for every agent of yours that owes a report, and every \
-            fan-out and deliberation of yours still running; their ids may be named too.""")
+            Wait for your agents' reports - only when your next step needs them. Waits at most \
+            timeoutSeconds (default and most 600); later reports still arrive as messages. No agentIds: waits for \
+            all that owe a report, fan-outs and deliberations included.""")
     @ToolResult({
             @ToolResultField(name = "reports", type = ToolFieldType.OBJECT_ARRAY,
                     description = "One entry per agent that reported: agentId, title, status, report."),
@@ -241,17 +221,15 @@ public class AgentTools {
     }
 
     @Tool(name = CONTROL, description = """
-            Direct the agents you deployed, and theirs. action "list": your agents and where each \
-            stands. "pause": it stops after its current step and holds what reaches it. "resume": it \
-            carries on. "stop": it and everything it deployed end now. "dismiss": a LONG agent's work \
-            is done - it ends.""")
+            Direct your agents and theirs. action: list (where each stands), pause (after its \
+            current step), resume, stop (it and all it deployed, now), dismiss (end a LONG agent).""")
     @ToolResult({
             @ToolResultField(name = "status", type = ToolFieldType.STRING, description = "Where the agent stands now."),
             @ToolResultField(name = "agents", type = ToolFieldType.OBJECT_ARRAY, description = "For list: your agents.")
     })
     public Map<String, Object> controlAgent(
             @ToolParam(required = true, description = "list, pause, resume, stop or dismiss") String action,
-            @ToolParam(required = false, description = "The agent's agentId (or, for stop, a fanOutId or deliberationId); not needed for list") String agentId) {
+            @ToolParam(required = false, description = "The agentId (for stop, also a fanOutId or deliberationId); not for list") String agentId) {
         String conversationId = SearchContext.getConversationId();
         if (conversationId == null) return Map.of("success", false, "error", "There are no agents outside a conversation.");
         if ("list".equalsIgnoreCase(action == null ? "" : action.strip())) return tree.list(conversationId);
@@ -259,11 +237,9 @@ public class AgentTools {
     }
 
     @Tool(name = ALARM, description = """
-            Set an alarm to wake yourself later - to check on something, follow up, or continue work at \
-            a time. action "set" with inMinutes or at (ISO-8601 with offset) and a note saying what to \
-            do then: at that time the note reaches you as a message beginning "[Alarm", even if the \
-            user is gone. At least 1 minute and at most 30 days ahead. "list" shows yours; "cancel" \
-            takes an alarmId. Set one and end your turn rather than waiting.""")
+            Wake yourself later. action set: inMinutes or at (ISO-8601 with offset), and a note; then \
+            the note arrives as a message beginning "[Alarm". 1 minute to 30 days ahead. list: yours. cancel: by \
+            alarmId. Set one and end your turn instead of waiting.""")
     @ToolResult({
             @ToolResultField(name = "alarmId", type = ToolFieldType.STRING, description = "For set: the alarm's id."),
             @ToolResultField(name = "dueAt", type = ToolFieldType.STRING, description = "For set: when it goes off."),
@@ -271,10 +247,10 @@ public class AgentTools {
     })
     public Map<String, Object> alarm(
             @ToolParam(required = true, description = "set, list or cancel") String action,
-            @ToolParam(required = false, description = "For set: minutes from now") Integer inMinutes,
-            @ToolParam(required = false, description = "For set: an ISO-8601 time with offset, instead of inMinutes") String at,
-            @ToolParam(required = false, description = "For set: what to do when it goes off, written to yourself") String note,
-            @ToolParam(required = false, description = "For cancel: the alarmId") String alarmId) {
+            @ToolParam(required = false, description = "set: minutes from now") Integer inMinutes,
+            @ToolParam(required = false, description = "set: ISO-8601 time with offset, instead of inMinutes") String at,
+            @ToolParam(required = false, description = "set: what to do then, written to yourself") String note,
+            @ToolParam(required = false, description = "cancel: the alarmId") String alarmId) {
         String conversationId = SearchContext.getConversationId();
         String a = action == null ? "" : action.strip().toLowerCase(java.util.Locale.ROOT);
         return switch (a) {
@@ -286,20 +262,18 @@ public class AgentTools {
     }
 
     @Tool(name = BACKGROUND, description = """
-            Run one of your tools in the background and carry on: a long command, a slow fetch, a big \
-            read. action "run" with tool (its name) and arguments (its JSON arguments, as you would \
-            call it): returns a jobId at once, and the result arrives as a message beginning \
-            "[Background result". Writes still ask for approval as usual. "list" shows what runs; \
-            "cancel" takes a jobId.""")
+            Run one of your tools in the background and carry on. action run: tool (its name) and \
+            arguments (its JSON arguments); returns a jobId, and the result arrives as a message beginning \
+            "[Background result". Writes still need approval. list: what runs. cancel: by jobId.""")
     @ToolResult({
             @ToolResultField(name = "jobId", type = ToolFieldType.STRING, description = "For run: the job's id."),
             @ToolResultField(name = "jobs", type = ToolFieldType.OBJECT_ARRAY, description = "For list: what runs.")
     })
     public Map<String, Object> background(
             @ToolParam(required = true, description = "run, list or cancel") String action,
-            @ToolParam(required = false, description = "For run: the tool's name") String tool,
-            @ToolParam(required = false, description = "For run: the tool's arguments as a JSON object") String arguments,
-            @ToolParam(required = false, description = "For cancel: the jobId") String jobId) {
+            @ToolParam(required = false, description = "run: the tool's name") String tool,
+            @ToolParam(required = false, description = "run: the tool's arguments as a JSON object") String arguments,
+            @ToolParam(required = false, description = "cancel: the jobId") String jobId) {
         String conversationId = SearchContext.getConversationId();
         String a = action == null ? "" : action.strip().toLowerCase(java.util.Locale.ROOT);
         return switch (a) {

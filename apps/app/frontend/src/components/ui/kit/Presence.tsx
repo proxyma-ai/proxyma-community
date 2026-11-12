@@ -74,8 +74,10 @@ function PresenceBody({ exiting, enter, collapse, className, children }: {
   return (
     // An explicit `1fr` row: the keyframes name only the closed `0fr`, and from an implicit row
     // (`none`) there is nothing to interpolate - the height would flip at the halfway point.
-    <div {...exitingProps(exiting)} className={cn('grid grid-rows-[1fr]', exiting ? 'animate-collapse-out' : enter && 'animate-collapse-in', className)}>
-      <div className={cn('min-h-0', (exiting || !settled) && 'overflow-hidden')}>{children}</div>
+    // One column no wider than the box: a grid item's minimum is its content's, so a long line that only truncates
+    // (a reply's "In reply to ..." line, 2026-11-10) widened the card past the list and pushed its buttons out of view.
+    <div {...exitingProps(exiting)} className={cn('grid grid-rows-[1fr] grid-cols-[minmax(0,1fr)]', exiting ? 'animate-collapse-out' : enter && 'animate-collapse-in', className)}>
+      <div className={cn('min-h-0 min-w-0', (exiting || !settled) && 'overflow-hidden')}>{children}</div>
     </div>
   )
 }

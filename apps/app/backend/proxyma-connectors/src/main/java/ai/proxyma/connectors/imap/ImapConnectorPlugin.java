@@ -59,7 +59,7 @@ public class ImapConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.IMAP)
             .protocol(ConnectionProtocol.IMAP)
             .displayName("IMAP mailbox")
-            .description("Messages in the folders you choose of a mailbox that accepts a password over IMAP - the inbox by default.")
+            .description("Mail in the folders you choose, over IMAP.")
             .noun("IMAP mailbox", "IMAP mailboxes")
             .addTitle("Add an IMAP mailbox")
             .order(46)
@@ -67,15 +67,14 @@ public class ImapConnectorPlugin implements ConnectorPlugin {
             .mark("imap")
             .fields(
                     FieldSpec.list(FOLDERS, "Folders").defaultValue(INBOX).placeholder(INBOX)
-                            .help("Each folder to read, by its full name: INBOX, Sent, Projects/2026. A folder's "
-                                    + "subfolders are read only when they are named too."),
+                            .help("Full folder names: INBOX, Sent, Projects/2026."),
                     FieldSpec.text(SINCE, "Received since").placeholder("2025-01-01")
                             .pattern("\\d{4}-\\d{2}-\\d{2}")
-                            .help("Only messages received on or after this day, as YYYY-MM-DD. Empty reads them all."),
+                            .help("Only mail from this day on, as YYYY-MM-DD. Empty for all."),
                     FieldSpec.bool(ATTACHMENTS, "Attachments").defaultValue("true")
-                            .help("Read attached documents - PDF, Word, Excel, PowerPoint, text - as documents of their own."),
+                            .help("Read attachments as documents of their own."),
                     FieldSpec.list(DOMAINS, "Only these domains").placeholder("example.com").asAdvanced()
-                            .help("Only messages from or to an address at one of these domains. Empty reads every message."))
+                            .help("Only mail from or to these domains. Empty for all."))
             .capabilities(Capabilities.builder().incremental().cursor().liveRead().build())
             .syncEvery(Duration.ofMinutes(30))
             .docsAnchor("imap")

@@ -33,7 +33,7 @@ export function ChatHistoryModal({ activeId, onSelect, onClose, source, onDelete
             under it are inset to the same line (ChatSessionList). */}
         <DialogHeader
           title={t('Conversation history')}
-          subtitle={t('Conversations are kept for 7 days after their last activity. Pin one to keep it indefinitely.')}
+          subtitle={t('Kept for 7 days after last use. Pin one to keep it.')}
         />
         {/* The one region that scrolls: the list itself (ChatSessionList). */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">

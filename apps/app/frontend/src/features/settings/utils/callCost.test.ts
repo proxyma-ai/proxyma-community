@@ -11,6 +11,12 @@ test('a cost says where it came from', () => {
   assert.equal(costOrigin({ costSource: 'NONE', priced: false }), 'unpriced')
 })
 
+test('a call that used no tokens - it failed before the model answered - is nothing to price, not a missing price', () => {
+  assert.equal(costOrigin({ costSource: 'NONE', priced: false, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }), 'nothing')
+  assert.equal(costOrigin({ costSource: 'NONE', priced: false, inputTokens: 2, outputTokens: 0 }), 'unpriced')
+  assert.equal(costOrigin({ costSource: 'NONE', priced: false }), 'unpriced', 'no counts given: as before')
+})
+
 test('a row from before the cost source is read by whether it was priced', () => {
   assert.equal(costOrigin({ costSource: null, priced: true }), 'rate')
   assert.equal(costOrigin({ costSource: null, priced: false }), 'unpriced')

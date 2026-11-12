@@ -78,6 +78,14 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
         this.multiUser = multiUser;
     }
 
+    // The OAuth sign-ins, for revoking a deleted connection's grant; optional, so a test can build this without it.
+    private OAuth2ConnectionService signIns;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setSignIns(OAuth2ConnectionService signIns) {
+        this.signIns = signIns;
+    }
+
     /**
      * Everything a caller may set. Null means "unchanged" on update. {@code secret} is the token or
      * password; an OAuth connection's secret is written only by its sign-in, never through here.
@@ -186,6 +194,17 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
         return repository.findByIdAndOwnerId(id, ownerKey(userId)).map(this::toResolved);
     }
 
+    /**
+     * The names of a person's own connections, by id - read without a secret, for a page that only
+     * names one (a Constellations agent's pinned connection) and asks often.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> namesOwnedBy(String userId) {
+        Map<UUID, String> out = new java.util.LinkedHashMap<>();
+        for (ConnectorConnection c : repository.findByOwnerIdOrderByNameAsc(ownerKey(userId))) out.put(c.getId(), c.getName());
+        return out;
+    }
+
     /** All of the caller's connections of one protocol, the default first. */
     @Transactional(readOnly = true)
     public List<ResolvedConnection> resolveAll(String userId, ConnectionProtocol protocol) {
@@ -248,22 +267,59 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
         return toView(c);
     }
 
+    /**
+     * Names a connection still called {@code placeholder} after the account it signs in as, once that is known
+     * (2026-11-11, the maintainer: a channel connected while the daily YouTube limit was spent kept the name "YouTube" -
+     * its title is read later, by the next pass that reaches the channel). Nothing when the connection has been renamed,
+     * the name is blank, or another of the owner's connections already has it. Whether it was renamed.
+     */
+    @Transactional
+    public boolean nameAfterAccount(UUID id, String placeholder, String name) {
+        if (id == null || placeholder == null || name == null || name.isBlank()) return false;
+        ConnectorConnection c = repository.findById(id).orElse(null);
+        if (c == null || !placeholder.equals(c.getName())) return false;
+        String n = name.strip();
+        if (n.length() > MAX_NAME_CHARS) n = n.substring(0, MAX_NAME_CHARS).strip();
+        if (repository.findByOwnerIdAndNameIgnoreCase(c.getOwnerId(), n).filter(o -> !o.getId().equals(id)).isPresent()) {
+            return false;
+        }
+        c.setName(n);
+        repository.save(c);
+        log.info("[Connections] '{}' ({}) named after its account", n, c.getProtocol());
+        publish(c.getId(), false);
+        return true;
+    }
+
+    /** How many sources read through one of the caller's connections, and the first few by name. */
+    public record UsageView(long sources, List<String> names) {}
+
+    /** The names a deletion warning shows before it says how many more there are. */
+    static final int USAGE_NAMES = 5;
+
+    /** The sources reading through one of the caller's own connections - for the warning before it is deleted. */
+    @Transactional(readOnly = true)
+    public UsageView usage(String userId, UUID id) {
+        requireOwned(userId, id);
+        ConnectionUsage counter = usage.getIfAvailable();
+        if (counter == null) return new UsageView(0, List.of());
+        long using = counter.sourcesUsing(id);
+        return new UsageView(using, using == 0 ? List.of() : counter.sourceNamesUsing(id, USAGE_NAMES));
+    }
+
+    /**
+     * Deletes one of the caller's connections - IN USE OR NOT, since 2026-11-03 (ConnectionUsage). The
+     * sources reading through it are kept with everything they indexed and are told their connection
+     * is gone; a saved agent pinned to it falls back to the default connection (ActiveServers.pinned).
+     * Nothing else is cascaded.
+     */
     @Transactional
     public void delete(String userId, UUID id) {
         ConnectorConnection c = requireOwned(userId, id);
         ConnectionUsage counter = usage.getIfAvailable();
         long using = counter == null ? 0 : counter.sourcesUsing(id);
-        // Two whole sentences rather than one assembled from "source"/"sources" and "it"/"them":
-        // the page translates a refusal as a sentence (tools/i18n/server-messages.mjs), and a
-        // word chosen by a ternary reaches it as a value it cannot translate.
-        if (using == 1) {
-            throw new InvalidConnectionException("'" + c.getName()
-                    + "' is used by 1 source. Remove it from Sources first.");
-        }
-        if (using > 1) {
-            throw new InvalidConnectionException("'" + c.getName() + "' is used by " + using
-                    + " sources. Remove them from Sources first.");
-        }
+        // Its access removed at the service too, where the service has a way (Google's revoke endpoint):
+        // YouTube's policies ask that removing access in the app removes it, not just forgets it here.
+        if (signIns != null) signIns.revokeGrant(c);
         repository.delete(c);
         repository.flush();
         if (c.isDefaultConnection()) {
@@ -276,7 +332,9 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
                         repository.save(next);
                     });
         }
-        log.info("[Connections] deleted '{}' ({})", c.getName(), c.getProtocol());
+        if (using > 0) counter.connectionDeleted(id);
+        log.info("[Connections] deleted '{}' ({}); {} source(s) left without a connection",
+                c.getName(), c.getProtocol(), using);
         audit(c, "connection.removed", "Connection removed: " + c.getName(), null);
         publish(id, true);
     }
@@ -553,6 +611,8 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
             return;
         }
         ProtocolDescriptor d = describe(p);
+        // What the sign-in was given for, before this edit - see forgetGrantIfClientChanged.
+        SignInClient before = c.getId() == null ? null : signInClient(c, d);
         if (p == ConnectionProtocol.NETWORK_SHARE) {
             if (input.baseUrl() != null) c.setBaseUrl(FileServerHost.normalize(input.baseUrl()));
         } else if (d.hasBaseUrl()) {
@@ -582,6 +642,49 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
         }
         if (input.allowRead() != null) c.setAllowRead(input.allowRead());
         if (input.allowWrite() != null) c.setAllowWrite(d.supportsWrite() && input.allowWrite());
+        if (before != null) forgetGrantIfClientChanged(c, before, signInClient(c, d));
+    }
+
+    /**
+     * What a browser sign-in (OAUTH2_CODE) through the generic flow was given for: the method, the
+     * address, the method's settings (its client id - and a Zendesk subdomain, which is where it signs
+     * in) and its typed secrets (the client secret). Null for a connection that does not sign in that
+     * way, or whose service signs in through a flow of its own (Microsoft 365: no client on the row).
+     */
+    private record SignInClient(String method, String baseUrl, Map<String, String> settings, Map<String, String> secrets) {}
+
+    private SignInClient signInClient(ConnectorConnection c, ProtocolDescriptor d) {
+        AuthMethod method = d.auth(storedKind(c));
+        if (method.kind() != AuthKind.OAUTH2_CODE || method.secretFields().isEmpty()) return null;
+        Map<String, String> stored = ConfigJson.parse(decryptQuietly(c.getSecret()));
+        Map<String, String> typed = new java.util.LinkedHashMap<>();
+        for (ai.proxyma.core.connector.spi.FieldSpec f : method.secretFields()) {
+            if (stored.get(f.key()) != null) typed.put(f.key(), stored.get(f.key()));
+        }
+        return new SignInClient(method.kind().name(), c.getBaseUrl(), ConfigJson.parse(c.getSettingsJson()), typed);
+    }
+
+    /**
+     * A CHANGED CLIENT FORGETS THE SIGN-IN (2026-11-03, the maintainer replaced a deleted Google Cloud
+     * OAuth client on his YouTube connections). The grant was issued to the old client - for the old
+     * address, the old method - and its refresh would be refused by the new one, or worse, sent where it
+     * was never meant to go: the rule an MCP server's change of address keeps (applyMcp). So the grant is
+     * dropped, the connection reads as not signed in, and the dialog offers the sign-in again. An edit that
+     * sends the same values - a secret pasted again - changes nothing and keeps it.
+     */
+    private void forgetGrantIfClientChanged(ConnectorConnection c, SignInClient before, SignInClient after) {
+        if (after != null && after.equals(before)) return;
+        Map<String, String> secret = new java.util.LinkedHashMap<>(ConfigJson.parse(decryptQuietly(c.getSecret())));
+        boolean held = OAuth2ConnectionService.GRANT_KEYS.stream().anyMatch(secret::containsKey);
+        if (!held && c.getStatus() == null && c.getConnectedAt() == null) return;
+        OAuth2ConnectionService.GRANT_KEYS.forEach(secret::remove);
+        if (held) c.setSecret(secret.isEmpty() ? null : encryption.encrypt(ConfigJson.write(secret)));
+        c.setStatus(null);
+        c.setStatusDetail(null);
+        c.setConnectedAt(null);
+        c.setAccountLabel(null);
+        c.setAccountJson(null);
+        log.info("[Connections] '{}' changed its sign-in client; its sign-in was forgotten", c.getName());
     }
 
     /**
@@ -842,7 +945,8 @@ public class ConnectorConnectionService implements ai.proxyma.core.connector.net
                 c.getStatus(), c.getStatusDetail(), c.getAccountLabel(), c.getConnectedAt(), null,
                 method.kind().name(), ConfigJson.parse(c.getSettingsJson()), List.copyOf(configured),
                 catalog.sourceTypes(c.getProtocol(), method.kind()).stream().map(ConnectorType::wireName)
-                        .distinct().toList());
+                        .distinct().toList(),
+                oauth && signIns != null ? signIns.lastFailure(c.getId()).orElse(null) : null);
     }
 
     // An MCP server as its owner reads it back: the bearer token masked like any token, header and

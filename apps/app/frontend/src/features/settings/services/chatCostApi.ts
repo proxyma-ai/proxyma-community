@@ -39,6 +39,27 @@ export interface LlmCallRow {
   cacheOutcome?: string | null
   /** Until when what the call read or wrote stays cached (ISO); null with no outcome. */
   cacheWarmUntil?: string | null
+  /** The conversation the call was made for - an agent's; null for a call made for none. */
+  conversationId?: string | null
+  /** The agent it was for ("Project / Agent", a deployed agent's title), looked up when read; null for none. */
+  agent?: string | null
+  /** How that agent's work started (LlmCallLabels.TRIGGER_*: schedule, message, note ...); null when unknown. */
+  trigger?: string | null
+}
+
+/** One conversation's calls in the period: what one agent's work cost (`byConversation`). */
+export interface LlmCallConversationGroup {
+  conversationId: string
+  agent?: string | null
+  trigger?: string | null
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  costUsd: number
+  firstAt?: string | null
+  lastAt?: string | null
 }
 
 /** One column of the cost-over-time chart: a calendar day or month in the reader's zone. */
@@ -97,6 +118,8 @@ export interface LlmCallsPage {
   seriesUnit: 'day' | 'month'
   /** Admins only - absent when the viewer sees only their own calls. */
   bySubject?: LlmCallSubjectGroup[]
+  /** The period's costliest conversations, for the log's conversation filter. Absent from an older server. */
+  byConversation?: LlmCallConversationGroup[]
   /** The window split by cost center, summed from the series - see LlmCallBucket.userUsd. */
   userUsd?: number
   platformUsd?: number
@@ -132,6 +155,8 @@ export interface LlmCallsQuery {
   /** The log's sort column (LlmCallsController.SORTABLE) and direction - sorted on the server. */
   sort?: string
   dir?: 'asc' | 'desc'
+  /** One conversation's calls only - an agent's. */
+  conversation?: string
 }
 
 function callParams(q: LlmCallsQuery) {
@@ -147,6 +172,7 @@ function callParams(q: LlmCallsQuery) {
     ...(q.tz ? { tz: q.tz } : {}),
     ...(q.q ? { q: q.q } : {}),
     ...(q.sort ? { sort: q.sort, dir: q.dir ?? 'desc' } : {}),
+    ...(q.conversation ? { conversation: q.conversation } : {}),
   }
 }
 
@@ -160,12 +186,18 @@ export const llmCallsApi = {
     }).then(r => r.data),
   log: (q: LlmCallsQuery) =>
     http.get<LlmCallsLog>('/api/v1/usage/calls', { params: { ...callParams(q), include: 'log' } }).then(r => r.data),
-  /** The log as a file under these filters - every page of it, up to the server's row limit. */
-  export: (q: Omit<LlmCallsQuery, 'page' | 'size'>, format: 'csv' | 'json') =>
+  /**
+   * The log as a file under these filters - every page of it, up to the server's row limit. Grouped
+   * by conversation, one row per conversation instead: what each agent's work cost.
+   */
+  export: (q: Omit<LlmCallsQuery, 'page' | 'size'>, format: 'csv' | 'json', groupBy?: 'conversation') =>
     http.get<Blob>('/api/v1/usage/calls/export', {
-      params: { ...callParams({ ...q, page: 0, size: 0 }), page: undefined, size: undefined, format },
+      params: {
+        ...callParams({ ...q, page: 0, size: 0 }), page: undefined, size: undefined, format,
+        ...(groupBy ? { groupBy } : {}),
+      },
       responseType: 'blob',
-    }).then(r => saveLogExport(r, `proxyma-llm-calls.${format}`)),
+    }).then(r => saveLogExport(r, groupBy ? `proxyma-llm-calls-by-conversation.${format}` : `proxyma-llm-calls.${format}`)),
   /** Deletes every recorded call. Refused unless `canClear` said otherwise. */
   clear: () => http.delete<{ deleted: number }>('/api/v1/usage/calls').then(r => r.data),
 }

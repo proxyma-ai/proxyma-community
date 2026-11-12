@@ -1,4 +1,6 @@
-import type { EditionRoute, EditionSignIn, EditionSourceDialog } from './types'
+import type { WorkingAgent } from '@/hooks/useWorkingAgents'
+import type { EditionMention, EditionRoute, EditionSignIn, EditionSourceDialog } from './types'
+import type { Walkthrough } from '@/features/tour/data/tourSteps'
 
 /**
  * The COMMUNITY edition: Desktop and the Home Server. What `@edition` resolves to in every build
@@ -16,6 +18,31 @@ export function useKeyAccountsShown(): boolean {
 export function useConstellationsShown(): boolean {
   return false
 }
+
+/** The edition's walkthroughs, and which stands in for the product's first-run tour. None here. */
+export function useEditionWalkthroughs(): { first: string | null | undefined; tours: Walkthrough[] } {
+  return NO_WALKTHROUGHS
+}
+const NO_WALKTHROUGHS: { first: null; tours: Walkthrough[] } = { first: null, tours: [] }
+
+/** Whether the header lists the YouTube assistant. Never, here: it is an add-on. */
+export function useYouTubeAssistantShown(): boolean {
+  return false
+}
+
+/** Agents of the edition's own pages working out of sight, for the menu's dots. None here. */
+export function useEditionWorkingAgents(): WorkingAgent[] {
+  return NO_WORKING
+}
+
+const NO_WORKING: WorkingAgent[] = []
+
+/** What the composer's @ list offers beside the sources. Nothing here: the sources are all there is. */
+export function useEditionMentions(): EditionMention[] {
+  return NO_MENTIONS
+}
+
+const NO_MENTIONS: EditionMention[] = []
 
 /** Whether this deployment offers key accounts. Never, here. */
 export function useKeyAccountsAllowed(): boolean | undefined {

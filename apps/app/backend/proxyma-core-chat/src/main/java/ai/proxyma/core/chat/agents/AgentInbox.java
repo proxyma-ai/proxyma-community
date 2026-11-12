@@ -1,5 +1,6 @@
 package ai.proxyma.core.chat.agents;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.model.AgentInboxEntry;
 import ai.proxyma.core.chat.repository.AgentInboxRepository;
 import org.slf4j.Logger;
@@ -58,7 +59,19 @@ public class AgentInbox {
          * workspace memory (ChatModule.memoryContext). Written into the conversation at the step
          * that has no copy in view, never posted: it wakes nobody.
          */
-        MEMORY("Workspace memory");
+        MEMORY("Workspace memory"),
+        /**
+         * A teammate's answer to a message the agent sent - a product module's (Constellations'
+         * "[Reply from X]"), handed over as the module's pending input or as a turn's opening, never
+         * posted here. Named so the transcript draws it as mail, never as the person's own words.
+         */
+        REPLY("Reply from"),
+        /**
+         * What the agent told the person from another of its conversations - a project lead's
+         * tellPerson - written into the person's own conversation with it (ChatService.writeNote),
+         * never posted: it wakes nobody, so no turn is spent on words the agent wrote itself.
+         */
+        TOLD("You told the person");
 
         private final String heading;
 
@@ -225,33 +238,75 @@ public class AgentInbox {
         return false;
     }
 
+    // Every kind's heading as render writes it: "[<heading>[ <title>][ (agent <id>)]]", a line of its own.
     private static final java.util.regex.Pattern HEADING = java.util.regex.Pattern.compile(
-            "(?m)^\\[(Report from|Message from|Alarm|Background result|The user talked to|Approval|Context|Workspace memory)(?: (.*?))?"
-                    + "(?: \\(agent ([0-9a-fA-F-]{36})\\))?\\]$");
+            "(?m)^\\[(" + String.join("|", java.util.Arrays.stream(Kind.values())
+                    .map(k -> java.util.regex.Pattern.quote(k.heading())).toList())
+                    + ")(?: (.*?))?(?: \\(agent ([0-9a-fA-F-]{36})\\))?\\]$");
 
-    /** What a stored inbox message carries, in order, as {agentId, title, kind} - for the transcript. */
-    public static List<String[]> entriesIn(String content) {
-        List<String[]> out = new ArrayList<>();
+    /**
+     * One item of a stored inbox message as the transcript reads it: whom it is from, what it is - its
+     * {@link Kind} in lower case (report, message, reply, told ...) - and the text under its heading.
+     */
+    public record Item(String agentId, String title, String kind, String text) {}
+
+    /** What a stored inbox message carries, in order - for the transcript. */
+    public static List<Item> itemsIn(String content) {
+        List<Item> out = new ArrayList<>();
         if (content == null) return out;
         java.util.regex.Matcher m = HEADING.matcher(content);
+        String[] head = null;
+        int bodyStart = 0;
         while (m.find()) {
-            String kind = switch (m.group(1)) {
-                case "Report from" -> "report";
-                case "Message from" -> "message";
-                case "Alarm" -> "alarm";
-                case "Background result" -> "background";
-                case "Approval" -> "approval";
-                case "Context" -> "context";
-                case "Workspace memory" -> "memory";
-                default -> "user_talk";
-            };
-            out.add(new String[] {m.group(3), m.group(2), kind});
+            if (head != null) out.add(item(head, content.substring(bodyStart, m.start())));
+            head = new String[] {m.group(3), m.group(2), kindOf(m.group(1))};
+            bodyStart = Math.min(content.length(), m.end() + 1);
         }
+        if (head != null) out.add(item(head, content.substring(bodyStart)));
         return out;
     }
 
+    /** The most of an item's text the thread is given; the agent's own copy is whole. */
+    public static final int SHOWN_TEXT_MAX = 8_000;
+
+    /**
+     * Whether the thread shows an item's text: words meant to be read - a message, a teammate's reply,
+     * what the agent told the person. A deployed agent's report is read in its own panel, and an alarm,
+     * a background result, a decision, a context note or the workspace memory only say that they came.
+     */
+    public static boolean carriesText(String kind) {
+        return "message".equals(kind) || "reply".equals(kind) || "told".equals(kind);
+    }
+
+    /** The text the thread shows for an item, or null when its kind shows none. */
+    public static String shownText(String kind, String text) {
+        return carriesText(kind) ? shownWords(text) : null;
+    }
+
+    /** Words the thread shows, whatever their kind, bounded as {@link #shownText} bounds them - or null when blank. */
+    public static String shownWords(String text) {
+        if (text == null || text.isBlank()) return null;
+        return clip(text.strip(), SHOWN_TEXT_MAX);
+    }
+
+    /** {@link #itemsIn} as {agentId, title, kind}, for a caller that wants no text. */
+    public static List<String[]> entriesIn(String content) {
+        return itemsIn(content).stream().map(i -> new String[] {i.agentId(), i.title(), i.kind()}).toList();
+    }
+
+    private static Item item(String[] head, String body) {
+        return new Item(head[0], head[1], head[2], body.strip());
+    }
+
+    private static String kindOf(String heading) {
+        for (Kind k : Kind.values()) {
+            if (k.heading().equals(heading)) return k.name().toLowerCase(java.util.Locale.ROOT);
+        }
+        return "user_talk";
+    }
+
     static String clip(String text, int max) {
-        return text.length() <= max ? text : text.substring(0, max - 20) + "\n[... cut short]";
+        return text.length() <= max ? text : Utf16.cut(text, max - 20) + "\n[... cut short]";
     }
 
     /** The newest entry of one kind from one agent that is still waiting, if any - for tests and the panel. */

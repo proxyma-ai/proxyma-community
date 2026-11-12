@@ -20,7 +20,7 @@ export function SandboxBanner() {
 
   return (
     <Presence show={isSandbox}>
-      <Banner tone="info" title={t('Public sandbox - other visitors can see what you add, and everything is deleted every night.')}>
+      <Banner tone="info" title={t('Public sandbox. Others can see what you add. Everything is deleted nightly.')}>
         {t('Do not enter real credentials or confidential data.')}
       </Banner>
     </Presence>

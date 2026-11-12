@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom'
-import { BarChart3, Database, MessageSquare, Orbit, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { BarChart3, CirclePlay, Database, MessageSquare, Orbit, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { useConstellationsShown, useKeyAccountsShown } from '@edition'
+import { useConstellationsShown, useKeyAccountsShown, useYouTubeAssistantShown } from '@edition'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
 
@@ -19,10 +19,11 @@ type NavMinRole = false | 'viewer' | 'admin'
 // while the license status says `keyAccountsAllowed`. Constellations is gated the same way, on
 // `constellationsAllowed`. Every gate here is a convenience - the route and every endpoint refuse
 // without it.
-const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; icon: LucideIcon; auth: NavMinRole; licensed?: 'keyAccounts' | 'constellations' }> = [
+const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; icon: LucideIcon; auth: NavMinRole; licensed?: 'keyAccounts' | 'constellations' | 'youtubeAssistant' }> = [
   { to: '/',               label: 'Chat',           icon: MessageSquare, auth: false    },
   { to: '/sources',        label: 'Sources',        icon: Database,      auth: 'viewer' },
   { to: '/key-accounts',   label: 'Key accounts',   icon: BarChart3,     auth: 'viewer', licensed: 'keyAccounts' },
+  { to: '/youtube',        label: 'YouTube assistant', icon: CirclePlay, auth: 'viewer', licensed: 'youtubeAssistant' },
   { to: '/constellations', label: 'Constellations', icon: Orbit,         auth: 'viewer', licensed: 'constellations' },
   { to: '/admin',          label: 'Administration', icon: ShieldCheck,   auth: 'admin'  },
 ]
@@ -40,6 +41,7 @@ export function useNavItems(): NavItem[] {
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
   const keyAccountsAllowed = useKeyAccountsShown()
   const constellationsShown = useConstellationsShown()
+  const youtubeAssistantShown = useYouTubeAssistantShown()
   const { t } = useTranslation()
   return NAV_ITEMS.filter(item => {
     // Administration is server-only, and hidden here AND guarded on the route (RequireServerMode in
@@ -49,6 +51,7 @@ export function useNavItems(): NavItem[] {
     if (item.auth === 'viewer' && FEATURES.auth && !user) return false
     if (item.licensed === 'keyAccounts' && !keyAccountsAllowed) return false
     if (item.licensed === 'constellations' && !constellationsShown) return false
+    if (item.licensed === 'youtubeAssistant' && !youtubeAssistantShown) return false
     return true
   }).map(item => ({
     to: item.to,

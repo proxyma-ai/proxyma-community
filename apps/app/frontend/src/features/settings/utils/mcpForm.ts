@@ -93,3 +93,20 @@ export function buildMcpInput(state: McpFormState, canShare: boolean): McpInput 
   if (canShare) input.shared = state.shared
   return input
 }
+
+/** What an existing MCP server still needs before a change can be saved - see `mcpMissing`. */
+export type McpMissing = 'command' | 'url' | 'token' | null
+
+/**
+ * What an EXISTING server's settings still need before they are worth saving (its dialog saves each
+ * field on its own): a local command needs the command, a remote server its address, and a bearer
+ * sign-in a token - one stored (`tokenStored`) or one just typed (`tokenTyped`). A change that leaves
+ * one of these missing - a switch of transport or of sign-in - is held until it is filled in, rather
+ * than saved half-made.
+ */
+export function mcpMissing(state: McpFormState, tokenStored: boolean, tokenTyped: boolean): McpMissing {
+  if (state.transport === 'STDIO') return state.command.trim() ? null : 'command'
+  if (!state.url.trim()) return 'url'
+  if (state.auth === 'BEARER' && !tokenStored && !tokenTyped) return 'token'
+  return null
+}

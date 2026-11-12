@@ -39,7 +39,6 @@ class SubAgentFollowsAgentTest {
         assertThat(sub.maxOutputTokens(agent(30, 16384, 500000))).isEqualTo(16384);
         assertThat(sub.contextMaxTokens(agent(30, 16384, 500000))).isEqualTo(500000);
         assertThat(sub.maxIterations(agent(100, 32768, 200000))).isEqualTo(100);
-        assertThat(sub.getModel()).as("no model of its own: the gateway gives it the agent's").isEmpty();
     }
 
     @Test
@@ -80,16 +79,6 @@ class SubAgentFollowsAgentTest {
     }
 
     @Test
-    @DisplayName("with no provider of its own, a sub-agent's model is looked for on the agent's provider")
-    void theAgentsProviderStandsIn() {
-        ChatSettings agent = agent(50, 8192, 128000);
-        agent.setProvider("agent-provider");
-
-        assertThat(stored(Map.of("model", "small-model")).provider(agent)).isEqualTo("agent-provider");
-        assertThat(stored(Map.of("provider", "other", "model", "small-model")).provider(agent)).isEqualTo("other");
-    }
-
-    @Test
     @DisplayName("a sub-agent may run for thirty minutes unless told otherwise")
     void thirtyMinutes() {
         assertThat(stored(Map.of()).getTimeoutMinutes()).isEqualTo(30);
@@ -105,11 +94,16 @@ class SubAgentFollowsAgentTest {
     }
 
     @Test
-    @DisplayName("the switch an earlier version stored is read past, and the rest of the settings with it are kept")
+    @DisplayName("the switch, model and endpoint an earlier version stored are read past, and the rest of the settings with it are kept")
     void theOldSwitchIsReadPast() {
-        SubAgentSettings sub = stored(Map.of("enabled", "false", "model", "small-model", "timeout-minutes", "30"));
+        // Deployed agents lost their Settings model on 2026-11-02: they run on the model their deployer
+        // names, else their parent's (AgentTree.deploy). A stored one must not stop the rest loading.
+        SubAgentSettings sub = stored(Map.of("enabled", "false", "provider", "p-1", "model", "small-model",
+                "base-url", "http://box:8000", "api-key", "k", "timeout-minutes", "30", "max-depth", "3"));
 
-        assertThat(sub.getModel()).isEqualTo("small-model");
         assertThat(sub.getTimeoutMinutes()).isEqualTo(30);
+        assertThat(sub.maxDepth()).isEqualTo(3);
+        assertThat(new ObjectMapper().convertValue(sub, Map.class))
+                .doesNotContainKeys("provider", "model", "base-url", "api-key", "enabled");
     }
 }

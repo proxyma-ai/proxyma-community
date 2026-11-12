@@ -92,7 +92,7 @@ function StepRow({ step, toolCalls }: { step: WorkflowRunStep; toolCalls: ToolCa
         {step.title}
       </span>
       <Presence show={step.status === 'FAILED' && !!step.failureMessage} collapse={false} className="shrink-0 min-w-0">
-        <span className="block truncate max-w-[180px] text-xs text-danger">{serverText(step.failureMessage ?? '')}</span>
+        <Caption as="span" tone="danger" className="block truncate max-w-[180px]">{serverText(step.failureMessage ?? '')}</Caption>
       </Presence>
     </span>
   )

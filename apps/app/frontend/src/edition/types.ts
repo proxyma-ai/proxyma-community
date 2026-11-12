@@ -1,4 +1,5 @@
 import type { ComponentType, LazyExoticComponent, ReactNode } from 'react'
+import type { GlyphComponent } from '@/components/ui/kit'
 
 /**
  * THE EDITION SEAM - what the app asks of the edition it was built as, and nothing else.
@@ -61,6 +62,21 @@ export interface EditionSignIn {
   signOut: (connectionId: string) => Promise<void>
 }
 
+/**
+ * Something of the edition's own a person can @-mention in the chat composer beside the sources - a
+ * Constellations project, whose lead the message is then for. It travels as an ordinary mention (its
+ * NAME, in the message's `mentions`), and the server's module for it claims the name
+ * (ChatModule.claimMentions); `icon` is its chip's glyph in the composer and in the sent message.
+ */
+export interface EditionMention {
+  /** Unique among the edition's mentions. */
+  key: string
+  name: string
+  /** A second line in the @ list - whom the message reaches. */
+  detail: string | null
+  icon: GlyphComponent
+}
+
 // THE REST OF THE SEAM - each implemented by src/edition/community.tsx (doing nothing) and by
 // ee/frontend/src/edition.tsx:
 //
@@ -74,3 +90,9 @@ export interface EditionSignIn {
 //                             (an administrator's step - Microsoft 365's app registration), else null
 //   useKeyAccountsShown, useKeyAccountsAllowed, findKeyAccountIdByName   key accounts
 //   useConstellationsShown    whether the header lists Constellations (projects of saved agents)
+//   useYouTubeAssistantShown  whether the header lists the YouTube assistant (a creator's channel teams)
+//   useEditionTourSteps       the edition's own first-run tour in place of the product's, or null (a creator's)
+//   useEditionWorkingAgents   the edition's pages' entries in the menu's working dots (useWorkingAgents):
+//                             Constellations' projects at work out of sight
+//   useEditionMentions        what the composer's @ list offers beside the sources (EditionMention):
+//                             the Constellations projects whose lead the person may address

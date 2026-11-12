@@ -33,17 +33,36 @@ public record ChatMessageResponse(
         // Set on the row that stands for the agent reading its inbox (AgentInbox): a report from an
         // agent it deployed, a message, an alarm, a background result, what the user told one of its
         // agents - what the 'agent-mail' event says live. The row has no content. Null elsewhere.
-        List<AgentMail> agentMail) {
+        List<AgentMail> agentMail,
+        // True on the row that says a turn FAILED, its content the reason - what the 'error' event
+        // says live. Null elsewhere.
+        Boolean error) {
 
     public ChatMessageResponse(Long id, MessageRole role, String content, List<ToolCallResponse> toolCalls,
                                List<String> attachmentNames, List<String> mentions, List<String> skillMentions,
                                String workflowRunId, Integer stepLimit) {
-        this(id, role, content, toolCalls, attachmentNames, mentions, skillMentions, workflowRunId, stepLimit, null);
+        this(id, role, content, toolCalls, attachmentNames, mentions, skillMentions, workflowRunId, stepLimit, null, null);
     }
 
-    /** One item of an agent's inbox as the thread shows it: kind is report, message, alarm, background or user_talk. */
+    public ChatMessageResponse(Long id, MessageRole role, String content, List<ToolCallResponse> toolCalls,
+                               List<String> attachmentNames, List<String> mentions, List<String> skillMentions,
+                               String workflowRunId, Integer stepLimit, List<AgentMail> agentMail) {
+        this(id, role, content, toolCalls, attachmentNames, mentions, skillMentions, workflowRunId, stepLimit, agentMail, null);
+    }
+
+    /**
+     * One item of an agent's inbox as the thread shows it: kind is report, message, reply, told, alarm,
+     * background, approval, context, memory or user_talk. {@code text} is what it says, for the kinds
+     * that are words to read - a message, a teammate's reply, what the agent told the person
+     * (AgentInbox.carriesText) - and null for the rest, whose substance is elsewhere (a deployed agent's
+     * report is in its own panel).
+     */
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    public record AgentMail(String agentId, String title, String kind) {}
+    public record AgentMail(String agentId, String title, String kind, String text) {
+        public AgentMail(String agentId, String title, String kind) {
+            this(agentId, title, kind, null);
+        }
+    }
 
     // Field names match the frontend's ToolCallInfo shape exactly (see chat.types.ts) so no
     // frontend type change is needed to consume this. startedAt and endedAt are epoch

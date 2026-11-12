@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools.sources;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.connector.ConnectionProtocol;
 import ai.proxyma.core.connector.ConnectorType;
 import ai.proxyma.core.connector.ItemMetadata;
@@ -263,7 +264,7 @@ public class SourceTools {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("success", true);
             if (item.getTitle() != null) out.put("title", item.getTitle());
-            out.put("text", SensitivePaths.scrub(truncated ? text.substring(0, MAX_ITEM_CHARS) : text));
+            out.put("text", SensitivePaths.scrub(truncated ? Utf16.cut(text, MAX_ITEM_CHARS) : text));
             out.put("truncated", truncated);
             return out;
         } catch (Exception e) {

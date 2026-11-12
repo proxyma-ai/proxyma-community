@@ -13,7 +13,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { Card } from './Card'
 import { cn } from './cn'
 import { HScroll } from './HScroll'
-import { EmptyState } from './States'
+import { EmptyState, ErrorState } from './States'
 import { Skeleton } from './Skeleton'
 import { Tooltip } from './Tooltip'
 
@@ -95,7 +95,7 @@ export const TD = 'px-4 py-3'
 
 /**
  * The COMPACT density, for a log read many rows at a time (the per-call ledger, a transfer
- * report): 13px text (`text-xs`) and `px-3 py-2`, header and body alike. A table uses one density throughout.
+ * report): 12px text (`text-xs`) and `px-3 py-2`, header and body alike. A table uses one density throughout.
  */
 export const TD_COMPACT = 'px-3 py-2 text-xs'
 
@@ -198,6 +198,53 @@ export function TableEmptyRow({ colSpan, children, action }: { colSpan: number; 
         <EmptyState action={action}>{children}</EmptyState>
       </td>
     </tr>
+  )
+}
+
+/**
+ * THE ONE ROW A TABLE SHOWS WHEN IT COULD NOT LOAD - TableEmptyRow's error twin: an ErrorState across
+ * every column, with what went wrong and a way to try again (2026-11-10, the UI review: both consoles
+ * drew it by hand, `<tr><td colSpan className="px-4"><ErrorState>`, four times).
+ */
+export function TableErrorRow({ colSpan, title, children, action }: {
+  colSpan: number
+  title: ReactNode
+  children?: ReactNode
+  action?: ReactNode
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4">
+        <ErrorState title={title} action={action}>{children}</ErrorState>
+      </td>
+    </tr>
+  )
+}
+
+/**
+ * HOW A TABLE ROW OPENS ITS DIALOG: a real button in the row's name cell, announced as opening a
+ * dialog (ListRow's approach). The row keeps its click for a pointer anywhere on it, but is no tab
+ * stop of its own - a focusable row CONTAINING other focusable controls (a copy button, a checkbox)
+ * with no role or name saying what it did. `TR_INTERACTIVE`'s focus-within tint marks the row while
+ * this has focus. Moved into the kit on 2026-11-10 (the UI review): both consoles carried the same file.
+ */
+export function RowOpenButton({ onOpen, label, children }: {
+  onOpen: () => void
+  /** The accessible name where the visible text alone does not say what opens. */
+  label?: string
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label={label}
+      // The row's own click would open the same dialog a second time.
+      onClick={e => { e.stopPropagation(); onOpen() }}
+      className="max-w-full min-w-0 text-left focus-ring rounded-sm"
+    >
+      {children}
+    </button>
   )
 }
 

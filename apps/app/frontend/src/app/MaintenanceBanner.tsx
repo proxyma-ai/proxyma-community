@@ -19,7 +19,7 @@ interface MaintenanceAnnouncement {
 // whatever sits below it down rather than overlapping it; mounted in Providers.tsx above the
 // Router so it covers every route, the /login and /setup pages included.
 export function MaintenanceBanner() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const { data } = useQuery({
     queryKey: keys.maintenanceAnnouncement(),
     queryFn: () => http.get<MaintenanceAnnouncement>('/api/v1/maintenance/announcement').then(r => r.data),
@@ -32,8 +32,8 @@ export function MaintenanceBanner() {
   if (!FEATURES.auth || !data?.bannerEnabled) return <Presence show={false} />
 
   const scheduleParts: string[] = []
-  if (data.scheduledStart) scheduleParts.push(t('starts {time}', { time: formatDateWithZone(data.scheduledStart) }))
-  if (data.expectedBackAt) scheduleParts.push(t('expected back by {time}', { time: formatDateWithZone(data.expectedBackAt) }))
+  if (data.scheduledStart) scheduleParts.push(t('starts {time}', { time: formatDateWithZone(data.scheduledStart, locale) }))
+  if (data.expectedBackAt) scheduleParts.push(t('expected back by {time}', { time: formatDateWithZone(data.expectedBackAt, locale) }))
   const schedule = scheduleParts.join(' - ')
 
   return (

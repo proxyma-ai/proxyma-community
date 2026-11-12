@@ -138,6 +138,8 @@ public class McpToolConfig {
             GetBitbucketPrDiffTool getBitbucketPrDiffTool,
             GetBitbucketCommitDiffTool getBitbucketCommitDiffTool,
             BitbucketCloudTools bitbucketCloudTools,
+            // The user's YouTube channel - two reads and the reply (live-guarded, see class comment)
+            ai.proxyma.core.tools.youtube.YouTubeTools youTubeTools,
             // Sources of every type - add, remove, list the types, read an item live - built from the
             // connector catalog (live-guarded, see class comment)
             SourceTools sourceTools,
@@ -229,6 +231,8 @@ public class McpToolConfig {
         tools.add(getBitbucketCommitDiffTool);
         // Bitbucket Cloud, read live through its connector's own session (pull requests, files).
         tools.add(bitbucketCloudTools);
+        // YouTube, live through the caller's YouTube connection; the reply is a write (WriteToolRegistry).
+        tools.add(youTubeTools);
 
         // Sources of every type. One set of tools for every connector, built from the catalog - so a new
         // connector is offered to the agent with no tool of its own, and an ENTERPRISE type

@@ -77,9 +77,13 @@ public class AnthropicAdapter implements LlmProviderAdapter {
         // stream's input and cache counts from message_start alone, and the one-hour split of
         // either kind of response not at all. And both move the conversation's cache breakpoint
         // to its last message (AnthropicCacheTail), where Spring AI spends them from the front.
+        // After that rewrite, every unpaired surrogate - half an emoji left by a cut - becomes U+FFFD
+        // (WellFormedBody): Anthropic refuses the whole request over one ("unexpected end of hex
+        // escape", 2026-11-06).
         RestClient.Builder restClientBuilder = ProviderClients.applyHeaders(
                 RestClient.builder().requestFactory(externalHttpFactory), provider)
                 .requestInterceptor(AnthropicCacheTail.callInterceptor())
+                .requestInterceptor(WellFormedBody.callInterceptor())
                 .requestInterceptor(WireUsage.callInterceptor(WireUsage.Shape.ANTHROPIC));
         // A STREAMED CALL'S ERROR KEEPS ITS STATUS AND HEADERS (2026-10-08, 0.29.1 feedback).
         // AnthropicApi adds a status handler of its own to this builder that raises every error as
@@ -93,9 +97,12 @@ public class AnthropicAdapter implements LlmProviderAdapter {
                 externalWebClientBuilder.clone(), provider)
                 .defaultStatusHandler(HttpStatusCode::isError, ClientResponse::createException)
                 .filter(AnthropicCacheTail.streamFilter())
+                .filter(WellFormedBody.streamFilter())
                 .filter(WireUsage.streamFilter(WireUsage.Shape.ANTHROPIC))
                 .filter(AnthropicStreamErrors.streamFilter());
         gatewayStreamFilters.forEach(webClientBuilder::filter);
+        // What the model thinks, as a summary the page can show while it thinks (AnthropicThinkingDisplay) - native only.
+        if (gatewayStreamFilters.isEmpty()) webClientBuilder.filter(AnthropicThinkingDisplay.streamFilter());
         AnthropicApi.Builder apiBuilder = AnthropicApi.builder()
                 .apiKey(provider.apiKey())
                 .restClientBuilder(restClientBuilder)

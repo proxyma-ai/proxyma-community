@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools.mcpclient;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.external.ExternalToolSource;
 import ai.proxyma.core.settings.connection.ConnectionTester;
 import ai.proxyma.core.settings.connection.ConnectorConnectionService;
@@ -255,7 +256,7 @@ public class McpServerToolSource implements ExternalToolSource, McpServerProbe {
         if (tool.title() != null && !tool.title().isBlank() && !d.startsWith(tool.title())) {
             d = tool.title().strip() + (d.isEmpty() ? "" : " - " + d);
         }
-        return d.length() <= MAX_DESCRIPTION ? d : d.substring(0, MAX_DESCRIPTION - 3) + "...";
+        return d.length() <= MAX_DESCRIPTION ? d : Utf16.cut(d, MAX_DESCRIPTION - 3) + "...";
     }
 
     private ToolCallback unavailable(String name, RuntimeException e) {

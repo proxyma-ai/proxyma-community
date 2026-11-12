@@ -23,7 +23,7 @@ interface MaintenanceStatus {
 // Desktop mode has no maintenance mode at all (single-user, no destructive server-wide restore
 // path), so the query is disabled entirely there and this renders as a no-op passthrough.
 export function MaintenanceGate({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const wasActiveRef = useRef(false)
   const productName = useThemeStore(s => s.branding.productName)
 
@@ -110,7 +110,7 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
       <p>{data?.reason || t('The system is undergoing maintenance. This will only take a moment.')}</p>
       {data?.expectedBackAt && (
         <Caption className="mt-2 animate-fade-in">
-          {t('Expected back by {time}', { time: formatDateWithZone(data.expectedBackAt) })}
+          {t('Expected back by {time}', { time: formatDateWithZone(data.expectedBackAt, locale) })}
         </Caption>
       )}
     </StatusLayer>

@@ -1,5 +1,6 @@
 package ai.proxyma.core.tools;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.search.service.AgentMemoryService;
 import ai.proxyma.core.search.service.AgentMemoryService.MemoryCategory;
 import ai.proxyma.core.search.service.AgentMemoryService.MemoryEntry;
@@ -84,7 +85,7 @@ public class RecallTool {
         if (e.category() != null) m.put("category", e.category());
         if (e.savedAt() != null) m.put("savedAt", e.savedAt());
         String text = e.text() == null ? "" : e.text();
-        m.put("text", preview && text.length() > LIST_PREVIEW_CHARS ? text.substring(0, LIST_PREVIEW_CHARS) + "..." : text);
+        m.put("text", preview && text.length() > LIST_PREVIEW_CHARS ? Utf16.cut(text, LIST_PREVIEW_CHARS) + "..." : text);
         return m;
     }
 

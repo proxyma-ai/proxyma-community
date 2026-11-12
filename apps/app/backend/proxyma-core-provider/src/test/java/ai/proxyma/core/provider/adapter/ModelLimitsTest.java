@@ -206,19 +206,12 @@ class ModelLimitsTest {
     }
 
     @Test
-    @DisplayName("a sub-agent with a model of its own is measured against THAT model, unless a window was set")
+    @DisplayName("a sub-agent is measured against the agent's model - it has none of its own - unless a window was set")
     void aSubAgentsWindow() {
         Deployment d = new Deployment();
         when(d.factory.modelLimits("agent-provider", "agent-model")).thenReturn(new ModelLimits(1000000, 64000));
-        when(d.factory.modelLimits("sub-provider", "small-model")).thenReturn(new ModelLimits(32768, 8192));
 
-        // No model of its own: it runs on the agent's.
         assertThat(d.gateway.contextWindow(LlmRole.SUB_AGENT)).isEqualTo(1000000);
-
-        d.sub.setProvider("sub-provider");
-        d.sub.setModel("small-model");
-        when(d.factory.getSubAgentChatModel()).thenReturn(mock(ChatModel.class));
-        assertThat(d.gateway.contextWindow(LlmRole.SUB_AGENT)).isEqualTo(32768);
 
         // The agent's own setting is the sub-agents' too, until they are given one.
         d.chat.setMemoryMaxTokens(200000);

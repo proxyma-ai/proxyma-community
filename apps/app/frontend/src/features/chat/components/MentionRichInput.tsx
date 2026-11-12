@@ -11,6 +11,9 @@ import { useTranslation } from '@/i18n'
 import { Caption, MenuEmpty, MenuGroup, MenuRow, Popover, Readout, Tooltip, chipClass, type GlyphComponent } from '@/components/ui/kit'
 import { mentionIcon } from '../utils/mentionStyle'
 import { useMentionSuggestions } from '../hooks/useMentionSuggestions'
+import { editionMentionNamed, matchEditionMentions } from '../utils/editionMentions'
+import { useEditionMentions } from '@edition'
+import type { EditionMention } from '@/edition/types'
 import { tokenizeMentionText } from '../utils/tokenizeMentionText'
 import { skillsApi } from '@/features/settings/services/skillsApi'
 import { workflowsApi } from '@/features/settings/services/workflowsApi'
@@ -65,8 +68,10 @@ function buildChipElement(
   return chip
 }
 
-function createMentionChip(name: string, type: string | undefined, roots: Map<HTMLElement, Root>): HTMLSpanElement {
-  return buildChipElement(name, mentionIcon(type), { [MENTION_DATA_ATTR]: name, [MENTION_TYPE_ATTR]: type ?? '' }, roots)
+// `icon` is an edition mention's own glyph (a Constellations project's), which no source type names.
+function createMentionChip(name: string, type: string | undefined, roots: Map<HTMLElement, Root>,
+                           icon?: GlyphComponent): HTMLSpanElement {
+  return buildChipElement(name, icon ?? mentionIcon(type), { [MENTION_DATA_ATTR]: name, [MENTION_TYPE_ATTR]: type ?? '' }, roots)
 }
 
 // A skill (or a workflow) is a thing to RUN rather than a thing to read: the same chip, with the
@@ -148,10 +153,11 @@ function serialize(container: HTMLElement): string {
 function rebuildFromValue(
   container: HTMLElement, value: string, mentions: string[], skillMentions: string[],
   roots: Map<HTMLElement, Root>, typeOf: (name: string) => string | undefined,
+  iconOf: (name: string) => GlyphComponent | undefined,
 ) {
   const nodes: Node[] = tokenizeMentionText(value, mentions, skillMentions).map(t => {
     if (t.kind === 'text') return document.createTextNode(t.value)
-    if (t.kind === 'mention') return createMentionChip(t.name, typeOf(t.name), roots)
+    if (t.kind === 'mention') return createMentionChip(t.name, typeOf(t.name), roots, iconOf(t.name))
     return createSkillChip(t.name, roots)
   })
   container.replaceChildren(...nodes)
@@ -260,6 +266,10 @@ export function MentionRichInput({
   const [isEmpty, setIsEmpty] = useState(value.length === 0)
 
   const { data: docSuggestions = [] } = useMentionSuggestions(pending?.trigger === '@' ? pending.query : null)
+  // What the edition offers beside the sources - Constellations projects, whose lead a message
+  // mentioning one is for (src/edition/types.ts). Listed under the sources, as their own group.
+  const editionMentions = useEditionMentions()
+  const editionSuggestions = pending?.trigger === '@' ? matchEditionMentions(editionMentions, pending.query) : []
   // Skills and workflows are both small, per-user lists (unlike the document-connector search
   // above, which hits the server per keystroke) - fetched once each and filtered client-side.
   const { data: skills = [] } = useQuery({ queryKey: keys.chatSkills(), queryFn: skillsApi.list })
@@ -288,7 +298,10 @@ export function MentionRichInput({
         .filter(item => item.name.toLowerCase().includes(pending.query.toLowerCase()))
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
     : []
-  const suggestionCount = pending?.trigger === '/' ? slashSuggestions.length : docSuggestions.length
+  const suggestionCount = pending?.trigger === '/' ? slashSuggestions.length
+    : docSuggestions.length + editionSuggestions.length
+  // The sources' group, or its "no match" line - left out when only the edition's mentions match.
+  const sourceGroupShown = pending?.trigger !== '@' || docSuggestions.length > 0 || editionSuggestions.length === 0
 
   // Unmounts each chip's tiny icon root once its DOM node is actually removed (Backspace, or a
   // full rebuild via replaceChildren) - covers both removal paths with one observer instead of
@@ -316,7 +329,8 @@ export function MentionRichInput({
     if (value === lastEmittedRef.current) return
     const container = editorRef.current
     if (!container) return
-    rebuildFromValue(container, value, mentions, skillMentions, rootsRef.current, name => nameToTypeRef.current.get(name))
+    rebuildFromValue(container, value, mentions, skillMentions, rootsRef.current, name => nameToTypeRef.current.get(name),
+      name => editionMentionNamed(editionMentions, name)?.icon)
     lastEmittedRef.current = value
     setIsEmpty(isEditorEmpty(container))
     const sel = window.getSelection()
@@ -445,6 +459,20 @@ export function MentionRichInput({
     container.focus()
   }
 
+  // An edition mention travels as any mention does - its name in `mentions` - with its own glyph.
+  function selectEditionMention(item: EditionMention) {
+    const container = editorRef.current
+    if (!container) return
+    const info = getCaretMentionQuery(container)
+    if (!info || info.trigger !== '@') return
+    const chip = createMentionChip(item.name, undefined, rootsRef.current, item.icon)
+    insertChipAndAdvanceCaret(info, chip)
+    if (!mentions.includes(item.name)) onMentionsChange([...mentions, item.name])
+    setPending(null)
+    handleContentChanged()
+    container.focus()
+  }
+
   function selectSlashItem(item: SlashItem) {
     const container = editorRef.current
     if (!container) return
@@ -476,8 +504,10 @@ export function MentionRichInput({
       if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => (i - 1 + suggestionCount) % suggestionCount); return }
       if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
         e.preventDefault()
-        if (pending.trigger === '@') selectMention(docSuggestions[activeIndex])
-        else selectSlashItem(slashSuggestions[activeIndex])
+        if (pending.trigger === '@') {
+          if (activeIndex < docSuggestions.length) selectMention(docSuggestions[activeIndex])
+          else selectEditionMention(editionSuggestions[activeIndex - docSuggestions.length])
+        } else selectSlashItem(slashSuggestions[activeIndex])
         return
       }
       if (e.key === 'Escape') { e.preventDefault(); setPending(null); return }
@@ -563,49 +593,70 @@ export function MentionRichInput({
     >
       {() => (
         <div ref={suggestionListRef} onMouseDown={keepCaret}>
-          <MenuGroup>
-            {pending?.trigger === '@' ? (
-              docSuggestions.length === 0 ? (
-                <MenuEmpty>{t('No matching sources')}</MenuEmpty>
-              ) : docSuggestions.map((r, i) => {
-                const Icon = mentionIcon(r.type)
+          {sourceGroupShown && (
+            <MenuGroup>
+              {pending?.trigger === '@' ? (
+                docSuggestions.length === 0 ? (
+                  <MenuEmpty>{t('No matching sources')}</MenuEmpty>
+                ) : docSuggestions.map((r, i) => {
+                  const Icon = mentionIcon(r.type)
+                  return (
+                    <MenuRow
+                      key={r.id}
+                      role="option"
+                      tone={i === activeIndex ? 'active' : 'default'}
+                      // The type's mark, in the row's caption ink as every mark in a menu is.
+                      icon={<Icon />}
+                      title={r.name}
+                      trailing={r.shared && !r.ownedByMe ? <Caption as="span" className="shrink-0">{t('Shared')}</Caption> : undefined}
+                      onSelect={() => selectMention(r)}
+                    />
+                  )
+                })
+              ) : (
+                slashSuggestions.length === 0 ? (
+                  <MenuEmpty>{t('No matching skills or workflows')}</MenuEmpty>
+                ) : slashSuggestions.map((item, i) => (
+                  <Tooltip key={`${item.kind}:${item.id}`} label={item.shortDescription || item.name} fullWidth>
+                    {/* The icon is the badge. A workflow's step count sits opposite it, which says
+                        the one thing a skill can never say - how many turns picking this will cost -
+                        and does it before the reader commits rather than after the third row appears. */}
+                    <MenuRow
+                      role="option"
+                      tone={i === activeIndex ? 'active' : 'default'}
+                      icon={item.kind === 'workflow' ? <ListChecks /> : <FileText />}
+                      title={item.name}
+                      trailing={item.kind === 'workflow' ? (
+                        <Readout tone="disabled" className="shrink-0 text-xs animate-fade-in">
+                          {t('{count} step|{count} steps', { count: item.stepCount ?? 0 })}
+                        </Readout>
+                      ) : undefined}
+                      onSelect={() => selectSlashItem(item)}
+                    />
+                  </Tooltip>
+                ))
+              )}
+            </MenuGroup>
+          )}
+          {pending?.trigger === '@' && editionSuggestions.length > 0 && (
+            <MenuGroup label={t('Project leads')} className="animate-fade-in">
+              {editionSuggestions.map((m, i) => {
+                const Icon = m.icon
+                const index = docSuggestions.length + i
                 return (
                   <MenuRow
-                    key={r.id}
+                    key={m.key}
                     role="option"
-                    tone={i === activeIndex ? 'active' : 'default'}
-                    // The type's mark, in the row's caption ink as every mark in a menu is.
+                    tone={index === activeIndex ? 'active' : 'default'}
                     icon={<Icon />}
-                    title={r.name}
-                    trailing={r.shared && !r.ownedByMe ? <Caption as="span" className="shrink-0">{t('Shared')}</Caption> : undefined}
-                    onSelect={() => selectMention(r)}
+                    title={m.name}
+                    description={m.detail ?? undefined}
+                    onSelect={() => selectEditionMention(m)}
                   />
                 )
-              })
-            ) : (
-              slashSuggestions.length === 0 ? (
-                <MenuEmpty>{t('No matching skills or workflows')}</MenuEmpty>
-              ) : slashSuggestions.map((item, i) => (
-                <Tooltip key={`${item.kind}:${item.id}`} label={item.shortDescription || item.name} fullWidth>
-                  {/* The icon is the badge. A workflow's step count sits opposite it, which says
-                      the one thing a skill can never say - how many turns picking this will cost -
-                      and does it before the reader commits rather than after the third row appears. */}
-                  <MenuRow
-                    role="option"
-                    tone={i === activeIndex ? 'active' : 'default'}
-                    icon={item.kind === 'workflow' ? <ListChecks /> : <FileText />}
-                    title={item.name}
-                    trailing={item.kind === 'workflow' ? (
-                      <Readout tone="disabled" className="shrink-0 text-xs animate-fade-in">
-                        {t('{count} step|{count} steps', { count: item.stepCount ?? 0 })}
-                      </Readout>
-                    ) : undefined}
-                    onSelect={() => selectSlashItem(item)}
-                  />
-                </Tooltip>
-              ))
-            )}
-          </MenuGroup>
+              })}
+            </MenuGroup>
+          )}
         </div>
       )}
     </Popover>

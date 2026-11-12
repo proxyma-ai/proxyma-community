@@ -365,9 +365,9 @@ const DYNAMIC = [
   // are argument names and proper nouns, not prose, and a file-wide scan would report every one
   // of them as an untranslated string.
   //
-  // What is deliberately NOT covered: the object half of a DERIVED phrase. derive() builds it out
-  // of the tool's own camelCase name at runtime, so no catalog entry could match it - see the
-  // note at the top of toolActivity.ts.
+  // Every tool the backend offers has a PHRASES entry since 2026-11-05 (toolNames.test.ts holds the
+  // generated list to it), so derive() - whose object half is words of a tool's own name, which no
+  // catalog entry can match - is left to a connected MCP server's tools, named by that server.
   {
     app: 'apps/app',
     file: 'apps/app/frontend/src/features/chat/utils/toolActivity.ts',
@@ -392,11 +392,11 @@ const DYNAMIC = [
     block: 'RULES',
     pattern: /'((?:[^'\\\n]|\\.)*)'/g,
   },
-  // The override map only - `humanize()` derives everything else from the backend's tool name.
+  // Every tool's title - `humanize()` is left to a connected MCP server's tools, named by that server.
   {
     app: 'apps/app',
     file: 'apps/app/frontend/src/features/chat/utils/toolDisplayName.ts',
-    block: 'DISPLAY_NAME_OVERRIDES',
+    block: 'TOOL_TITLES',
     pattern: /:\s*'((?:[^'\\]|\\.)*)'/g,
   },
   // The three spinner labels behind `aria-label={t(IN_FLIGHT_LABEL[decision])}`.
@@ -495,18 +495,6 @@ const DYNAMIC = [
 
   // THE SECTIONS AND SCENES, each scoped to the const that holds prose: these files hold replica
   // data (issue keys, file names, figures) beside it, under other names or in other consts.
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/sections/ConnectionsDiagram.tsx',
-    block: 'CLIENTS',
-    pattern: prop('name', 'via'),
-  },
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/sections/ConnectionsDiagram.tsx',
-    block: 'GROUPS',
-    pattern: prop('title'),
-  },
   // The story's search windows. `file`, `path`, `key`, `query` and `app` are file names, folder
   // paths, issue keys, queries and product names, and stay as written.
   {
@@ -514,19 +502,12 @@ const DYNAMIC = [
     file: 'apps/landing/src/components/sections/StorySection.tsx',
     pattern: prop('title', 'meta', 'where', 'unit', 'label'),
   },
-  // The hero's chat turn: its question, greeting and answer are top-level consts passed on as
-  // variables. Its steps are literal t() calls and need no entry.
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/sections/HeroDemo.tsx',
-    pattern: /^const (?:QUESTION|GREETING|ANSWER) = '((?:[^'\\]|\\.)*)'/gm,
-  },
   // The scenes (src/components/scenes): the sentences a turn says, as top-level consts, and the
   // rows a log or a thread draws from a const array.
-  ...['AnswerStill', 'ApprovalScene', 'GuardrailCatchScene', 'ProvidersScene'].map((scene) => ({
+  ...['AnswerPart', 'ApprovalScene', 'GuardrailCatchScene', 'ProvidersScene', 'YouTubeApprovalPart'].map((scene) => ({
     app: 'apps/landing',
     file: `apps/landing/src/components/scenes/${scene}.tsx`,
-    pattern: /^const (?:QUESTION|ANSWER|COMMENT|DONE_LINE|PROVIDERS_DESCRIPTION) = (?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/gm,
+    pattern: /^const (?:QUESTION|ANSWER|COMMENT|REPLY|VIDEO|DONE_LINE|PROVIDERS_DESCRIPTION) = (?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/gm,
   })),
   {
     app: 'apps/landing',
@@ -561,18 +542,6 @@ const DYNAMIC = [
   },
   // The log rows: a tool's display name, its arguments as the log words them, how it was approved
   // (the server's own sentence), and a model call's service.
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/scenes/ApprovalScene.tsx',
-    block: 'LOG_ROWS',
-    pattern: prop('tool', 'args', 'approval'),
-  },
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/scenes/ReceiptScene.tsx',
-    block: 'TOOL_ROWS',
-    pattern: prop('tool', 'args', 'approval'),
-  },
   {
     app: 'apps/landing',
     file: 'apps/landing/src/components/scenes/ReceiptScene.tsx',
@@ -678,6 +647,24 @@ const DYNAMIC = [
   {
     app: 'apps/app',
     file: 'apps/app/frontend/src/features/tour/data/tourSteps.ts',
+    pattern: ARRAY_ELEMENT,
+  },
+
+  // The YouTube assistant's and Constellations' walkthroughs (ee: walkthroughs.ts), shaped as tourSteps.ts is and read
+  // through the same `t()`.
+  {
+    app: 'apps/app',
+    file: 'ee/frontend/src/features/constellations/data/walkthroughs.ts',
+    pattern: prop('text'),
+  },
+  {
+    app: 'apps/app',
+    file: 'ee/frontend/src/features/constellations/data/walkthroughs.ts',
+    pattern: prop('title'),
+  },
+  {
+    app: 'apps/app',
+    file: 'ee/frontend/src/features/constellations/data/walkthroughs.ts',
     pattern: ARRAY_ELEMENT,
   },
 

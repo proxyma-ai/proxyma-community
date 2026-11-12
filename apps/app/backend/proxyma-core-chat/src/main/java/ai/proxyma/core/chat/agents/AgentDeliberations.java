@@ -108,7 +108,7 @@ public class AgentDeliberations {
         d.setRound(1);
         d.setRounds("[]");
         AgentDeliberation saved = deliberations.save(d);
-        recordEvent(saved, AgentDeliberation.RUNNING, "asked: " + saved.getQuestion());
+        recordEvent(saved, AgentDeliberation.RUNNING, saved.getQuestion());
         Map<String, Object> started = startRound(saved);
         if (!Boolean.TRUE.equals(started.get("success"))) {
             saved.setStatus(AgentDeliberation.STOPPED);
@@ -185,7 +185,7 @@ public class AgentDeliberations {
         if (stopped) {
             d.setStatus(AgentDeliberation.STOPPED);
             deliberations.save(d);
-            recordEvent(d, AgentDeliberation.STOPPED, why);
+            recordEvent(d, AgentDeliberation.STOPPED, null);
             inbox.post(d.getParentConversationId(), AgentInbox.Kind.REPORT, d.getId(), "Deliberation",
                     "The deliberation was stopped in round " + d.getRound() + (why == null ? "." : ": " + why)
                             + "\n\n" + tally(d, says));
@@ -205,7 +205,7 @@ public class AgentDeliberations {
         }
         d.setStatus(AgentDeliberation.AWAITING_DECISION);
         deliberations.save(d);
-        recordEvent(d, AgentDeliberation.AWAITING_DECISION, "every round is in");
+        recordEvent(d, AgentDeliberation.AWAITING_DECISION, null);
         inbox.post(d.getParentConversationId(), AgentInbox.Kind.REPORT, d.getId(), "Deliberation",
                 "The deliberation is finished: " + d.getQuestion() + "\n\n" + tally(d, says) + decideLine(d));
         log.info("[Agents] deliberation {} finished after {} round(s)", d.getId(), d.getRound());
@@ -255,7 +255,7 @@ public class AgentDeliberations {
         d.setStatus(AgentDeliberation.DECIDED);
         d.setDecidedAt(Instant.now());
         deliberations.save(d);
-        recordEvent(d, AgentDeliberation.DECIDED, "decided: " + decided + (dissent.isEmpty() ? "" : " (" + dissent.size() + " dissent)"));
+        recordEvent(d, AgentDeliberation.DECIDED, decided);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("success", true);
         out.put("decision", decided);
@@ -289,7 +289,7 @@ public class AgentDeliberations {
         if (!fanOuts.stopRound(id, "Stopped by the agent that asked.")) {
             d.setStatus(AgentDeliberation.STOPPED);
             deliberations.save(d);
-            recordEvent(d, AgentDeliberation.STOPPED, "stopped by the agent that asked");
+            recordEvent(d, AgentDeliberation.STOPPED, null);
         }
         return Map.of("success", true, "status", AgentDeliberation.STOPPED);
     }

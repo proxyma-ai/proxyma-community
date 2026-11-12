@@ -7,6 +7,7 @@ import ai.proxyma.core.connector.spi.ApiResponse;
 import ai.proxyma.core.connector.spi.ConnectorHttp;
 import ai.proxyma.core.connector.spi.ConnectorHttpException;
 import ai.proxyma.core.connector.spi.RateLimitHint;
+import ai.proxyma.core.connector.spi.RefusalReason;
 import ai.proxyma.core.connector.spi.ResolvedCredentials;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -71,6 +72,7 @@ final class GoogleApi {
                 .service(service)
                 .auth(ApiAuth.bearer(connection))
                 .rateLimit(RATE_LIMIT)
+                .refusalReason(RefusalReason.GOOGLE)
                 .build();
     }
 

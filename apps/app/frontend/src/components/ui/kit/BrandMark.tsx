@@ -172,6 +172,11 @@ import { cn } from './cn'
  *       permission from Zoom", and its logo only unaltered in Zoom blue or white - never this one-ink
  *       treatment; the word mark may name the product. A generic glyph drawn for Proxyma: a video
  *       camera with a recording light cut out - NOT the camera in a rounded square.
+ *   youtube - NO YOUTUBE MARK, checked 2026-10-30, for the reason gemini and google record: YouTube is a
+ *       Google brand, and its brand guidelines (https://www.youtube.com/howyoutubeworks/resources/brand-resources/)
+ *       allow the logo only unaltered, in its own red, under their terms - never this one-ink treatment. A
+ *       generic glyph drawn for Proxyma: a disc with a play triangle cut out - NOT the rounded red rectangle
+ *       around a triangle, which is YouTube's own.
  *   imap - a generic glyph drawn for Proxyma: the envelope outlook and gmail use. IMAP is a protocol
  *       (RFC 9051) and has no mark.
  *   files, web, network, chat, you, api, plug - generic glyphs drawn for Proxyma. No third-party source.
@@ -184,7 +189,7 @@ export type MarkId =
   | 'files' | 'web' | 'confluence' | 'jira' | 'bitbucket' | 'github' | 'subversion' | 'network'
   | 'sharepoint' | 'onedrive' | 'teams' | 'chat' | 'outlook' | 'microsoft365'
   | 'you' | 'copilot' | 'claudecode' | 'claude' | 'cursor' | 'chatgpt' | 'gemini' | 'api'
-  | 'plug' | 'slack' | 'gitlab' | 'linear' | 'google' | 'googledrive' | 'gmail' | 'googlecalendar' | 'notion' | 'airtable' | 'zendesk' | 'freshdesk' | 'hubspot' | 'salesforce' | 'asana' | 'monday' | 'trello' | 'clickup' | 'dropbox' | 'box' | 'zoom' | 'imap'
+  | 'plug' | 'slack' | 'gitlab' | 'linear' | 'google' | 'googledrive' | 'gmail' | 'googlecalendar' | 'notion' | 'airtable' | 'zendesk' | 'freshdesk' | 'hubspot' | 'salesforce' | 'asana' | 'monday' | 'trello' | 'clickup' | 'dropbox' | 'box' | 'zoom' | 'youtube' | 'imap'
 
 // evenodd for every path: the generic glyphs cut their details out of the silhouette (the
 // envelope's flap, the window's body) rather than drawing them in a second color.
@@ -266,6 +271,8 @@ export const MARK_PATHS: Record<MarkId, string> = {
   box: 'M12 2.5l8.5 4.25v10.5L12 21.5l-8.5-4.25V6.75ZM5 7.4l7 3.5 7-3.5-.7-1.3L12 9.25 5.7 6.1ZM11.3 11.2h1.4v8.4h-1.4Z',
   // Zoom (generic, see above): a video camera, its lens to the right, a recording light cut out.
   zoom: 'M3.5 6h10A1.5 1.5 0 0 1 15 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 2 16.5v-9A1.5 1.5 0 0 1 3.5 6ZM4.5 9a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 1 0-2.5 0ZM16.5 10.2l4.5-2.9a.65.65 0 0 1 1 .55v8.3a.65.65 0 0 1-1 .55l-4.5-2.9Z',
+  // YouTube (generic, see above): a disc with a play triangle cut out.
+  youtube: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20ZM10 7.8v8.4l6.6-4.2Z',
   // IMAP mail (generic): the envelope outlook uses - a mail is a mail.
   imap: 'M3.5 4h17A1.5 1.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18.5v-13A1.5 1.5 0 0 1 3.5 4Zm1.2 3.2v2.3l7.3 4.8 7.3-4.8V7.2L12 12Z',
 }

@@ -219,3 +219,43 @@ export function opened(s: ChatStream, generation: number, open: StreamOpen): boo
 export function carriedOnReload<T extends { clientId?: string }>(queue: T[], accepted: Set<string>, all: boolean): T[] {
   return all ? queue : queue.filter(q => !q.clientId || !accepted.has(q.clientId))
 }
+
+/**
+ * How long a turn the page shows may go without an event, while the page's host says the
+ * conversation's agent is not working, before the page stops trusting its stream.
+ */
+export const STALE_TURN_MS = 20_000
+
+/** What a chat knows when its host says whether the conversation's agent works (agentIdleAction). */
+export interface AgentIdleSignals {
+  /** What the host said before, and says now. */
+  wasWorking: boolean
+  working: boolean
+  /** The chat shows a turn running. */
+  streaming: boolean
+  /** The conversation is being loaded. */
+  loading: boolean
+  /** Milliseconds since the chat's stream last said anything. */
+  quietMs: number
+}
+
+/**
+ * A BACKSTOP FOR A STREAM THAT MISSED SOMETHING, from a read the page makes anyway - a Constellations
+ * project's poll, which says whether its lead works (the maintainer, 2026-11-03: the lead chat showed
+ * "Waiting for ..." for minutes over a turn its agent's panel showed finished, and never the turn the
+ * teammate's reply started):
+ *
+ * - `refresh`: the agent has just stopped working and the chat follows no turn - whatever it did
+ *   meanwhile, a turn the server started on its own included, is read in place;
+ * - `reload`: the chat still shows a turn, the agent does not work, and the stream has said nothing
+ *   for STALE_TURN_MS - the turn ended where the stream did not say so, and the conversation is loaded
+ *   as the server has it (which follows it again if anything does run there after all);
+ * - `later`: the same, but the stream spoke too recently to tell yet - asked again once it has been
+ *   quiet that long;
+ * - `none`: the agent works (its events are on their way), or the conversation is loading.
+ */
+export function agentIdleAction(s: AgentIdleSignals): 'none' | 'refresh' | 'reload' | 'later' {
+  if (s.working || s.loading) return 'none'
+  if (s.streaming) return s.quietMs >= STALE_TURN_MS ? 'reload' : 'later'
+  return s.wasWorking ? 'refresh' : 'none'
+}

@@ -26,8 +26,8 @@ import java.util.Map;
 /**
  * The Zendesk service, one account (one subdomain) per connection. Two ways in:
  * <ul>
- *   <li>an agent's email address and an API token (Admin Center > Apps and integrations > APIs >
- *       Zendesk API, with token access turned on), sent as {@code email/token:API_TOKEN} Basic;</li>
+ *   <li>an agent's email address and an existing API token (Admin Center > Apps and integrations > APIs >
+ *       API tokens - Zendesk creates no new ones), sent as {@code email/token:API_TOKEN} Basic;</li>
  *   <li>a sign-in through an OAuth client registered in that Zendesk account (the person's own on the
  *       single-user editions, the deployment's on Enterprise Server), asking for {@code read}.</li>
  * </ul>
@@ -56,25 +56,23 @@ public class ZendeskConnectionPlugin implements ConnectionPlugin {
             .auth(AuthMethod.of(AuthKind.BASIC, "Email and API token",
                             FieldSpec.text(ZendeskApi.SUBDOMAIN, "Subdomain").asRequired().placeholder("yourcompany")
                                     .pattern("[A-Za-z0-9][A-Za-z0-9-]*")
-                                    .help("The first part of your Zendesk address - yourcompany in yourcompany.zendesk.com."),
+                                    .help("yourcompany in yourcompany.zendesk.com."),
                             FieldSpec.text(AuthMethod.USERNAME, "Agent email address").asRequired()
                                     .placeholder("you@example.com")
                                     .help("The email address of the agent whose access is used."),
                             FieldSpec.secret(ZendeskApi.TOKEN, "API token").asRequired()
-                                    .help("Create one in Admin Center under Apps and integrations > APIs > Zendesk API, "
-                                            + "with token access turned on.")),
+                                    .help("An existing token from Admin Center > Apps and integrations > APIs > API tokens. Zendesk creates no new ones: sign in with Zendesk instead.")),
                     // Not required here: on Enterprise Server a sign-in's fields are not shown (the
                     // OAuth client is the deployment's), and the account is the Zendesk address instead.
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Zendesk",
                             FieldSpec.text(ZendeskApi.SUBDOMAIN, "Subdomain").placeholder("yourcompany")
                                     .pattern("[A-Za-z0-9][A-Za-z0-9-]*")
-                                    .help("The first part of your Zendesk address - yourcompany in yourcompany.zendesk.com."),
+                                    .help("yourcompany in yourcompany.zendesk.com."),
                             FieldSpec.text("clientId", "Client identifier")
-                                    .help("An OAuth client created in Admin Center under Apps and integrations > APIs > "
-                                            + "OAuth Clients."),
+                                    .help("Created in Admin Center > Apps and integrations > APIs > OAuth Clients."),
                             FieldSpec.secret("clientSecret", "Client secret")))
             .baseUrl(FieldSpec.url("baseUrl", "Zendesk address").placeholder("https://yourcompany.zendesk.com").asAdvanced()
-                    .help("Only for an address other than your subdomain's, such as your own domain."))
+                    .help("Only if you use your own domain."))
             .sourceTypes(ConnectorType.ZENDESK)
             .docsAnchor("zendesk")
             .build();

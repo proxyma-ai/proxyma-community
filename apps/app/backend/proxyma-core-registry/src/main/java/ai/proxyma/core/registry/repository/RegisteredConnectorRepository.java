@@ -79,6 +79,16 @@ public interface RegisteredConnectorRepository extends JpaRepository<RegisteredC
     @Query("update RegisteredConnector r set r.lastFullSyncAt = null where r.id = :id")
     int clearLastFullSyncAt(@Param("id") UUID id);
 
+    // The name and page a session's label gives the source (SourceLabels) - only while the config is
+    // still the one the label was worked out from, so an edit made during the pass is never undone.
+    // `was` is that config, or the empty string for none.
+    @Modifying
+    @Transactional
+    @Query("update RegisteredConnector r set r.name = :name, r.config = :config where r.id = :id "
+            + "and coalesce(r.config, '') = :was")
+    int updateLabel(@Param("id") UUID id, @Param("name") String name, @Param("config") String config,
+                    @Param("was") String was);
+
     // The model a source's index was built with, recorded the first time it is - and only then.
     // See SyncService.applyReindexSwapIfDue for why a later drain must never restamp it.
     @Modifying
@@ -158,8 +168,35 @@ public interface RegisteredConnectorRepository extends JpaRepository<RegisteredC
 
     List<RegisteredConnector> findBySharedTrue();
 
+    /** The sources of one type reading through a connection - those removed with it (RegistryConnectionUsage). */
+    List<RegisteredConnector> findByConnectionIdAndConnectorType(java.util.UUID connectionId, ConnectorType connectorType);
+
     /** How many sources read through a connection - see ConnectionUsage. */
     long countByConnectionId(java.util.UUID connectionId);
+
+    /**
+     * The sources of one type that read through a connection, or that this owner registered (a null owner matches
+     * only the connection): where a YouTube video's title is held locally (YouTubeVideoTitles, 2026-11-06).
+     */
+    @Query("select r.id from RegisteredConnector r where r.connectorType = :type"
+            + " and (r.connectionId = :connectionId or r.userId = :owner)")
+    List<UUID> findIdsByTypeAndConnectionOrOwner(@Param("type") ConnectorType type, @Param("connectionId") UUID connectionId,
+                                                @Param("owner") String owner);
+
+    /** The names of the sources reading through a connection, by name - a page of them, for a warning. */
+    @Query("select r.name from RegisteredConnector r where r.connectionId = :id order by lower(r.name)")
+    List<String> findNamesByConnectionId(@Param("id") UUID connectionId, Pageable page);
+
+    /**
+     * Every source reading through a connection that was just deleted, marked as needing another - in
+     * one statement, however many there are. The id stays: it is what tells "its connection was
+     * deleted" from "it never had one" (SyncOrchestratorService.noConnectionMessage).
+     */
+    @Modifying
+    @Transactional
+    @Query("update RegisteredConnector r set r.status = :status, r.lastSyncError = :error where r.connectionId = :id")
+    int markConnectionGone(@Param("id") UUID connectionId, @Param("status") RegisteredConnector.Status status,
+                           @Param("error") String error);
 
     // Single-holder invariant: ConnectorService.setPriority() clears every other holder in the
     // same operation, so this returns at most one connector in practice.

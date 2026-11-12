@@ -1,6 +1,8 @@
-import { FadeSwap, Field, FormColumns, Input, SettingsSection } from '@/components/ui/kit'
+import { FadeSwap, FormColumns, SettingsSection } from '@/components/ui/kit'
 import { useSettings } from '../hooks/useSettings'
-import { TabFieldsSkeleton, useResolved, type TabProps } from './shared'
+import { TabFieldsSkeleton, useResolved, useSaveSetting, type TabProps } from './shared'
+import { SettingText } from '../components/SettingFields'
+import { DOLLARS, RESET_DAY } from '../utils/settingNumbers'
 import { useTranslation } from '@/i18n'
 import { Rich } from '@/i18n/kit'
 
@@ -23,11 +25,16 @@ import { Rich } from '@/i18n/kit'
 // The reset day stays with it, and belongs to it rather than to the per-user block it used to sit
 // in: GlobalQuotaService reads quota-reset-day to decide where the ceiling's month starts. It is
 // the only other quota setting this edition actually consumes.
-export function QuotaSection({ trackChange, pending }: TabProps) {
+//
+// Both are numbers edited where they are read and saved when they are left (the click-to-edit rule,
+// 2026-11-02), checked first: an amount of 0 or more, a day from 1 to 28 (settingNumbers.ts).
+export function QuotaSection({ pending }: TabProps) {
   const { t } = useTranslation()
   const { isLoading } = useSettings('quota')
   const globalQuotaUsd = useResolved('quota', 'global-monthly-quota-usd', pending, '0')
   const quotaResetDay = useResolved('quota', 'quota-reset-day', pending, '1')
+  const saveLimit = useSaveSetting('quota', 'global-monthly-quota-usd')
+  const saveResetDay = useSaveSetting('quota', 'quota-reset-day')
 
   return (
     // Not called "Global quota" here. "Global" distinguishes a deployment ceiling from a per-user
@@ -45,32 +52,10 @@ export function QuotaSection({ trackChange, pending }: TabProps) {
         <TabFieldsSkeleton count={2} />
       ) : (
         <FormColumns>
-          <Field label={t('Monthly limit ($)')} hint={t('0 = no limit')}>
-            {id => (
-              <Input
-                id={id}
-                type="number"
-                min="0"
-                step="0.01"
-                value={globalQuotaUsd}
-                onChange={e => trackChange('quota', 'global-monthly-quota-usd', e.target.value)}
-                placeholder="0"
-              />
-            )}
-          </Field>
-          <Field label={t('Reset day')} hint={t('Day of month (1-28)')}>
-            {id => (
-              <Input
-                id={id}
-                type="number"
-                min="1"
-                max="28"
-                step="1"
-                value={quotaResetDay}
-                onChange={e => trackChange('quota', 'quota-reset-day', e.target.value)}
-              />
-            )}
-          </Field>
+          <SettingText label={t('Monthly limit ($)')} hint={t('0 = no limit')}
+            value={globalQuotaUsd} onCommit={saveLimit} number={DOLLARS} />
+          <SettingText label={t('Reset day')} hint={t('Day of month (1-28)')}
+            value={quotaResetDay} onCommit={saveResetDay} number={RESET_DAY} />
         </FormColumns>
       )}
       </FadeSwap>

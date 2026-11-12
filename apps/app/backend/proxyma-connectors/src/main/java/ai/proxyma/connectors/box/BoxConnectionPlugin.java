@@ -65,24 +65,21 @@ public class BoxConnectionPlugin implements ConnectionPlugin {
             .mark("box")
             .auth(AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Box",
                             FieldSpec.text("clientId", "Client ID").asRequired()
-                                    .help("From your Platform App's Configuration tab in the Box Developer Console."),
+                                    .help("From your app's Configuration tab in the Box Developer Console."),
                             FieldSpec.secret("clientSecret", "Client secret").asRequired()),
                     AuthMethod.of(AuthKind.OAUTH2_CLIENT, "Client credentials (server app)",
                             FieldSpec.text("clientId", "Client ID").asRequired()
-                                    .help("From a Platform App with Server Authentication (Client Credentials Grant), "
-                                            + "authorized by your Box admin."),
+                                    .help("From a Box Platform App with Server Authentication."),
                             FieldSpec.secret("clientSecret", "Client secret").asRequired(),
                             FieldSpec.select(SUBJECT_TYPE, "Read as", List.of(
                                             new FieldSpec.Option("enterprise", "The app's service account"),
                                             new FieldSpec.Option("user", "One user")))
                                     .defaultValue("enterprise").asRequired(),
                             FieldSpec.text(SUBJECT_ID, "Enterprise or user ID").asRequired()
-                                    .help("Your enterprise ID for the service account, else the user's ID. Both are "
-                                            + "in the Box Admin Console.")),
+                                    .help("Your enterprise ID, or a user ID, from the Box Admin Console.")),
                     AuthMethod.of(AuthKind.TOKEN, "Developer token",
                             FieldSpec.secret("token", "Developer token").asRequired()
-                                    .help("Generated on your Platform App's Configuration tab in the Box Developer Console. "
-                                            + "It expires after 60 minutes, so use it to try Proxyma out.")))
+                                    .help("From the Box Developer Console. Expires after 60 minutes.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(BoxApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave it as it is unless you are told otherwise."))
             .sourceTypes(ConnectorType.BOX)

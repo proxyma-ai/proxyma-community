@@ -111,7 +111,7 @@ class StreamAttemptsTest {
         ArgumentCaptor<TokenUsage> usages = ArgumentCaptor.forClass(TokenUsage.class);
         ArgumentCaptor<String> outcomes = ArgumentCaptor.forClass(String.class);
         verify(callLog, times(2)).record(eq(USER), eq("CHAT"), eq("Provider"), eq("m"), usages.capture(), anyDouble(), any(),
-                outcomes.capture(), any());
+                outcomes.capture(), any(), any());
         // The cache clock reads both attempts: the first wrote the cache, the second read it.
         assertThat(outcomes.getAllValues()).containsExactlyInAnyOrder("FIRST", "HIT");
         // In either order: the failed attempt's own end can be signalled after the retry has run.
@@ -133,7 +133,7 @@ class StreamAttemptsTest {
             recordedOn.set(Thread.currentThread().getName());
             recorded.countDown();
             return null;
-        }).when(callLog).record(any(), anyString(), anyString(), anyString(), any(), anyDouble(), any(), any(), any());
+        }).when(callLog).record(any(), anyString(), anyString(), anyString(), any(), anyDouble(), any(), any(), any(), any());
 
         LlmSession session = gateway.open(LlmCaller.of(LlmRole.CHAT, USER), LlmGateway.SessionOptions.plain());
         String signalledOn = Thread.currentThread().getName();

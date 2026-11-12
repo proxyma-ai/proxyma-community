@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { MarkdownField } from '@/components/ui/MarkdownField'
+import { EditableText } from '@/components/ui/EditableText'
+import { EditableMarkdown } from '@/components/ui/EditableMarkdown'
+import { ComboboxAutosave, quietly } from '@/components/ui/AutosaveFields'
+import { useAutosave } from '@/components/ui/useAutosave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { commaList, sameSet } from '@/components/ui/autosave'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import {
-  Badge, Button, Caption, Checkbox, Chip, Combobox, ConfirmDialog, DialogBody, DialogFooter, DialogHeader,
-  EmptyState, Field, FieldNote, FormColumns, FormStack, Input, List, ListRow, PickBox, SearchInput, Select,
-  SettingsSection, StepCard, SwitchRow, Textarea, TEXT,
+  Badge, Button, Caption, Checkbox, Chip, Combobox, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState, Field, FieldNote, FormColumns, FormStack, Input, List, ListRow, PickBox, SearchInput, Select, Presence, SettingsSection, StepCard, SwitchRow, Textarea, TEXT, IconButton,
 } from '@/components/ui/kit'
 import { PagedItems } from '@/components/ui/ListPager'
 import { ListSkeleton, TitleAction } from '../pages/shared'
@@ -24,6 +29,7 @@ import { keys } from '@/services/queryKeys'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
 import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
+import { catalogTypeName } from '@/features/indexing/utils/catalogRegistry'
 
 // - Workflows tab -
 //
@@ -85,7 +91,7 @@ export function WorkflowsTab() {
           </Button>
         </TitleAction>
       )}
-      <Caption>{t('An ordered set of steps the agent runs one at a time. Type "/" in the chat box and pick it by name.')}</Caption>
+      <Caption>{t('Steps the agent runs in order. Type "/" in chat to start one.')}</Caption>
 
       <div>
         {isLoading ? (
@@ -103,7 +109,7 @@ export function WorkflowsTab() {
               </Button>
             )}
           >
-            {t('Useful when the same job recurs in the same shape, such as a release check or a weekly summary.')}
+            {t('For a job you repeat the same way, like a weekly summary.')}
           </EmptyState>
         ) : (
           <div className="space-y-6 animate-fade-in">
@@ -134,12 +140,8 @@ export function WorkflowsTab() {
       {deleteTarget && (
         <ConfirmDialog
           title={t('Delete workflow')}
-          description={(
-            <>
-              {t('Are you sure you want to {verb}', { verb: t('delete') })}{' '}
-              <span className="font-semibold text-ink-primary">{deleteTarget.name}</span>?
-            </>
-          )}
+          description={t('Are you sure you want to {verb}', { verb: t('delete') })}
+          subject={`${deleteTarget.name}?`}
           confirmLabel={t('Delete')}
           cancelLabel={t('Cancel')}
           pendingLabel={t('Deleting...')}
@@ -197,16 +199,16 @@ function WorkflowRow({ workflow, onEditClick, onDeleteClick }: {
         </>
       )}
       caption={workflow.shortDescription && <span className="block truncate">{workflow.shortDescription}</span>}
+      // ROW ACTIONS ARE ICONS in every Settings list (the maintainer, 2026-11-10), as Connections' and Providers' are.
       action={workflow.canEdit && (
-        <Button className="animate-fade-in" variant="danger-quiet" onClick={onDeleteClick} aria-label={t('Delete {name}', { name: workflow.name })}>
-          {t('Delete')}
-        </Button>
+        <IconButton icon={Trash2} tone="danger" onClick={onDeleteClick}
+          label={t('Delete {name}', { name: workflow.name })} tooltip={t('Delete')} />
       )}
     />
   )
 }
 
-/** A step being edited. Position in the array IS the step's identity - see WorkflowStep.index. */
+/** A step being edited in the NEW workflow's form. Position in the array IS the step's identity - see WorkflowStep.index. */
 interface DraftStep {
   // Stable across reorders so React keeps each textarea's DOM node (and its caret) with its step
   // rather than with its position. Using the array index as the key made a "move up" look like the
@@ -222,26 +224,417 @@ function newDraftStep(title = '', instruction = ''): DraftStep {
   return { key: `s${draftStepSeq}`, title, instruction }
 }
 
+/**
+ * WHICH FIELD a refusal belongs to. The backend refuses three things and writes every message to be
+ * read by the author: a step list that is empty or past MAX_STEPS (which explains the token cost), a
+ * name a SKILL already holds ("/" is one namespace), and a provider chosen with no model. Shown
+ * verbatim against the field at fault rather than flattened into a generic "failed to save". Null
+ * when the server said nothing to show.
+ */
+function refusedField(e: unknown): { field: 'model' | 'name' | 'steps'; message: string } | null {
+  const data = (e as { response?: { data?: { error?: string; untranslated?: { error?: string } } } })?.response?.data
+  const message = data?.error
+  if (!message) return null
+  // WHICH FIELD is read off the ENGLISH wording, which the HTTP client keeps beside the translated
+  // sentence - a Vietnamese message matches neither pattern below.
+  const english = data?.untranslated?.error ?? message
+  // Tested before the name pattern, not after: the model message reads "This workflow NAMES a
+  // provider ...", so /name/i matches it too and would file it under the name field.
+  if (/provider|model/i.test(english)) return { field: 'model', message }
+  if (/name/i.test(english)) return { field: 'name', message }
+  return { field: 'steps', message }
+}
+
 // Exported so the chat composer's attach menu can create a workflow inline, exactly as it already
 // does with SkillModal - one import rather than a second copy of this form.
+//
+// TWO DIALOGS BEHIND ONE NAME, as SkillModal (the maintainer, 2026-11-02): ADDING a workflow is a
+// form with its Save button; an EXISTING workflow the reader may change is edited where it is read,
+// field by field, each saved as it is left (WorkflowEditDialog). One the reader may only read is the
+// form's read-only view.
 export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: {
   workflow: WorkflowSummary | null
   onClose: () => void
   readOnly?: boolean
   onSaved?: (workflow: WorkflowDetail) => void
 }) {
+  if (workflow && !readOnly) return <WorkflowEditDialog workflow={workflow} onClose={onClose} onSaved={onSaved} />
+  return <WorkflowForm workflow={workflow} onClose={onClose} onSaved={onSaved} />
+}
+
+/** What an existing workflow's dialog saves: the update request, a field at a time over the rest. */
+interface WorkflowFields {
+  name: string
+  shortDescription: string
+  preamble: string
+  steps: { title: string; instruction: string }[]
+  tags: string[]
+  tools: string[]
+  connectorNames: string[]
+  shared: boolean
+  provider: string | null
+  model: string | null
+}
+
+function fieldsOf(w: WorkflowDetail): WorkflowFields {
+  return {
+    name: w.name, shortDescription: w.shortDescription, preamble: w.preamble,
+    steps: w.steps.map(s => ({ title: s.title, instruction: s.instruction })),
+    tags: w.tags, tools: w.tools, connectorNames: w.connectorNames, shared: w.shared,
+    provider: w.provider ?? null, model: w.model ?? null,
+  }
+}
+
+/**
+ * AN EXISTING WORKFLOW, EDITED IN PLACE - as SkillEditDialog, plus its steps and its model. A step's
+ * title and instruction are click-to-edit; moving or removing one saves at once. "Add step" opens a
+ * step that is this dialog's alone until something is written in it - an empty step is never sent -
+ * and the last step cannot be removed, since a workflow with none is refused. A provider chosen is
+ * held here, with the note that says so, until its model is chosen: the server refuses a provider
+ * with no model, and both are then saved together.
+ */
+function WorkflowEditDialog({ workflow, onClose, onSaved }: {
+  workflow: WorkflowSummary
+  onClose: () => void
+  onSaved?: (workflow: WorkflowDetail) => void
+}) {
   const { t } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
-  const isEdit = workflow !== null
+  const { data: existing } = useQuery({
+    queryKey: keys.chatWorkflow(workflow.id),
+    queryFn: () => workflowsApi.get(workflow.id),
+  })
+  // Inlined rather than imported from SettingsModal's own useProviderInstances: this file is
+  // imported by the modal, so importing it back would be a cycle.
+  const { data: providerInstances = [] } = useQuery({
+    queryKey: keys.providerInstances(), queryFn: providersApi.list,
+  })
+  const [nameError, setNameError] = useState('')
+  const [stepsError, setStepsError] = useState('')
+  const [modelError, setModelError] = useState('')
+  // A step opened by "Add step" and not yet written in.
+  const [adding, setAdding] = useState(false)
+  // A provider chosen and not yet saved, waiting for its model.
+  const [heldProvider, setHeldProvider] = useState<string | null>(null)
+
+  const base = useMemo(() => (existing ? fieldsOf(existing) : undefined), [existing])
+  const { value, save, status } = useAutosave<WorkflowFields>(base, async next => {
+    const saved = await workflowsApi.update(workflow.id, {
+      name: next.name,
+      shortDescription: next.shortDescription,
+      preamble: next.preamble,
+      // index is re-derived from position by the backend, which ignores whatever is sent - position
+      // IS the identity.
+      steps: next.steps.map((s, i): WorkflowStep => ({ index: i, title: s.title.trim(), instruction: s.instruction.trim() })),
+      tags: next.tags,
+      tools: next.tools,
+      connectorNames: next.connectorNames,
+      shared: next.shared,
+      // Sent as null rather than '' so "no override" is one value on the wire.
+      provider: next.provider || null,
+      model: next.model?.trim() || null,
+    })
+    queryClient.invalidateQueries({ queryKey: keys.chatWorkflows() })
+    queryClient.invalidateQueries({ queryKey: keys.chatWorkflow(workflow.id) })
+    onSaved?.(saved)
+    return fieldsOf(saved)
+  }, {
+    failure: t('Failed to update workflow'),
+    // A refusal the server explains goes under its field; the field itself goes back.
+    onError: e => {
+      const refused = refusedField(e)
+      if (!refused) addToast(t('Failed to update workflow'), 'danger')
+      else if (refused.field === 'model') setModelError(refused.message)
+      else if (refused.field === 'name') setNameError(refused.message)
+      else setStepsError(refused.message)
+    },
+    onSaved: () => { setNameError(''); setStepsError(''); setModelError('') },
+  })
+
+  // Until the detail arrives, the summary's own fields stand in - shown, not yet editable.
+  const v: WorkflowFields = value ?? {
+    name: workflow.name, shortDescription: workflow.shortDescription, preamble: '', steps: [], tags: workflow.tags,
+    tools: [], connectorNames: [], shared: workflow.shared, provider: null, model: null,
+  }
+  const loaded = value !== undefined
+
+  const setStep = (i: number, patch: Partial<{ title: string; instruction: string }>) =>
+    save({ steps: v.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) })
+  const moveStep = (from: number, to: number) => {
+    if (to < 0 || to >= v.steps.length) return
+    const next = [...v.steps]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    quietly(save({ steps: next }))
+  }
+  // The new step joins the list the moment something is written in it, and comes back if that is refused.
+  const addStep = (step: { title: string; instruction: string }) => {
+    setAdding(false)
+    return save({ steps: [...v.steps, step] }).catch(e => { setAdding(true); throw e })
+  }
+
+  // Unfiltered, same as the Settings model roles: nothing declares per-role capability any more
+  // (see ProviderProtocol), and a step whose provider cannot chat fails the run with the reason.
+  const chatProviders = providerInstances
+  const provider = heldProvider ?? v.provider ?? ''
+  const model = heldProvider !== null ? '' : (v.model ?? '')
+  // A workflow can name an instance that has since been deleted; the select stays on a value it
+  // cannot name, so say so.
+  const providerMissing = provider !== '' && !chatProviders.some(p => p.id === provider)
+  const { options: modelOptions, status: modelStatus, errorText: modelsError, onOpen: openModels } = useProviderModels(provider)
+  const pickModel = t('Pick a model, or use the chat model.')
+  const stepCount = v.steps.length + (adding ? 1 : 0)
+
+  return (
+    <ModalShell onClose={onClose} initialFocus="panel" size="full" fill ariaLabel={t('Edit workflow')}>
+      {() => (<>
+        <DialogHeader title={t('Edit workflow')} actions={<SaveStatus word={status} />} />
+        {/* The same three columns as the form: what the workflow is, its steps, and what it runs
+            with. The steps and the tools fill their columns and scroll inside them. */}
+        <DialogBody scroll className="flex flex-col">
+          <FormColumns cols={3} from="lg" density="columns" className="lg:grid-rows-1 lg:flex-1 lg:min-h-0">
+          <FormStack className="min-w-0">
+            <Field label={t('Name')} description={t('What you type after "/" in chat. Must differ from skill names.')}>
+              <EditableText
+                value={v.name}
+                label={t('Name')}
+                placeholder={t('e.g. Release readiness')}
+                editable={loaded}
+                required={t('Name is required')}
+                error={nameError || undefined}
+                onCommit={name => save({ name })}
+              />
+            </Field>
+
+            <Field label={t('Short description')} description={t('Shown in the "/" list and to the agent.')}>
+              <EditableText
+                value={v.shortDescription}
+                label={t('Short description')}
+                placeholder={t('Check whether a release is ready to ship')}
+                multiline
+                editable={loaded}
+                required={t('Short description is required')}
+                onCommit={shortDescription => save({ shortDescription })}
+              />
+            </Field>
+
+            <Field label={t('Context')} description={t('Optional. Given before the first step.')}>
+              {id => (
+                <EditableMarkdown
+                  id={id}
+                  value={v.preamble}
+                  onCommit={preamble => save({ preamble })}
+                  placeholder={t('The release version is whatever the user named when they invoked this...')}
+                  rows={3}
+                  editable={loaded}
+                />
+              )}
+            </Field>
+
+            <Field label={t('Tags')} description={t('Comma-separated.')}>
+              <EditableText
+                value={v.tags.join(', ')}
+                label={t('Tags')}
+                placeholder="release, qa"
+                editable={loaded}
+                onCommit={text => {
+                  const tags = commaList(text)
+                  return sameSet(tags, v.tags) ? undefined : save({ tags })
+                }}
+              />
+            </Field>
+
+            <SwitchRow
+              className="py-0"
+              title={t('Shared')}
+              caption={t('Every user can see and run it.')}
+              checked={v.shared}
+              onChange={shared => quietly(save({ shared }))}
+              disabled={!loaded}
+            />
+          </FormStack>
+
+          <div className="min-w-0 lg:min-h-0 lg:flex lg:flex-col">
+            <Field
+              label={t('Steps')}
+              aside={t('{done} of {total}', { done: String(stepCount), total: String(MAX_STEPS) })}
+              description={t('Steps run in order, one turn each. Each step adds cost.')}
+              error={stepsError || undefined}
+              className="lg:flex-1 lg:min-h-0"
+            >
+              {/* A numbered card per step, with its reorder and remove controls - a list of unknown
+                  length, so it scrolls inside the column. */}
+              <div className="space-y-3 max-h-96 lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto">
+                {v.steps.map((step, i) => (
+                  <StepCard
+                    key={i}
+                    index={i}
+                    count={v.steps.length}
+                    head={(
+                      <EditableText
+                        value={step.title}
+                        label={t('Step {number} title', { number: i + 1 })}
+                        placeholder={t('What this step is called')}
+                        onCommit={title => setStep(i, { title })}
+                      />
+                    )}
+                    onMove={moveStep}
+                    // The last step stays: a workflow with no steps is refused.
+                    onRemove={v.steps.length > 1 ? () => quietly(save({ steps: v.steps.filter((_, j) => j !== i) })) : undefined}
+                    labels={{
+                      up: t('Move step {number} up', { number: i + 1 }),
+                      down: t('Move step {number} down', { number: i + 1 }),
+                      remove: t('Remove step {number}', { number: i + 1 }),
+                    }}
+                  >
+                    <EditableMarkdown
+                      value={step.instruction}
+                      onCommit={instruction => setStep(i, { instruction })}
+                      aria-label={t('Step {number} instruction', { number: i + 1 })}
+                      placeholder={t('What to do in this step and what to report.')}
+                      rows={3}
+                    />
+                  </StepCard>
+                ))}
+                <Presence show={adding}>
+                  <StepCard
+                    index={v.steps.length}
+                    count={v.steps.length + 1}
+                    head={(
+                      <EditableText
+                        value=""
+                        startOpen
+                        label={t('Step {number} title', { number: v.steps.length + 1 })}
+                        placeholder={t('What this step is called')}
+                        onCommit={title => addStep({ title, instruction: '' })}
+                      />
+                    )}
+                    onRemove={() => setAdding(false)}
+                    labels={{
+                      up: t('Move step {number} up', { number: v.steps.length + 1 }),
+                      down: t('Move step {number} down', { number: v.steps.length + 1 }),
+                      remove: t('Remove step {number}', { number: v.steps.length + 1 }),
+                    }}
+                  >
+                    <EditableMarkdown
+                      value=""
+                      onCommit={instruction => addStep({ title: '', instruction })}
+                      aria-label={t('Step {number} instruction', { number: v.steps.length + 1 })}
+                      placeholder={t('What to do in this step and what to report.')}
+                      rows={3}
+                    />
+                  </StepCard>
+                </Presence>
+              </div>
+            </Field>
+
+            <Presence show={loaded && !adding}>
+              <div className="mt-3">
+                {v.steps.length >= MAX_STEPS ? (
+                  <Caption className="animate-fade-in">
+                    {t('That is the maximum. Split longer ones into two workflows.')}
+                  </Caption>
+                ) : (
+                  <Button className="animate-fade-in" variant="secondary" onClick={() => setAdding(true)}>
+                    <Plus size={14} aria-hidden="true" />
+                    {t('Add step')}
+                  </Button>
+                )}
+              </div>
+            </Presence>
+          </div>
+
+          <div className="min-w-0 space-y-4 lg:min-h-0 lg:flex lg:flex-col">
+            <Field
+              label={t('Model')}
+              description={t('Optional. A cheaper model for every step.')}
+              error={(heldProvider !== null ? pickModel : modelError) || undefined}
+            >
+              <FormColumns className="items-start">
+                <div>
+                  <Select
+                    value={provider}
+                    // A provider is saved WITH its model: a model name means nothing outside the
+                    // catalogue it came from, and the server refuses a provider with none. So a new
+                    // one is held until its model is chosen; "Main chat model" saves at once and
+                    // clears the model with it.
+                    onChange={p => {
+                      setModelError('')
+                      if (p === '') {
+                        setHeldProvider(null)
+                        if (v.provider || v.model) quietly(save({ provider: null, model: null }))
+                      } else {
+                        setHeldProvider(p === (v.provider ?? '') ? null : p)
+                      }
+                    }}
+                    disabled={!loaded}
+                    options={[
+                      { value: '', label: t('Main chat model') },
+                      ...chatProviders.map(p => ({ value: p.id, label: p.name })),
+                    ]}
+                  />
+                  {providerMissing && (
+                    <FieldNote error={t('This provider is gone. Pick another, or use the chat model.')} />
+                  )}
+                </div>
+                <ComboboxAutosave
+                  value={model}
+                  placeholder={provider ? t('Model name') : t('Same as chat')}
+                  options={modelOptions}
+                  status={modelStatus}
+                  errorText={modelsError}
+                  labels={{ loading: t('Loading models...'), failed: t('Failed to load models'), empty: t('No models found') }}
+                  disabled={!loaded}
+                  // Never asks a provider that was not chosen: with no id the request would be to
+                  // /api/v1/providers//models, which is not a route.
+                  onOpen={() => { if (provider) openModels() }}
+                  validate={m => (provider && !m ? pickModel : null)}
+                  onCommit={m => {
+                    setModelError('')
+                    if (heldProvider === null) return save({ model: m || null })
+                    return save({ provider: heldProvider, model: m }).then(() => setHeldProvider(null))
+                  }}
+                />
+              </FormColumns>
+            </Field>
+
+            <WorkflowConnectorsField
+              names={v.connectorNames}
+              disabled={!loaded}
+              onAdd={n => { if (!v.connectorNames.includes(n)) quietly(save({ connectorNames: [...v.connectorNames, n] })) }}
+              onRemove={n => quietly(save({ connectorNames: v.connectorNames.filter(x => x !== n) }))}
+            />
+            <WorkflowToolsField
+              picked={v.tools}
+              disabled={!loaded}
+              onToggle={n => quietly(save({ tools: v.tools.includes(n) ? v.tools.filter(x => x !== n) : [...v.tools, n] }))}
+            />
+          </div>
+          </FormColumns>
+        </DialogBody>
+      </>)}
+    </ModalShell>
+  )
+}
+
+/**
+ * A NEW WORKFLOW'S FORM, and a workflow the reader may only read: every field held here until Save.
+ * Sharing is not on the new one - create() never sends it.
+ */
+function WorkflowForm({ workflow, onClose, onSaved }: {
+  workflow: WorkflowSummary | null
+  onClose: () => void
+  onSaved?: (workflow: WorkflowDetail) => void
+}) {
+  const { t } = useTranslation()
+  const addToast = useToastStore(s => s.addToast)
+  // A workflow passed in here is one the reader may only read.
+  const readOnly = workflow !== null
   const { data: existing } = useQuery({
     queryKey: keys.chatWorkflow(workflow?.id ?? ''),
     queryFn: () => workflowsApi.get(workflow!.id),
-    enabled: isEdit,
+    enabled: readOnly,
   })
-  const { data: allTools = [] } = useQuery({ queryKey: keys.chatTools(), queryFn: skillsApi.listTools })
-  const [toolSearch, setToolSearch] = useState('')
-  // Inlined rather than imported from SettingsModal's own useProviderInstances: this file is
-  // imported by the modal, so importing it back would be a cycle.
   const { data: providerInstances = [] } = useQuery({
     queryKey: keys.providerInstances(), queryFn: providersApi.list,
   })
@@ -258,11 +651,6 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
   const [tagsInput, setTagsInput] = useState('')
   const [tools, setTools] = useState<string[]>([])
   const [connectorNames, setConnectorNames] = useState<string[]>([])
-  const [connectorSearch, setConnectorSearch] = useState('')
-  const debouncedConnectorSearch = useDebounce(connectorSearch.trim(), 300)
-  const { data: connectorSuggestions = [] } = useMentionSuggestions(debouncedConnectorSearch ? debouncedConnectorSearch : null)
-  const availableConnectorSuggestions = connectorSuggestions.filter(r => !connectorNames.includes(r.name))
-  const [shared, setShared] = useState(workflow?.shared ?? false)
   // '' on both means "run on the main chat model", which is what every workflow did before this
   // field existed and is still the default for a new one.
   const [provider, setProvider] = useState('')
@@ -272,91 +660,55 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
   // What the form holds, against what it opened with. A step's `key` is React bookkeeping, not
   // content, and tools and connectors are sets - so none of those alone is a change.
   const formValues = {
-    name, shortDescription, preamble, tagsInput, shared, provider, model,
+    name, shortDescription, preamble, tagsInput, provider, model,
     steps: steps.map(s => ({ title: s.title, instruction: s.instruction })),
     tools: [...tools].sort(), connectorNames: [...connectorNames].sort(),
   }
-  const { dirty: formDirty, rebase } = useFormDirty(formValues)
+  const { dirty: formDirty } = useFormDirty(formValues)
   const dirty = !readOnly && formDirty
 
-  // The seeded values become the baseline, so the fill itself does not read as an edit - see the
-  // same effect in SkillModal.
+  // The read-only view fills in once the detail arrives.
   useEffect(() => {
     if (existing) {
-      const seededSteps = existing.steps.length > 0
-        ? existing.steps.map(s => newDraftStep(s.title, s.instruction))
-        : [newDraftStep()]
       setPreamble(existing.preamble)
-      setSteps(seededSteps)
+      setSteps(existing.steps.length > 0
+        ? existing.steps.map(s => newDraftStep(s.title, s.instruction))
+        : [newDraftStep()])
       setTagsInput(existing.tags.join(', '))
       setTools(existing.tools)
       setConnectorNames(existing.connectorNames)
       setProvider(existing.provider ?? '')
       setModel(existing.model ?? '')
-      rebase({
-        name: workflow?.name ?? '',
-        shortDescription: workflow?.shortDescription ?? '',
-        preamble: existing.preamble,
-        tagsInput: existing.tags.join(', '),
-        shared: workflow?.shared ?? false,
-        provider: existing.provider ?? '',
-        model: existing.model ?? '',
-        steps: seededSteps.map(s => ({ title: s.title, instruction: s.instruction })),
-        tools: [...existing.tools].sort(),
-        connectorNames: [...existing.connectorNames].sort(),
-      })
     }
-    // `workflow` is the summary this modal was opened for and does not change while it is open.
-  }, [existing, rebase])
+  }, [existing])
 
   const save = useMutation({
     mutationFn: () => {
-      const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
       // index is re-derived from position by the backend, which ignores whatever is sent - position
       // IS the identity, and trusting a client-supplied index would let a malformed request produce
       // a workflow whose steps run in an order this editor never showed.
       const payloadSteps: WorkflowStep[] = steps.map((s, i) => ({
         index: i, title: s.title.trim(), instruction: s.instruction.trim(),
       }))
-      const body = {
-        name, shortDescription, preamble, steps: payloadSteps, tags, tools, connectorNames,
+      return workflowsApi.create({
+        name, shortDescription, preamble, steps: payloadSteps, tags: commaList(tagsInput), tools, connectorNames,
         // Sent as null rather than '' so "no override" is one value on the wire, and the same one
         // the backend writes back when it omits both keys from the file.
         provider: provider || null,
         model: model.trim() || null,
-      }
-      return isEdit
-        ? workflowsApi.update(workflow.id, { ...body, shared })
-        : workflowsApi.create(body)
+      })
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: keys.chatWorkflows() })
-      if (isEdit) queryClient.invalidateQueries({ queryKey: keys.chatWorkflow(workflow.id) })
       onSaved?.(saved)
       onClose()
     },
     onError: (e: unknown) => {
-      // The backend refuses three things here and writes every message to be read by the author:
-      // a step list that is empty or past MAX_STEPS (which explains the token cost), a name a SKILL
-      // already holds ("/" is one namespace), and a provider chosen with no model. Shown verbatim
-      // against the field at fault rather than flattened into a generic "failed to save".
-      const data = (e as { response?: { data?: { error?: string; untranslated?: { error?: string } } } })?.response?.data
-      const message = data?.error
-      // WHICH FIELD is read off the ENGLISH wording, which the HTTP client keeps beside the
-      // translated sentence - a Vietnamese message matches neither pattern below.
-      const english = data?.untranslated?.error ?? message
-      // Tested before the name pattern, not after: the model message reads "This workflow NAMES a
-      // provider ...", so /name/i matches it too and would file it under the name field.
-      if (message && english && /provider|model/i.test(english)) {
-        setModelError(message)
-      } else if (message && english && /name/i.test(english)) {
-        setNameError(message)
-        nameShake.trigger()
-      } else if (message) {
-        setStepsError(message)
-      } else {
-        addToast(isEdit ? t('Failed to update workflow') : t('Failed to create workflow'), 'danger')
-      }
+      const refused = refusedField(e)
+      if (!refused) addToast(t('Failed to create workflow'), 'danger')
+      else if (refused.field === 'model') setModelError(refused.message)
+      else if (refused.field === 'name') { setNameError(refused.message); nameShake.trigger() }
+      else setStepsError(refused.message)
     },
   })
 
@@ -391,7 +743,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
     // rather than as a 400 after a round trip. A model with no provider is NOT an error - it means
     // "the chat role's provider, this model".
     if (provider && !model.trim()) {
-      setModelError(t('Pick a model from this provider, or set the provider back to the chat model.'))
+      setModelError(t('Pick a model, or use the chat model.'))
       valid = false
     } else {
       setModelError('')
@@ -428,21 +780,6 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
     })
   }
 
-  const toggleTool = (toolName: string) => {
-    if (readOnly) return
-    setTools(prev => prev.includes(toolName) ? prev.filter(t => t !== toolName) : [...prev, toolName])
-  }
-
-  const addConnector = (n: string) => {
-    if (readOnly) return
-    setConnectorNames(prev => prev.includes(n) ? prev : [...prev, n])
-  }
-
-  const removeConnector = (n: string) => {
-    if (readOnly) return
-    setConnectorNames(prev => prev.filter(x => x !== n))
-  }
-
   // Unfiltered, same as the Settings model roles: nothing declares per-role capability any more
   // (see ProviderProtocol), and a step whose provider cannot chat fails the run with the reason.
   const chatProviders = providerInstances
@@ -451,24 +788,18 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
   const providerMissing = provider !== '' && !chatProviders.some(p => p.id === provider)
   const { options: modelOptions, status: modelStatus, errorText: modelsError, onOpen: openModels } = useProviderModels(provider)
 
-  const filteredTools = toolSearch.trim()
-    ? allTools.filter(t =>
-        t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
-        t.description.toLowerCase().includes(toolSearch.toLowerCase()))
-    : allTools
-
   return (
     <ModalShell
       onClose={onClose}
       closable={!save.isPending}
       dirty={dirty}
-      initialFocus={isEdit ? 'panel' : 'first-field'}
+      initialFocus={readOnly ? 'panel' : 'first-field'}
       size="full"
       fill
-      ariaLabel={readOnly && workflow ? workflow.name : isEdit ? t('Edit workflow') : t('Add workflow')}
+      ariaLabel={readOnly && workflow ? workflow.name : t('Add workflow')}
     >
       {requestClose => (<>
-        <DialogHeader title={readOnly && workflow ? workflow.name : isEdit ? t('Edit workflow') : t('Add workflow')} />
+        <DialogHeader title={readOnly && workflow ? workflow.name : t('Add workflow')} />
         {/* THREE COLUMNS FROM lg, since 2026-09-27 (the maintainer's rule that no dialog
             scrolls): what the workflow is, its steps, and what it runs with. The panel has a
             fixed height there, and the two lists of unknown length - the steps and the tools -
@@ -478,7 +809,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
         <DialogBody scroll className="flex flex-col">
           <FormColumns cols={3} from="lg" density="columns" className="lg:grid-rows-1 lg:flex-1 lg:min-h-0">
           <FormStack className="min-w-0">
-            <Field label={t('Name')} description={t("What you type after \"/\" in the chat box to run it. Must not match a skill's name.")}>
+            <Field label={t('Name')} description={t('What you type after "/" in chat. Must differ from skill names.')}>
               {id => (
                 <Input
                   id={id}
@@ -492,7 +823,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               )}
             </Field>
 
-            <Field label={t('Short description')} description={t('Shown in the "/" list and to the agent, so it knows this workflow exists.')}>
+            <Field label={t('Short description')} description={t('Shown in the "/" list and to the agent.')}>
               {id => (
                 <Textarea
                   id={id}
@@ -507,12 +838,12 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               )}
             </Field>
 
-            <Field label={t('Context')} description={t('Optional. Given once before the first step and kept for every step.')}>
+            <Field label={t('Context')} description={t('Optional. Given before the first step.')}>
               {id => (
-                <Textarea
+                <MarkdownField
                   id={id}
                   value={preamble}
-                  onChange={e => setPreamble(e.target.value)}
+                  onChange={setPreamble}
                   placeholder={t('The release version is whatever the user named when they invoked this...')}
                   rows={3}
                   disabled={readOnly}
@@ -520,7 +851,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               )}
             </Field>
 
-            <Field label={t('Tags')} description={t('Comma-separated, used to organize your workflows list.')}>
+            <Field label={t('Tags')} description={t('Comma-separated.')}>
               {id => (
                 <Input
                   id={id}
@@ -532,16 +863,15 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               )}
             </Field>
 
-            {/* Same rule as the skill modal: create() never sends `shared`, so there is nothing for
-                this control to do until the workflow exists. */}
-            {isEdit && (
+            {/* Read-only only: whether somebody else's workflow is shared, shown and not changed. */}
+            {workflow && (
               <SwitchRow
                 className="py-0"
                 title={t('Shared')}
-                caption={t('Visible and runnable by every user, not just you.')}
-                checked={shared}
-                onChange={setShared}
-                disabled={readOnly}
+                caption={t('Every user can see and run it.')}
+                checked={workflow.shared}
+                onChange={() => undefined}
+                disabled
               />
             )}
           </FormStack>
@@ -550,7 +880,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
             <Field
               label={t('Steps')}
               aside={t('{done} of {total}', { done: String(steps.length), total: String(MAX_STEPS) })}
-              description={t('Each step is one turn, run in order, so later steps can use earlier findings. Every step also re-reads all previous ones, adding cost.')}
+              description={t('Steps run in order, one turn each. Each step adds cost.')}
               error={stepsError || undefined}
               className="lg:flex-1 lg:min-h-0"
             >
@@ -578,10 +908,10 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
                       remove: t('Remove step {number}', { number: i + 1 }),
                     }}
                   >
-                    <Textarea
+                    <MarkdownField
                       value={step.instruction}
-                      onChange={e => updateStep(step.key, { instruction: e.target.value })}
-                      placeholder={t('What the agent should do in this step, and what it should report back.')}
+                      onChange={value => updateStep(step.key, { instruction: value })}
+                      placeholder={t('What to do in this step and what to report.')}
                       rows={3}
                       disabled={readOnly}
                     />
@@ -594,7 +924,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               <div className="mt-3 animate-fade-in">
                 {steps.length >= MAX_STEPS ? (
                   <Caption className="animate-fade-in">
-                    {t('That is the maximum. Split longer procedures into two workflows, since cost grows faster than the list.')}
+                    {t('That is the maximum. Split longer ones into two workflows.')}
                   </Caption>
                 ) : (
                   <Button className="animate-fade-in" variant="secondary" onClick={addStep}>
@@ -609,7 +939,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
           <div className="min-w-0 space-y-4 lg:min-h-0 lg:flex lg:flex-col">
             <Field
               label={t('Model')}
-              description={t('Optional. Pick a cheaper model and every step runs on it, instead of costing the main chat model once per step.')}
+              description={t('Optional. A cheaper model for every step.')}
               error={modelError || undefined}
             >
               {/* One column below sm, same as the Settings model rows: at that width neither control
@@ -631,7 +961,7 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
                     ]}
                   />
                   {providerMissing && (
-                    <FieldNote error={t('The provider this was set to is gone - pick another, or go back to the main chat model.')} />
+                    <FieldNote error={t('This provider is gone. Pick another, or use the chat model.')} />
                   )}
                 </div>
                 <Combobox
@@ -652,96 +982,23 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
               </FormColumns>
             </Field>
 
-            <Field label={t('Connectors')} description={t('Prefer these connectors when the agent searches during this workflow - a preference, not a restriction.')}>
-              <div className="space-y-2">
-                {/* Disabled while read-only: nothing can be added, and the field stays in place. */}
-                <SearchInput
-                  value={connectorSearch}
-                  onChange={setConnectorSearch}
-                  placeholder={t('Search connectors by name...')}
-                  ariaLabel={t('Connectors')}
-                  clearLabel={t('Clear search')}
-                  disabled={readOnly}
-                />
-                {connectorSearch.trim() && (
-                  <PickBox>
-                    {availableConnectorSuggestions.length === 0 ? (
-                      <EmptyState className="py-2">{t('No matching connectors.')}</EmptyState>
-                    ) : (
-                      <List>
-                        {availableConnectorSuggestions.map(r => (
-                          <ListRow
-                            key={r.id}
-                            className="py-2"
-                            onClick={() => addConnector(r.name)}
-                            disabled={readOnly}
-                            title={r.name}
-                            trailing={<span className={TEXT.caption}>{r.type}</span>}
-                          />
-                        ))}
-                      </List>
-                    )}
-                  </PickBox>
-                )}
-                {connectorNames.length > 0 && (
-                  <div className="flex flex-wrap gap-2 animate-fade-in">
-                    {connectorNames.map(n => (
-                      <Chip
-                        key={n}
-                        label={n}
-                        onRemove={readOnly ? undefined : () => removeConnector(n)}
-                        removeLabel={t('Remove {name}', { name: n })}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Field>
-
-            <Field
-              label={t('Tools')}
-              description={t('Platform tools the agent may use in every step of this workflow.')}
-              className="lg:flex-1 lg:min-h-0"
-            >
-              <div className="space-y-2 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
-                <SearchInput
-                  value={toolSearch}
-                  onChange={setToolSearch}
-                  placeholder={t('Search tools...')}
-                  ariaLabel={t('Tools')}
-                  clearLabel={t('Clear search')}
-                  disabled={readOnly}
-                />
-                <PickBox maxHeight="max-h-72" fill>
-                  {filteredTools.length === 0 ? (
-                    <EmptyState className="py-3">
-                      {allTools.length === 0 ? t('No tools available.') : t('No tools match your search.')}
-                    </EmptyState>
-                  ) : (
-                    <List>
-                      {filteredTools.map(tool => (
-                        <Checkbox
-                          key={tool.name}
-                          className="flex py-2"
-                          checked={tools.includes(tool.name)}
-                          onChange={() => toggleTool(tool.name)}
-                          disabled={readOnly}
-                          hint={tool.description}
-                        >
-                          {tool.name}
-                        </Checkbox>
-                      ))}
-                    </List>
-                  )}
-                </PickBox>
-              </div>
-            </Field>
+            <WorkflowConnectorsField
+              names={connectorNames}
+              disabled={readOnly}
+              onAdd={n => setConnectorNames(prev => prev.includes(n) ? prev : [...prev, n])}
+              onRemove={n => setConnectorNames(prev => prev.filter(x => x !== n))}
+            />
+            <WorkflowToolsField
+              picked={tools}
+              disabled={readOnly}
+              onToggle={n => setTools(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])}
+            />
           </div>
           </FormColumns>
         </DialogBody>
         {/* No footer until something has changed, Cancel and Save once it has - the same rule as
-            SkillModal, for the same reason. Read-only never has one: it was a lone Close, and a
-            dialog closes on its backdrop and Escape. */}
+            SkillModal's form, for the same reason. Read-only never has one: it was a lone Close, and
+            a dialog closes on its backdrop and Escape. */}
         {!readOnly && dirty && (
           <DialogFooter>
             <Button variant="secondary" onClick={requestClose} disabled={save.isPending}>{t('Cancel')}</Button>
@@ -752,5 +1009,123 @@ export function WorkflowModal({ workflow, onClose, readOnly = false, onSaved }: 
         )}
       </>)}
     </ModalShell>
+  )
+}
+
+/**
+ * The connectors a workflow prefers - a search for one to add, and the chosen ones as chips.
+ * Disabled while read-only (or loading): nothing can be added, and the field stays in place.
+ */
+function WorkflowConnectorsField({ names, disabled, onAdd, onRemove }: {
+  names: string[]
+  disabled: boolean
+  onAdd: (name: string) => void
+  onRemove: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  const [search, setSearch] = useState('')
+  const debounced = useDebounce(search.trim(), 300)
+  const { data: suggestions = [] } = useMentionSuggestions(debounced ? debounced : null)
+  const available = suggestions.filter(r => !names.includes(r.name))
+  return (
+    <Field label={t('Connectors')} description={t('Searched first in this workflow.')}>
+      <div className="space-y-2">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t('Search connectors by name...')}
+          ariaLabel={t('Connectors')}
+          clearLabel={t('Clear search')}
+          disabled={disabled}
+        />
+        <Presence show={!!search.trim()}>
+          <PickBox>
+            {available.length === 0 ? (
+              <EmptyState className="py-2">{t('No matching connectors.')}</EmptyState>
+            ) : (
+              <List>
+                {available.map(r => (
+                  <ListRow
+                    key={r.id}
+                    className="py-2"
+                    onClick={() => onAdd(r.name)}
+                    disabled={disabled}
+                    title={r.name}
+                    trailing={<span className={TEXT.caption}>{t(catalogTypeName(r.type) ?? r.type)}</span>}
+                  />
+                ))}
+              </List>
+            )}
+          </PickBox>
+        </Presence>
+        <Presence show={names.length > 0}>
+          <div className="flex flex-wrap gap-2">
+            {names.map(n => (
+              <Chip
+                key={n}
+                label={n}
+                onRemove={disabled ? undefined : () => onRemove(n)}
+                removeLabel={t('Remove {name}', { name: n })}
+              />
+            ))}
+          </div>
+        </Presence>
+      </div>
+    </Field>
+  )
+}
+
+/** The tools the agent may use in every step - a filter over the catalog and a box per tool. */
+function WorkflowToolsField({ picked, disabled, onToggle }: {
+  picked: string[]
+  disabled: boolean
+  onToggle: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  const { data: allTools = [] } = useQuery({ queryKey: keys.chatTools(), queryFn: skillsApi.listTools })
+  const [toolSearch, setToolSearch] = useState('')
+  const q = toolSearch.trim().toLowerCase()
+  const filtered = q
+    ? allTools.filter(tool => tool.name.toLowerCase().includes(q) || tool.description.toLowerCase().includes(q))
+    : allTools
+  return (
+    <Field
+      label={t('Tools')}
+      description={t('Tools the agent may use in every step.')}
+      className="lg:flex-1 lg:min-h-0"
+    >
+      <div className="space-y-2 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+        <SearchInput
+          value={toolSearch}
+          onChange={setToolSearch}
+          placeholder={t('Search tools...')}
+          ariaLabel={t('Tools')}
+          clearLabel={t('Clear search')}
+          disabled={disabled}
+        />
+        <PickBox maxHeight="max-h-72" fill>
+          {filtered.length === 0 ? (
+            <EmptyState className="py-3">
+              {allTools.length === 0 ? t('No tools available.') : t('No tools match your search.')}
+            </EmptyState>
+          ) : (
+            <List>
+              {filtered.map(tool => (
+                <Checkbox
+                  key={tool.name}
+                  className="flex py-2"
+                  checked={picked.includes(tool.name)}
+                  onChange={() => { if (!disabled) onToggle(tool.name) }}
+                  disabled={disabled}
+                  hint={tool.description}
+                >
+                  {tool.name}
+                </Checkbox>
+              ))}
+            </List>
+          )}
+        </PickBox>
+      </div>
+    </Field>
   )
 }

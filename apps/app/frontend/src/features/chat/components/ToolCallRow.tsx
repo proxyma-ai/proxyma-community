@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react'
 import { ToolCallRow as KitToolCallRow } from '@/components/ui/kit'
 import { ApprovalOutcome, ToolApprovalPrompt } from './ToolApprovalPrompt'
 import { ToolEnablePrompt } from './ToolEnablePrompt'
@@ -5,6 +6,7 @@ import { useElapsedText } from '../hooks/useServerNow'
 import { failedToolLabel, isFailedResult, toolActivity } from '../utils/toolActivity'
 import { toolIcon } from '../utils/toolIcon'
 import { extractErrorSummary } from '../utils/toolErrors'
+import { isWithheldCall } from '../utils/guardrailNotes'
 import type { ToolCallInfo, PendingApproval, PendingEnableRequest } from '../types/chat.types'
 import { useTranslation } from '@/i18n'
 
@@ -27,11 +29,19 @@ interface RowProps {
 export function ToolCallRow({ tc, approval, enableRequest, conversationId, onOpenDetail }: RowProps) {
   const { t } = useTranslation()
   const elapsed = useElapsedText([tc])
-  const failed = tc.done && !!tc.result && isFailedResult(tc.result)
+  // A result the retrieval guardrail withheld is the product doing what its operator set up, not
+  // the call failing - the same reasoning as MessageBubble's GuardrailNotice. So no red: the shield
+  // in place of the tool's glyph, quiet, the tool's name and "Held back by a guardrail". The
+  // server's whole sentence is still the result in the detail the words open, and the note under
+  // the turn's answer says the same (guardrailNotes).
+  const withheld = isWithheldCall(tc)
+  const failed = !withheld && tc.done && !!tc.result && isFailedResult(tc.result)
   // A failure keeps the tool's own name (or a passthrough's specific wording) and shows the error. toolActivity's finished wording is a
   // claim that the thing was done - "Created PROX-412" over a red cross is a contradiction, and
   // the half of it the eye reads first is the wrong half.
-  const label = failed ? failedToolLabel(tc, t) : toolActivity(tc, t)
+  const label = withheld
+    ? <><span className="font-semibold">{failedToolLabel(tc, t)}</span> {t('Held back by a guardrail')}</>
+    : failed ? failedToolLabel(tc, t) : toolActivity(tc, t)
 
   // While an approval is being asked, the CARD is the row: it names the same action, so the row
   // above it would only say it twice. Its title opens the same detail dialog the row's name does.
@@ -52,8 +62,8 @@ export function ToolCallRow({ tc, approval, enableRequest, conversationId, onOpe
           before it lands. A failed call's error starts on the row's one line; the whole of it is
           in the detail the words open (the UI review, 2026-10-28). */}
       <KitToolCallRow
-        icon={toolIcon(tc.toolName)}
-        state={!tc.done ? 'running' : failed ? 'failed' : 'done'}
+        icon={withheld ? ShieldCheck : toolIcon(tc.toolName)}
+        state={!tc.done ? 'running' : withheld ? 'stopped' : failed ? 'failed' : 'done'}
         label={label}
         error={failed ? extractErrorSummary(tc.result!, t) : undefined}
         elapsed={elapsed}

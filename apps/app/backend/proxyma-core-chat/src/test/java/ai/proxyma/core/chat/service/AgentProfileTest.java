@@ -127,6 +127,26 @@ class AgentProfileTest {
         }
 
         @Test
+        @DisplayName("the page is told the agent's own model for its conversation, and nothing for an ordinary chat")
+        void thePageNamesTheAgentsModel() {
+            // A lead chat's "Waiting for ..." named the chat's model while its turns ran on the agent's.
+            ChatService chat = new Tools().chatService();
+            module.profile = new AgentProfile("p-cheap", "small", null, null, null, null);
+            assertThat(chat.agentModelOf(AGENT_CONVERSATION, "user-1"))
+                    .contains(new ChatService.ConversationModel("p-cheap", "small"));
+            assertThat(module.askedFor).as("asked for the person reading it").isEqualTo("user-1");
+            assertThat(chat.agentModelOf("conv-ordinary", "user-1")).isEmpty();
+
+            module.profile = new AgentProfile(null, null, 8, null, null, null);
+            assertThat(chat.agentModelOf(AGENT_CONVERSATION, "user-1")).as("no model of its own: the chat's").isEmpty();
+            module.profile = new AgentProfile(null, "small", null, null, null, null);
+            assertThat(chat.agentModelOf(AGENT_CONVERSATION, "user-1"))
+                    .as("on the chat's provider").contains(new ChatService.ConversationModel(null, "small"));
+            module.fails = true;
+            assertThat(chat.agentModelOf(AGENT_CONVERSATION, "user-1")).as("a module that fails names nothing").isEmpty();
+        }
+
+        @Test
         @DisplayName("a workflow step keeps the model it picked, inside an agent's conversation too")
         void workflowFirst() {
             assertThat(TurnModel.of("p-chat", "big", "p-wf", "wf-model", new AgentProfile("p-cheap", "small", null, null, null, null)))
@@ -303,6 +323,161 @@ class AgentProfileTest {
             assertThat(profile.allowsSkill("office files ")).isFalse();
             assertThat(profile.allowsSkill("Web")).isTrue();
             assertThat(new AgentProfile(null, null, null, null, null, null).allowsSkill("Jira")).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("an agent given ONLY some tool sets (the allow-list)")
+    class OnlyTheseSets {
+
+        /** An agent given the YouTube set alone: every other group and MCP server is withheld, one connected later too. */
+        private AgentProfile youtubeOnly() {
+            return new AgentProfile(null, null, null, null, null, null, Set.of("Memory & Knowledge"), false, Set.of("YouTube"));
+        }
+
+        @Test
+        @DisplayName("a tool set not named is not given, whenever it came to exist; a skill that is no tool set is not narrowed")
+        void allowList() {
+            AgentProfile p = youtubeOnly();
+            assertThat(p.narrowsSkills()).isTrue();
+            assertThat(p.allowsSkill(" youtube")).isTrue();
+            assertThat(p.allowsSkill("Jira")).isFalse();
+            assertThat(p.allowsSkill("MCP: Added Later")).as("a server connected after the agent was saved").isFalse();
+            assertThat(p.allowsSkill("Reply style", false)).as("a person's own instructions").isTrue();
+            assertThat(p.allowsSkill("Memory & Knowledge", false)).as("a denial holds for any skill").isFalse();
+            AgentProfile none = new AgentProfile(null, null, null, null, null, null, null, false, Set.of());
+            assertThat(none.allowsSkill("YouTube")).as("an empty allow-list gives no set").isFalse();
+            assertThat(new AgentProfile(null, null, null, null, null, null, null).narrowsSkills()).isFalse();
+        }
+
+        private ChatService chat(ToolSkillGating[] gatingOut, ToolCallback... callbacks) {
+            ChatService chat = new Tools().chatService(callbacks);
+            ToolSkillGating gating = (ToolSkillGating) org.springframework.test.util.ReflectionTestUtils
+                    .getField(chat, "toolSkillGating");
+            when(gating.isToolGroup(anyString())).thenAnswer(i -> Set.of("jira", "youtube")
+                    .contains(((String) i.getArgument(0)).strip().toLowerCase(java.util.Locale.ROOT)));
+            gatingOut[0] = gating;
+            return chat;
+        }
+
+        @Test
+        @DisplayName("reading a set it is not given is refused at the call - a group, a server connected since - and a plain skill is read")
+        void readSkillOutsideTheList() {
+            module.profile = youtubeOnly();
+            ToolCallback readSkill = tool("readSkill");
+            ToolSkillGating[] gating = new ToolSkillGating[1];
+            ChatService chat = chat(gating, readSkill);
+            ai.proxyma.core.chat.external.ExternalToolSource external = mock(ai.proxyma.core.chat.external.ExternalToolSource.class);
+            when(external.owns(anyString())).thenAnswer(i -> ((String) i.getArgument(0)).startsWith("MCP: "));
+            chat.setExternalTools(external);
+            SearchContext.setUserId("u-1");
+
+            for (String refused : List.of(" jira ", "MCP: Added Later")) {
+                ToolResponseMessage answer = chat.callTools(AGENT_CONVERSATION, List.of(new ToolCall("t-" + refused, "function",
+                        "readSkill", "{\"skillName\":\"" + refused + "\"}")), new AtomicBoolean());
+                assertThat(answer.getResponses().get(0).responseData()).as(refused).contains("is not given to this agent");
+            }
+            verify(readSkill, never()).call(anyString());
+            verify(readSkill, never()).call(anyString(), any());
+
+            for (String read : List.of("YouTube", "Reply style")) {
+                chat.callTools(AGENT_CONVERSATION, List.of(new ToolCall("t-" + read, "function", "readSkill",
+                        "{\"skillName\":\"" + read + "\"}")), new AtomicBoolean());
+            }
+            assertThat(org.mockito.Mockito.mockingDetails(readSkill).getInvocations())
+                    .filteredOn(i -> i.getMethod().getName().equals("call")).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("a tool of a group or a server outside the list is refused at the call; its own group's and a core tool run")
+        void toolsOutsideTheList() {
+            module.profile = youtubeOnly();
+            ToolCallback createJiraIssue = tool("createJiraIssue");
+            ToolCallback listComments = tool("listYouTubeComments");
+            ToolCallback recall = tool("recall");
+            ToolSkillGating[] gating = new ToolSkillGating[1];
+            ChatService chat = chat(gating, createJiraIssue, listComments, recall);
+            when(gating[0].skillsUnlocking("createJiraIssue")).thenReturn(Set.of("Jira"));
+            when(gating[0].skillsUnlocking("listYouTubeComments")).thenReturn(Set.of("YouTube"));
+            ai.proxyma.core.chat.external.ExternalToolSource external = mock(ai.proxyma.core.chat.external.ExternalToolSource.class);
+            when(external.skillOf("u-1", "mcp_later_query")).thenReturn(Optional.of("MCP: Added Later"));
+            ToolCallback mcp = tool("mcp_later_query");
+            when(external.find("u-1", "mcp_later_query")).thenReturn(Optional.of(mcp));
+            chat.setExternalTools(external);
+            SearchContext.setUserId("u-1");
+
+            for (String refused : List.of("createJiraIssue", "mcp_later_query")) {
+                ToolResponseMessage answer = chat.callTools(AGENT_CONVERSATION,
+                        List.of(new ToolCall("t-" + refused, "function", refused, "{}")), new AtomicBoolean());
+                assertThat(answer.getResponses().get(0).responseData()).as(refused).contains("not given to this agent");
+            }
+            verify(createJiraIssue, never()).call(anyString(), any());
+            verify(mcp, never()).call(anyString(), any());
+            verify(createJiraIssue, never()).call(anyString());
+            verify(mcp, never()).call(anyString());
+
+            for (String runs : List.of("listYouTubeComments", "recall")) {
+                chat.callTools(AGENT_CONVERSATION, List.of(new ToolCall("t-" + runs, "function", runs, "{}")), new AtomicBoolean());
+            }
+            assertThat(org.mockito.Mockito.mockingDetails(listComments).getInvocations())
+                    .anyMatch(i -> i.getMethod().getName().equals("call"));
+            assertThat(org.mockito.Mockito.mockingDetails(recall).getInvocations())
+                    .anyMatch(i -> i.getMethod().getName().equals("call"));
+        }
+
+        @Test
+        @DisplayName("a group's tools are not offered while it is outside the list, though a skill of the person's own lists them")
+        void hiddenFromTheList() {
+            module.profile = youtubeOnly();
+            FeatureGateService gate = new FeatureGateService();
+            gate.refresh(LicenseTier.ENTERPRISE);
+            LicenseToolScope license = new LicenseToolScope(gate);
+            license.setModules(List.of(module));
+            ChatSkillService skills = mock(ChatSkillService.class);
+            when(skills.toolsForSkillName(anyString())).thenReturn(Optional.empty());
+            when(skills.toolsForSkillName("My Jira notes")).thenReturn(Optional.of(Set.of("createJiraIssue")));
+            ToolSkillGating gating = new ToolSkillGating(skills, mock(KnowledgeGraphService.class), license, List.of(module));
+            List<ToolCallback> core = List.of(tool("searchIndexedSources"));
+            List<ToolCallback> all = List.of(core.get(0), tool("createJiraIssue"), tool("listYouTubeComments"));
+            Set<String> unlocked = Set.of("My Jira notes", "YouTube");
+
+            assertThat(gating.resolveAdvertised(all, core, unlocked, AGENT_CONVERSATION, "u-1"))
+                    .extracting(cb -> cb.getToolDefinition().name())
+                    .containsExactlyInAnyOrder("searchIndexedSources", "listYouTubeComments");
+            assertThat(gating.resolveAdvertised(all, core, unlocked, "conv-ordinary", "u-1"))
+                    .extracting(cb -> cb.getToolDefinition().name())
+                    .containsExactlyInAnyOrder("searchIndexedSources", "createJiraIssue", "listYouTubeComments");
+            assertThat(gating.isToolGroup(" youtube ")).isTrue();
+            assertThat(gating.isToolGroup("My Jira notes")).isFalse();
+        }
+
+        @Test
+        @DisplayName("the system prompt lists only the skills the agent may read; an ordinary conversation lists every one")
+        void listedInThePrompt() {
+            module.profile = youtubeOnly();
+            ToolSkillGating[] gating = new ToolSkillGating[1];
+            ChatService chat = chat(gating);
+            ChatSkillService skills = (ChatSkillService) org.springframework.test.util.ReflectionTestUtils
+                    .getField(chat, "chatSkillService");
+            List<String> visible = List.of("Jira", "YouTube", "Reply style", "Memory & Knowledge");
+            when(skills.formatForSystemPrompt(anyString())).thenReturn(String.join(",", visible));
+            when(skills.formatForSystemPrompt(anyString(), any())).thenAnswer(i -> {
+                java.util.function.Predicate<String> listed = i.getArgument(1);
+                return String.join(",", visible.stream().filter(listed).toList());
+            });
+            SystemPromptService prompts = (SystemPromptService) org.springframework.test.util.ReflectionTestUtils
+                    .getField(chat, "systemPromptService");
+            when(prompts.read()).thenReturn(SystemPromptService.DEFAULT);
+            GuardrailService guardrails = (GuardrailService) org.springframework.test.util.ReflectionTestUtils
+                    .getField(chat, "guardrailService");
+            when(guardrails.canaryLine()).thenReturn("");
+
+            String agent = org.springframework.test.util.ReflectionTestUtils.invokeMethod(chat, "resolveSystemPrompt",
+                    "Ana", "u-1", AGENT_CONVERSATION);
+            assertThat(agent).contains("YouTube,Reply style").doesNotContain("Jira,YouTube").doesNotContain("Reply style,Memory");
+            String ordinary = org.springframework.test.util.ReflectionTestUtils.invokeMethod(chat, "resolveSystemPrompt",
+                    "Ana", "u-1", "conv-ordinary");
+            assertThat(ordinary).contains("Jira,YouTube,Reply style,Memory & Knowledge");
         }
     }
 

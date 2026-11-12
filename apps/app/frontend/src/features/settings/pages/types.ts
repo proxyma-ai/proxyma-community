@@ -35,10 +35,10 @@ export interface NavGroup {
 // the component is imported by the edition that has it and by nothing else. A page listed in the
 // other edition's nav but absent from its map simply does not render.
 //
-// TabProps, not no props: an extra page that edits SETTINGS has to join the modal's pending-change
-// batch like every hand-switched tab above it, or its Save button would mean something different
-// from the Save button on the tab beside it. Pages that edit nothing - Reset, Import & Export -
-// simply ignore what they are passed, which TypeScript allows and which costs them nothing.
+// TabProps, not no props: an extra page that edits SETTINGS saves through the modal's one save like
+// every hand-switched tab above it (since 2026-11-02 each field saves itself - see TabProps in
+// shared.tsx), so a failure reads the same on every tab. Pages that edit nothing - Reset, Import &
+// Export - simply ignore what they are passed, which TypeScript allows and which costs them nothing.
 export type ExtraPages = Partial<Record<TabKey, ComponentType<ExtraPageProps>>>
 
 // Switches the modal to another tab, with an optional focus inside it (a sub-tab of Logs, a
@@ -46,7 +46,7 @@ export type ExtraPages = Partial<Record<TabKey, ComponentType<ExtraPageProps>>>
 // note on UsageCostTab in SettingsModal for why a link through the store can do nothing.
 export type OpenTab = (tab: TabKey, focus?: string) => void
 
-// What an extra page is handed: the pending-change batch, where the modal was asked to focus, and
+// What an extra page is handed: the modal's save (TabProps), where the modal was asked to focus, and
 // the way to another tab.
 export type ExtraPageProps = TabProps & {
   focusKey?: string | null

@@ -35,6 +35,10 @@ public record AuditEntry(Instant at, String category, String action, String outc
     public static final String ALLOWED = "ALLOWED";
     public static final String REDACTED = "REDACTED";
     public static final String BLOCKED = "BLOCKED";
+    /** A write kept for a person's approval: nothing was made yet - the approved call is recorded when it runs. */
+    public static final String PENDING = "PENDING";
+    /** A write the approvals inbox did not keep or make - refused before it was kept, already approved: nothing made. */
+    public static final String NOT_MADE = "NOT_MADE";
 
     /**
      * {@code text} cut to {@code max} characters, saying how much was left out. For anything of

@@ -57,7 +57,7 @@ const FIRST_PAGE_SIZE = 100
 // opened over the page you were on and will close again. The inset is also how it closes: there is no close button (no
 // dialog has one), so the backdrop round it is what a tap or click goes to, beside Escape.
 export function KnowledgeGraphModal({ connectorId, documentId, title, onClose }: Props) {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   // TWO PIECES OF STATE, NOT ONE, and this is the centre of what changed.
   //
   // `selected` is a CLICK and it holds. `hovered` is a preview and it is gone the moment the
@@ -152,14 +152,14 @@ export function KnowledgeGraphModal({ connectorId, documentId, title, onClose }:
             // centred on the empty canvas; the sentence in it is the kit's left-aligned one.
             <div className="absolute inset-0 flex items-center justify-center px-8">
               <EmptyState title={t('Nothing in the knowledge graph for this yet.')}>
-                {t('Turn on "Build a knowledge graph" in this source\'s settings. Items already indexed are extracted in the background.')}
+                {t('Turn on "Build a knowledge graph" in this source\'s settings.')}
               </EmptyState>
             </div>
           ) : (
             <>
               <GraphCanvas
                 label={t('Knowledge graph: {entities} entities, {relations} relationships', {
-                  entities: nodes.length.toLocaleString(), relations: edges.length.toLocaleString(),
+                  entities: nodes.length.toLocaleString(locale), relations: edges.length.toLocaleString(locale),
                 })}
                 nodes={nodes}
                 edges={edges}
@@ -193,7 +193,7 @@ export function KnowledgeGraphModal({ connectorId, documentId, title, onClose }:
                 <Card variant="solid" padding="sm" className="absolute right-3 bottom-3 max-w-[45%] pointer-events-none">
                   <p className={cn(TEXT.label, 'truncate')}>{described.name}</p>
                   <MetaList
-                    className="mt-0.5 text-xs text-ink-caption"
+                    className={cn('mt-0.5', TEXT.caption)}
                     items={[
                       described.type ?? t('Unclassified'),
                       t('{count} mention|{count} mentions', { count: described.mentions }),
@@ -224,7 +224,7 @@ export function KnowledgeGraphModal({ connectorId, documentId, title, onClose }:
             <Caption className="mt-0.5">
               {documentId
                 ? t('What this item put into the knowledge graph.')
-                : t('Every item in this source, in one graph. A thing two files both mention is one node here.')}
+                : t('Everything in this source, in one graph.')}
               {first && !graph.isPending && nodes.length > 0 && (
                 <> {' '}{t('{entities} entities, {relations} relationships.', {
                   entities: String(first.totalNodes), relations: String(first.totalEdges),
@@ -244,7 +244,7 @@ export function KnowledgeGraphModal({ connectorId, documentId, title, onClose }:
             </Presence>
             <Presence show={!!(first?.truncated && !hasNextPage && !isFetchingNextPage)}>
               <Caption tone="warning" className="mt-1">
-                {t('Showing the {count} most connected - raise the star limit to see more.', {
+                {t('Showing the {count} most connected.', {
                   count: String(nodes.length),
                 })}
               </Caption>

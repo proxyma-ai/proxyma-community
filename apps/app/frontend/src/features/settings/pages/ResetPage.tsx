@@ -43,7 +43,7 @@ export function ResetPage() {
   // starts the process again.
   const afterReset = async () => {
     if (!(await awaitRestart())) {
-      addToast(t('Reset triggered, but the app did not come back in time. Restart it manually.'), 'danger')
+      addToast(t('Reset triggered, but Proxyma did not come back in time. Restart Proxyma manually.'), 'danger')
     }
   }
 
@@ -69,7 +69,7 @@ export function ResetPage() {
       <List>
         <ListRow
           title={t('Reset settings')}
-          caption={t('Settings return to their defaults; sources, indexed documents and chat history are kept.')}
+          caption={t('Settings go back to defaults. Sources and chats are kept.')}
           action={
             <Button variant="secondary" onClick={() => setSettingsOpen(true)}>
               {t('Reset settings')}
@@ -79,7 +79,7 @@ export function ResetPage() {
 
         <ListRow
           title={t('Reset everything')}
-          caption={t('Every source, all indexed content and chat history, plus the settings. Files on your disk are kept.')}
+          caption={t('Deletes all sources, indexed content, chats and settings. Your files on disk are kept.')}
           action={
             // Quiet danger, like every other destructive action in Settings: the typed
             // confirmation it opens is where the danger fill belongs.
@@ -98,7 +98,7 @@ export function ResetPage() {
           description={t('Are you sure you want to {verb}', { verb: t('reset') })}
           subject={`${t('all settings')}?`}
           consequences={[
-            t('Providers, models and API keys return to defaults - you will need to configure them again'),
+            t('Providers, models and API keys go back to defaults'),
             t('Connectors, indexed documents and chat history are kept'),
             t('Proxyma restarts when this finishes'),
           ]}
@@ -119,7 +119,7 @@ export function ResetPage() {
           description={t('Are you sure you want to {verb}', { verb: t('permanently delete') })}
           subject={`${t('everything Proxyma has stored')}?`}
           consequences={[
-            t('Every connector and everything indexed from it will be deleted'),
+            t('Every source and its index is deleted'),
             t('All chat history and conversations will be deleted'),
             t('All settings return to defaults'),
             t('Your own files on disk are NOT touched'),

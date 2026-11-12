@@ -99,7 +99,10 @@ public class AccessGate {
             // own domain, so a callback behind it could never land. (Microsoft 365's own callback is
             // Enterprise Server's alone, and its SecurityConfig's to permit.)
             "/api/v1/mcp-oauth/callback",
-            "/api/v1/connections/oauth/callback");
+            "/api/v1/connections/oauth/callback",
+            // Sign in with OpenRouter (OpenRouterSignIn): OpenRouter's flow carries no state, so the code itself is
+            // what this answers on - bound by PKCE to the verifier only the server holds.
+            "/api/v1/providers/openrouter/callback");
 
     static final String ACCESS_PATH = "/api/v1/access";
 

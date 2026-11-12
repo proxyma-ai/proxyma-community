@@ -10,8 +10,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A reasoning model's thinking is shown as THINKING - a running token count - and never as the
- * answer: not streamed as text, not persisted, not in the title.
+ * A reasoning model's thinking is shown as THINKING - a running token count, and its text in thinking-text events
+ * of its own (147c2eeaf: the page shows its newest lines under the count) - and never as the answer: not streamed as
+ * answer text, not persisted, not in the title.
  *
  * <p>Driven through the fake provider in the three shapes a real one sends it: the `reasoning`
  * delta field (vLLM, Ollama's /v1, LM Studio - which Spring AI does not read, so the product renames
@@ -52,7 +53,11 @@ class ThinkingIT extends DesktopJourney {
             if ("thinking".equals(event.path("type").asText())) lastCount = event;
         }
         assertThat(Integer.parseInt(lastCount.path("data").asText())).as("a token count, not text").isPositive();
-        assertThat(turn.events().toString()).as("the thinking TEXT is never on the wire").doesNotContain("orchard");
+        for (JsonNode event : turn.events()) {
+            if (!"thinking-text".equals(event.path("type").asText())) {
+                assertThat(event.toString()).as("the thinking's TEXT travels in thinking-text events alone").doesNotContain("orchard");
+            }
+        }
 
         assertThat(turn.streamedText()).isEqualTo("The ledger balances.");
         assertThat(turn.text()).as("persisted").isEqualTo("The ledger balances.");

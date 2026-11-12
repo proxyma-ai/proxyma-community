@@ -29,6 +29,9 @@ public interface ConnectorConnectionRepository extends JpaRepository<ConnectorCo
 
     Optional<ConnectorConnection> findByOwnerIdAndNameIgnoreCase(String ownerId, String name);
 
+    /** Every connection of a service still under one name - a YouTube connection waiting for its channel's (ConnectionNaming). */
+    List<ConnectorConnection> findByProtocolAndName(ConnectionProtocol protocol, String name);
+
     Optional<ConnectorConnection> findByIdAndOwnerId(UUID id, String ownerId);
 
     /** Account deletion. */

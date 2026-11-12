@@ -1,5 +1,6 @@
 package ai.proxyma.core.update;
 
+import ai.proxyma.core.common.update.UpdateStatusChangedEvent;
 import ai.proxyma.core.system.parts.PartsFetcher;
 import ai.proxyma.core.system.parts.PartsManifest;
 import ai.proxyma.core.system.parts.PartsRelease;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
@@ -127,10 +129,38 @@ public class UpdateService implements ApplicationContextAware {
 
     // Closed on the way out (ProcessExit). Null outside a Spring context, as in a unit test.
     private ConfigurableApplicationContext context;
+    // Where a status change is announced (UpdateStatusChangedEvent). Null outside a Spring context.
+    private volatile ApplicationEventPublisher events;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) {
         if (applicationContext instanceof ConfigurableApplicationContext configurable) context = configurable;
+        events = applicationContext;
+    }
+
+    /** For a test: where status changes are announced. */
+    void setEventPublisher(ApplicationEventPublisher publisher) {
+        events = publisher;
+    }
+
+    /**
+     * Every status change goes through here, and is announced once - so the page's title row hears
+     * that an update was found or staged without polling (UpdateStatusChangedEvent). A write of the
+     * status it already has announces nothing: a scheduled check that finds the same answer is not
+     * news. A publish that fails is logged and nothing else - the status is the updater's, and the
+     * page still reads it on its next start.
+     */
+    private void setStatus(UpdateStatus next) {
+        UpdateStatus before = status;
+        status = next;
+        ApplicationEventPublisher publisher = events;
+        if (before == next || publisher == null) return;
+        try {
+            publisher.publishEvent(new UpdateStatusChangedEvent(next.name(),
+                    availableVersion == null ? "" : availableVersion));
+        } catch (RuntimeException e) {
+            log.debug("Could not announce the update status {}: {}", next, e.getMessage());
+        }
     }
 
     public UpdateService(@Qualifier("externalRestClientBuilder") RestClient.Builder builder,
@@ -196,19 +226,28 @@ public class UpdateService implements ApplicationContextAware {
         if (releasesApiUrl == null || releasesApiUrl.isBlank()) {
             // Not an error: a build with no releases API configured is a development build, and
             // saying ERROR there would send somebody looking for a fault that is a missing setting.
-            status = UpdateStatus.UP_TO_DATE;
+            setStatus(UpdateStatus.UP_TO_DATE);
             return;
         }
 
         // Read BEFORE the line below overwrites it. The ALREADY STAGED guard further down compared
         // the live status to READY after it had been set to CHECKING, so it never fired.
         boolean wasReady = status == UpdateStatus.READY;
-        status = UpdateStatus.CHECKING;
+        setStatus(UpdateStatus.CHECKING);
         lastError = null;
         try {
             Release latest = fetchLatestRelease(releasesApiUrl, settings().isDevBuilds());
+            // NO ANSWER IS NOT "UP TO DATE" FOR A STAGED RELEASE. fetchLatestRelease returns null on
+            // any failure - offline, a proxy refusing, GitHub's rate limit - and this used to report
+            // UP_TO_DATE, which hid a downloaded, verified update from the Updates page and the title
+            // row and made Apply refuse it ("No update staged") until a later check reached GitHub
+            // again. It is still staged, and the launcher still switches to it at the next start.
+            if (wasReady && latest == null) {
+                setStatus(UpdateStatus.READY);
+                return;
+            }
             if (latest == null || latest.tag == null || !isNewer(latest.tag, currentVersion)) {
-                status = UpdateStatus.UP_TO_DATE;
+                setStatus(UpdateStatus.UP_TO_DATE);
                 pending = null;
                 history.record(UpdateHistory.Event.CHECKED, currentVersion, currentVersion,
                         "Up to date");
@@ -218,7 +257,7 @@ public class UpdateService implements ApplicationContextAware {
             // it again would put the user one click from the same failure, on every check.
             PartsStore parts = store();
             if (parts != null && parts.rejectedVersion().map(v -> Versions.stripV(v).equals(Versions.stripV(latest.tag))).orElse(false)) {
-                status = UpdateStatus.UP_TO_DATE;
+                setStatus(UpdateStatus.UP_TO_DATE);
                 pending = null;
                 lastError = "Proxyma " + latest.tag + " did not start on this computer, so it is not offered again.";
                 return;
@@ -227,12 +266,12 @@ public class UpdateService implements ApplicationContextAware {
             // release again and staged it over itself - and Apply was refused while it did. READY is
             // restored, since the check itself set CHECKING.
             if (wasReady && latest.tag.equals(availableVersion)) {
-                status = UpdateStatus.READY;
+                setStatus(UpdateStatus.READY);
                 return;
             }
             availableVersion = latest.tag;
             pending = latest;
-            status = UpdateStatus.AVAILABLE;
+            setStatus(UpdateStatus.AVAILABLE);
             history.record(UpdateHistory.Event.FOUND, currentVersion, latest.tag,
                     detectOnly() ? "Available to download" : "Available");
             if (detectOnly()) {
@@ -293,7 +332,7 @@ public class UpdateService implements ApplicationContextAware {
         downloadedBytes = 0;
         downloadTotalBytes = 0;
         downloadStage = DownloadStage.PREPARING;
-        status = UpdateStatus.DOWNLOADING;
+        setStatus(UpdateStatus.DOWNLOADING);
         downloader.submit(() -> stage(release, byUser));
     }
 
@@ -304,7 +343,7 @@ public class UpdateService implements ApplicationContextAware {
             checkCancelled();
             downloadAndStage(release);
             if (cancelRequested) throw new DownloadCancelled();
-            status = UpdateStatus.READY;
+            setStatus(UpdateStatus.READY);
             history.record(UpdateHistory.Event.DOWNLOADED, currentVersion, release.tag(),
                     "Downloaded, ready to apply", byUser);
         } catch (Exception e) {
@@ -315,7 +354,7 @@ public class UpdateService implements ApplicationContextAware {
                 discardStaging();
                 cancelledVersion = release.tag();
                 lastError = null;
-                status = UpdateStatus.AVAILABLE;
+                setStatus(UpdateStatus.AVAILABLE);
                 history.record(UpdateHistory.Event.CANCELLED, currentVersion, release.tag(), "Download cancelled");
                 log.info("Update download of {} cancelled", release.tag());
             } else {
@@ -362,7 +401,7 @@ public class UpdateService implements ApplicationContextAware {
         // only that a request failed - the cause, and the plain sentence for it, sit underneath.
         lastError = what + ": " + Failures.describe(e);
         log.warn("{}: {}", what, e.getMessage());
-        status = UpdateStatus.ERROR;
+        setStatus(UpdateStatus.ERROR);
         history.record(UpdateHistory.Event.FAILED, currentVersion,
                 availableVersion == null ? "" : availableVersion, lastError);
     }

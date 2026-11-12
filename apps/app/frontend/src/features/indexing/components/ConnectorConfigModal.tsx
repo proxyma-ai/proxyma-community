@@ -206,7 +206,7 @@ export function ConnectorConfigModal({ type, onClose }: Props) {
               {/* One sentence with the name in its slot, so a language can put the name where it goes. */}
               <p>
                 <Rich
-                  text={t('This matches {name}, already shared by another user. Skipping uses that copy at no cost; registering your own uses your own sync and storage capacity.')}
+                  text={t('Another user already shares {name}. Skip to use their copy for free.')}
                   parts={{ name: <span className="text-ink-primary">{duplicateMatch.matchedConnectorName}</span> }}
                 />
               </p>
@@ -246,7 +246,7 @@ export function ConnectorConfigModal({ type, onClose }: Props) {
                 <>
                   <SubfoldersSwitch checked={recursive} onChange={setRecursive} disabled={saving} />
                   <Caption>
-                    {t('Files are read with your own domain account, so only what you can open is indexed. The source cannot be shared.')}
+                    {t('Read with your own domain account. This source cannot be shared.')}
                   </Caption>
                 </>
               )}

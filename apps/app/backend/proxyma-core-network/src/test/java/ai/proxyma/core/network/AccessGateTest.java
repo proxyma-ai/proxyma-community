@@ -217,6 +217,10 @@ class AccessGateTest {
                     .as("Microsoft 365's callback is Enterprise Server's alone").isFalse();
             assertThat(served(MockServerWebExchange.from(get("/api/v1/mcp-oauth/callback?state=s", LOOPBACK_PEER)))).isTrue();
             assertThat(served(MockServerWebExchange.from(get("/api/v1/connections/oauth/callback?state=s", LOOPBACK_PEER)))).isTrue();
+            assertThat(served(MockServerWebExchange.from(get("/api/v1/providers/openrouter/callback?code=c", LOOPBACK_PEER)))).isTrue();
+            assertThat(served(MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/providers/openrouter/sign-in")
+                    .remoteAddress(LOOPBACK_PEER).header(HttpHeaders.HOST, "localhost").body("{}"))))
+                    .as("starting the OpenRouter sign-in still needs a credential").isFalse();
             assertThat(served(MockServerWebExchange.from(get("/api/v1/connections/instances/x/oauth/start", LOOPBACK_PEER))))
                     .as("starting a sign-in still needs a credential").isFalse();
             assertThat(served(MockServerWebExchange.from(get("/api/v1/access", LOOPBACK_PEER))))

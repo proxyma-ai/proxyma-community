@@ -1,3 +1,4 @@
+import { withThinking } from '@/features/chat/utils/thinkingText'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import type {
   AgentStatusUpdate, ChatMessage, ToolCallInfo, PendingApproval, PendingEnableRequest, PendingQuestion, PermissionMode, QueuedMessage,
@@ -58,6 +59,10 @@ export interface ChatState {
   // indicator shows "Thinking N tokens" only while the model is actually thinking.
   thinkingTokens: number | null
   setThinkingTokens: (n: number | null) => void
+  // What the model call in progress thinks, its newest part (utils/thinkingText.ts) - '' when it sent none. Cleared with
+  // the count: the answer, a tool call or a retry ends it.
+  thinkingText: string
+  appendThinkingText: (piece: string) => void
   // True while a model call has been made and the provider has not answered it yet - what
   // "Waiting for <provider> / <model>" means, and all it means. Set when a turn starts and when the
   // last running tool call returns (the next model call is then in flight); cleared by the
@@ -124,6 +129,8 @@ export interface ChatState {
   removePendingApproval: (callId: string) => void
   // Records a decision on one pending approval, or - `callId` null - on every one not yet decided.
   setApprovalDecision: (callId: string | null, decision: PendingApproval['decision'], sent: boolean) => void
+  // What a pending approval's write is about, once the server's lookup answered ('tool-approval-context').
+  setApprovalContext: (callId: string, context: PendingApproval['context']) => void
   clearPendingApprovals: () => void
   addPendingEnableRequest: (r: PendingEnableRequest) => void
   removePendingEnableRequest: (callId: string) => void
@@ -162,6 +169,7 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
   condenseTokensFreed: null,
   attachedToolCallCount: 0,
   thinkingTokens: null,
+  thinkingText: '',
   awaitingModel: false,
   retryAttempt: null,
   lastEventAt: 0,
@@ -195,6 +203,9 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
         ? (p.decision ? p : { ...p, decision, decisionSent: sent })
         : p.callId === callId ? { ...p, decision, decisionSent: sent } : p),
   })),
+  setApprovalContext: (callId, context) => set(state => state.pendingApprovals.some(p => p.callId === callId)
+    ? { pendingApprovals: state.pendingApprovals.map(p => p.callId === callId ? { ...p, context } : p) }
+    : state),
   addPendingEnableRequest: (r) => set(state => ({
     pendingEnableRequests: [...state.pendingEnableRequests.filter(p => p.callId !== r.callId), r],
   })),
@@ -217,7 +228,8 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
   setCondensing: (v) => set({ condensing: v }),
   setCondenseTokensFreed: (n) => set({ condenseTokensFreed: n }),
   setAttachedToolCallCount: (n) => set({ attachedToolCallCount: n }),
-  setThinkingTokens: (n) => set({ thinkingTokens: n }),
+  setThinkingTokens: (n) => set(n === null ? { thinkingTokens: null, thinkingText: '' } : { thinkingTokens: n }),
+  appendThinkingText: (piece) => set(s => ({ thinkingText: withThinking(s.thinkingText, piece) })),
   setAwaitingModel: (v) => set({ awaitingModel: v }),
   setRetryAttempt: (n) => set({ retryAttempt: n }),
   setLastEventAt: (t) => set({ lastEventAt: t }),
@@ -235,5 +247,5 @@ export const createChatStore = (): ChatStore => createStore<ChatState>((set, get
   },
   removeQueued: (clientId) => set(state => ({ messageQueue: state.messageQueue.filter(m => m.clientId !== clientId) })),
   clearQueue: () => set({ messageQueue: [] }),
-  reset: () => set({ conversationId: undefined, messages: [], streaming: false, toolCalls: [], messageQueue: [], loadingHistory: false, pendingApprovals: [], pendingEnableRequests: [], pendingQuestions: [], condensing: false, condenseTokensFreed: null, attachedToolCallCount: 0, thinkingTokens: null, awaitingModel: false, retryAttempt: null, lastEventAt: 0, lastSend: null, workflowRuns: {}, reveal: null, agentStatus: {} }),
+  reset: () => set({ conversationId: undefined, messages: [], streaming: false, toolCalls: [], messageQueue: [], loadingHistory: false, pendingApprovals: [], pendingEnableRequests: [], pendingQuestions: [], condensing: false, condenseTokensFreed: null, attachedToolCallCount: 0, thinkingTokens: null, thinkingText: '', awaitingModel: false, retryAttempt: null, lastEventAt: 0, lastSend: null, workflowRuns: {}, reveal: null, agentStatus: {} }),
 }))

@@ -22,6 +22,8 @@ import java.util.UUID;
         @Index(name = "idx_tool_approvals_conversation", columnList = "conversationId, status"),
         @Index(name = "idx_tool_approvals_root", columnList = "rootConversationId, status"),
         @Index(name = "idx_tool_approvals_user", columnList = "userId, status"),
+        @Index(name = "idx_tool_approvals_subject", columnList = "subject, status"),
+        @Index(name = "idx_tool_approvals_retry", columnList = "runOutcome, retryAt"),
 })
 public class ToolApprovalRequest {
 
@@ -31,6 +33,25 @@ public class ToolApprovalRequest {
     public static final String DENIED = "DENIED";
     /** Nobody decided in time ({@code ApprovalInbox.EXPIRY}). */
     public static final String EXPIRED = "EXPIRED";
+    /**
+     * Never decided: a newer draft for the same subject took its place while it waited (ApprovalInbox.park),
+     * whichever agent or run wrote it. Listed with the decided ones, so the person sees what became of it.
+     */
+    public static final String REPLACED = "REPLACED";
+    /** Never decided: an agent of the same person withdrew it while it waited (ApprovalInbox.withdraw). */
+    public static final String WITHDRAWN = "WITHDRAWN";
+
+    /** {@link #runOutcome}: an approved write that ran and reported no failure. */
+    public static final String RAN_DONE = "DONE";
+    /** {@link #runOutcome}: an approved write that ran and failed - for good, or past its retries. */
+    public static final String RAN_FAILED = "FAILED";
+    /**
+     * {@link #runOutcome}: an approved write the service refused for a limit that lifts - a spent daily quota -
+     * so it was NOT made yet and is retried after {@link #retryAt} (ApprovalInbox.retryHeld). Still APPROVED.
+     */
+    public static final String RAN_HELD = "HELD";
+    /** {@link #runOutcome}: a held write being retried now; back to HELD if the server stopped meanwhile. */
+    public static final String RAN_RETRYING = "RETRYING";
 
     public static final int ARGUMENTS_MAX = 60_000;
     public static final int RESULT_MAX = 20_000;
@@ -80,6 +101,50 @@ public class ToolApprovalRequest {
     @Column(columnDefinition = "text")
     private String result;
 
+    /**
+     * What the write is about, for the person deciding (ApprovalContext as JSON) - the video, viewer,
+     * comment and reply of a YouTube reply. Null when no provider could say within its limit.
+     */
+    @Column(columnDefinition = "text")
+    private String context;
+
+    /**
+     * What the write is about (ApprovalContextProvider.subjectOf) - the comment a YouTube reply answers.
+     * A later request with the same tool and subject, for the same person, replaces this one while it waits.
+     */
+    @Column(length = 200)
+    private String subject;
+
+    /**
+     * The arguments as the agent wrote them, kept only when the person edited them before approving -
+     * {@link #arguments} is then what ran. Read back to the agent, so it learns from the change.
+     */
+    @Column(columnDefinition = "text")
+    private String draftArguments;
+
+    /**
+     * How many times {@link #context} was looked up and nothing answered (ApprovalInbox fills a missing
+     * one later, up to ApprovalInbox.CONTEXT_ATTEMPTS). Set to that limit when no provider describes the
+     * tool, so nothing is asked again for a write that has no context to give.
+     */
+    private Integer contextAttempts = 0;
+
+    /**
+     * How an APPROVED write's call went: {@link #RAN_DONE}, {@link #RAN_FAILED}, {@link #RAN_HELD} or
+     * {@link #RAN_RETRYING}; null while it has not run yet, and for every other status.
+     */
+    @Column(length = 16)
+    private String runOutcome;
+
+    /** When the call last ran - what "posted today" counts by, a retry's time for a write held first. */
+    private Instant ranAt;
+
+    /** A held write's next try. */
+    private Instant retryAt;
+
+    /** How many times an approved write's call was made: one, and one more each retry. */
+    private Integer runAttempts;
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getConversationId() { return conversationId; }
@@ -106,6 +171,23 @@ public class ToolApprovalRequest {
     public void setNote(String note) { this.note = note; }
     public String getResult() { return result; }
     public void setResult(String result) { this.result = result; }
+    public String getContext() { return context; }
+    public void setContext(String context) { this.context = context; }
+
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+    public String getDraftArguments() { return draftArguments; }
+    public void setDraftArguments(String draftArguments) { this.draftArguments = draftArguments; }
+    public int getContextAttempts() { return contextAttempts == null ? 0 : contextAttempts; }
+    public void setContextAttempts(Integer contextAttempts) { this.contextAttempts = contextAttempts; }
+    public String getRunOutcome() { return runOutcome; }
+    public void setRunOutcome(String runOutcome) { this.runOutcome = runOutcome; }
+    public Instant getRanAt() { return ranAt; }
+    public void setRanAt(Instant ranAt) { this.ranAt = ranAt; }
+    public Instant getRetryAt() { return retryAt; }
+    public void setRetryAt(Instant retryAt) { this.retryAt = retryAt; }
+    public int getRunAttempts() { return runAttempts == null ? 0 : runAttempts; }
+    public void setRunAttempts(Integer runAttempts) { this.runAttempts = runAttempts; }
 
     public boolean isPending() {
         return PENDING.equals(status);

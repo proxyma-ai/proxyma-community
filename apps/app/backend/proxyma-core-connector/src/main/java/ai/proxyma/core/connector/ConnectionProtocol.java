@@ -39,6 +39,9 @@ public enum ConnectionProtocol {
     LINEAR,
     // Google Drive, Gmail and Google Calendar: one Google sign-in or service account serves all three.
     GOOGLE,
+    // YouTube: a Google sign-in of its own, so a Drive-only connection never asks for YouTube access
+    // and replying to comments is asked for only while the connection's Write switch is on.
+    YOUTUBE,
     BITBUCKET_CLOUD,
     NOTION,
     AIRTABLE,

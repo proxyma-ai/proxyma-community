@@ -36,11 +36,19 @@ import java.util.Map;
  *                             at. Kept on the connection beside its grant (OAuth2ConnectionService)
  *                             and handed to a session as {@link ResolvedCredentials#grant(String)};
  *                             a field not named here is never kept
+ * @param writeReplaces        scopes of {@code scopes} NOT requested while the Write switch is on, because
+ *                             a write scope covers them: YouTube's {@code youtube.force-ssl} reads as well
+ *                             as writes, so asking {@code youtube.readonly} beside it is a scope Google's
+ *                             review calls redundant (2026-11-08)
+ * @param revokeUrl            where a grant is revoked (RFC 7009, {@code token=...}) when its connection is
+ *                             deleted or signed out - Google's {@code oauth2.googleapis.com/revoke}; null
+ *                             for a service that has none, whose grant is then only forgotten here
  */
 public record OAuth2Spec(String authorizeUrl, String tokenUrl, List<String> scopes, List<String> writeScopes,
                          Map<String, String> extraAuthorizeParams, ClientAuth clientAuth, TokenBody tokenBody,
                          Map<String, String> tokenHeaders, Map<String, String> clientGrantParams,
-                         boolean clientGrantScopes, List<String> grantFields) {
+                         boolean clientGrantScopes, List<String> grantFields, List<String> writeReplaces,
+                         String revokeUrl) {
 
     public OAuth2Spec {
         scopes = scopes == null ? List.of() : List.copyOf(scopes);
@@ -51,6 +59,20 @@ public record OAuth2Spec(String authorizeUrl, String tokenUrl, List<String> scop
         tokenHeaders = ordered(tokenHeaders);
         clientGrantParams = ordered(clientGrantParams);
         grantFields = grantFields == null ? List.of() : List.copyOf(grantFields);
+        writeReplaces = writeReplaces == null ? List.of() : List.copyOf(writeReplaces);
+        if (revokeUrl != null && revokeUrl.isBlank()) revokeUrl = null;
+    }
+
+    /**
+     * The scopes a sign-in asks for: {@code scopes}, and while the connection's Write switch is on the
+     * {@code writeScopes} too - less any scope those cover ({@code writeReplaces}). Incremental consent:
+     * a connection whose switch is turned on later signs in again to be granted them.
+     */
+    public List<String> requestedScopes(boolean write) {
+        List<String> out = new ArrayList<>();
+        for (String s : scopes) if (!write || !writeReplaces.contains(s)) out.add(s);
+        if (write) for (String s : writeScopes) if (!out.contains(s)) out.add(s);
+        return List.copyOf(out);
     }
 
     // In the order they were declared, so a request reads as its vendor documents it and a missing
@@ -70,7 +92,7 @@ public record OAuth2Spec(String authorizeUrl, String tokenUrl, List<String> scop
     /** This spec at other addresses - the same service signing in at an account's or an org's own host. */
     public OAuth2Spec at(String authorize, String token) {
         return new OAuth2Spec(authorize, token, scopes, writeScopes, extraAuthorizeParams, clientAuth, tokenBody,
-                tokenHeaders, clientGrantParams, clientGrantScopes, grantFields);
+                tokenHeaders, clientGrantParams, clientGrantScopes, grantFields, writeReplaces, revokeUrl);
     }
 
     /** {@code client_id}/{@code client_secret} in the token request's body, or as HTTP Basic. */
@@ -96,6 +118,8 @@ public record OAuth2Spec(String authorizeUrl, String tokenUrl, List<String> scop
         private final Map<String, String> clientGrantParams = new LinkedHashMap<>();
         private boolean clientGrantScopes = true;
         private final List<String> grantFields = new ArrayList<>();
+        private List<String> writeReplaces = List.of();
+        private String revokeUrl;
 
         private Builder(String authorizeUrl, String tokenUrl) {
             this.authorizeUrl = authorizeUrl;
@@ -121,9 +145,15 @@ public record OAuth2Spec(String authorizeUrl, String tokenUrl, List<String> scop
         /** A field of the token answer kept on the connection for its sessions. */
         public Builder keepGrantField(String field) { this.grantFields.add(field); return this; }
 
+        /** Scopes left out while Write is on, because a write scope covers them. */
+        public Builder writeReplaces(List<String> value) { this.writeReplaces = value; return this; }
+
+        /** Where a grant is revoked when its connection is deleted or signed out (RFC 7009). */
+        public Builder revokeUrl(String value) { this.revokeUrl = value; return this; }
+
         public OAuth2Spec build() {
             return new OAuth2Spec(authorizeUrl, tokenUrl, scopes, writeScopes, authorizeParams, clientAuth, tokenBody,
-                    tokenHeaders, clientGrantParams, clientGrantScopes, grantFields);
+                    tokenHeaders, clientGrantParams, clientGrantScopes, grantFields, writeReplaces, revokeUrl);
         }
     }
 }

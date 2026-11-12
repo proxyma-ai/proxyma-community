@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import { BookOpen, Gauge, MessageSquare, ShieldCheck } from 'lucide-react'
-import { ActivityLine, Presence } from '@/components/ui/kit'
+import {
+  BookOpen, ClipboardList, Clock, FilePlus, Gauge, GraduationCap, MessageSquare, MessageSquareReply, MessageSquareX,
+  PenLine, Play, ShieldCheck, Webhook,
+} from 'lucide-react'
+import { ActivityLine, Presence, cn } from '@/components/ui/kit'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import { useLeavingItems } from '../hooks/useLeavingItems'
 import { QuestionPrompt } from './QuestionPrompt'
 import { ToolApprovalPrompt } from './ToolApprovalPrompt'
 import { ToolEnablePrompt } from './ToolEnablePrompt'
 import { ToolCallDetailModal } from './ToolCallDetailModal'
 import { toolIcon } from '../utils/toolIcon'
+import { mailLabel } from '../utils/mailLabel'
 import type {
   AgentMailEntry, PendingApproval, PendingEnableRequest, PendingQuestion,
 } from '../types/chat.types'
-import { useTranslation, type Translate } from '@/i18n'
+import { useTranslation } from '@/i18n'
 
 // What a WORKFLOW STEP is waiting on the user for, at the foot of the thread.
 //
@@ -68,34 +73,27 @@ export function AgentPrompts({ conversationId, approvals, enableRequests, questi
   )
 }
 
-/** One mail entry's line, in words. */
-function mailLabel(entry: AgentMailEntry, t: Translate): string {
-  const title = entry.title
-  switch (entry.kind) {
-    case 'report': return title ? t('Report from {title}', { title }) : t('Report from an agent')
-    case 'message': return title ? t('Message from {title}', { title }) : t('Message from an agent')
-    case 'alarm': return title ? t('Alarm: {title}', { title }) : t('Alarm')
-    case 'background': return title ? t('Background result: {title}', { title }) : t('Background result')
-    // "granted: createJiraIssue" - a person's decision on a write it kept for them (ApprovalInbox).
-    case 'approval': return title ? t('Approval {title}', { title }) : t('A decision on a write')
-    // Told once that its context window is filling, before the conversation is condensed.
-    case 'context': return t('Context window filling - told to save what matters')
-    // A saved agent's workspace memory, given as the conversation opens or after it was condensed.
-    case 'memory': return t('Read its workspace memory')
-    default: return title ? t('You talked to {title}', { title }) : t('You talked to an agent')
-  }
-}
-
 /** The glyph of one mail entry - the mark of the tool its kind belongs to. */
 function mailIcon(entry: AgentMailEntry) {
   switch (entry.kind) {
     case 'report': return toolIcon('deployAgent')
     case 'message': return toolIcon('tellAgent')
+    case 'reply': return MessageSquareReply
+    case 'told': return MessageSquare
     case 'alarm': return toolIcon('alarm')
     case 'background': return toolIcon('background')
     case 'approval': return ShieldCheck
     case 'context': return Gauge
     case 'memory': return BookOpen
+    // The marks the Triggers tab gives each kind of trigger.
+    case 'run_schedule': return Clock
+    case 'run_webhook': return Webhook
+    case 'run_source': return FilePlus
+    case 'run_member': return Play
+    case 'learning': return GraduationCap
+    case 'revising': return PenLine
+    case 'lead_note': return ClipboardList
+    case 'reply_failed': return MessageSquareX
     default: return MessageSquare
   }
 }
@@ -105,18 +103,30 @@ function mailIcon(entry: AgentMailEntry) {
 // user said to a deployed agent in its own conversation. What the assistant says next is its
 // reaction to it, and without this line it would be speaking unprompted. One compact line each,
 // never a user bubble: nobody typed it here.
-export function AgentMailNotice({ entries }: { entries: AgentMailEntry[] }) {
+//
+// `withText` draws the words of the items that have them under their line (AgentMailEntry.text) - a
+// teammate's message or reply, what the agent told the person - left-aligned and indented to the
+// line's words, as mail rather than as anybody's bubble: a Constellations agent's own chat, where the
+// team's internal work is the point. What the agent TOLD the person reads as the agent's own words,
+// in the body's ink; the rest is quoted, in the secondary ink.
+export function AgentMailNotice({ entries, withText = false }: { entries: AgentMailEntry[]; withText?: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="mb-3 space-y-1 animate-fade-in">
       {entries.map((entry, i) => (
-        <ActivityLine
-          key={`${entry.agentId ?? entry.kind}-${i}`}
-          icon={mailIcon(entry)}
-          state="done"
-          label={mailLabel(entry, t)}
-          maxWidth="max-w-full"
-        />
+        <div key={`${entry.agentId ?? entry.kind}-${i}`} className="min-w-0">
+          <ActivityLine
+            icon={mailIcon(entry)}
+            state="done"
+            label={mailLabel(entry, t)}
+            maxWidth="max-w-full"
+          />
+          {withText && entry.text && (
+            <div className={cn('mt-1 pl-6 min-w-0', entry.kind === 'told' ? 'text-ink-primary' : 'text-ink-secondary')}>
+              <MarkdownRenderer content={entry.text} />
+            </div>
+          )}
+        </div>
       ))}
     </div>
   )

@@ -1,11 +1,17 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, FolderSearch } from 'lucide-react'
 import {
-  Button, Caption, DialogBody, DialogFooter, DialogHeader, Divider, Field, FormColumns, FormStack, InlineNotice, Input,
-  MetaList, Presence, ProgressRow, StaticValue, SwitchRow,
+  Button, Caption, DialogBody, DialogHeader, Divider, Field, FormColumns, FormStack, InlineNotice,
+  MetaList, Presence, ProgressRow, StaticValue, SwitchRow, TEXT, cn,
 } from '@/components/ui/kit'
+import { EditableText } from '@/components/ui/EditableText'
+import { quietly } from '@/components/ui/AutosaveFields'
+import { combinedSaveWord, sameSet } from '@/components/ui/autosave'
+import { useAutosave } from '@/components/ui/useAutosave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 import { useTranslation } from '@/i18n'
+import { serverText } from '@/i18n/serverText'
 import { formatDate } from '@/utils/formatters'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { useRelinkFolder } from '../hooks/useRelinkFolder'
@@ -14,17 +20,15 @@ import { useToastStore } from '@/store/toastStore'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useCatalogType } from '../hooks/useConnectorCatalog'
 import { FieldSpecForm } from './FieldSpecForm'
-import {
-  fieldProblems, fieldValuesChanged, initialFieldValues, submittedFieldValues, type FieldProblem,
-} from '../utils/fieldForm'
+import { initialFieldValues, submittedFieldValues } from '../utils/fieldForm'
 import { useWebCrawlLimits } from '../hooks/useWebCrawlLimits'
 import { FileTypeFilter } from './FileTypeFilter'
 import { ConnectionPicker, useConnectionChoice } from './ConnectionPicker'
-import { SubfoldersSwitch, WebCrawlFields, type WebCrawlValues } from './SourceScopeFields'
+import { SubfoldersSwitch, WebCrawlFields } from './SourceScopeFields'
 import { apiErrorText } from '@/services/apiError'
 import { indexingApi, type ConnectorConfigUpdate } from '../services/indexingApi'
 import type { ConnectorConfig } from '../types/indexing.types'
-import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
+import { ModalShell } from '@/components/ui/ModalShell'
 import { SourceTypeMark } from '../utils/sourceMarks'
 
 // Everything a connector's scope is made of, editable after registration. Before this existed,
@@ -53,9 +57,39 @@ interface Props {
   onClose: () => void
 }
 
+// What this dialog saves through the config PATCH, as the dialog shows it. Each field is saved on its
+// own (useAutosave), and every such save re-syncs the source - so only what a change touches is sent,
+// except where the endpoint has always taken the whole scope (a folder, a website).
+interface Scope {
+  recursive: boolean
+  fileTypes: string[]
+  maxDepth: string
+  maxPages: string
+  sameDomainOnly: boolean
+  renderJs: boolean
+  includePattern: string
+  native: Record<string, string>
+  connectionId: string
+  /** A local folder's new place - sent once, with the change that moves it. */
+  path: string | null
+}
+
+// How long the file-type chips wait for the next click before saving: each save re-syncs the whole
+// source, and picking four types is four clicks, not four re-syncs.
+const FILE_TYPES_SETTLE_MS = 1200
+
+/**
+ * A SOURCE'S OWN SETTINGS, SAVED FIELD BY FIELD (the maintainer, 2026-11-02: an existing item is edited
+ * in place, each field saving on its own; a form whose fields were tested together autosaves per field
+ * too). There is no Save button: a number, a pattern or a field of the type's own is click-to-edit and
+ * saved when it is left (checked first - a crawl depth past the server's ceiling is never sent); a
+ * switch, a choice of connection or a relinked folder is saved as it changes; the file-type chips are
+ * saved once the clicks stop. A refusal is said under the settings, in the server's words, and the
+ * field goes back. Adding a source is still a form (SourceDialog, ConnectorConfigModal).
+ */
 export function ConnectorSettingsModal({ connector, onClose }: Props) {
   const qc = useQueryClient()
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
   const [error, setError] = useState('')
 
@@ -68,13 +102,8 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
   const descriptor = useCatalogType(connector.type)
   const hasFileScope = connector.type !== 'files' && !!descriptor?.capabilities.fileTypeFilter
   const hasRecursive = !!descriptor?.capabilities.recursiveScope
-  const [recursive, setRecursive] = useState(connector.recursive ?? true)
-  const [fileTypes, setFileTypes] = useState<string[]>(
-    connector.fileTypes ? connector.fileTypes.split(',').filter(Boolean) : [],
-  )
 
-  // A LOCAL folder's location. Held until Save, like every other field here: choosing a folder only
-  // fills this in, and saving relinks the source to it (see useRelinkFolder).
+  // A LOCAL folder's location. Choosing a folder relinks the source to it at once (useRelinkFolder).
   const uploadsAreHowFilesArrive = useFileUpload()
   const canRelink = connector.type === 'files' && connector.ownedByMe && !uploadsAreHowFilesArrive
   const relinkFolder = useRelinkFolder(connector)
@@ -84,19 +113,6 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
   // While the native chooser is on screen - `browse` only asks, so the hook keeps no busy flag.
   const [browsing, setBrowsing] = useState(false)
 
-  // WEB_PAGE. A crawl saved before it recorded a bound shows - and saves - the server's default for
-  // it (useWebCrawlLimits), the value the crawl has been running with: it said 200 pages here while
-  // the server read the missing bound as 100.
-  const [crawlEdits, setCrawlEdits] = useState<Partial<WebCrawlValues>>({})
-  const crawl: WebCrawlValues = {
-    maxDepth: web.maxDepth ?? String(limits.defaultDepth),
-    maxPages: web.maxPages ?? String(limits.defaultPages),
-    sameDomainOnly: web.sameDomainOnly !== 'false',
-    renderJs: web.renderJs === 'true',
-    ...crawlEdits,
-  }
-  const [includePattern, setIncludePattern] = useState(web.includePattern ?? '')
-
   // A FRAMEWORK TYPE'S FIELDS - its descriptor's, with the values the source was saved with
   // (`fields`, which only such a type has). A secret is never sent back; one left blank keeps
   // what is stored. A field that names WHICH thing is read (a repository) cannot move a source to
@@ -105,35 +121,129 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
     () => (connector.fields && descriptor && connector.type !== WEB_TYPE ? descriptor.fields : []),
     [connector.fields, descriptor, connector.type],
   )
-  const nativeInitial = useMemo(() => initialFieldValues(nativeFields, connector.fields), [nativeFields, connector.fields])
-  const [nativeEdits, setNativeEdits] = useState<Record<string, string>>({})
-  const nativeValues = { ...nativeInitial, ...nativeEdits }
-  const [nativeProblems, setNativeProblems] = useState<Record<string, FieldProblem>>({})
-  const nativeDirty = fieldValuesChanged(nativeFields, nativeInitial, nativeValues)
   const hasNative = nativeFields.length > 0
 
   // CONNECTION - every type that reads through one (its descriptor's protocol). Moving a source to
   // another of its owner's connections for the same service is a PATCH of `connectionId`; the
   // backend refuses one of another service, or somebody else's. A source that somehow names none
-  // starts on the default, and saving then records it.
+  // shows the default, which is what it reads through.
   const connection = useConnectionChoice(descriptor?.protocol ?? undefined, connector.connectionId, descriptor?.type)
   const hasConnection = !!descriptor?.protocol
-  const connectionDirty = hasConnection && !!connection.selected
-    && connection.selected.id !== (connector.connectionId ?? '')
 
-  // KNOWLEDGE GRAPH - every connector type, unlike everything above it.
-  const [graphEnabled, setGraphEnabled] = useState(connector.graphEnabled ?? false)
-  const graphDirty = graphEnabled !== (connector.graphEnabled ?? false)
+  // WEB_PAGE: a crawl saved before it recorded a bound shows the server's default for it
+  // (useWebCrawlLimits), the value the crawl has been running with: it said 200 pages here while
+  // the server read the missing bound as 100.
+  const base = useMemo<Scope>(() => ({
+    recursive: connector.recursive ?? true,
+    fileTypes: connector.fileTypes ? connector.fileTypes.split(',').filter(Boolean) : [],
+    maxDepth: web.maxDepth ?? String(limits.defaultDepth),
+    maxPages: web.maxPages ?? String(limits.defaultPages),
+    sameDomainOnly: web.sameDomainOnly !== 'false',
+    renderJs: web.renderJs === 'true',
+    includePattern: web.includePattern ?? '',
+    native: initialFieldValues(nativeFields, connector.fields),
+    connectionId: connector.connectionId ?? '',
+    path: null,
+  }), [connector, web, limits.defaultDepth, limits.defaultPages, nativeFields])
 
-  // Every field this dialog edits, against the values it opened with - what closing would lose.
-  // The connection is compared on its own, against the source's: the picker settles on the
-  // default only once the list arrives, which a baseline taken at open would call a change.
-  const { dirty: fieldsDirty } = useFormDirty({
-    recursive, fileTypes, crawlEdits, includePattern, graphEnabled, folderPath,
+  const scope = useAutosave<Scope>(base, async (next, patch) => {
+    const update: ConnectorConfigUpdate = {}
+    if (connector.type === 'files') {
+      // A folder's endpoint has always taken its whole scope.
+      update.recursive = next.recursive
+      update.fileTypes = next.fileTypes.join(',')
+      if (patch.path) update.path = patch.path
+    } else if (connector.type === WEB_TYPE) {
+      // So has a website's - its bounds checked by WebCrawlFields before they get here.
+      update.maxDepth = Number(next.maxDepth)
+      update.maxPages = Number(next.maxPages)
+      update.sameDomainOnly = next.sameDomainOnly
+      update.renderJs = next.renderJs
+      update.includePattern = next.includePattern.trim()
+    } else {
+      // Only what changed: a remote repository or share is the expensive kind to walk again.
+      if ('recursive' in patch) update.recursive = next.recursive
+      if ('fileTypes' in patch) update.fileTypes = next.fileTypes.join(',')
+      if ('native' in patch) Object.assign(update, submittedFieldValues(nativeFields, next.native))
+    }
+    if ('connectionId' in patch && next.connectionId) update.connectionId = next.connectionId
+    await indexingApi.updateConfig(connector.id, update)
+    qc.invalidateQueries({ queryKey: keys.connectorSummary() })
+    qc.invalidateQueries({ queryKey: keys.connectorsByType() })
+    setError('')
+    addToast(t('Configuration saved - re-syncing this connector'), 'success')
+    // A secret is sent once, with the change that typed it; a later change keeps what is stored.
+    const native = { ...next.native }
+    for (const f of nativeFields) if (f.type === 'SECRET') native[f.key] = ''
+    return { ...next, native, path: null }
+  }, {
+    failure: t('Failed to save configuration'),
+    // The server's sentence - a precise "Crawl depth must be between 0 and 50" from a ProblemDetail's
+    // `detail` - and never a machine code or axios's "Request failed with status code 400".
+    onError: e => setError(apiErrorText(e) ?? t('Failed to save configuration')),
   })
-  const dirty = fieldsDirty || connectionDirty || nativeDirty
+  const shown = scope.value ?? base
+  const saveScope = (patch: Partial<Scope>) => scope.save(patch)
 
-  // THIS TOGGLE IS ONE OF FOUR THINGS EXTRACTION NEEDS, and it was the only one the screen
+  // THE FILE-TYPE CHIPS settle before they are saved: the clicks are held for a moment, and saved
+  // together once they stop - or as the dialog closes.
+  const [typesDraft, setTypesDraft] = useState<string[] | null>(null)
+  const typesRef = useRef<string[] | null>(null)
+  const typesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const shownRef = useRef(shown)
+  shownRef.current = shown
+  const saveRef = useRef(saveScope)
+  saveRef.current = saveScope
+  const flushTypes = useRef(() => {
+    if (typesTimer.current) { clearTimeout(typesTimer.current); typesTimer.current = null }
+    const draft = typesRef.current
+    typesRef.current = null
+    if (draft && !sameSet(draft, shownRef.current.fileTypes)) quietly(saveRef.current({ fileTypes: draft }))
+  }).current
+  const onFileTypes = (next: string[]) => {
+    typesRef.current = next
+    setTypesDraft(next)
+    if (typesTimer.current) clearTimeout(typesTimer.current)
+    typesTimer.current = setTimeout(() => { flushTypes(); setTypesDraft(null) }, FILE_TYPES_SETTLE_MS)
+  }
+  useEffect(() => flushTypes, [flushTypes])
+  const fileTypes = typesDraft ?? shown.fileTypes
+
+  // The picker's choice is saved as it is made; a refused move puts the picker back.
+  const connectionChoice = {
+    ...connection,
+    choose: (id: string) => {
+      // A deleted connection has no stand-in (ConnectionChoice.missing): a refused move goes back to it.
+      const before = connection.missing ? connector.connectionId ?? '' : connection.selected?.id ?? ''
+      connection.choose(id)
+      if (id && id !== before) saveScope({ connectionId: id }).catch(() => connection.choose(before))
+    },
+  }
+
+  // KNOWLEDGE GRAPH - every connector type, unlike everything above it. Its own endpoint, not a
+  // field on the config PATCH: that one re-syncs the whole connector on every save, and re-indexing
+  // a corpus because someone flipped a switch is a bill nobody agreed to. This just flips the flag;
+  // the backend's graph worker then extracts what the source already holds, without re-indexing it.
+  //
+  // A TOGGLE THAT FAILS SILENTLY IS A TOGGLE THAT LIES: a refusal says so, in words of its own -
+  // "Failed to save configuration" over a refused graph switch would send the reader to the wrong
+  // half of the dialog - and the switch goes back.
+  const graphBase = useMemo(() => ({ graphEnabled: connector.graphEnabled ?? false }), [connector.graphEnabled])
+  const graph = useAutosave(graphBase, async next => {
+    await indexingApi.setGraphEnabled(connector.id, next.graphEnabled)
+    qc.invalidateQueries({ queryKey: keys.connectorSummary() })
+    qc.invalidateQueries({ queryKey: keys.connectorsByType() })
+    setError('')
+    return next
+  }, {
+    failure: t('Failed to change the knowledge-graph setting'),
+    onError: e => setError(apiErrorText(e) ?? t('Failed to change the knowledge-graph setting')),
+  })
+  const graphEnabled = graph.value?.graphEnabled ?? graphBase.graphEnabled
+  // Whether the graph was on when the dialog opened - switching it on here starts spending at once.
+  const [graphWasOn] = useState(connector.graphEnabled ?? false)
+
+  // THIS SWITCH IS ONE OF FOUR THINGS EXTRACTION NEEDS, and it was the only one the screen
   // mentioned. The others are the deployment-wide switch, a model on the knowledge-graph role,
   // and a re-index of anything already indexed. Turning this on with any of them missing produced
   // an empty graph and no explanation anywhere - found on 2026-09-06 by doing exactly that on a
@@ -143,26 +253,6 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
   const graphGloballyOn = graphSettings.data?.enabled === 'true'
   const graphModelSet = Boolean(graphSettings.data?.provider)
 
-  const save = useMutation({
-    mutationFn: (update: ConnectorConfigUpdate) => indexingApi.updateConfig(connector.id, update),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.connectorSummary() })
-      qc.invalidateQueries({ queryKey: keys.connectorsByType() })
-      addToast(t('Configuration saved - re-syncing this connector'), 'success')
-      // The close moved to submit(), which is the only place that knows whether the OTHER write
-      // this dialog makes also succeeded - see its note.
-    },
-    onError: (e: unknown) => {
-      // The server's sentence - a precise "Crawl depth must be between 0 and 50" from a ProblemDetail's
-      // `detail` - and never a machine code or axios's "Request failed with status code 400".
-      setError(apiErrorText(e) ?? t('Failed to save configuration'))
-    },
-  })
-
-  // Its own endpoint, not a field on the config PATCH: that one is per-type and re-syncs the
-  // whole connector on every save, and re-indexing a corpus because someone ticked a checkbox is
-  // a bill nobody agreed to. This just flips the flag; the backend's graph worker then extracts
-  // what the source already holds, without re-indexing it.
   // Polled while the dialog is open and the graph is on. Five seconds is far finer than the thing
   // it watches - a passage takes about a minute on a local model - but the dialog is open only
   // while somebody is looking at it, and a number that updates late reads as a number that is
@@ -170,137 +260,27 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
   const graphProgress = useQuery({
     queryKey: keys.graphProgress(connector.id),
     queryFn: () => indexingApi.graphProgress(connector.id),
-    enabled: connector.graphEnabled === true,
+    enabled: graphEnabled && !graph.busy,
     refetchInterval: 5000,
   })
 
-  const saveGraph = useMutation({
-    mutationFn: (enabled: boolean) => indexingApi.setGraphEnabled(connector.id, enabled),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.connectorSummary() })
-      qc.invalidateQueries({ queryKey: keys.connectorsByType() })
-    },
-    // A TOGGLE THAT FAILS SILENTLY IS A TOGGLE THAT LIES. This had no onError at all, so a
-    // rejected graph change left the switch sitting where the user put it, the modal closing on
-    // the scope save's success, and nothing anywhere saying the opt-in had not been recorded -
-    // the next sync then extracted nothing and the source's own settings agreed it should have.
-    //
-    // Its own message, not the shared one: the two saves are independent requests to different
-    // endpoints and either can fail on its own, so "Failed to save configuration" over a refused
-    // graph toggle would send the reader to the wrong half of the dialog.
-    onError: (e: unknown) => {
-      setError(apiErrorText(e) ?? t('Failed to change the knowledge-graph setting'))
-    },
-  })
-
-  // Only when it changed: every save of this PATCH re-syncs the whole source.
-  const connectionUpdate = (): ConnectorConfigUpdate =>
-    connectionDirty ? { connectionId: connection.selected!.id } : {}
-
-  /**
-   * The two writes this dialog can make, in order, with ONE outcome between them.
-   *
-   * <p>They used to be fired side by side and neither waited on: the graph PATCH went first and
-   * the scope PATCH went after it, and the modal closed on whichever answered. That was wrong in
-   * three ways at once, and all three were visible the day the backend started refusing a file
-   * source's scope save. The refusal was reported over a graph toggle that had SUCCEEDED, so
-   * turning the knowledge graph on looked like the thing that had been rejected. A graph toggle
-   * that failed on its own said nothing at all, because the close had already happened. And the
-   * crawl-bound validation below ran after the graph flag had been written, so a rejected depth
-   * still changed the other setting.
-   *
-   * <p>Validating first and awaiting each write in turn answers all three: nothing is written
-   * until the form is valid, a failure stops the sequence with its own message on screen, and the
-   * dialog closes only when everything it was asked to do actually happened.
-   */
-  const submit = async () => {
-    setError('')
-
-    // What the scope half of this dialog would post, or null when this type has no editable scope
-    // and its connection did not change. Built BEFORE anything is written.
-    let scopeUpdate: ConnectorConfigUpdate | null = null
-    if (connector.type === 'files') {
-      scopeUpdate = { recursive, fileTypes: fileTypes.join(',') }
-      if (canRelink && folderPath) scopeUpdate.path = folderPath
-    } else if (connector.type === 'webpage') {
-      const depth = Number(crawl.maxDepth)
-      const pages = Number(crawl.maxPages)
-      if (!Number.isInteger(depth) || depth < 0 || depth > limits.maxDepth) {
-        setError(t('Crawl depth must be a whole number between 0 and {max}.', { max: limits.maxDepth }))
-        return
-      }
-      if (!Number.isInteger(pages) || pages < 1 || pages > limits.maxPages) {
-        setError(t('Page limit must be a whole number between 1 and {max}.', { max: limits.maxPages }))
-        return
-      }
-      scopeUpdate = {
-        maxDepth: depth,
-        maxPages: pages,
-        sameDomainOnly: crawl.sameDomainOnly,
-        renderJs: crawl.renderJs,
-        includePattern: includePattern.trim(),
-      }
-    } else if (hasFileScope) {
-      // Only what changed, unlike a folder's dialog above: every save of this PATCH re-syncs the
-      // whole source, and a remote repository or share is the expensive kind to walk again. SVN
-      // and SharePoint read through a connection, so a move rides along in the same request.
-      const update: ConnectorConfigUpdate = connectionUpdate()
-      if (hasRecursive && recursive !== (connector.recursive ?? true)) update.recursive = recursive
-      if (fileTypes.join(',') !== (connector.fileTypes ?? '')) update.fileTypes = fileTypes.join(',')
-      if (hasNative && nativeDirty) {
-        const found = fieldProblems(nativeFields, nativeValues, nativeFields.filter(f => f.type === 'SECRET').map(f => f.key))
-        setNativeProblems(found)
-        if (Object.keys(found).length > 0) return
-        Object.assign(update, submittedFieldValues(nativeFields, nativeValues))
-      }
-      scopeUpdate = Object.keys(update).length > 0 ? update : null
-    } else if (hasNative) {
-      // Checked here first, as the add dialog checks them; the server checks again.
-      const found = fieldProblems(nativeFields, nativeValues, nativeFields.filter(f => f.type === 'SECRET').map(f => f.key))
-      setNativeProblems(found)
-      if (Object.keys(found).length > 0) return
-      const update: ConnectorConfigUpdate = connectionUpdate()
-      if (nativeDirty) Object.assign(update, submittedFieldValues(nativeFields, nativeValues))
-      scopeUpdate = Object.keys(update).length > 0 ? update : null
-    } else if (connectionDirty) {
-      // Connection-only types reach the same PATCH, which is why its backend no longer refuses a
-      // type with no editable scope outright - see ConnectorService.updateConnectorConfig.
-      scopeUpdate = connectionUpdate()
-    }
-
-    try {
-      // Graph first, because it is the one every connector type has and the cheap one: it flips a
-      // flag, where the scope save re-syncs the whole source.
-      if (graphDirty) await saveGraph.mutateAsync(graphEnabled)
-      if (scopeUpdate) await save.mutateAsync(scopeUpdate)
-    } catch {
-      // Each mutation's own onError has already put its own message on screen - which one failed
-      // is the thing the reader needs and the thing this used to get wrong. Nothing to add here,
-      // and the dialog deliberately stays open.
-      return
-    }
-    onClose()
-  }
-
   const hasScope = connector.type === 'files' || connector.type === 'webpage' || hasFileScope || hasNative
-  const busy = save.isPending || saveGraph.isPending
   const title = t('Configure {name}', { name: connector.name })
 
   return (
     <ModalShell
-      onClose={onClose}
-      closable={!busy}
-      dirty={dirty}
+      onClose={() => { flushTypes(); onClose() }}
       ariaLabel={title}
       // No scrolling inside the dialog (maintainer's rule, 2026-09-27): wider rather than taller.
       // A folder's file-type picker and a website's crawl scope are each most of a screen tall, so
       // for those the body below is two columns - the scope on the left, the rest on the right.
       size={connector.type === 'files' ? 'wide' : hasScope ? 'form' : 'lg'}
     >
-      {requestClose => (<>
+      {() => (<>
         <DialogHeader
           icon={<SourceTypeMark type={connector.type} size={20} className="text-brand-legible" />}
           title={title}
+          actions={<SaveStatus word={combinedSaveWord(scope.status, graph.status)} />}
         />
 
         <DialogBody>
@@ -309,9 +289,9 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
               <Field
                 className="md:col-start-2"
                 label={t('Folder')}
-                hint={t('Moved or renamed the folder? Choose where it is now. The source keeps its settings and is indexed again from there.')}
+                hint={t('Moved the folder? Choose where it is now.')}
               >
-                {/* Not edited here - the button under it is how it changes. */}
+                {/* Not edited here - the button under it is how it changes, and choosing relinks. */}
                 <StaticValue className="break-all">{folderPath ?? connector.name}</StaticValue>
                 <div className="flex items-center gap-3 mt-2">
                   <Button
@@ -321,12 +301,16 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                       setBrowsing(true)
                       try {
                         const p = await relinkFolder.browse()
-                        if (p) setFolderPath(p)
+                        if (p) {
+                          await saveScope({ path: p })
+                          setFolderPath(p)
+                        }
+                      } catch {
+                        // Said under the settings by the save itself.
                       } finally {
                         setBrowsing(false)
                       }
                     }}
-                    disabled={save.isPending}
                   >
                     {!browsing && <FolderSearch size={14} />} {t('Relink folder')}
                   </Button>
@@ -337,7 +321,7 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
 
             <Presence show={!!hasScope}>
               <InlineNotice tone="info" size="md" className="md:col-start-2">
-                {t('Saving re-syncs this connector in full and drops anything the new scope excludes.')}
+                {t('Each change syncs it again and removes what is no longer included.')}
               </InlineNotice>
             </Presence>
 
@@ -346,19 +330,8 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
               <div>
                 <FieldSpecForm
                   fields={nativeFields}
-                  values={nativeValues}
-                  onChange={(key, value) => {
-                    setNativeEdits(e => ({ ...e, [key]: value }))
-                    setNativeProblems(p => {
-                      if (!(key in p)) return p
-                      const next = { ...p }
-                      delete next[key]
-                      return next
-                    })
-                    setError('')
-                  }}
-                  problems={nativeProblems}
-                  disabled={save.isPending}
+                  values={shown.native}
+                  onCommit={(key, value) => saveScope({ native: { ...shown.native, [key]: value } })}
                 />
               </div>
             </Presence>
@@ -367,12 +340,12 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
               connector.type !== 'webpage' ? (
               <>
                 <Presence show={hasRecursive} className="md:col-start-2">
-                  <SubfoldersSwitch checked={recursive} onChange={setRecursive} disabled={save.isPending} />
+                  <SubfoldersSwitch checked={shown.recursive} onChange={recursive => quietly(saveScope({ recursive }))} />
                   {/* A rule between the switch and the picker only while they are stacked. */}
                   <Divider className="md:hidden mt-4" />
                 </Presence>
                 <div className="md:col-start-1 md:row-start-1 md:row-span-5">
-                  <FileTypeFilter value={fileTypes} onChange={setFileTypes} disabled={save.isPending} />
+                  <FileTypeFilter value={fileTypes} onChange={onFileTypes} saved />
                 </div>
               </>
             ) : (
@@ -387,19 +360,18 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                 )}
 
                 <WebCrawlFields
-                  values={crawl}
-                  onChange={patch => { setCrawlEdits(c => ({ ...c, ...patch })); setError('') }}
+                  values={shown}
+                  onCommit={patch => saveScope(patch)}
                   limits={limits}
-                  disabled={save.isPending}
                 >
-                  <Input
-                    label={t('Only follow URLs matching')}
-                    placeholder="/docs/"
-                    value={includePattern}
-                    onChange={e => setIncludePattern(e.target.value)}
-                    disabled={save.isPending}
-                    hint={t('Optional. Leave empty to follow every in-scope link.')}
-                  />
+                  <Field label={t('Only follow URLs matching')} hint={t('Optional. Leave empty to follow every in-scope link.')}>
+                    <EditableText
+                      value={shown.includePattern}
+                      label={t('Only follow URLs matching')}
+                      placeholder="/docs/"
+                      onCommit={includePattern => saveScope({ includePattern })}
+                    />
+                  </Field>
                 </WebCrawlFields>
               </FormStack>
             ))}
@@ -410,7 +382,7 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
             <Presence show={hasConnection} className="md:col-start-2">
               <FormStack>
                 <Divider />
-                <ConnectionPicker choice={connection} disabled={save.isPending} />
+                <ConnectionPicker choice={connectionChoice} />
               </FormStack>
             </Presence>
 
@@ -430,36 +402,35 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                     className="py-0"
                     title={t('Build a knowledge graph')}
                     checked={graphEnabled}
-                    onChange={setGraphEnabled}
-                    disabled={busy}
+                    onChange={on => quietly(graph.save({ graphEnabled: on }))}
                   />
                   <Caption className="max-w-[60ch]">
-                    {t('Maps people, systems and how they connect. One AI call per passage, so indexing costs two to three times as much.')}
+                    {t('Maps people, systems and their links. Indexing costs 2 to 3 times more.')}
                   </Caption>
                 </div>
-                {/* Said "re-index this source to extract from what it already holds" until
-                    2026-09-15, because extraction only ran inside indexing. It now runs on its own
-                    over what is already indexed, so switching it on is enough - and since that
-                    starts spending at once, this sentence is where the consent lives. */}
-                <Presence show={graphEnabled && !connector.graphEnabled}>
+                {/* Extraction runs on its own over what is already indexed, so switching it on is
+                    enough - and it starts spending at once, which the caption above says before the
+                    switch is touched. */}
+                <Presence show={graphEnabled && !graphWasOn}>
                   <Caption>
-                    {t('Runs in the background after you save, over what is already indexed. Search is unaffected.')}
+                    {t('Runs in the background.')}
                   </Caption>
                 </Presence>
                 <Presence show={!!(graphEnabled && !graphSettings.isLoading && !graphGloballyOn)}>
                   <InlineNotice tone="warning">
-                    {t('Knowledge-graph extraction is off for this deployment. Turn it on under Settings > Search.')}
+                    {t('The knowledge graph is off. Turn it on in Settings > Search.')}
                   </InlineNotice>
                 </Presence>
                 <Presence show={!!(graphEnabled && !graphSettings.isLoading && graphGloballyOn && !graphModelSet)}>
                   <InlineNotice tone="warning">
-                    {t('No model is set for knowledge-graph extraction, so nothing will be extracted. Choose one under Settings > Search.')}
+                    {t('No knowledge graph model is set. Choose one in Settings > Search.')}
                   </InlineNotice>
                 </Presence>
-                <Presence show={!graphEnabled && !!connector.graphEnabled}>
-                  <InlineNotice tone="warning">
-                    {t('Turning this off deletes what this source has contributed to the graph. Its index and search are not affected.')}
-                  </InlineNotice>
+                {/* Said while it is on, before the switch is touched: turning it off takes effect at once. */}
+                <Presence show={graphEnabled && graphWasOn}>
+                  <Caption>
+                    {t('Turning this off removes this source from the graph.')}
+                  </Caption>
                 </Presence>
                 {/* TWO ROWS OF ONE SHAPE, since 2026-10-01 (maintainer's feedback): each is a label, its
                     figures with a percentage, and a full-width bar of the same height - so how big the
@@ -468,7 +439,7 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                     only read once every passage in it is, and a real document holds hundreds at about a
                     minute each, so the first bar stands still for hours. Under both, what the graph
                     holds so far and what failed. */}
-                {connector.graphEnabled && connector.graphItemsExtracted !== undefined && (() => {
+                {graphEnabled && connector.graphItemsExtracted !== undefined && (() => {
                   const done = graphProgress.data?.extracted ?? connector.graphItemsExtracted
                   const pending = graphProgress.data?.pending ?? connector.graphItemsPending ?? 0
                   const failed = graphProgress.data?.failed ?? connector.graphItemsFailed ?? 0
@@ -485,19 +456,19 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                           <InlineNotice tone="warning" icon={AlertTriangle}>
                             <span className="block">
                               {outage.host
-                                ? t('The knowledge-graph model at {host} is not answering. It is asked again at {time}.', {
-                                    host: outage.host, time: formatDate(outage.retryAt),
+                                ? t('The graph model at {host} is not answering. Retrying at {time}.', {
+                                    host: outage.host, time: formatDate(outage.retryAt, locale),
                                   })
-                                : t('The knowledge-graph model is not answering. It is asked again at {time}.', {
-                                    time: formatDate(outage.retryAt),
+                                : t('The graph model is not answering. Retrying at {time}.', {
+                                    time: formatDate(outage.retryAt, locale),
                                   })}
                             </span>
                             {outage.reason && (
-                              <span className="block text-xs text-ink-caption">{t('Last error: {reason}', { reason: outage.reason })}</span>
+                              <Caption as="span" className="block">{t('Last error: {reason}', { reason: serverText(outage.reason) })}</Caption>
                             )}
                             {outage.throughProxy && (
                               <span className="block">
-                                {t('The request went through the proxy - add the host to No proxy if it is on your network.')}
+                                {t('This went through the proxy. Add the host to No proxy if it is local.')}
                               </span>
                             )}
                           </InlineNotice>
@@ -505,22 +476,22 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
                       </Presence>
                       <ProgressRow
                         label={t('Items')}
-                        figures={t('{done} of {total}', { done: done.toLocaleString(), total: total.toLocaleString() })}
+                        figures={t('{done} of {total}', { done: done.toLocaleString(locale), total: total.toLocaleString(locale) })}
                         value={percent(done + failed, total)}
                       />
                       <Presence show={chunksTotal > 0}>
                         <ProgressRow
                           label={t('Passages in the item being read')}
-                          figures={t('{done} of {total}', { done: chunksDone.toLocaleString(), total: chunksTotal.toLocaleString() })}
+                          figures={t('{done} of {total}', { done: chunksDone.toLocaleString(locale), total: chunksTotal.toLocaleString(locale) })}
                           value={percent(chunksDone, chunksTotal)}
                         />
                       </Presence>
                       <MetaList
-                        className="text-xs text-ink-caption data-readout"
+                        className={cn(TEXT.caption, 'data-readout')}
                         items={[
                           connector.graphEntities !== undefined && t('{entities} entities, {relations} relationships', {
-                            entities: connector.graphEntities.toLocaleString(),
-                            relations: (connector.graphRelations ?? 0).toLocaleString(),
+                            entities: connector.graphEntities.toLocaleString(locale),
+                            relations: (connector.graphRelations ?? 0).toLocaleString(locale),
                           }),
                           failed > 0 && <span className="text-danger">{t('{count} item failed|{count} items failed', { count: failed })}</span>,
                         ]}
@@ -536,22 +507,7 @@ export function ConnectorSettingsModal({ connector, onClose }: Props) {
             </Presence>
           </ScopeColumns>
         </DialogBody>
-
-        {/* BOTH mutations gate both buttons, not just the scope save. Now that submit() runs them
-            in sequence there is a window where the graph PATCH is in flight and the scope one has
-            not started, and a button disabled on `save.isPending` alone is live through all of it -
-            so a second click would re-enter submit() and write the flag twice. The label already
-            read both; only the `disabled` was half the condition. */}
-        <DialogFooter>
-          <Button variant="secondary" onClick={requestClose} disabled={busy}>
-            {t('Cancel')}
-          </Button>
-          <Button onClick={submit} loading={busy}>
-            {busy
-              ? t('Saving...')
-              : hasScope ? t('Save and re-sync') : t('Save')}
-          </Button>
-        </DialogFooter>
+        {/* No footer: every field is saved on its own, and a dialog closes on its backdrop and Escape. */}
       </>)}
     </ModalShell>
   )

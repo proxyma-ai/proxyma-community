@@ -25,6 +25,7 @@ import type {
   ChatSseEvent, ConversationUsage, ChatMessage, PendingPrompt, ToolCallInfo, WorkflowRunSnapshot,
 } from '../types/chat.types'
 import type { ConversationsPage } from '../services/chatApi'
+import { parseApprovalContext } from '../utils/approvalContext'
 
 function stripHtml(html: string, t: Translate): string {
   const clean = html.replace(/<!--[\s\S]*?-->/g, '')
@@ -86,7 +87,10 @@ function extractErrorMessage(e: unknown, t: Translate, locale?: string): string 
 function toStoreMessage(m: ChatMessage): ChatMessage {
   return {
     role: (m.role as string).toLowerCase() as 'user' | 'assistant',
-    content: m.content,
+    // A turn that FAILED is read back as the row that says why - the error bubble the stream drew live,
+    // its sentence in the reader's language.
+    content: m.error ? serverText(m.content) : m.content,
+    error: m.error || undefined,
     id: m.id,
     // A call read back from storage cannot still be running - see the util.
     toolCalls: settleUnfinishedToolCalls(m.toolCalls),
@@ -256,7 +260,7 @@ export function useChat() {
           if (event.type !== 'agent-status') store.setLastEventAt(Date.now())
           if (typeof event.now === 'number') store.setClockSkewMs(Date.now() - event.now)
           // Any reply from the provider ends a retry; a 'retry' event below starts one.
-          if (event.type === 'thinking' || event.type === 'text' || event.type === 'tool-start') {
+          if (event.type === 'thinking' || event.type === 'thinking-text' || event.type === 'text' || event.type === 'tool-start') {
             store.setRetryAttempt(null)
           }
           switch (event.type) {
@@ -269,9 +273,16 @@ export function useChat() {
               store.setAwaitingModel(true)
               break
             }
+            case 'thinking-text': {
+              // What the model call in progress thinks, the next piece - scrubbed by the server as the answer is,
+              // and never stored (ChatEvent.THINKING_TEXT). Shown under the thinking row while it lasts.
+              store.setAwaitingModel(false)
+              if (getState().thinkingTokens === null) store.setThinkingTokens(0)
+              store.appendThinkingText(event.data)
+              break
+            }
             case 'thinking': {
               // The model call in progress is thinking; data is its estimated token count so far.
-              // The thinking TEXT never reaches the client - only that it is happening, and how much.
               const tokens = Number.parseInt(event.data, 10)
               store.setAwaitingModel(false)
               store.setThinkingTokens(Number.isFinite(tokens) ? tokens : 0)
@@ -342,6 +353,13 @@ export function useChat() {
                 callId: event.callId, toolName: event.toolName, arguments: event.data,
                 parentCallId: event.parentCallId || undefined,
               })
+              break
+            }
+            case 'tool-approval-context': {
+              // What the waiting write is about, a moment after its prompt (ApprovalContexts). A
+              // prompt already answered is left alone - the store keeps only open ones.
+              const context = parseApprovalContext(event.data)
+              if (context) store.setApprovalContext(event.callId, context)
               break
             }
             case 'tool-enable-request': {
@@ -508,7 +526,7 @@ export function useChat() {
               if (manualCondenseRef.current) {
                 const freedNow = Number(event.data)
                 if (!(Number.isFinite(freedNow) && freedNow > 0)) {
-                  useToastStore.getState().addToast(t('Nothing to condense yet - the conversation needs a few more exchanges.'), 'info')
+                  useToastStore.getState().addToast(t('Nothing to condense yet.'), 'info')
                 }
               } else {
                 store.setCondensing(false)
@@ -1068,6 +1086,24 @@ export function useChat() {
     return loaded
   }, [store, qc, loadWorkflowRuns, detach])
 
+  // READS THE OPEN CONVERSATION AGAIN IN PLACE, with no turn behind it - for words written into it
+  // while nothing ran there (a Constellations lead telling the person from a run, ChatService.writeNote).
+  // Nothing is cleared first, so the thread does not blink: the rows already shown keep their place and
+  // a new one fades in. Left alone while a turn runs or the history loads; the turn's own end reads it.
+  const refreshConversation = useCallback(async (id: string): Promise<void> => {
+    const state = getState()
+    if (state.conversationId !== id || state.streaming || state.loadingHistory) return
+    try {
+      const data = await chatApi.getConversation(id)
+      const now = getState()
+      if (now.conversationId !== id || now.streaming || now.loadingHistory) return
+      // Messages the person queued meanwhile stay at the end, as the thread keeps them.
+      const queued = now.messages.filter(m => m.queued)
+      store.setMessages([...data.messages.map(toStoreMessage), ...queued])
+      qc.setQueryData(keys.conversation(id), data)
+    } catch { /* the next read brings it; nothing on the page changes */ }
+  }, [store, qc])
+
   // A prompt that was open when the conversation was loaded, put back as the event that asked it
   // would have put it - see ConversationDetail.PendingPrompt.
   const restorePrompt = useCallback((prompt: PendingPrompt) => {
@@ -1076,6 +1112,7 @@ export function useChat() {
       if (prompt.type === 'tool-approval-request') {
         store.addPendingApproval({
           callId: prompt.callId, toolName: prompt.toolName ?? '', arguments: prompt.data ?? '{}', parentCallId,
+          context: parseApprovalContext(prompt.context),
         })
       } else if (prompt.type === 'tool-enable-request') {
         const payload = JSON.parse(prompt.data ?? '{}') as {
@@ -1258,6 +1295,7 @@ export function useChat() {
     conversationId: store.conversationId,
     setConversationId,
     resumeConversation,
+    refreshConversation,
     resetChat,
     ensureConversationId,
   }

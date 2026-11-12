@@ -4,6 +4,7 @@ import { keys } from '@/services/queryKeys'
 import { apiErrorText } from '@/services/apiError'
 import { useToastStore } from '@/store/toastStore'
 import { useTranslation } from '@/i18n'
+import { serverText } from '@/i18n/serverText'
 import { indexingApi } from '../services/indexingApi'
 import type { ConnectorConfig } from '../types/indexing.types'
 
@@ -30,7 +31,7 @@ export function useRelinkFolder(connector: ConnectorConfig) {
     try {
       const res = await indexingApi.browseFolder(connector.name)
       if (res.cancelled) {
-        if (res.reason) setError(res.reason)
+        if (res.reason) setError(serverText(res.reason))
         return null
       }
       return res.path ?? null

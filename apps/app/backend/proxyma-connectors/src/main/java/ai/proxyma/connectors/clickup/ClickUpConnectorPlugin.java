@@ -46,18 +46,16 @@ public class ClickUpConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.CLICKUP)
             .protocol(ConnectionProtocol.CLICKUP)
             .displayName("ClickUp")
-            .description("ClickUp tasks with their descriptions, comments and subtasks, from a workspace or the "
-                    + "spaces, folders and lists you choose.")
+            .description("ClickUp tasks with comments, from the places you choose.")
             .noun("ClickUp source", "ClickUp sources")
             .addTitle("Add ClickUp tasks")
             .order(62)
             .category(Category.TICKETS)
             .mark("clickup")
             .fields(FieldSpec.text(WORKSPACE, "Workspace").asRequired().placeholder("Acme")
-                            .help("The workspace's name, or its ID - the number after app.clickup.com/ in its address."),
+                            .help("The workspace's name or ID."),
                     FieldSpec.text(SPACES, "Spaces").placeholder("90101").pattern(IDS)
-                            .help("Space IDs, separated by commas. Every task of the workspace when no space, folder "
-                                    + "or list is chosen."),
+                            .help("Space IDs, comma-separated. Empty for the whole workspace."),
                     FieldSpec.text(FOLDERS, "Folders").placeholder("90201").pattern(IDS)
                             .help("Folder IDs, separated by commas."),
                     FieldSpec.text(LISTS, "Lists").placeholder("90301").pattern(IDS)

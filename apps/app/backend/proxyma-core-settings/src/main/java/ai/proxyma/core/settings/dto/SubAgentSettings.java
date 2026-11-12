@@ -31,14 +31,12 @@ public class SubAgentSettings {
     //
     // A sub-agent's writes go through the same permission mode and the same approval prompt as
     // the main agent's, so always-on cannot cause a write nobody agreed to.
-    @JsonProperty("provider")
-    // EMPTY, not a provider name - a role holds a provider INSTANCE id. See
-    // GraphSettings.provider for what this default cost and how long it went unnoticed.
-    private String provider = "";
-    // Blank: the agent's own model. DefaultLlmGateway.bindingFor falls back to it whenever no
-    // sub-agent model has been built.
-    @JsonProperty("model")
-    private String model = "";
+    //
+    // NO MODEL OF ITS OWN, since 2026-11-02 (the maintainer: Settings' provider and model for deployed
+    // agents "contradicts with" the models agents may choose, below). A deployed agent runs on the model
+    // the agent deploying it names, from those model-rule allows, else on its parent's
+    // (AgentTree.deploy, AgentTreeModule.runsOn). The `provider`, `model`, `base-url` and `api-key`
+    // fields went with it; a value an earlier version stored is read past (@JsonIgnoreProperties).
     // Running out is not a wasted delegation - SubAgentService forces a resumable partial report
     // at the ceiling instead of discarding the work. Null follows the agent; 0 is no limit
     // (ChatSettings.NO_ITERATION_LIMIT), as it is for the agent.
@@ -97,23 +95,6 @@ public class SubAgentSettings {
         return Boolean.TRUE.equals(peerMessaging);
     }
 
-    public String getProvider() { return provider; }
-    public void setProvider(String provider) { this.provider = provider; }
-
-    /**
-     * The provider a sub-agent runs on: its own, else the agent's. So "Same as the agent" and a
-     * model of the sub-agent's own is that model on the agent's provider - which is how a cheaper
-     * model from the same account is chosen without naming the account twice. Until 2026-10-03 a
-     * blank provider with a model set built nothing, and Settings could not list the models to
-     * pick from.
-     */
-    public String provider(ChatSettings agent) {
-        return provider == null || provider.isBlank() ? agent.getProvider() : provider;
-    }
-
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
-
     public Integer getMaxIterations() { return maxIterations; }
     public void setMaxIterations(Integer maxIterations) { this.maxIterations = maxIterations; }
 
@@ -133,8 +114,8 @@ public class SubAgentSettings {
     // agent invented model names, and a fixed model or none was the only choice). ANY: any model a
     // configured provider lists; ONLY: just the entries of model-list; EXCEPT: all but those. An
     // entry is a provider instance id, for all its models, or "<instance id>|<model>", one per line.
-    // What an agent may name is always also a model a provider lists (AgentModels). The default
-    // model above, used when an agent names none, is the person's own choice and is not checked.
+    // What an agent may name is always also a model a provider lists (AgentModels). An agent that
+    // names none runs on its parent's model.
     public static final String MODELS_ANY = "ANY";
     public static final String MODELS_ONLY = "ONLY";
     public static final String MODELS_EXCEPT = "EXCEPT";
@@ -196,25 +177,4 @@ public class SubAgentSettings {
     private static boolean isSet(Integer value) {
         return value != null && value > 0;
     }
-
-/**
-     * Optional per-role endpoint override. Blank - the default, and what every existing
-     * deployment has - means "use the provider's own base URL and key".
-     *
-     * Exists for runtimes that serve ONE MODEL PER PROCESS (vLLM, llama.cpp, TGI, LocalAI), where
-     * two roles on the same provider are two containers on two ports and a single provider-level
-     * base URL cannot describe both. Ignored by providers whose adapter does not implement
-     * withEndpoint() - the settings UI only offers these fields when it does.
-     */
-    @JsonProperty("base-url")
-    private String baseUrl;
-
-    @JsonProperty("api-key")
-    private String apiKey;
-
-    public String getBaseUrl() { return baseUrl; }
-    public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-
-    public String getApiKey() { return apiKey; }
-    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
 }

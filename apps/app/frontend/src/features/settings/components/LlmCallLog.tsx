@@ -4,11 +4,12 @@ import {
   llmCallsApi, type LlmCallBucket, type LlmCallGroup, type LlmCallRow, type LlmCallsQuery,
   type LlmCallsSummary, type LlmCallSubjectGroup,
 } from '../services/chatCostApi'
+import { conversationOptions, triggerLabel } from '../utils/callConversation'
 import { keys } from '@/services/queryKeys'
 import { formatUsd, formatCompactCount } from '@/utils/formatters'
 import {
   BarList, Button, Caption, cn, EmptyState, ColumnChart, ConfirmDialog, FieldLabel, FilterBar, HScroll,
-  InlineNotice, LIST_PAGE_SIZE, List, ListRow, MetaList, Presence, Readout, SearchInput,
+  InlineNotice, LIST_PAGE_SIZE, List, ListRow, MetaList, Presence, Readout, RowActions, SearchInput,
   SectionHeading, Select, Skeleton, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH,
   TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
   type SortState,
@@ -125,9 +126,16 @@ export function LlmUsage({ showSubjects = false, intro }: {
       </section>
 
       <section>
+        {/* The log's own actions in its heading, Download log then Clear log - the destructive one
+            last (the maintainer, 2026-11-08). Download is offered to everyone who reads the log;
+            Clear only where the server says this viewer may (`canClear`). */}
         <SectionHeading
-          caption={t('Each model call in the period, newest first. A column heading sorts by that column.')}
-          action={data?.canClear ? <ClearLogButton /> : undefined}
+          caption={t('Every model call, newest first.')}
+          action={(
+            <RowActions destructive={data?.canClear ? <ClearLogButton /> : undefined}>
+              <LlmCallDownload summary={data} filters={filters} />
+            </RowActions>
+          )}
         >
           {/* Not "Logs": that is the page's own title, right above (the UI review, 2026-10-28). */}
           {t('Calls')}
@@ -161,6 +169,11 @@ export function LlmUsage({ showSubjects = false, intro }: {
  *
  * <p>PAGED, twenty calls a page (LIST_PAGE_SIZE). While a changed filter or page loads, the rows
  * already shown stay, dimmed, so the table neither jumps nor passes them off as the answer.
+ *
+ * <p>BY AGENT since 2026-11-04: a call made for an agent's conversation names that agent under its
+ * service, and choosing it - there or in the conversation filter - shows that conversation's calls
+ * alone, so one pass of a team reads agent by agent. The download - in the Calls heading, beside
+ * Clear log (LlmCallDownload) - can be grouped the same way.
  */
 export function LlmCallLogTable({ summary, log, showSubjects = false, filters, onFilters, frameClassName }: {
   /** The period's summary - the filters' choices and the names of who. Undefined while it loads. */
@@ -175,10 +188,8 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
   const dates = useDates()
   // A USER row carries an id; the by-subject breakdown carries its name when it has one.
   const names = new Map((summary?.bySubject ?? []).filter(s => s.label).map(s => [s.subjectId, s.label as string]))
-  // The filters as the download asks for them - the same debounced search and order the rows use.
-  const logQuery = useLogQuery(filters)
   const columns = showSubjects ? 9 : 8
-  const filtered = !!(filters.service || filters.model || filters.text.trim())
+  const filtered = !!(filters.service || filters.model || filters.conversation || filters.text.trim())
   // A column's first click sorts it largest (or newest, or last in the alphabet) first; a second
   // click turns it round.
   const sortBy = (key: LogSortKey) => onFilters({
@@ -229,8 +240,19 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
               .map(g => ({ value: modelFilterValue(g.provider!, g.model!), label: g.key })),
           ]}
         />
-        <DownloadMenu
-          onDownload={format => llmCallsApi.export({ days: summary?.windowDays ?? 30, tz: readerZone(), ...logQuery }, format)}
+        <Select
+          className="flex-1 min-w-0 sm:flex-none sm:w-56"
+          value={filters.conversation}
+          onChange={conversation => onFilters({ ...filters, conversation, conversationLabel: undefined })}
+          ariaLabel={t('Conversation')}
+          searchable
+          searchPlaceholder={t('Search...')}
+          emptyLabel={t('No matches')}
+          options={[
+            { value: '', label: t('All conversations') },
+            ...conversationOptions(summary?.byConversation ?? [], filters.conversation, filters.conversationLabel)
+              .map(o => ({ value: o.value, label: o.label ?? t('Conversation {id}', { id: o.shortId }) })),
+          ]}
         />
       </FilterBar>
       {/* On a phone the table stacks and its headings are not drawn, so the sort the headings
@@ -299,7 +321,9 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
                     <span className="sm:block">{dates.date(row.recordedAt)}</span>{' '}
                     <span className="sm:block">{dates.time(row.recordedAt)}</span>
                   </td>
-                  <td data-label={t('Service')} className={cn(TD_COMPACT, 'text-ink-secondary')}>{serviceLabel(row.service, t)}</td>
+                  <td data-label={t('Service')} className={cn(TD_COMPACT, 'text-ink-secondary')}>
+                    <ServiceCell row={row} onConversation={(conversation, label) => onFilters({ ...filters, conversation, conversationLabel: label })} />
+                  </td>
                   {/* The model over its provider, each on one line: side by side they made this the
                       widest column and pushed Cost out of view, and left to wrap they broke a model
                       name mid-word. ONE child, because the stacked phone row lays a labelled cell
@@ -398,6 +422,28 @@ export function useLlmCallLog(days: number, filters: LogFilters): LlmCallLogStat
 }
 
 /**
+ * "Download log", in the Calls heading beside Clear log: the calls under the reader's current
+ * filters and order - the same debounced search the rows use - as CSV or JSON, or as CSV with one
+ * row per conversation, so one pass of a team reads agent by agent.
+ */
+function LlmCallDownload({ summary, filters }: { summary: LlmCallsSummary | undefined; filters: LogFilters }) {
+  const { t } = useTranslation()
+  const logQuery = useLogQuery(filters)
+  const query = () => ({ days: summary?.windowDays ?? 30, tz: readerZone(), ...logQuery })
+  return (
+    <DownloadMenu
+      onDownload={format => llmCallsApi.export(query(), format)}
+      more={[{
+        key: 'by-conversation',
+        title: t('CSV by conversation'),
+        description: t('One row per conversation, with its agent'),
+        download: () => llmCallsApi.export(query(), 'csv', 'conversation'),
+      }]}
+    />
+  )
+}
+
+/**
  * Clears the log, after saying what that does (2026-10-07 feedback: "there is no way to clear/reset
  * the logs"). Shown only where the server said this viewer may (`canClear`): the local user, or a
  * Super admin on Enterprise Server. The spending limit counts these calls, so the confirmation says
@@ -420,18 +466,19 @@ export function ClearLogButton() {
   })
   return (
     <>
-      <Button variant="danger-quiet" onClick={() => setConfirming(true)}>{t('Clear log')}</Button>
+      {/* Fades in beside Download log: it arrives with the summary that says it may be offered. */}
+      <Button variant="danger-quiet" className="animate-fade-in" onClick={() => setConfirming(true)}>{t('Clear log')}</Button>
       {confirming && (
         <ConfirmDialog
           title={t('Clear the call log?')}
-          description={t('Every model call recorded so far is deleted, in every period.')}
+          description={t('Deletes every recorded model call.')}
           // On Enterprise Server there are two limits and only the deployment's counts this log -
           // each user's quota counts its own events (UserSpendAdapter) and is not reset.
           consequences={[
-            t('The costs, charts and breakdowns on this page start again from nothing.'),
+            t('Costs and charts on this page start from zero.'),
             FEATURES.auth
-              ? t("The deployment's monthly limit counts these calls, so this month is counted again from zero. Each user's own quota is not reset.")
-              : t('The monthly spending limit counts these calls, so this month is counted again from zero.'),
+              ? t('The monthly limit starts again from zero. User quotas are not reset.')
+              : t("This month's spending limit starts again from zero."),
           ]}
           confirmLabel={t('Clear log')}
           cancelLabel={t('Cancel')}
@@ -445,18 +492,56 @@ export function ClearLogButton() {
   )
 }
 
+/**
+ * The service, and under it the agent the call was for when it was for one - a button that shows that
+ * conversation's calls alone. ONE child, because the stacked phone row lays a labelled cell out as
+ * label and value. The agent's name is cut to the column; the tooltip has it whole, with how its work
+ * started.
+ */
+function ServiceCell({ row, onConversation }: {
+  row: LlmCallRow
+  onConversation: (conversationId: string, label: string) => void
+}) {
+  const { t } = useTranslation()
+  const agent = row.agent
+  const conversationId = row.conversationId
+  if (!agent || !conversationId) return <span>{serviceLabel(row.service, t)}</span>
+  const trigger = triggerLabel(row.trigger, t)
+  return (
+    <span className="block">
+      <span className="block">{serviceLabel(row.service, t)}</span>
+      <Tooltip label={trigger ? t('{agent}, started by {trigger}. Show only its calls.', { agent, trigger }) : t('{agent}. Show only its calls.', { agent })}>
+        <button
+          type="button"
+          className="block max-w-40 truncate text-left text-ink-caption hover:text-ink-primary transition-colors"
+          onClick={() => onConversation(conversationId, agent)}
+        >
+          {agent}
+        </button>
+      </Tooltip>
+    </span>
+  )
+}
+
 /** The log's sortable columns, by the names LlmCallsController.SORTABLE accepts. */
 export type LogSortKey = 'time' | 'service' | 'model' | 'in' | 'out' | 'cacheWrite' | 'cacheRead' | 'cost'
 
-/** What the reader has narrowed and ordered the log by. `model` is a provider and model together. */
+/**
+ * What the reader has narrowed and ordered the log by. `model` is a provider and model together;
+ * `conversation` one conversation's id, with the agent's name it was picked by from a row - the
+ * filter's choices are the period's costliest conversations, and a cheaper one picked from a row
+ * still needs a name there.
+ */
 export interface LogFilters {
   service: string
   model: string
+  conversation: string
+  conversationLabel?: string
   text: string
   sort: SortState<LogSortKey>
 }
 
-export const NO_LOG_FILTERS: LogFilters = { service: '', model: '', text: '', sort: { key: 'time', dir: 'desc' } }
+export const NO_LOG_FILTERS: LogFilters = { service: '', model: '', conversation: '', text: '', sort: { key: 'time', dir: 'desc' } }
 
 // A provider and a model in one Select value. The unit separator cannot appear in either name.
 const PAIR = '\u001f'
@@ -468,7 +553,7 @@ function modelFilterValue(provider: string, model: string): string {
  * The log's filters as the query's parameters: the search debounced so a word is one request
  * rather than one per keystroke, and the default order (newest first) left unsaid.
  */
-export function useLogQuery(filters: LogFilters): Pick<LlmCallsQuery, 'service' | 'provider' | 'model' | 'q' | 'sort' | 'dir'> {
+export function useLogQuery(filters: LogFilters): Pick<LlmCallsQuery, 'service' | 'provider' | 'model' | 'q' | 'sort' | 'dir' | 'conversation'> {
   const text = useDebounce(filters.text.trim(), 300)
   const [provider, model] = filters.model ? filters.model.split(PAIR) : [undefined, undefined]
   const newestFirst = filters.sort.key === 'time' && filters.sort.dir === 'desc'
@@ -476,6 +561,7 @@ export function useLogQuery(filters: LogFilters): Pick<LlmCallsQuery, 'service' 
     ...(filters.service ? { service: filters.service } : {}),
     ...(provider && model ? { provider, model } : {}),
     ...(text ? { q: text } : {}),
+    ...(filters.conversation ? { conversation: filters.conversation } : {}),
     ...(newestFirst ? {} : { sort: filters.sort.key, dir: filters.sort.dir }),
   }
 }
@@ -490,7 +576,7 @@ export function CostEstimateNote() {
   return (
     <Caption className="max-w-2xl">
       <span className="font-semibold text-ink-secondary">{t('These costs are estimates.')}</span>{' '}
-      {t("From counted tokens and rates, unless the provider states the cost; the provider's bill is the actual charge.")}
+      {t('Your provider bill is the real charge.')}
     </Caption>
   )
 }
@@ -523,14 +609,14 @@ function CacheCells({ row }: { row: LlmCallRow }) {
   const verdict = cacheVerdict(row.cacheOutcome)
   const why = verdict === null ? null : {
     HIT: row.cacheWarmUntil
-      ? { label: t('Warm until {time}', { time: dates.time(row.cacheWarmUntil) }), detail: t('The cache this call read stays until then unless something reads it again.') }
+      ? { label: t('Warm until {time}', { time: dates.time(row.cacheWarmUntil) }), detail: t('The cache lasts until then, longer if read again.') }
       : null,
     FIRST: { label: t('First write'), detail: t('Nothing was cached for this conversation yet.') },
-    EXPIRED: { label: t('Expired'), detail: t('The cache had run out before this call, so it was written again.') },
-    CHANGED_TOOLS: { label: t('Tools changed'), detail: t('The tools offered differed from the call before, so the cached prompt could not be reused.') },
-    CHANGED_SYSTEM: { label: t('System prompt changed'), detail: t('The system prompt differed from the call before, so the cached prompt could not be reused.') },
-    CHANGED_MESSAGES: { label: t('History changed'), detail: t('The conversation no longer started with the messages of the call before - condensed or edited - so the cached prompt could not be reused.') },
-    NOT_KEPT: { label: t('Not kept'), detail: t('The same prompt, within its cache lifetime, and the provider read nothing back: it did not keep what it wrote.') },
+    EXPIRED: { label: t('Expired'), detail: t('The cache had expired, so it was written again.') },
+    CHANGED_TOOLS: { label: t('Tools changed'), detail: t('The tools changed, so the cache was not reused.') },
+    CHANGED_SYSTEM: { label: t('System prompt changed'), detail: t('The system prompt changed, so the cache was not reused.') },
+    CHANGED_MESSAGES: { label: t('History changed'), detail: t('The history was condensed or edited, so the cache was not reused.') },
+    NOT_KEPT: { label: t('Not kept'), detail: t('The provider did not keep the cache it wrote.') },
   }[verdict]
   const ink = noCache(outcome) ? 'text-ink-disabled' : 'text-ink-secondary'
   const lifetime = {
@@ -613,8 +699,8 @@ function CostColumns({ series, unit }: { series: LlmCallBucket[]; unit: 'day' | 
     return (
       <EmptyState>
         {unit === 'month'
-          ? t('Model calls with a price appear here as cost per month. Rates are set per provider in Settings > AI Providers.')
-          : t('Model calls with a price appear here as cost per day. Rates are set per provider in Settings > AI Providers.')}
+          ? t('Priced model calls appear here as cost per month.')
+          : t('Priced model calls appear here as cost per day.')}
       </EmptyState>
     )
   }

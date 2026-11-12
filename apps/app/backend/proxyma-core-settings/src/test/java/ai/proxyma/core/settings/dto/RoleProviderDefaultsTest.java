@@ -52,7 +52,7 @@ class RoleProviderDefaultsTest {
      * the day it is added.
      */
     @Test
-    @DisplayName("no role ships a provider default that cannot resolve - all seven")
+    @DisplayName("no role ships a provider default that cannot resolve - all six (deployed agents have none since 2026-11-02)")
     void everyRoleDefault() {
         assertThat(new ChatSettings().getProvider()).as("chat").isEmpty();
         assertThat(new EmbeddingSettings().getProvider()).as("embedding").isEmpty();
@@ -60,7 +60,6 @@ class RoleProviderDefaultsTest {
         assertThat(new QueryExpansionSettings().getProvider()).as("query expansion").isEmpty();
         assertThat(new RerankingSettings().getProvider()).as("reranking").isEmpty();
         assertThat(new OcrSettings().getProvider()).as("ocr").isEmpty();
-        assertThat(new SubAgentSettings().getProvider()).as("sub-agent").isEmpty();
     }
 
     @Test

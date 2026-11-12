@@ -48,8 +48,7 @@ public class DriveConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.GOOGLE_DRIVE)
             .protocol(ConnectionProtocol.GOOGLE)
             .displayName("Google Drive")
-            .description("Files in Google Drive - Docs, Sheets and Slides, PDF and Office files - from My Drive, "
-                    + "shared drives or one folder.")
+            .description("Files in Google Drive, from My Drive, shared drives or one folder.")
             .noun("Google Drive", "Google Drive")
             .addTitle("Add Google Drive")
             .order(40)
@@ -63,7 +62,7 @@ public class DriveConnectorPlugin implements ConnectorPlugin {
                     FieldSpec.list(SHARED_DRIVES, "Shared drives").placeholder("Shared drive ID or link")
                             .help("Each shared drive to read, by its ID or the link to it."),
                     FieldSpec.text(FOLDER, "Only this folder").placeholder("Folder ID or link").asAdvanced()
-                            .help("Read this folder and the folders inside it, instead of the choices above."))
+                            .help("Read this folder and its subfolders only."))
             .capabilities(Capabilities.builder().incremental().cursor().fileTypeFilter().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("google-drive")

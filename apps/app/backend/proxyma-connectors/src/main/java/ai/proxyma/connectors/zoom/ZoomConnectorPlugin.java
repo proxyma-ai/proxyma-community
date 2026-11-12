@@ -54,7 +54,7 @@ public class ZoomConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.ZOOM)
             .protocol(ConnectionProtocol.ZOOM)
             .displayName("Zoom")
-            .description("Transcripts of Zoom cloud recordings and AI Companion meeting summaries.")
+            .description("Zoom recording transcripts and meeting summaries.")
             .noun("Zoom meeting list", "Zoom meeting lists")
             .addTitle("Add Zoom meetings")
             .order(80)
@@ -62,8 +62,7 @@ public class ZoomConnectorPlugin implements ConnectorPlugin {
             .mark("zoom")
             .fields(
                     FieldSpec.list(USERS, "People").placeholder("ana@example.com")
-                            .help("Whose meetings to read, by email address. Leave it empty for your own. With a "
-                                    + "Server-to-Server app, name the people, or * for everyone on the account."),
+                            .help("Whose meetings to read, by email. Empty for your own, * for everyone."),
                     FieldSpec.number(DAYS, "Days of meetings").defaultValue(String.valueOf(DEFAULT_DAYS)).range(1, 3650)
                             .help("Only meetings from this many days before today."))
             .capabilities(Capabilities.builder().incremental().cursor().liveRead().build())

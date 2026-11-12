@@ -58,8 +58,7 @@ public class SlackConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.SLACK)
             .protocol(ConnectionProtocol.SLACK)
             .displayName("Slack")
-            .description("The messages of Slack channels, one document per thread and one per channel per day, "
-                    + "read through your own Slack app. Never direct messages.")
+            .description("Messages from Slack channels, read through your own Slack app. Never direct messages.")
             .noun("Slack channels", "Slack channels")
             .addTitle("Add Slack channels")
             .order(58)
@@ -67,11 +66,9 @@ public class SlackConnectorPlugin implements ConnectorPlugin {
             .mark("slack")
             .fields(
                     FieldSpec.list(CHANNELS, "Channels").placeholder("#general")
-                            .help("One per line, as #name or a channel ID. The app must be in each one. Leave "
-                                    + "empty for every public channel the app is in."),
+                            .help("One per line, as #name or an ID. Empty for every channel the app is in."),
                     FieldSpec.number(DAYS, "Days of history").placeholder("365").range(1, 36500)
-                            .help("Messages older than this are left out, and leave the index as they age. Leave "
-                                    + "empty for the whole history."),
+                            .help("Older messages are left out. Empty for all history."),
                     FieldSpec.list(EXCLUDE, "Channels to leave out").placeholder("#random").asAdvanced()
                             .help("One per line. Useful with every public channel."))
             .capabilities(Capabilities.builder().incremental().liveRead().build())

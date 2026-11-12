@@ -51,8 +51,7 @@ public class GitLabConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.GITLAB)
             .protocol(ConnectionProtocol.GITLAB)
             .displayName("GitLab")
-            .description("A GitLab project's or group's issues and merge requests, with their comments, and its "
-                    + "documentation files if you choose.")
+            .description("Issues and merge requests with comments, and documentation files if you choose.")
             .noun("GitLab project", "GitLab projects")
             .addTitle("Add a GitLab project or group")
             .order(56)
@@ -61,11 +60,11 @@ public class GitLabConnectorPlugin implements ConnectorPlugin {
             .fields(
                     FieldSpec.text(PATH, "Project or group").asRequired().placeholder("group/project")
                             .pattern("[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.][A-Za-z0-9_.-]*)*")
-                            .help("A group's path reads every project under it, its subgroups included."),
+                            .help("A group reads every project under it."),
                     FieldSpec.bool(ISSUES, "Issues").defaultValue("true"),
                     FieldSpec.bool(MERGE_REQUESTS, "Merge requests").defaultValue("true"),
                     FieldSpec.bool(DOCS, "Documentation files").defaultValue("false")
-                            .help("Markdown, reStructuredText and text files on the default branch."),
+                            .help("Markdown and text files on the default branch."),
                     FieldSpec.text(DOCS_PATH, "Only files under").placeholder("docs/").asAdvanced(),
                     FieldSpec.text(BRANCH, "Branch").asAdvanced().help("Each project's default branch when empty."))
             .capabilities(Capabilities.builder().incremental().cursor().shareable().liveRead().build())

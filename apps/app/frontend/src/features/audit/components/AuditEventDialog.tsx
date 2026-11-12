@@ -13,7 +13,7 @@ import { jsonFields } from '@/features/chat/utils/jsonFields'
 import { auditApi, type AuditEventDetail } from '../services/auditApi'
 import {
   actionLabel, actorText, categoryLabel, durationText, outcomeLabel, outcomeTone, readableDetail,
-  summaryText,
+  summaryText, targetText,
 } from '../utils/auditLabels'
 
 /**
@@ -96,9 +96,10 @@ function EntryBody({ entry, multiUser }: { entry: AuditEventDetail; multiUser: b
         {multiUser && (
           <KeyValue layout="rows" label={t('Who')}>{actorText(entry.actorKind, entry.actorId, entry.actorName, t)}</KeyValue>
         )}
-        {entry.target && <KeyValue layout="rows" label={t('Target')}>{entry.target}</KeyValue>}
+        {/* A setting by its name in Settings, never its key. */}
+        {entry.target && <KeyValue layout="rows" label={t('Target')}>{targetText(entry, t)}</KeyValue>}
         {entry.durationMs != null && (
-          <KeyValue layout="rows" label={t('Took')} figures>{durationText(entry.durationMs)}</KeyValue>
+          <KeyValue layout="rows" label={t('Took')} figures>{durationText(entry.durationMs, t)}</KeyValue>
         )}
         {entry.conversationId && (
           <KeyValue layout="rows" label={t('Conversation')} figures>{entry.conversationId}</KeyValue>

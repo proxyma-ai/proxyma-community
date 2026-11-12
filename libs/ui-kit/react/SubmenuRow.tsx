@@ -8,6 +8,7 @@ import { cn } from './cn'
 import { menuRow } from './menu'
 import { exitingProps, usePresence } from './motion'
 import { focusTrigger, useMenuFocus } from './useMenuFocus'
+import { EDGE } from './placement'
 
 /**
  * One menu row - the current value and a chevron - that opens a small submenu listing every choice.
@@ -32,16 +33,20 @@ import { focusTrigger, useMenuFocus } from './useMenuFocus'
  * happens before the menus' document listeners run. Without it, choosing an item would close
  * the menu on the way down and unmount the option before the click landed.
  *
- * <p>Placed to the LEFT of the menu, because every menu that carries it is anchored to the right
- * edge of the header. Where there is no room there - a phone, whose menu nearly fills the width -
- * it opens under the row instead, over the menu, which still reads as a menu of its own.
+ * <p>Placed BESIDE THE MENU'S PANEL, not the row: to its LEFT, because every menu that carries it is
+ * anchored to the right edge of the header, else to its right, 4px from the panel's edge either way
+ * (the kit's gap between a floating panel and its anchor, placement.ts). Its FIRST ROW is level with
+ * the row that opened it. Where neither side has room - a phone, whose menu nearly fills the width -
+ * it opens under the row instead, over the menu, which still reads as a menu of its own. It was
+ * measured from the ROW until 2026-11-02: once the rows were inset 4px from the panel (2026-10-30)
+ * that put the submenu's edge on the panel's, with no gap, and its first row 5px above the row (the
+ * maintainer: "Incorrect margins in this list").
  */
 
 /** Width of a submenu. Wide enough for the longest language or appearance name and its check. */
 const SUBMENU_WIDTH = 176
-/** Gap between the menu and the submenu, and the least distance kept from the viewport edge. */
+/** Gap between the menu and the submenu - placement.ts's, between any floating panel and its anchor. */
 const SUBMENU_GAP = 4
-const VIEWPORT_MARGIN = 8
 
 export interface SubmenuOption<K extends string> {
   key: K
@@ -101,17 +106,30 @@ export function SubmenuRow<K extends string>({
   // it fits, rather than a row count that stops being right the day a row changes height.
   useLayoutEffect(() => {
     if (!open) { if (!mounted) setPosition(null); return }
-    const row = rowRef.current?.getBoundingClientRect()
-    const height = submenuRef.current?.offsetHeight ?? 0
-    if (!row) return
+    const rowEl = rowRef.current
+    const submenu = submenuRef.current
+    if (!rowEl || !submenu) return
+    const row = rowEl.getBoundingClientRect()
+    // The menu's panel: what the submenu stands beside. A row outside any marked panel stands for it.
+    const panel = rowEl.closest('[data-menu-panel]')?.getBoundingClientRect() ?? row
+    const height = submenu.offsetHeight
+    // From the submenu's outer edge to its first row - its border and its padding, read from layout
+    // (offsetTop ignores the opening animation's transform), so the two rows line up whatever they are.
+    const firstRow = submenu.querySelector<HTMLElement>('[role^="menuitem"]')
+    const inset = submenu.clientTop + (firstRow?.offsetTop ?? 0)
 
-    let left = row.left - SUBMENU_WIDTH - SUBMENU_GAP
-    let top = row.top - SUBMENU_GAP
-    if (left < VIEWPORT_MARGIN) {
-      left = Math.max(VIEWPORT_MARGIN, row.right - SUBMENU_WIDTH)
+    const vw = window.innerWidth
+    const roomLeft = panel.left - SUBMENU_GAP - EDGE
+    const roomRight = vw - panel.right - SUBMENU_GAP - EDGE
+    let left: number
+    let top = row.top - inset
+    if (roomLeft >= SUBMENU_WIDTH) left = panel.left - SUBMENU_GAP - SUBMENU_WIDTH
+    else if (roomRight >= SUBMENU_WIDTH) left = panel.right + SUBMENU_GAP
+    else {
+      left = Math.min(Math.max(EDGE, row.right - SUBMENU_WIDTH), vw - SUBMENU_WIDTH - EDGE)
       top = row.bottom + SUBMENU_GAP
     }
-    top = Math.max(VIEWPORT_MARGIN, Math.min(top, window.innerHeight - height - VIEWPORT_MARGIN))
+    top = Math.max(EDGE, Math.min(top, window.innerHeight - height - EDGE))
     setPosition({ top, left })
   }, [open, mounted])
 
@@ -191,9 +209,10 @@ export function SubmenuRow<K extends string>({
           onKeyDown={onSubmenuKeyDown}
           style={{ top: position?.top ?? 0, left: position?.left ?? 0, width: SUBMENU_WIDTH }}
           className={cn(
-            // No vertical padding: the panel is rounded and clips, so the first and last rows take
-            // its corners instead of floating square inside them. Same rule as MenuGroup.
-            'fixed z-float surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown',
+            // 4px above the first row and below the last, as MenuGroup gives the menu's: the rows are
+            // rounded and inset 4px from the sides (menuRow), so the selected one sits in the panel
+            // as the menu's own does.
+            'fixed z-float surface-float border rounded-lg shadow-float overflow-hidden animate-dropdown py-1',
             !position && 'invisible',
             exiting && 'animate-pop-out',
           )}

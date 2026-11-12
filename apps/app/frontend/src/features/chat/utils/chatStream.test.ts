@@ -6,8 +6,8 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  REPLAY_KEPT_MS, accept, carriedOnReload, ended, follow, keepClose, missed, newChatStream, opened, parseOpen, pause,
-  resumeAfter, resumePoint, stop,
+  REPLAY_KEPT_MS, STALE_TURN_MS, accept, agentIdleAction, carriedOnReload, ended, follow, keepClose, missed, newChatStream,
+  opened, parseOpen, pause, resumeAfter, resumePoint, stop,
 } from './chatStream.ts'
 
 describe('one stream per page', () => {
@@ -372,5 +372,34 @@ describe('what typed meanwhile a reload sends again', () => {
 
   test('only what no turn accepted, when events were missed - an accepted one may be in the conversation', () => {
     assert.deepEqual(carriedOnReload(queue, new Set(['q-1']), false).map(q => q.content), ['two', 'three'])
+  })
+})
+
+describe("when the page's own read says the agent has stopped working (a lead chat beside its project)", () => {
+  const idle = { wasWorking: true, working: false, streaming: false, loading: false, quietMs: 0 }
+
+  test('a chat following no turn reads the conversation in place once the agent stops - a turn the server started included', () => {
+    assert.equal(agentIdleAction(idle), 'refresh')
+    assert.equal(agentIdleAction({ ...idle, wasWorking: false }), 'none', 'only when it has just stopped')
+  })
+
+  test('while the agent works nothing is read: its events are on their way', () => {
+    assert.equal(agentIdleAction({ ...idle, working: true }), 'none')
+    assert.equal(agentIdleAction({ ...idle, working: true, streaming: true, quietMs: STALE_TURN_MS * 10 }), 'none')
+  })
+
+  test('a turn still shown, quiet that long with the agent idle, ended unseen: the conversation is loaded again', () => {
+    // The 2026-11-03 lead chat: "Waiting for ..." for 139 seconds over an answer the transcript held.
+    assert.equal(agentIdleAction({ ...idle, streaming: true, quietMs: STALE_TURN_MS }), 'reload')
+    assert.equal(agentIdleAction({ ...idle, wasWorking: false, streaming: true, quietMs: STALE_TURN_MS + 1 }), 'reload')
+  })
+
+  test('a turn that spoke a moment ago is asked about again later, not reloaded under the reader', () => {
+    assert.equal(agentIdleAction({ ...idle, streaming: true, quietMs: STALE_TURN_MS - 1 }), 'later')
+  })
+
+  test('nothing while the conversation loads', () => {
+    assert.equal(agentIdleAction({ ...idle, loading: true }), 'none')
+    assert.equal(agentIdleAction({ ...idle, loading: true, streaming: true, quietMs: STALE_TURN_MS }), 'none')
   })
 })

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlarmClock, Brain, Clock, Database, X, FolderPlus, Globe, Plug, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Timer, Upload, Workflow,
+  AlarmClock, Brain, Clock, Cpu, Database, X, FolderPlus, Globe, Plug, Plus, ArrowUp, Square, Paperclip, FileText, Settings as SettingsIcon, MessageCirclePlus, Upload, Workflow,
   type LucideProps,
 } from 'lucide-react'
 import { AgentsGraphDialog } from './AgentsGraphDialog'
@@ -9,7 +9,9 @@ import { AgentSettingsLink } from './AgentSettingsLink'
 import { MentionRichInput } from './MentionRichInput'
 import { PermissionModePicker } from './PermissionModePicker'
 import { FilePreviewDialog } from './FilePreviewDialog'
-import { useAgentModel } from '../hooks/useAgentModel'
+import { useAgentModel, type AgentModel } from '../hooks/useAgentModel'
+import { modelWords } from '../utils/conversationModel'
+import { useComposerFit } from '../hooks/useComposerFit'
 import { useConversationUsage } from '../hooks/useConversationUsage'
 import { useUserQuota } from '../hooks/useUserQuota'
 import { compactTokens, workingCount } from '../utils/agentTree'
@@ -28,12 +30,12 @@ import { FileUploadModal } from '@/features/indexing/components/FileUploadModal'
 import { LocalFolderModal } from '@/features/indexing/components/LocalFolderModal'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { cacheDeadline, cacheLifetime, countdownText, nearlyCold, secondsUntil } from '../utils/cacheTimer'
+import { cacheDeadline, cacheLifetime, cacheRingPercent, countdownText, nearlyCold, secondsUntil } from '../utils/cacheTimer'
 import type { ChatAttachment } from '../types/chat.types'
 import { useSettingsModalStore } from '@/store/settingsModalStore'
 import {
-  Caption, Chip, ComposerShell, FadeSwap, IconButton, IconCountButton, InlineNotice, MenuEmpty, MenuGroup, MenuRow, Meter, MetaList,
-  Popover, Presence, ProgressBar, Readout, StateMark, TEXT, Tooltip, UsageRing, cn, iconButton, useFilePicker, workingMotion,
+  Caption, Chip, ComposerShell, FadeSwap, IconButton, IconCountButton, InlineNotice, MenuEmpty, MenuGroup, MenuRow, Meter,
+  Popover, Presence, ProgressBar, Readout, RingMeter, StateMark, TEXT, Tooltip, cn, iconButton, useFilePicker, workingMotion,
 } from '@/components/ui/kit'
 import { skillsApi } from '@/features/settings/services/skillsApi'
 import { SkillModal } from '@/features/settings/components/SkillsTab'
@@ -221,7 +223,7 @@ function AttachMenu({
           <>
             <MenuGroup>
               <div onMouseEnter={() => setSub(null)}>
-                <Tooltip label={t('Attach one or more files to this message')} fullWidth>
+                <Tooltip label={t('Attach files')} fullWidth>
                   <MenuRow icon={<Paperclip />} title={t('Attach files')} onSelect={() => { onAttachFiles(); closeAll() }} />
                 </Tooltip>
               </div>
@@ -291,7 +293,7 @@ function AttachMenu({
                         onSelect={() => { setAdding('files'); closeAll() }} />
                     </Tooltip>
                   ) : (
-                    <Tooltip label={t('Index a folder on this computer as a new source')} fullWidth>
+                    <Tooltip label={t('Index a folder on this computer')} fullWidth>
                       <MenuRow tone="brand" icon={<FolderPlus />} title={t('Add a local folder')}
                         onSelect={() => { setAdding('files'); closeAll() }} />
                     </Tooltip>
@@ -314,7 +316,7 @@ function AttachMenu({
                   )}
                 </MenuGroup>
                 <MenuGroup>
-                  <Tooltip label={t('Add or manage MCP servers in Settings > Connections')} fullWidth>
+                  <Tooltip label={t('Manage MCP servers in Settings > Connections')} fullWidth>
                     <MenuRow icon={<SettingsIcon />} title={t('Manage MCP servers')}
                       onSelect={() => { useSettingsModalStore.getState().open('Connections'); closeAll() }} />
                   </Tooltip>
@@ -325,7 +327,7 @@ function AttachMenu({
             {signedIn && (
               <MenuGroup>
                 <div onMouseEnter={() => setSub(null)}>
-                  <Tooltip label={t('Save a fact or a preference to the agent\'s memory')} fullWidth>
+                  <Tooltip label={t("Save something to the agent's memory")} fullWidth>
                     <MenuRow icon={<Brain />} title={t('Remember something')} onSelect={() => { setRemembering(true); closeAll() }} />
                   </Tooltip>
                 </div>
@@ -494,16 +496,14 @@ function ContextWindowIndicator({ conversationId, condensing, tokensFreed, onCon
             {t('{count} tokens freed from context window', { count: compactTokens(tokensFreed ?? 0) })}
           </InlineNotice>
         ) : (
-          <Tooltip label={t('Context window is {pct}% full. Condense now to free up space, or start a new conversation for the best experience.', { pct: Math.round(pct) })}>
-            <button
-              type="button"
-              onClick={onCondense}
-              className={cn(iconButton('md', null), 'text-warning mouse:hover:text-warning/80')}
-              aria-label={t('Condense conversation - context window {pct}% full', { pct: Math.round(pct) })}
-            >
-              <UsageRing value={pct} />
-            </button>
-          </Tooltip>
+          // The kit's RingMeter, the same control as the prompt cache's ring and the quota's.
+          <RingMeter
+            value={pct}
+            tone="warning"
+            onClick={onCondense}
+            label={t('Condense conversation - context window {pct}% full', { pct: Math.round(pct) })}
+            tooltip={t('Context window {pct}% full. Condense it or start a new chat.', { pct: Math.round(pct) })}
+          />
         )}
       </FadeSwap>
     </Presence>
@@ -516,6 +516,12 @@ function ContextWindowIndicator({ conversationId, condensing, tokensFreed, onCon
 // usage payload carries the seconds left, live through a turn with each 'usage' event. The page
 // counts down from when that figure arrived (cacheTimer.ts), never from a timestamp. Gone when
 // cold: a message sent then pays to write the prompt again. The last minute is in the warning ink.
+//
+// A RING, NOT A STOPWATCH AND A CLOCK (the maintainer's feedback, 2026-11-02: "show the icon similar
+// to the context window. Tooltip on it show the clock."): the kit's RingMeter, the context window's
+// own control, full when the lifetime starts and draining to empty as it runs down - against an hour
+// or five minutes, whichever the server stated (cacheRingPercent). The countdown and which lifetime
+// it is are in its tooltip, live; a reading, not a button, so it is focusable for that tooltip.
 function CacheTimer({ conversationId }: { conversationId?: string }) {
   const { t } = useTranslation()
   const { data } = useConversationUsage(conversationId)
@@ -536,23 +542,17 @@ function CacheTimer({ conversationId }: { conversationId?: string }) {
   const left = secondsUntil(deadline, now)
   const time = countdownText(left)
   const label = cacheLifetime(data?.cacheLifetimeSeconds) === 'hour'
-    ? t('Prompt cache warm for {time}. Each message that reads it keeps it another hour.', { time })
-    : t('Prompt cache warm for {time}. Each message that reads it keeps it another five minutes.', { time })
+    ? t('Prompt cache warm for {time}. Each use adds an hour.', { time })
+    : t('Prompt cache warm for {time}. Each use adds five minutes.', { time })
   return (
     <Presence show={!!conversationId && left > 0} collapse={false} className="flex items-center">
-      <Tooltip label={label}>
-        <span
-          role="timer"
-          tabIndex={0}
-          aria-label={t('Prompt cache warm for {time}', { time })}
-          className={cn('inline-flex items-center gap-1 rounded-md px-2 focus-ring whitespace-nowrap', TEXT.caption,
-            nearlyCold(left) ? 'text-warning' : 'text-ink-caption')}
-        >
-          {/* A stopwatch, not a clock: the clock beside it opens the conversation history. */}
-          <Timer size={14} aria-hidden />
-          <Readout>{time}</Readout>
-        </span>
-      </Tooltip>
+      <RingMeter
+        value={cacheRingPercent(left, data?.cacheLifetimeSeconds)}
+        tone={nearlyCold(left) ? 'warning' : 'caption'}
+        label={t('Prompt cache')}
+        valueText={t('Prompt cache warm for {time}', { time })}
+        tooltip={label}
+      />
     </Presence>
   )
 }
@@ -604,18 +604,17 @@ function QuotaIndicator() {
             role="dialog"
             panelClassName="p-4 space-y-3"
             ariaLabel={t('Usage quota - session {pct}% full', { pct: Math.round(sessionPct) })}
-            trigger={({ toggle, ref }) => (
-              <Tooltip label={t('Session usage is {pct}% of quota. Click for details.', { pct: Math.round(sessionPct) })}>
-                <button
-                  ref={ref}
-                  type="button"
-                  onClick={toggle}
-                  className={cn(iconButton('md', null), danger ? 'text-danger' : 'text-warning')}
-                  aria-label={t('Usage quota - session {pct}% full', { pct: Math.round(sessionPct) })}
-                >
-                  <UsageRing value={sessionPct} />
-                </button>
-              </Tooltip>
+            trigger={({ open, toggle, ref }) => (
+              <RingMeter
+                ref={ref}
+                value={sessionPct}
+                tone={danger ? 'danger' : 'warning'}
+                onClick={toggle}
+                aria-haspopup="dialog"
+                aria-expanded={open}
+                label={t('Usage quota - session {pct}% full', { pct: Math.round(sessionPct) })}
+                tooltip={t('Session usage: {pct}% of quota', { pct: Math.round(sessionPct) })}
+              />
             )}
           >
             {() => (
@@ -640,12 +639,40 @@ function QuotaIndicator() {
 //
 // A click opens Settings > Agents, where the provider and model are chosen (the user's request,
 // feedback 499724c9) - the reader can already read those settings, or the label would not show.
-function AgentModelLabel() {
-  const agent = useAgentModel()
-  if (!agent) return null
+//
+// `compact` is its icon alone where the composer is too narrow for the words (composerFit.ts, the
+// maintainer's feedback of 2026-11-02): the provider and model head its tooltip and are its name, and
+// a click does the same. The caller reads the agent (useAgentModel) once for both forms.
+//
+// A CONVERSATION ON AN AGENT'S OWN MODEL (a Constellations lead chat - utils/conversationModel.ts) names
+// THAT model, for every reader of the conversation, and opens nothing: the agent's model is chosen in
+// its own panel, not in Settings > Agents.
+function AgentModelLabel({ agent, compact = false }: { agent: AgentModel; compact?: boolean }) {
+  const { t } = useTranslation()
+  // A provider that cannot be resolved is left out rather than written as "undefined".
+  const detail = modelWords(agent, ' \u00b7 ')
+  if (agent.own) {
+    return (
+      <Tooltip label={detail} className="inline-flex min-w-0 max-w-full">
+        {compact
+          ? <span role="img" aria-label={detail} className="inline-flex shrink-0 w-8 h-8 items-center justify-center text-ink-caption"><Cpu size={16} aria-hidden="true" /></span>
+          : <Caption as="span" className="block px-1 truncate select-none">{detail}</Caption>}
+      </Tooltip>
+    )
+  }
+  if (compact) {
+    // The kit's tooltip keeps line breaks: the name, then what a click does (as AgentSettingsLink's).
+    const words = `${detail}\n${t('Open Agent settings')}`
+    return <IconButton icon={Cpu} label={words} onClick={() => useSettingsModalStore.getState().open('Agents')} />
+  }
   return (
-    <AgentSettingsLink className="px-1">
-      <MetaList items={[agent.provider, agent.model]} className="text-xs truncate min-w-0 select-none" />
+    // One run of text, not the kit's MetaList: MetaList's items are inline-flex boxes, and an ellipsis
+    // drops a whole box rather than cutting into it, so a narrow composer (an agent's panel) would lose
+    // the model's name whole. This truncates into it; the whole name is in the tooltip.
+    <AgentSettingsLink className="px-1" detail={detail}>
+      <span className="block text-xs truncate select-none">
+        {agent.provider && <>{agent.provider}<span className="text-ink-disabled" aria-hidden="true">&nbsp;&middot;&nbsp;</span></>}{agent.model}
+      </span>
     </AgentSettingsLink>
   )
 }
@@ -743,17 +770,14 @@ function AlarmsChip({ conversationId }: { conversationId?: string }) {
                     </Tooltip>
                     {alarm.note && <Caption className="block whitespace-normal break-words">{alarm.note}</Caption>}
                   </div>
-                  <Tooltip label={t('Cancel this alarm')}>
-                    <button
-                      type="button"
-                      onClick={() => cancel(alarm.alarmId)}
-                      disabled={canceling === alarm.alarmId}
-                      aria-label={t('Cancel this alarm')}
-                      className={iconButton('sm', 'danger')}
-                    >
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  </Tooltip>
+                  <IconButton
+                    icon={X}
+                    label={t('Cancel this alarm')}
+                    size="sm"
+                    tone="danger"
+                    onClick={() => cancel(alarm.alarmId)}
+                    disabled={canceling === alarm.alarmId}
+                  />
                 </li>
               )
             })}
@@ -783,7 +807,7 @@ function NewConversationButton({ show, onClick }: { show: boolean; onClick: () =
 export function ChatComposer({
   value, onChange, onSend, onStop, streaming, placeholder, autoFocus, mentions, onMentionsChange,
   attachments, onFiles, onRemoveAttachment, skillMentions, onSkillMentionsChange,
-  hasMessages = false, conversationId, onNewConversation, onHistoryClick,
+  hasMessages = false, conversationId, onNewConversation, onHistoryClick, newFromSidebar = false,
   condensing = false, condenseTokensFreed = null, onCondense,
 }: {
   value: string
@@ -813,6 +837,10 @@ export function ChatComposer({
   // The history button is shown only where there is a history to open: the chat page's, or a
   // panel's own (a key account's conversations - ChatPanel's onOpenConversation).
   onHistoryClick?: () => void
+  // The chat page's own composer: where the sidebar is drawn its New chat starts one, so this row
+  // offers none (the maintainer, 2026-10-30). A panel's conversations (a key account's, an agent's)
+  // are not the sidebar's, so a panel keeps its button; a phone has no sidebar and keeps it too.
+  newFromSidebar?: boolean
 }) {
   // The kit's file picker: the hidden input and its click bridge (`after` below holds the input).
   const picker = useFilePicker({ onFiles, accept: ATTACHMENT_ACCEPT, multiple: true })
@@ -824,21 +852,32 @@ export function ChatComposer({
   // Where the sidebar is drawn (AppShell's frame), its recent chats replace the history button.
   const desktopWindow = useDesktopWindow()
   const framed = useFramedLayout() || !!desktopWindow
+  // How much the left side says, from this composer's own width (useComposerFit).
+  const { fit, refs: fitRefs } = useComposerFit()
+  // The model this conversation runs on: an agent's own in a lead chat, else the chat's.
+  const agent = useAgentModel(conversationId)
 
   // Streaming flipping false is the real confirmation the turn ended (Stopped, or it simply
   // finished on its own) - clear the optimistic flag then, not on a timer.
   useEffect(() => { if (!streaming) setStopRequested(false) }, [streaming])
 
   const showSend = !streaming && value.trim().length > 0 && !attachments.some(a => a.status === 'uploading')
+  // Each message sent runs the composer's light once (ComposerShell's `pulse`).
+  const [sends, setSends] = useState(0)
+  const send = () => {
+    if (value.trim()) setSends(n => n + 1)
+    onSend()
+  }
   const showStop = !!streaming
 
   // The kit's ComposerShell: attachments over the editor, the editor, and the toolbar - attach on the
   // left, send/stop on the right, the text field on a row of its own above them rather than beside
-  // them like the old single-line pill. It draws the composer's light (the one glow in the product)
-  // and turns it faster while the agent works.
+  // them like the old single-line pill. It draws the composer's edge - none at rest, a steady border
+  // on focus and while the agent works - and runs its light once along the top edge on every send.
   return (
     <ComposerShell
       working={!!streaming}
+      pulse={sends}
       attachments={attachments.length > 0 && attachments.map(att => (
         <AttachmentChip key={att.id} attachment={att} onRemove={() => onRemoveAttachment(att.id)} />
       ))}
@@ -846,7 +885,7 @@ export function ChatComposer({
         <MentionRichInput
           value={value}
           onChange={onChange}
-          onSend={onSend}
+          onSend={send}
           placeholder={placeholder}
           autoFocus={autoFocus}
           streaming={streaming}
@@ -857,18 +896,50 @@ export function ChatComposer({
         />
       )}
       toolbarStart={(
+        // THE LEFT SIDE FOLDS TO ICONS IN A NARROW COMPOSER (the maintainer's feedback, 2026-11-02),
+        // in every chat, since every chat's composer is this one: the model's words first, then the
+        // mode's, each into its tooltip - decided from the room this side has, which is the
+        // composer's width less the right side (composerFit.ts), never the viewport's. Each fades
+        // from one form to the other (FadeSwap). The + menu is measured as it stands; the two that
+        // fold, in both forms, in the invisible box at the end - clipped to nothing, taking no
+        // pointer and hidden from assistive tech.
+        <div ref={fitRefs.room} className="relative flex items-center gap-1 min-w-0 flex-1">
+          <div ref={fitRefs.lead} className="flex shrink-0">
+            <AttachMenu
+              onAttachFiles={picker.open}
+              value={value}
+              onChange={onChange}
+              mentions={mentions}
+              onMentionsChange={onMentionsChange}
+              skillMentions={skillMentions}
+              onSkillMentionsChange={onSkillMentionsChange}
+            />
+          </div>
+          <FadeSwap swapKey={fit === 'icons'} className="flex shrink-0">
+            <PermissionModePicker compact={fit === 'icons'} />
+          </FadeSwap>
+          {agent && (
+            <FadeSwap swapKey={fit === 'full'} className={cn('flex', fit === 'full' ? 'min-w-0' : 'shrink-0')}>
+              <AgentModelLabel agent={agent} compact={fit !== 'full'} />
+            </FadeSwap>
+          )}
+          <div aria-hidden="true" className="invisible absolute left-0 top-0 w-0 h-0 overflow-hidden pointer-events-none">
+            <span ref={fitRefs.modeFull} className="inline-flex w-max"><PermissionModePicker /></span>
+            <span ref={fitRefs.modeIcon} className="inline-flex w-max"><PermissionModePicker compact /></span>
+            {agent && (
+              <>
+                <span ref={fitRefs.modelFull} className="inline-flex w-max"><AgentModelLabel agent={agent} /></span>
+                <span ref={fitRefs.modelIcon} className="inline-flex w-max"><AgentModelLabel agent={agent} compact /></span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      // TWO SIDES BY WHAT THEY ARE (the maintainer, 2026-10-30): on the left what shapes the next
+      // message - what goes with it, what the agent may do, which model answers; on the right what
+      // the conversation is doing - its agents, alarms, cache, context and quota - beside Send.
+      toolbarEnd={(
         <>
-          <AttachMenu
-            onAttachFiles={picker.open}
-            value={value}
-            onChange={onChange}
-            mentions={mentions}
-            onMentionsChange={onMentionsChange}
-            skillMentions={skillMentions}
-            onSkillMentionsChange={onSkillMentionsChange}
-          />
-          <PermissionModePicker />
-          <AgentModelLabel />
           <AgentsGraphButton conversationId={conversationId} />
           <AlarmsChip conversationId={conversationId} />
           <CacheTimer conversationId={conversationId} />
@@ -879,15 +950,11 @@ export function ChatComposer({
             onCondense={() => onCondense?.()}
           />
           <QuotaIndicator />
-        </>
-      )}
-      toolbarEnd={(
-        <>
           {/* Not where the sidebar is drawn: its recent chats and their history are there (the
               maintainer, 2026-10-30). A phone keeps it - it has no sidebar. */}
           {onHistoryClick && !framed && <HistoryButton onClick={onHistoryClick} />}
           <NewConversationButton
-            show={hasMessages && !!onNewConversation}
+            show={hasMessages && !!onNewConversation && !(newFromSidebar && framed)}
             onClick={() => onNewConversation?.()}
           />
           {/* No placeholder slot for the empty-input/not-streaming case - rendering nothing at
@@ -919,7 +986,7 @@ export function ChatComposer({
                   // just started. On click, the swap happens after mouseup has already resolved
                   // against Send.
                   onMouseDown={e => e.preventDefault()}
-                  onClick={onSend}
+                  onClick={send}
                 />
               )}
             </FadeSwap>

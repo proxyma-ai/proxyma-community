@@ -98,6 +98,14 @@ class ToolSkillGating {
                     "addBitbucketPrComment",
                     // useServer switches SVN servers too, and an SVN-only conversation reads only this.
                     "listSvnFiles", "readSvnFile", "useServer")),
+            // The user's YouTube channel, live: comments waiting for an answer, a video, a reply - and the
+            // channel's numbers: its stats, its videos, YouTube Analytics' named reports and the
+            // impressions of the Reporting API - and the channel's own replies, for its voice (YouTubeTools).
+            Map.entry("YouTube", Set.of("listYouTubeComments", "getYouTubeViewerHistory", "listYouTubeChannelReplies",
+                    "getYouTubeVideo", "replyToYouTubeComment",
+                    "getYouTubeChannelStats", "listYouTubeVideos", "getYouTubeAnalytics", "getYouTubeReach",
+                    // ... and the replies still waiting for approval, which a revision skips while being edited.
+                    "listWaitingYouTubeReplies")),
             // Reading one item live beside the search that found it.
             Map.entry("Search", Set.of("readSourceItem")),
             Map.entry("Web", Set.of("webFetch", "renderWebFetch", "webSearch")),
@@ -198,6 +206,14 @@ class ToolSkillGating {
         if (toolName == null) return Set.of();
         return groupToolNames.entrySet().stream().filter(e -> e.getValue().contains(toolName))
                 .map(Map.Entry::getKey).collect(Collectors.toUnmodifiableSet());
+    }
+
+    // Whether a skill name is a tool group - the product's or a module's - compared without regard to
+    // case or spacing: one of the sets a saved agent's allow-list names (AgentProfile.allowedSkills).
+    boolean isToolGroup(String skillName) {
+        if (skillName == null) return false;
+        String name = skillName.strip();
+        return groupToolNames.keySet().stream().anyMatch(g -> g.equalsIgnoreCase(name));
     }
 
     // The product's own skill groups - not a module's - by name, sorted: what a saved agent's Access
@@ -320,6 +336,15 @@ class ToolSkillGating {
         java.util.Optional<AgentProfile> profile = AgentProfiles.of(modules, conversationId, userId);
         if (profile.isPresent() && (profile.get().withheldTools() != null || profile.get().locked())) {
             advertised = advertised.stream().filter(cb -> profile.get().allows(cb.getToolDefinition().name())).toList();
+        }
+        // And less a group's tools when the agent may read none of the groups holding it - as the call
+        // refuses it (ChatService.refusedToAgent). A custom skill's own `tools` can name a group's tool,
+        // which reading that skill would otherwise put in the list. A tool in no group is core: kept.
+        if (profile.isPresent() && profile.get().narrowsSkills()) {
+            advertised = advertised.stream().filter(cb -> {
+                Set<String> groups = skillsUnlocking(cb.getToolDefinition().name());
+                return groups.isEmpty() || groups.stream().anyMatch(profile.get()::allowsSkill);
+            }).toList();
         }
         Set<String> withheld = new HashSet<>();
         Set<String> names = advertised.stream().map(cb -> cb.getToolDefinition().name())

@@ -248,14 +248,14 @@ export function DialogShell({
   )
 }
 
-/** A dialog's name - the type scale's title, 18/26 600. One size for every dialog in four apps. */
+/** A dialog's name - the type scale's title, 16/24 600. One size for every dialog in four apps. */
 export function DialogTitle({ children, id, className }: { children: ReactNode; id?: string; className?: string }) {
   return <h2 id={id} className={cn(TEXT.title, className)}>{children}</h2>
 }
 
 /**
- * The paragraph under a title. `body` (16/26 secondary, `TEXT.body`) for a confirmation, where it
- * IS the content; `caption` (13/18) for a form, where it only introduces the fields.
+ * The paragraph under a title. `body` (14/22 secondary, `TEXT.body`) for a confirmation, where it
+ * IS the content; `caption` (12/16) for a form, where it only introduces the fields.
  */
 export function DialogDescription({ children, tone = 'body', className }: { children: ReactNode; tone?: 'body' | 'caption'; className?: string }) {
   return <div className={cn(tone === 'body' ? TEXT.body : TEXT.caption, className)}>{children}</div>

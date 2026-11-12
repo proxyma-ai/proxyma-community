@@ -23,7 +23,7 @@ export interface FieldAria {
  *
  * WHERE THE WORDS GO, since 2026-10-29 (the maintainer's review: "Description should be placed below
  * the section title, and have reasonable padding/margins"): `hint` sits directly UNDER THE NAME and
- * ABOVE the control - the name, 4px, the hint (13/18 caption ink, about 70 characters a line), 8px,
+ * ABOVE the control - the name, 4px, the hint (12/16 caption ink, about 70 characters a line), 8px,
  * the control - so the explanation is read before the control it explains. It sat under the control
  * until then, jammed against a swatch row and pushed away from its name by a textarea. `error` stays
  * UNDER the control, which is what it points at, and the control is described by both. With no

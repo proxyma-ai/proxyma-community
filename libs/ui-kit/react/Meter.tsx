@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react'
+import { forwardRef, type ReactNode } from 'react'
 import { cn } from './cn'
+import { iconButton } from './iconButton'
 import { EmptyState } from './States'
+import { Tooltip } from './Tooltip'
 
 /**
  * THE BAR - one recipe for every progress bar, quota meter and share bar in four apps.
@@ -166,6 +168,67 @@ export function UsageRing({ value, size = 16, strokeWidth = 2, className }: { va
     </svg>
   )
 }
+
+export type RingMeterTone = 'caption' | 'warning' | 'danger'
+
+const RING_TONE: Record<RingMeterTone, string> = {
+  caption: 'text-ink-caption',
+  warning: 'text-warning',
+  danger: 'text-danger',
+}
+
+/**
+ * THE COMPOSER'S RINGS, WHOLE (2026-11-02): a `UsageRing` in an icon button's box, with its tooltip -
+ * the context window filling, the session quota, the prompt cache draining. They were a ring
+ * hand-wrapped in a button twice and a stopwatch with a clock beside it once; the maintainer asked
+ * for the cache to look like the context window, so the three are one control.
+ *
+ * With `onClick` it is a BUTTON (condense; open the quota's details - pass the `ref` and
+ * `aria-expanded` a `Popover` hands its trigger). Without, it is a READING: `role="meter"`, still
+ * focusable so the keyboard reaches its tooltip, with `valueText` as what a screen reader says of
+ * it. Its ink is its state (`tone`) at rest; a button's dims a little under a mouse. The ring moves
+ * with the value (`UsageRing`'s own transition), so a draining one drains.
+ */
+export const RingMeter = forwardRef<HTMLButtonElement, {
+  /** 0-100: how full the ring is. */
+  value: number
+  /** The accessible name - and the tooltip, unless `tooltip` says it at more length. */
+  label: string
+  tooltip?: string
+  tone?: RingMeterTone
+  onClick?: () => void
+  /** A reading's value in words ("4:07 left"). */
+  valueText?: string
+  'aria-expanded'?: boolean
+  'aria-haspopup'?: 'menu' | 'dialog'
+  className?: string
+}>(function RingMeter({ value, label, tooltip, tone = 'caption', onClick, valueText, className, ...aria }, ref) {
+  const pct = Math.max(0, Math.min(100, value))
+  const box = cn(iconButton('md', null), RING_TONE[tone], className)
+  return (
+    <Tooltip label={tooltip ?? label}>
+      {onClick ? (
+        <button ref={ref} type="button" onClick={onClick} aria-label={label} {...aria}
+          className={cn(box, 'mouse:hover:opacity-80')}>
+          <UsageRing value={pct} />
+        </button>
+      ) : (
+        <span
+          role="meter"
+          tabIndex={0}
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(pct)}
+          aria-valuetext={valueText}
+          className={box}
+        >
+          <UsageRing value={pct} />
+        </span>
+      )}
+    </Tooltip>
+  )
+})
 
 /**
  * ONE PIECE OF PROGRESS WITH ITS WORDS - an upload, a download, a re-index, a quota: the label at

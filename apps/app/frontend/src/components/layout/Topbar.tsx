@@ -6,7 +6,7 @@ import { AppMenu } from '@/components/layout/AppMenu'
 import { MobileMenu } from '@/components/layout/MobileMenu'
 import { AppearanceMenu } from '@/components/layout/AppearanceMenu'
 import { LanguageMenu } from '@/components/layout/LanguageMenu'
-import { AppHeader, BRAND_LINK, Button, Presence, WorkingBadge, headerNavLink, useIdleRotation } from '@/components/ui/kit'
+import { AppHeader, BRAND_LINK, Button, Presence, WorkingBadge, headerNavLink } from '@/components/ui/kit'
 import { Logo } from '@/components/ui/Logo'
 import { useAuthStore } from '@/store/authStore'
 import { useWorkingAgents, type WorkingAgent } from '@/hooks/useWorkingAgents'
@@ -28,10 +28,6 @@ export function Topbar() {
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
 
-  // The mark's idle turn - the kit's loop, shared with both consoles.
-  const iconRef = useRef<SVGSVGElement>(null)
-  useIdleRotation(iconRef)
-
   // THE NAV WORDS STAY ON THE BAR WHILE THEY FIT, since 2026-09-27 (the maintainer's request).
   // They used to leave at a fixed `lg` - reasoned from a tablet held upright, where the bar ran out
   // of width - which also took them off every bar that had plenty of room for them. Now the bar
@@ -49,7 +45,8 @@ export function Topbar() {
     <AppHeader
       brand={
         <NavLink ref={brandRef} to="/" className={BRAND_LINK}>
-          <Logo iconRef={iconRef} />
+          {/* Its mark turns as every mark does: the kit's `.mark-turn`, which Logo applies. */}
+          <Logo />
         </NavLink>
       }
       /* APPEARANCE AND LANGUAGE LIVE IN THE MENUS, since 2026-09-14 - the maintainer's call, which
@@ -143,7 +140,7 @@ function workingAgentFor(agents: WorkingAgent[], navTo: string): WorkingAgent | 
 function WorkingAgentDot({ agent }: { agent: WorkingAgent }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const label = t('{count} conversation still working - go to the latest|{count} conversations still working - go to the latest', { count: agent.count })
+  const label = agent.label ?? t('{count} conversation still working|{count} conversations still working', { count: agent.count })
   return <WorkingBadge count={agent.count} label={label} onClick={() => navigate(agent.path)} />
 }
 

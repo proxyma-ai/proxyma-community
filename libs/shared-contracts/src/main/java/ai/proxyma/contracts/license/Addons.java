@@ -27,13 +27,30 @@ public final class Addons {
     /** Constellations: teams of saved agents on a canvas. */
     public static final String CONSTELLATIONS = "constellations";
 
+    /**
+     * The YouTube assistant (2026-11-07): the YouTube channel team alone - the projects made from the YouTube
+     * templates - for a creator who wants their comments answered, not a canvas of agents. Constellations covers
+     * those projects too.
+     */
+    public static final String YOUTUBE_ASSISTANT = "youtube-assistant";
+
     /** Every add-on there is, in display order. */
-    public static final List<String> ALL = List.of(CONSTELLATIONS);
+    public static final List<String> ALL = List.of(CONSTELLATIONS, YOUTUBE_ASSISTANT);
 
     /** The JWT claim. */
     public static final String CLAIM = "addons";
 
     private Addons() {}
+
+    /**
+     * An add-on's name as a person reads it - in English, the one language a server writes in; a page shows its own
+     * words. A name this build does not know is returned as it is.
+     */
+    public static String title(String name) {
+        if (CONSTELLATIONS.equals(name)) return "Constellations";
+        if (YOUTUBE_ASSISTANT.equals(name)) return "YouTube assistant";
+        return name;
+    }
 
     /** Whether this build knows the name. */
     public static boolean isKnown(String name) {

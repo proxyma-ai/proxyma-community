@@ -14,6 +14,9 @@ import { chatApi } from '../services/chatApi'
 import { tokenizeMentionText } from '../utils/tokenizeMentionText'
 import { mentionIcon } from '../utils/mentionStyle'
 import { useMentionTypes } from '../hooks/useMentionTypes'
+import { editionMentionNamed } from '../utils/editionMentions'
+import { useEditionMentions } from '@edition'
+import type { EditionMention } from '@/edition/types'
 import { stripConversationMediaUrls } from '../utils/stripMediaUrls'
 import type { ChatMessage } from '../types/chat.types'
 import { attachmentUrl } from '../services/chatAttachmentApi'
@@ -21,6 +24,9 @@ import { FilePreviewDialog } from './FilePreviewDialog'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { useTranslation } from '@/i18n'
 import { withReason } from '@/services/apiError'
+import { GUARDRAIL_NOTE_ORDER, guardrailNotes, sameWithheld } from '../utils/guardrailNotes'
+import type { WithheldSources } from '../utils/guardrailNotes'
+import { guardrailCategoryLabel } from '@/features/audit/utils/auditLabels'
 
 // Read-only counterpart to MentionRichInput's inline chips - the same kit chip, `solid` in the
 // brand fill - since a sent message's @mention/skill tokens are still plain "@Name"/"/Name" text in
@@ -28,17 +34,19 @@ import { withReason } from '@/services/apiError'
 // rather than being editable ones. A document mention takes its source type's MARK, as in the
 // composer (mentionStyle.ts): only the NAME survives once a message is sent, so the type is looked
 // up by name (useMentionTypes). A name that no longer matches a source takes the plain file glyph.
-function MentionOrSkillBadge({ name, skill, type }: { name: string; skill: boolean; type?: string }) {
-  const Icon = skill ? FileText : mentionIcon(type)
+// An edition's own mention (a Constellations project) keeps the glyph the composer gave it.
+function MentionOrSkillBadge({ name, skill, type, edition }: { name: string; skill: boolean; type?: string; edition?: EditionMention }) {
+  const Icon = skill ? FileText : edition?.icon ?? mentionIcon(type)
   return <Chip variant="solid" icon={<Icon />} label={name} className="mx-0.5 max-w-48" />
 }
 
 function renderMessageContent(content: string, mentions: string[] | undefined, skillMentions: string[] | undefined,
-                              types: Map<string, string>): ReactNode {
+                              types: Map<string, string>, editionMentions: readonly EditionMention[]): ReactNode {
   if (!mentions?.length && !skillMentions?.length) return content
   return tokenizeMentionText(content, mentions ?? [], skillMentions ?? []).map((t, i) => {
     if (t.kind === 'text') return t.value
-    return <MentionOrSkillBadge key={i} name={t.name} skill={t.kind === 'skill'} type={types.get(t.name)} />
+    return <MentionOrSkillBadge key={i} name={t.name} skill={t.kind === 'skill'} type={types.get(t.name)}
+      edition={t.kind === 'mention' ? editionMentionNamed(editionMentions, t.name) : undefined} />
   })
 }
 
@@ -46,6 +54,9 @@ interface Props {
   message: ChatMessage
   onRetry?: () => void
   isLast?: boolean
+  // The latest answer in the thread: its actions stay in view rather than fading in under the
+  // pointer (the maintainer, 2026-10-30; the latest question no longer, 2026-11-04).
+  latest?: boolean
   // False for an agent message that another agent message follows in the same turn - the
   // narration between tool calls ("I'll update all 27 now."). Only the message that ENDS a turn
   // carries the action row; see showActions.
@@ -64,17 +75,21 @@ interface Props {
   // display half of that restriction - the backend half is that the share token is accepted by
   // exactly one read-only endpoint and no other.
   readOnly?: boolean
+  // What the retrieval guardrail held back on the way to this answer - set by ChatWindow on the
+  // turn's final answer only (withheldByAnswer), read from the turn's stored tool results.
+  withheld?: WithheldSources
 }
 
 // Every icon-only trigger in the chat UI (feedback, rewind, copy, share) is the kit's
 // iconButton('sm'): no background, only the icon's own color shifts on hover. A state (rated,
 // copied) is the rest color, passed with tone null.
 
-function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversationId, allMessages, messageIndex, streaming, onRewind, readOnly }: Props) {
+function MessageBubbleImpl({ message, onRetry, isLast, latest = false, endsTurn = true, conversationId, allMessages, messageIndex, streaming, onRewind, readOnly, withheld }: Props) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   // Not on a shared copy: the reader's own sources say nothing about the author's.
   const mentionTypes = useMentionTypes(isUser && !readOnly ? message.mentions : undefined)
+  const editionMentions = useEditionMentions()
   const isError = !isUser && message.error
   // A guardrail held something back. Its own state rather than a flavor of isError: an error is
   // the product failing, and it is rendered in the danger color with a Retry button beside it.
@@ -83,7 +98,7 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
   //
   // A REDACTION IS NOT THAT, since 2026-09-29 (the maintainer's request): the answer still stands
   // with the matched spans cut out, so it renders as an ordinary answer - markdown, sources and
-  // actions - and the shield and the reason go on one line under it (RedactionNote). Only a
+  // actions - and the shield and the reason go on one line under it (GuardrailNotes). Only a
   // BLOCK, where there is no answer left to show, is the notice.
   const isRedacted = !isUser && message.guardrail?.verdict === 'redact'
   const isGuardrail = !isUser && !!message.guardrail && !isRedacted
@@ -102,7 +117,7 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
   const showUserCopy = isUser && !!message.content
   const showActionsRow = showActions || showRewind || showUserCopy
 
-  // The kit's message layout: a user's right-aligned in primary ink at most 78% wide, the
+  // The kit's message layout: a user's a bubble at the column's right, its text left-aligned, the
   // assistant's the column's full width in secondary ink, an error in danger ink, at TEXT.body's 16px -
   // MarkdownRenderer's blocks match it, so agent and user messages stay the same size.
   //
@@ -135,14 +150,16 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
       <Presence show={!isUser && !isError && !isGuardrail && !!message.sources?.length}>
         {message.sources && <SourceCitations sources={message.sources} />}
       </Presence>
-      {isRedacted && <RedactionNote categories={message.guardrail?.categories ?? []} />}
+      {!isUser && !isError && (
+        <GuardrailNotes redacted={isRedacted ? message.guardrail?.categories ?? [] : undefined} withheld={withheld} />
+      )}
       <Presence show={!isUser && message.stepLimit !== undefined}>
         {message.stepLimit !== undefined && <StepLimitNotice limit={message.stepLimit} spaced={!!message.content} />}
       </Presence>
       {/* A text link, not the destructive variant: Retry is the way back from a failure, and
           danger-quiet is for an action that removes something (CHAT-28). */}
       <Presence show={!!(isError && isLast && onRetry)}>
-        <Button variant="hyperlink" className="mt-2" onClick={() => onRetry?.()}>{t('Retry')}</Button>
+        <Button variant="hyperlink" className="mt-2" onClick={() => onRetry?.()}>{t('Try again')}</Button>
       </Presence>
     </>
   )
@@ -165,7 +182,7 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
           size="sm"
           icon={RotateCcw}
           label={t('Rewind to this message')}
-          tooltip={t('Rewind the conversation to this message and put its text back in the input, so you can edit and resend it. Everything after it is removed.')}
+          tooltip={t('Edit and resend this message. Everything after it is removed.')}
           onClick={() => onRewind!(message.id!)}
         />
       )}
@@ -173,12 +190,12 @@ function MessageBubbleImpl({ message, onRetry, isLast, endsTurn = true, conversa
   ) : undefined
 
   return (
-    <KitChatMessage role={isUser ? 'user' : 'assistant'} error={isError} queued={isUser && message.queued} footer={footer} actions={actions}>
+    <KitChatMessage role={isUser ? 'user' : 'assistant'} error={isError} queued={isUser && message.queued} footer={footer} actions={actions} actionsShown={latest}>
       {/* Who is speaking, for a screen reader (CHAT-06): the thread otherwise reads as one stream.
           The kit ChatMessage has no speaker prop yet, so it is said here. */}
       <span className="sr-only">{isUser ? t('You said:') : t('The assistant said:')}</span>
       {isUser
-        ? <p className="whitespace-pre-wrap break-words">{renderMessageContent(message.content, message.mentions, message.skillMentions, mentionTypes)}</p>
+        ? <p className="whitespace-pre-wrap break-words">{renderMessageContent(message.content, message.mentions, message.skillMentions, mentionTypes, editionMentions)}</p>
         : isError
           ? <p className="whitespace-pre-wrap break-words">{message.content}</p>
           : isGuardrail
@@ -201,11 +218,13 @@ function messageBubblePropsEqual(prev: Props, next: Props): boolean {
   return (
     prev.message === next.message &&
     prev.isLast === next.isLast &&
+    prev.latest === next.latest &&
     prev.endsTurn === next.endsTurn &&
     prev.streaming === next.streaming &&
     prev.conversationId === next.conversationId &&
     prev.messageIndex === next.messageIndex &&
-    prev.readOnly === next.readOnly
+    prev.readOnly === next.readOnly &&
+    sameWithheld(prev.withheld, next.withheld)
   )
 }
 
@@ -308,7 +327,7 @@ function MessageFeedbackRow({ messageId, content, conversationId, allMessages, m
             label={t('Good response')}
             tooltip={rating === 'GOOD'
               ? t('Rated helpful - click again to take it back')
-              : t('Rate this response helpful. When diagnostics are sent to Proxyma, it is sent anonymously with this reply and its question.')}
+              : t('Helpful. If diagnostics are on, this reply and its question are sent anonymously.')}
           />
           <IconToggleButton
             size="sm"
@@ -319,7 +338,7 @@ function MessageFeedbackRow({ messageId, content, conversationId, allMessages, m
             label={t('Bad response')}
             tooltip={rating === 'BAD'
               ? t('Rated unhelpful - click again to take it back')
-              : t('Rate this response unhelpful. When diagnostics are sent to Proxyma, it is sent anonymously with this reply and its question.')}
+              : t('Not helpful. If diagnostics are on, this reply and its question are sent anonymously.')}
           />
         </>
       )}
@@ -381,7 +400,7 @@ function ShareButton({ conversationId, messageId }: { conversationId: string; me
     <CopyButton
       icon={Share2}
       label={t('Copy share link for this conversation')}
-      tooltip={t('Copy a read-only link to this conversation, from its first message through this reply. Anyone signed in who opens it can read that much and nothing after it, and cannot reply or change anything. The link has no expiry date - it keeps working until you delete the conversation.')}
+      tooltip={t('Copy a read-only link up to this reply. Anyone signed in can read it until you delete the conversation.')}
       copiedLabel={t('Share link copied')}
       status
       copiedMs={SHARE_COPIED_MS}
@@ -404,13 +423,15 @@ function ShareButton({ conversationId, messageId }: { conversationId: string; me
 // credential rule fires is that the span it matched IS a credential, so a notice quoting it would
 // be the control leaking the thing it exists to contain.
 function GuardrailNotice({ message }: { message: ChatMessage }) {
+  const { t } = useTranslation()
   const categories = message.guardrail?.categories ?? []
   return (
     <NoticeCard icon={ShieldCheck} title={message.content}>
       {categories.length > 0 && (
         // A fact about the message, sentence case and unfilled: the kit Badge's outline variant.
+        // Each category in words, as the Logs page names it - never the server's code.
         <div className="flex flex-wrap gap-2">
-          {categories.map((c, i) => <Badge key={`${c}-${i}`} variant="outline" label={c} />)}
+          {categories.map((c, i) => <Badge key={`${c}-${i}`} variant="outline" label={guardrailCategoryLabel(c, t)} />)}
         </div>
       )}
     </NoticeCard>
@@ -431,23 +452,30 @@ function StepLimitNotice({ limit, spaced }: { limit: number; spaced: boolean }) 
       <NoticeCard
         icon={CirclePause}
         title={t('Stopped at the limit of {count} step.|Stopped at the limit of {count} steps.', { count: limit })}
-        caption={t('The work above may be unfinished. Send a message to continue from here. The limit is "Max agent iterations" in Settings > Agents.')}
+        caption={t('Send a message to continue.')}
       />
     </div>
   )
 }
 
-// Under an answer the output guardrail redacted: what kind of thing was cut out, never the text.
-function RedactionNote({ categories }: { categories: string[] }) {
+// Under an answer: what a guardrail cut out of it (the output guardrail's redaction) and what it
+// held back on the way to it (a source the retrieval guardrail withheld) - the kind of thing, never
+// the text. One quiet line each, with the shield, in guardrailNotes' order; each eases in as it
+// arrives, the withheld one when the turn ends.
+function GuardrailNotes({ redacted, withheld }: { redacted?: string[]; withheld?: WithheldSources }) {
   const { t } = useTranslation()
+  const notes = guardrailNotes(redacted, withheld, t)
   return (
-    <NoticeCard
-      inline
-      icon={ShieldCheck}
-      title={categories.length > 0
-        ? t('Redacted by a guardrail: {reasons}', { reasons: categories.join(', ') })
-        : t('Redacted by a guardrail')}
-    />
+    <>
+      {GUARDRAIL_NOTE_ORDER.map(kind => {
+        const note = notes.find(n => n.kind === kind)
+        return (
+          <Presence key={kind} show={!!note}>
+            {note && <NoticeCard inline icon={ShieldCheck} title={note.title} />}
+          </Presence>
+        )
+      })}
+    </>
   )
 }
 

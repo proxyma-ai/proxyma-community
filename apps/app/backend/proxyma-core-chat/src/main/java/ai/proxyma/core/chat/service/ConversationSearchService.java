@@ -1,5 +1,6 @@
 package ai.proxyma.core.chat.service;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.domain.MessageRole;
 import ai.proxyma.core.chat.model.ChatMessage;
 import ai.proxyma.core.chat.model.Conversation;
@@ -89,7 +90,7 @@ public class ConversationSearchService {
             // The model's own scaffolding - a loaded skill, a workflow's plan, a report - is not
             // something either party said. See ChatService.isScaffolding.
             if (ChatService.isScaffolding(m.getContent())) continue;
-            List<String> held = termsIn(m.getContent(), terms);
+            List<String> held = termsIn(words(m), terms);
             if (held.isEmpty()) continue;
             termsByConversation.computeIfAbsent(m.getConversationId(), k -> new LinkedHashSet<>()).addAll(held);
             hitsByConversation.computeIfAbsent(m.getConversationId(), k -> new ArrayList<>()).add(m);
@@ -115,7 +116,7 @@ public class ConversationSearchService {
             List<Match> matches = new ArrayList<>();
             for (ChatMessage m : hitsByConversation.getOrDefault(e.getKey(), List.of())) {
                 if (matches.size() == EXCERPTS_PER_CONVERSATION) break;
-                matches.add(new Match(role(m.getRole()), String.valueOf(m.getCreatedAt()), excerpt(m.getContent(), terms)));
+                matches.add(new Match(role(m.getRole()), String.valueOf(m.getCreatedAt()), excerpt(words(m), terms)));
             }
             hits.add(new Hit(c.getId(), c.getTitle(), String.valueOf(c.getUpdatedAt()), e.getValue().size(), matches));
         }
@@ -149,8 +150,8 @@ public class ConversationSearchService {
             // the user or the assistant had said (chat-agent-29). The transcript leaves them out;
             // so does this. Skipped, not renumbered: an index still pages through the same list.
             if (ChatService.isScaffolding(m.getContent())) continue;
-            String text = m.getContent() == null ? "" : m.getContent();
-            if (text.length() > READ_MESSAGE_CHARS) text = text.substring(0, READ_MESSAGE_CHARS) + " ... [cut]";
+            String text = words(m);
+            if (text.length() > READ_MESSAGE_CHARS) text = Utf16.cut(text, READ_MESSAGE_CHARS) + " ... [cut]";
             if (!out.isEmpty() && total + text.length() > READ_TOTAL_CHARS) {
                 next = i;
                 break;
@@ -206,6 +207,17 @@ public class ConversationSearchService {
         int space = flat.lastIndexOf(' ', start);
         if (start > 0 && space > 0 && start - space < 20) start = space + 1;
         return (start > 0 ? "..." : "") + flat.substring(start, end).strip() + (end < flat.length() ? "..." : "");
+    }
+
+    // What a message said: a person's words without the notes the chat appended for the model (the
+    // skills a turn was given, the documents mentioned, an attachment's server path), as the transcript
+    // shows them (ChatService.sanitizeUserContent). The result reaches the person too, in the tool
+    // call's row, and a note there is English written for the model.
+    private static String words(ChatMessage m) {
+        String content = m.getContent() == null ? "" : m.getContent();
+        if (m.getRole() != MessageRole.USER) return content;
+        String said = ChatService.sanitizeUserContent(content).content();
+        return said == null ? "" : said;
     }
 
     private static String role(MessageRole role) {

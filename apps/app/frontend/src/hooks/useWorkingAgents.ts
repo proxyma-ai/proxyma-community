@@ -2,17 +2,20 @@ import { useLocation } from 'react-router-dom'
 import { useStore } from 'zustand'
 import { mainChatInstance } from '@/features/chat/instance/chatInstance'
 import { useActiveConversations } from '@/features/chat/hooks/useActiveConversations'
+import { useEditionWorkingAgents } from '@edition'
 
 /**
  * Agents working where you are not looking, and where to find them.
  *
  * `navTo` is the header destination that owns them - the nav word that carries the badge - `path`
- * is the most recently started one to go back to, and `count` how many there are.
+ * is the most recently started one to go back to, and `count` how many there are. `label` is what
+ * the dot says, in the reader's language - the chat's "conversations still working" when absent.
  */
 export interface WorkingAgent {
   navTo: string
   path: string
   count: number
+  label?: string
 }
 
 /**
@@ -24,8 +27,9 @@ export interface WorkingAgent {
  * pointing at the page you are reading goes nowhere. The open conversation's own streaming flag is
  * folded in too, so a turn shows the moment it starts rather than at the next poll.
  *
- * Deliberately a list: dedicated agent pages are planned, each adding its own entry under its own
- * nav destination, and the header needs no change.
+ * Deliberately a list: each agent page adds its own entry under its own nav destination, and the
+ * header needs no change. The edition's pages add theirs through the seam (useEditionWorkingAgents) -
+ * since 2026-10-31 Constellations, for its projects at work out of sight.
  */
 export function useWorkingAgents(): WorkingAgent[] {
   const location = useLocation()
@@ -34,10 +38,11 @@ export function useWorkingAgents(): WorkingAgent[] {
   const streaming = useStore(mainChatInstance().store, s => s.streaming)
   const openId = useStore(mainChatInstance().store, s => s.conversationId)
   const active = useActiveConversations()
+  const edition = useEditionWorkingAgents()
 
   const ids = streaming && openId && !active.includes(openId) ? [openId, ...active] : active
   const onChat = location.pathname === '/' || location.pathname.startsWith('/chat')
   const elsewhere = onChat ? ids.filter(id => id !== openId) : ids
-  if (elsewhere.length === 0) return []
-  return [{ navTo: '/', path: `/chat/${elsewhere[0]}`, count: elsewhere.length }]
+  if (elsewhere.length === 0) return edition
+  return [{ navTo: '/', path: `/chat/${elsewhere[0]}`, count: elsewhere.length }, ...edition]
 }

@@ -35,7 +35,7 @@ function ScreenFallback({ reloading }: { reloading: boolean }) {
       <BootScreen
         logo={<Logo size={28} />}
         label={t('A new version is available. Reloading...')}
-        message={reloading ? undefined : t('Something went wrong on this page. Reloading usually fixes it.')}
+        message={reloading ? undefined : t('Something went wrong. Reload the page.')}
         action={reloading ? undefined : <ReloadButton />}
       />
     </div>

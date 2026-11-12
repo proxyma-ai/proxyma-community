@@ -91,6 +91,11 @@ class AuditQueueTest {
         assertEquals(AuditEntry.OK, ToolAudit.outcomeOf("1: line one"));
         // read and grep return plain text, and report a failure as "Error: ...".
         assertEquals(AuditEntry.FAILED, ToolAudit.outcomeOf("Error: NullPointerException"));
+        // The approvals inbox's answers are no failure (2026-11-11 review).
+        assertEquals(AuditEntry.PENDING, ToolAudit.outcomeOf("{\"success\":false,\"status\":\"WAITING_FOR_APPROVAL\",\"requestId\":\"r\"}"));
+        assertEquals(AuditEntry.NOT_MADE, ToolAudit.outcomeOf("{\"success\":false,\"status\":\"REFUSED\",\"definite\":false}"));
+        assertEquals(AuditEntry.NOT_MADE, ToolAudit.outcomeOf("{\"success\":false,\"status\":\"ALREADY_APPROVED\"}"));
+        assertEquals(AuditEntry.FAILED, ToolAudit.outcomeOf("{\"success\":false,\"status\":\"SOMETHING\",\"error\":\"x\"}"));
     }
 
     @Test

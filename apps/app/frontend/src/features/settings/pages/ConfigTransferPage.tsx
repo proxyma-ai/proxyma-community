@@ -17,7 +17,9 @@ import {
   type ConfigExportFile, type ImportEntry, type ImportOutcome, type ImportReport, type TransferGroup,
 } from '../services/configTransferApi'
 import { RestartBanner, useRestartNow } from '../components/RestartBanner'
-import { useTranslation } from '@/i18n'
+import { useTranslation, type Translate } from '@/i18n'
+import { serverText } from '@/i18n/serverText'
+import { settingLabel } from '@/features/audit/utils/auditLabels'
 
 // Move a whole configuration off this deployment, or put one on.
 //
@@ -127,7 +129,7 @@ export function ConfigTransferPage() {
       URL.revokeObjectURL(url)
       setExportPassphrase('')
       addToast(includeSecrets
-        ? t('Configuration exported. Keep the passphrase - nothing else can open the file.')
+        ? t('Configuration exported. Keep the passphrase to open the file.')
         : t('Configuration exported without credentials.'), 'success')
     },
     onError: (e: unknown) => addToast(errorText(e, t('Could not export the configuration.')), 'danger'),
@@ -162,7 +164,7 @@ export function ConfigTransferPage() {
       qc.invalidateQueries({ queryKey: keys.chatWorkflows() })
       qc.invalidateQueries({ queryKey: ['settings'] })
       addToast(report.requiresRestart
-        ? t('Configuration imported. Some of it needs a restart to take effect.')
+        ? t('Configuration imported. Restart Proxyma to apply some of it.')
         : t('Configuration imported.'), 'success')
     },
     onError: (e: unknown) => addToast(errorText(e, t('Could not import the configuration.')), 'danger'),
@@ -212,13 +214,13 @@ export function ConfigTransferPage() {
         <div className="space-y-3">
           <Presence show={restartNeeded}>
             <RestartBanner
-              message={t('Configuration imported. A restart is required for some of it to take effect.')}
+              message={t('Configuration imported. Restart Proxyma to apply some of it.')}
               onRestartNow={onRestartNow}
               onRestartLater={() => setRestartNeeded(false)}
             />
           </Presence>
           <Presence show={restartFailed}>
-            <InlineNotice tone="danger">{t('Restart failed. Please restart manually.')}</InlineNotice>
+            <InlineNotice tone="danger">{t('Proxyma could not restart. Restart Proxyma manually.')}</InlineNotice>
           </Presence>
         </div>
       </Presence>
@@ -226,7 +228,7 @@ export function ConfigTransferPage() {
       <SettingsSection
         gap="list"
         title={t('Export')}
-        caption={t('Saves the chosen settings to a file, without API tokens. Not a backup.')}
+        caption={t('Saves settings to a file, without API tokens. Not a backup.')}
       >
         <FormStack>
           <GroupPicker available={EXPORTABLE_GROUPS} value={exportGroups} onChange={setExportGroups} />
@@ -245,7 +247,7 @@ export function ConfigTransferPage() {
                 label={t('Passphrase')}
                 hint={(
                   <Caption tone="warning" icon={AlertTriangle}>
-                    {t('The passphrase cannot be recovered. Without it, nobody can read the credentials in this file.')}
+                    {t('The passphrase cannot be recovered. Without it, the credentials cannot be read.')}
                   </Caption>
                 )}
               >
@@ -264,7 +266,7 @@ export function ConfigTransferPage() {
           ) : (
             <Caption>
               <Rich
-                text={t('Credentials are written as {placeholder}. Enter them by hand after importing.')}
+                text={t('Credentials appear as {placeholder}. Enter them after importing.')}
                 parts={{ placeholder: <InlineCode>***omitted***</InlineCode> }}
               />
             </Caption>
@@ -285,7 +287,7 @@ export function ConfigTransferPage() {
       <SettingsSection
         gap="list"
         title={t('Import')}
-        caption={t("Adds the file's settings without deleting any; you review them first.")}
+        caption={t('Adds settings from a file. Nothing is deleted.')}
       >
         <FormStack>
           <Field label={t('Passphrase')}>
@@ -372,7 +374,7 @@ function ReportBlock({ report, title, footer }: {
 
       <Presence show={!report.secretsApplied}>
         <Caption tone="warning" icon={AlertTriangle} className="px-4 sm:px-6 py-2 border-b border-line/40">
-          {t('No credentials were read from this file. Anything needing one keeps the value already configured here.')}
+          {t('No credentials in this file. Current ones are kept.')}
         </Caption>
       </Presence>
 
@@ -382,7 +384,7 @@ function ReportBlock({ report, title, footer }: {
       <div className="max-h-72 overflow-y-auto">
         {report.entries.length === 0 ? (
           <CardBody className="py-2">
-            <Caption>{t('Nothing in this file differs from what is already configured here.')}</Caption>
+            <Caption>{t('Nothing in this file is different.')}</Caption>
           </CardBody>
         ) : (
           <HScroll wheel={false}>
@@ -405,12 +407,23 @@ function ReportBlock({ report, title, footer }: {
 
       <Presence show={!!report.requiresRestart}>
         <Caption tone="warning" icon={RotateCw} className="px-4 sm:px-6 py-2 border-t border-line/40">
-          {t('Some of these only take effect after a restart.')}
+          {t('Some of these only take effect after Proxyma restarts.')}
         </Caption>
       </Presence>
       {footer && <div className="px-4 sm:px-6 py-3 border-t border-line/40">{footer}</div>}
     </Card>
   )
+}
+
+/**
+ * A row's item in the reader's words: a setting by its group's name and its field (the server sends the
+ * `prefix.field` it is stored under), the system prompt by name; anything else - a provider's, a skill's, a
+ * workflow's name - is the name it was given.
+ */
+function itemText(entry: ImportEntry, t: Translate): string {
+  if (entry.section === 'settings') return settingLabel(entry.item, t)
+  if (entry.section === 'systemPrompt') return t('Chat system prompt')
+  return entry.item
 }
 
 function ReportRow({ entry }: { entry: ImportEntry }) {
@@ -423,12 +436,12 @@ function ReportRow({ entry }: { entry: ImportEntry }) {
       <td data-label={t('Group')} className={cn(TD_COMPACT, 'pl-4 sm:pl-6 text-ink-disabled whitespace-nowrap')}>
         {group ? t(group.label) : entry.section}
       </td>
-      <td className={cn(TD_COMPACT, 'text-ink-primary break-words')}>{entry.item}</td>
+      <td className={cn(TD_COMPACT, 'text-ink-primary break-words')}>{itemText(entry, t)}</td>
       <td data-label={t('Status')} className={cn(TD_COMPACT, 'whitespace-nowrap')}>
         <span className="inline-flex items-center gap-2">
           {entry.requiresRestart && (entry.outcome === 'CREATED' || entry.outcome === 'UPDATED') && (
-            <Tooltip label={t('Takes effect after a restart')}>
-              <span role="img" aria-label={t('Takes effect after a restart')} className="inline-flex shrink-0 text-warning">
+            <Tooltip label={t('Takes effect after Proxyma restarts')}>
+              <span role="img" aria-label={t('Takes effect after Proxyma restarts')} className="inline-flex shrink-0 text-warning">
                 <RotateCw size={12} aria-hidden="true" />
               </span>
             </Tooltip>
@@ -438,8 +451,8 @@ function ReportRow({ entry }: { entry: ImportEntry }) {
       </td>
       <td data-label={t('Detail')} className={cn(TD_COMPACT, 'pr-4 sm:pr-6 text-ink-caption')}>
         {entry.detail && (
-          <Tooltip label={entry.detail}>
-            <span className="block max-w-64 truncate">{entry.detail}</span>
+          <Tooltip label={serverText(entry.detail)}>
+            <span className="block max-w-64 truncate">{serverText(entry.detail)}</span>
           </Tooltip>
         )}
       </td>

@@ -17,9 +17,23 @@ export type CostSource = 'REPORTED' | 'RATE' | 'LIST' | 'NONE'
  * price, no rate entered), `rate` (the rate entered - the ordinary case, nothing extra shown) or
  * `unpriced` (nothing priced it, so its $0 is a missing price rather than a free call).
  */
-export type CostOrigin = 'reported' | 'list' | 'rate' | 'unpriced'
+export type CostOrigin = 'reported' | 'list' | 'rate' | 'unpriced' | 'nothing'
 
-export function costOrigin(row: { costSource?: CostSource | null; priced: boolean }): CostOrigin {
+/**
+ * `nothing`: the call used no tokens at all - it failed before the model answered (a spent credit, a refused key) - so
+ * there was nothing to price, and its $0 is no missing price (2026-11-11, the maintainer took a failed call's warning
+ * mark for a price he had lost).
+ */
+export function costOrigin(row: {
+  costSource?: CostSource | null
+  priced: boolean
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}): CostOrigin {
+  const used = (row.inputTokens ?? 1) + (row.outputTokens ?? 0) + (row.cacheReadTokens ?? 0) + (row.cacheWriteTokens ?? 0)
+  if (used === 0 && row.costSource !== 'REPORTED') return 'nothing'
   switch (row.costSource) {
     case 'REPORTED': return 'reported'
     case 'LIST': return 'list'

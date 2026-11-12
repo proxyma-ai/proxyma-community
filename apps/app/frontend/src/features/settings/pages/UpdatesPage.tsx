@@ -6,11 +6,10 @@ import {
   RefreshIcon, Select, SettingsSection, SettingsSections, StatusMark, SwitchRow, TEXT,
 } from '@/components/ui/kit'
 import { useToastStore } from '@/store/toastStore'
-import { useRestartStore } from '@/store/restartStore'
 import { updateApi, type UpdateStatus } from '../services/updateApi'
+import { useApplyUpdate } from '../hooks/useApplyUpdate'
 import { formatFileSize } from '@/utils/formatters'
 import { configApi } from '@/services/configApi'
-import { systemApi } from '@/services/systemApi'
 import { SignpostSection, TabFieldsSkeleton, useResolved } from './shared'
 import { useDates } from '@/hooks/useDates'
 import type { ExtraPageProps } from './types'
@@ -97,7 +96,7 @@ function DockerUpgrade({ version, t }: { version: string; t: Translate }) {
   return (
     <div className="mt-3">
       <Caption>
-        {t('In the install directory, set this line in .env, then run the two commands:')}
+        {t('In the install folder, set this line in .env, then run:')}
       </Caption>
       <CodeBlock
         className="mt-2"
@@ -115,8 +114,6 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: configApi.get, staleTime: Infinity, retry: false })
   const qc = useQueryClient()
   const addToast = useToastStore(s => s.addToast)
-  const beginRestart = useRestartStore(s => s.begin)
-  const endRestart = useRestartStore(s => s.end)
   const dates = useDates()
 
   // Polls while the tab is open, because a check and a download both finish on their own schedule
@@ -159,31 +156,8 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
     onError: (e: unknown) => addToast(withReason(t('Could not cancel the download'), e), 'danger'),
   })
 
-  // The request is EXPECTED not to answer: the process exits ~200ms after accepting it, so the
-  // connection drops before a response is written. Treating that as a failure would show an error
-  // over a restart that is working - the same reasoning ResetPage documents for its own restarts.
-  // A refusal WITH a status is a real one, though: the backend is still up and said no.
-  //
-  // Then it waits for the app to go and come back, and reloads - as every other restart does. It
-  // did not until 2026-09-27: the desktop window lives across the restart (desktop-shell/main.js),
-  // so the restart screen stayed up over a new, working backend until someone pressed F5.
-  const apply = useMutation({
-    mutationFn: async () => {
-      beginRestart()
-      try {
-        await updateApi.apply()
-      } catch (e) {
-        if ((e as { response?: unknown }).response) throw e
-      }
-      await systemApi.waitForDown()
-      await systemApi.waitForRestart()
-      window.location.reload()
-    },
-    onError: () => {
-      endRestart()
-      addToast(t('Could not restart into the update. Restart Proxyma manually.'), 'danger')
-    },
-  })
+  // The same flow as the desktop window's "Restart to update" (useApplyUpdate).
+  const apply = useApplyUpdate()
 
   if (isLoading || !status) return <TabFieldsSkeleton count={4} />
 
@@ -219,7 +193,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
           {statusLine(status.status, status.availableVersion, status.canApplyInPlace, t)}
         </div>
         <MetaList
-          className="text-xs text-ink-caption mt-1"
+          className={cn(TEXT.caption, 'mt-1')}
           items={[
             <>{t('You are running')}&nbsp;<Readout tone="default">{status.currentVersion}</Readout></>,
             status.lastCheckAt
@@ -254,7 +228,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
 
               <Presence show={status.status === 'READY'} collapse={false}>
                 <Button onClick={() => apply.mutate()} disabled={apply.isPending}>
-                  {t('Restart and install {version}', { version: status.availableVersion })}
+                  {t('Restart Proxyma and install {version}', { version: status.availableVersion })}
                 </Button>
               </Presence>
             </div>
@@ -269,7 +243,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
         <Presence show={status.status === 'AVAILABLE' && !status.canApplyInPlace}>
           <>
             <Caption className="mt-3">
-              {t('This installation updates by downloading the new release, not in place.')}{' '}
+              {t('Update by downloading the new release.')}{' '}
               {/* /docs/manual/ was never a page. This tab is desktop-profile only: Home Server or Desktop. */}
               <ExternalLink href="https://proxyma.ai/docs/manual/#updates">{t('How to update')}</ExternalLink>
             </Caption>
@@ -284,7 +258,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
             label pointed at nothing and the Select had no name. */}
         <Field
           label={t('Check for updates')}
-          hint={t('How often to look for a newer version; checking downloads nothing.')}
+          hint={t('How often to look for a new version.')}
         >
           {id => (
             <Select
@@ -299,7 +273,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
         <SwitchRow
           className="py-0"
           title={t('Download updates automatically')}
-          caption={t('Download new versions when found; each installs the next time Proxyma starts.')}
+          caption={t('Installs the next time Proxyma starts.')}
           checked={autoUpdate}
           onChange={v => trackChange('updates', 'auto-update', String(v))}
         />
@@ -318,7 +292,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
           so its heading stays as the way there. */}
       <SignpostSection
         title={t('History')}
-        caption={t('Every update found, installed or failed is in Logs, under Activity.')}
+        caption={t('Every update is recorded in Logs.')}
         action={(
           <Button variant="hyperlink" onClick={() => onOpenTab('Logs', 'activity')}>
             {t('Open Logs')}

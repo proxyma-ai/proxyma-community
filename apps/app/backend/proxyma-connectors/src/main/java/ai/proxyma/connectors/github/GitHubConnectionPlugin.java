@@ -28,8 +28,7 @@ public class GitHubConnectionPlugin implements ConnectionPlugin {
             .mark("github")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Personal access token",
                     FieldSpec.secret("token", "Personal access token").asRequired()
-                            .help("A classic token with the repo scope, or a fine-grained one that can read "
-                                    + "issues, pull requests and contents.")))
+                            .help("A token that can read issues, pull requests and contents.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(GitHubApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("For GitHub Enterprise Server: https://your-host/api/v3"))
             .sourceTypes(ConnectorType.GITHUB)

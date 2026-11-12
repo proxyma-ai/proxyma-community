@@ -690,7 +690,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
             {isSharedDuplicates && (
               <div className="space-y-3 animate-fade-in">
                 <InlineNotice tone="warning" size="md" icon={TriangleAlert}>
-                  {t("These files match content already indexed. Skipping saves storage quota; uploading anyway keeps your own copy.")}
+                  {t('These files are already indexed. Skipping saves storage.')}
                 </InlineNotice>
 
                 <div className="flex items-center justify-end gap-4">
@@ -703,7 +703,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
                     <ItemRow
                       key={d.path}
                       statusMark={<StatusMark state="warning" size={14} />}
-                      title={d.path}
+                      title={<Tooltip label={d.path} fullWidth><span className="block truncate">{d.path}</span></Tooltip>}
                       meta={[d.ownedByRequester
                         ? t('Already in your connector "{name}"', { name: d.matchedConnectorName })
                         : t('Shared by another user in "{name}"', { name: d.matchedConnectorName })]}
@@ -730,7 +730,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
               <div className="space-y-3 animate-fade-in">
                 <InlineNotice tone="warning" size="md" icon={TriangleAlert}>
                   <Rich
-                    text={t('The following files already exist in {folder}. Choose to skip or overwrite each file.')}
+                    text={t('These files already exist in {folder}. Skip or overwrite each one.')}
                     parts={{ folder: <span className="font-medium">{folderName}</span> }}
                   />
                 </InlineNotice>
@@ -745,7 +745,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
                     <ItemRow
                       key={d.path}
                       statusMark={<StatusMark state="warning" size={14} />}
-                      title={d.path}
+                      title={<Tooltip label={d.path} fullWidth><span className="block truncate">{d.path}</span></Tooltip>}
                       trailing={
                         <SegmentedControl<'skip' | 'overwrite' | ''>
                           ariaLabel={d.path}
@@ -878,7 +878,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
             <Presence show={isPick && exceedsQuota && remainingQuotaBytes !== null}>
               {remainingQuotaBytes !== null && (
                 <InlineNotice tone="danger" size="md" icon={TriangleAlert}>
-                  {t('Not enough storage remaining - selected files total {total}, only {left} left. Remove some files to continue.', {
+                  {t('Not enough storage: {total} selected, {left} left.', {
                     total: formatSize(pendingUploadBytes),
                     left: formatSize(remainingQuotaBytes),
                   })}
@@ -928,7 +928,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
           <DialogFooter wrap>
             <Button variant="secondary" onClick={handleClose}>{t('Continue without the failed files')}</Button>
             <Button onClick={handleRetry}>
-              {t('Retry ({count})', { count: retryCount })}
+              {t('Try again ({count})', { count: retryCount })}
             </Button>
             <Button variant="danger-quiet" className="ml-2" onClick={() => setConfirmingCancel(true)}>{t('Cancel upload')}</Button>
           </DialogFooter>
@@ -936,7 +936,7 @@ export function FileUploadModal({ initialFiles, initialFolder, onClose }: Props)
         {confirmingCancel && (
           <ConfirmDialog
             title={t('Cancel this upload?')}
-            description={t('The files that did upload are removed from the server, and nothing is indexed.')}
+            description={t('Uploaded files are removed and nothing is indexed.')}
             confirmLabel={t('Cancel upload')}
             cancelLabel={t('Keep them')}
             onConfirm={() => { setConfirmingCancel(false); void handleCancelUpload() }}

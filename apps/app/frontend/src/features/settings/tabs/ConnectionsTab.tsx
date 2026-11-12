@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Trash2, Plus } from 'lucide-react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, LogIn, LogOut, Pencil, PlugZap, Plus, Trash2 } from 'lucide-react'
 import {
-  Badge, FadeSwap, Button, Caption, EmptyState, ExternalLink, InlineNotice, List, ListRow, MetaList, Presence,
-  RowActions, SettingsSection, SettingsSections, SwitchRow, safeExternalHref,
+  Badge, FadeSwap, Button, Caption, Card, EmptyState, ExternalLink, InlineNotice, ListRow, MetaList, Presence,
+  SettingsSection, SettingsSections, SwitchRow, IconButton, cn, safeExternalHref,
 } from '@/components/ui/kit'
 import { ProtocolMark } from '@/features/indexing/utils/sourceMarks'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
@@ -11,10 +11,12 @@ import { WriteToolConsentModal } from '../components/WriteToolConsentModal'
 import { ConnectionModal } from '../components/ConnectionModal'
 import {
   connectionsApi, connectionError, useConnections, serviceKeyProtocol, signOutConnection,
-  startConnectionSignIn, type Connection, type ConnectionProtocol,
+  type Connection, type ConnectionProtocol,
 } from '../services/connectionsApi'
 import { connectionTestMessage } from '../services/connectionTestMessage'
-import { useServiceSetupMissing } from '@edition'
+import { useConnectionSignInWait, useStartConnectionSignIn } from '../hooks/useConnectionSignIn'
+import { useConstellationsShown, useServiceSetupMissing } from '@edition'
+import { usageNames } from '../utils/connectionUsage'
 import { ListSkeleton, TitleAction, useResolved } from '../pages/shared'
 import { useToastStore } from '@/store/toastStore'
 import { keys } from '@/services/queryKeys'
@@ -22,6 +24,7 @@ import { useTranslation } from '@/i18n'
 import { PagedItems } from '@/components/ui/ListPager'
 import type { TabProps } from '../pages/shared'
 import { RemoveConfirm } from '../components/settingsParts'
+import { serverText } from '@/i18n/serverText'
 
 // - Connections tab -
 //
@@ -72,11 +75,44 @@ function ConnectionRow({ connection, onEdit }: {
   }
   const remove = useMutation({
     mutationFn: () => connectionsApi.remove(connection.id),
-    onSuccess: invalidate,
-    // A connection in use is refused - "'Work' is used by 2 sources. Remove them from Sources
-    // first." - and that sentence is the whole answer, so it is shown as written.
+    onSuccess: () => {
+      invalidate()
+      // The sources that read through it now say their connection is gone.
+      queryClient.invalidateQueries({ queryKey: keys.connectorSummary() })
+    },
     onError: (e: unknown) => addToast(connectionError(e) ?? t('Could not delete this connection.'), 'danger'),
   })
+  // IN USE OR NOT, A CONNECTION CAN BE DELETED (the maintainer, 2026-11-03), and the confirmation says
+  // what that does to the sources reading through it - asked for when it opens, never for the list.
+  const usage = useQuery({
+    queryKey: keys.connectionUsage(connection.id),
+    queryFn: () => connectionsApi.usage(connection.id),
+    enabled: confirmDelete,
+  })
+  const constellations = useConstellationsShown()
+  const deleteConsequences = (): string[] => {
+    const out = [t('Its credential and Read/Write switches are deleted with it.')]
+    const using = usage.data ? usageNames(usage.data) : null
+    if (using && using.names.length + using.more > 0) {
+      const listed = using.names.join(', ')
+      const names = using.more > 0
+        ? (listed ? t('{names} and {count} more', { names: listed, count: using.more }) : t('{count} source|{count} sources', { count: using.more }))
+        : listed
+      out.push(using.names.length + using.more === 1
+        ? t('{name} reads through it. It stops syncing until another connection is chosen in its settings; what it indexed is kept.', { name: names })
+        : t('{names} read through it. They stop syncing until another connection is chosen in their settings; what they indexed is kept.', { names }))
+    }
+    // YouTube's policies: removing access removes the channel's data too (RegistryConnectionUsage), and
+    // the access itself is revoked at Google.
+    if (connection.protocol === 'YOUTUBE') {
+      out.push(t("Proxyma's access is removed at Google, and the YouTube sources reading through it are deleted with what they indexed."))
+    }
+    // Only where there are saved agents to pin it (Constellations).
+    if (constellations && !mcp) {
+      out.push(t('Agents pinned to it use your default {service} connection instead.', { service: connection.protocolLabel }))
+    }
+    return out
+  }
   const signOut = useMutation({
     mutationFn: () => signOutConnection(connection),
     onSuccess: () => {
@@ -85,6 +121,10 @@ function ConnectionRow({ connection, onEdit }: {
     },
     onError: () => addToast(t('Could not sign out of {name}.', { name: connection.name }), 'danger'),
   })
+
+  // A sign-in in the browser (Desktop, Home Server): started here or from the connection dialog.
+  const startSignIn = useStartConnectionSignIn()
+  const browserSignIn = useConnectionSignInWait(oauth ? connection : undefined)
 
   const signedIn = connection.status === 'CONNECTED' || connection.status === 'NEEDS_RECONNECT'
   const notSetUp = !!setupMissing
@@ -122,20 +162,23 @@ function ConnectionRow({ connection, onEdit }: {
 
   // What the agent may do, in one phrase. Write is absent where the service has no write tools.
   const access = mcp
-    ? (connection.allowRead ? t('agent may use, asking first') : t('agent has no access'))
+    ? (connection.allowRead ? t('Agent may use, asking first') : t('Agent has no access'))
     : connection.allowRead && connection.allowWrite
-    ? t('agent may read and write')
+    ? t('Agent may read and write')
     : connection.allowRead
-      ? t('agent may read')
+      ? t('Agent may read')
       : connection.allowWrite
-        ? t('agent may write')
-        : t('agent has no access')
+        ? t('Agent may write')
+        : t('Agent has no access')
 
   return (
-    <>
+    // ONE FULL-WIDTH CARD PER CONNECTION, the details on the left and one line of icon buttons on the
+    // right (the maintainer, 2026-11-02 and 11-03 - it replaced a two-column grid of cards, then two
+    // rows of bordered buttons). Where the list is too narrow for both side by side (ConnectionList's
+    // container, not the window) the buttons go under the details, starting where their text starts.
+    <Card role="listitem" padding="none" className="p-4">
       <ListRow
-        // Stacked below sm, like a provider row: the buttons would otherwise squeeze the name out.
-        className="flex-col sm:flex-row"
+        className={cn('flex-col items-stretch py-0', SIDE_ROW)}
         // The service's mark leads the row, as a source's does on its card - the same mark, in the
         // same brand ink, at the row size. The service is still named in words beside the name.
         leading={<ProtocolMark protocol={connection.protocol} size={16} className="text-brand-legible" />}
@@ -154,7 +197,8 @@ function ConnectionRow({ connection, onEdit }: {
             {oauth
               ? (connection.accountLabel
                 ? t('Signed in as {account}', { account: connection.accountLabel })
-                : t('Not signed in'))
+                // Signed in, with no account name from the service: still signed in.
+                : signedIn ? t('Signed in') : t('Not signed in'))
               : mcp?.transport === 'STDIO'
                 ? <span className="font-mono">{[mcp.command, ...mcp.args].join(' ')}</span>
                 : connection.baseUrl}
@@ -183,10 +227,22 @@ function ConnectionRow({ connection, onEdit }: {
               access,
             ]} />
           )}
+          <Presence show={!!browserSignIn.wait}>
+            {browserSignIn.wait && (
+              <InlineNotice tone="info" className="mt-1">
+                {/* Short: the row's text column is narrow beside its buttons. Both ways on are links. */}
+                <span className="block">{t('Your browser opened for the sign-in.')}</span>
+                <span className="flex flex-wrap items-center gap-x-3">
+                  <ExternalLink href={browserSignIn.wait.url}>{t('Open it again')}</ExternalLink>
+                  <Button variant="hyperlink" onClick={browserSignIn.cancel}>{t('Cancel')}</Button>
+                </span>
+              </InlineNotice>
+            )}
+          </Presence>
           <Presence show={!!mcpSignIn}>
             {mcpSignIn && (
               <InlineNotice tone="info" className="mt-1">
-                {t('Finish signing in in the window that opened.')}{' '}
+                {t('The sign-in opened in a new window.')}{' '}
                 <ExternalLink href={mcpSignIn.url}>{t('Open it again')}</ExternalLink>
               </InlineNotice>
             )}
@@ -196,7 +252,7 @@ function ConnectionRow({ connection, onEdit }: {
               {mcp ? t('Sign in again to use its tools.') : t('Sign in again to keep its sources syncing.')}
               {/* The reason is the backend's - an expired grant, a revoked consent, a changed client
                   id - and it is what tells the user whether signing in again will help. */}
-              {connection.statusDetail && <span className="text-ink-caption"> {connection.statusDetail}</span>}
+              {connection.statusDetail && <span className="text-ink-caption"> {serverText(connection.statusDetail)}</span>}
             </InlineNotice>
           </Presence>
           <Presence show={notSetUp}>
@@ -210,46 +266,35 @@ function ConnectionRow({ connection, onEdit }: {
           </Presence>
         </>}
         action={
-          <RowActions
-            className="flex-wrap"
-            // Quiet danger, set apart from the safe actions - it was a third identical outline
-            // button beside Test and Edit. The confirmation carries the danger fill.
-            destructive={
-              <Button variant="danger-quiet" onClick={() => setConfirmDelete(true)} disabled={remove.isPending}>
-                <Trash2 size={14} />
-                {t('Delete')}
-              </Button>
-            }
-          >
-            {/* Sign in NAVIGATES - see connectionSignInUrl. Offered only where the deployment is set
-                up: without Microsoft 365's app registration it turns straight round and reports
-                `config`. */}
-            {/* Each eases in and out of the row as the sign-in state changes (Presence, fade only -
-                it is a row of buttons). */}
+          // ONE LINE OF ICON BUTTONS (the maintainer, 2026-11-03: "Use icon buttons only, one line"),
+          // each named by its tooltip: the sign-in actions this connection has, Test, Edit, then Delete
+          // in danger ink, set apart. Under the details while the list is narrow, starting where their
+          // text starts; beside them, on the right, once it is wide.
+          <div className={cn('flex items-center gap-1 pl-7', '[@container(min-width:40rem)]:pl-0')}>
+            {/* Sign in opens the service in the browser on Desktop and Home Server, and NAVIGATES on
+                Enterprise Server - see useStartConnectionSignIn. Offered only where the deployment is
+                set up: without Microsoft 365's app registration it turns straight round and reports
+                `config`. Each eases in and out as the sign-in state changes. */}
             <Presence show={oauth && !notSetUp} collapse={false}>
-              <Button variant={signedIn ? 'secondary' : 'primary'} onClick={() => startConnectionSignIn(connection)}>
-                {signedIn ? t('Sign in again') : t('Sign in')}
-              </Button>
+              <IconButton icon={LogIn} label={signedIn ? t('Sign in again') : t('Sign in')}
+                onClick={() => { void startSignIn(connection) }} />
             </Presence>
             <Presence show={oauth && signedIn} collapse={false}>
-              <Button variant="secondary" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
-                {signOut.isPending ? t('Signing out...') : t('Sign out')}
-              </Button>
+              <IconButton icon={LogOut} label={signOut.isPending ? t('Signing out...') : t('Sign out')}
+                onClick={() => signOut.mutate()} disabled={signOut.isPending} busy={signOut.isPending} />
             </Presence>
             <Presence show={mcpOAuth} collapse={false}>
-              <Button
-                variant={mcp?.signedIn ? 'secondary' : 'primary'}
-                onClick={() => startMcpSignIn.mutate()}
-                disabled={startMcpSignIn.isPending}
-              >
-                {mcp?.signedIn ? t('Sign in again') : t('Sign in')}
-              </Button>
+              <IconButton icon={LogIn} label={mcp?.signedIn ? t('Sign in again') : t('Sign in')}
+                onClick={() => startMcpSignIn.mutate()} disabled={startMcpSignIn.isPending} />
             </Presence>
-            <Button variant="secondary" onClick={() => test.mutate()} disabled={test.isPending}>
-              {test.isPending ? t('Testing...') : t('Test')}
-            </Button>
-            <Button variant="secondary" onClick={onEdit}>{t('Edit')}</Button>
-          </RowActions>
+            <IconButton icon={PlugZap} label={test.isPending ? t('Testing...') : t('Test')}
+              onClick={() => test.mutate()} disabled={test.isPending} busy={test.isPending} />
+            <IconButton icon={Pencil} label={t('Edit')} onClick={onEdit} />
+            <span className="ml-2">
+              <IconButton icon={Trash2} label={t('Delete')} tone="danger"
+                onClick={() => setConfirmDelete(true)} disabled={remove.isPending} />
+            </span>
+          </div>
         }
       />
       {confirmDelete && (
@@ -258,15 +303,30 @@ function ConnectionRow({ connection, onEdit }: {
           title={t('Delete connection')}
           verb={t('delete')}
           confirmLabel={t('Delete')}
-          consequences={[
-            t('Its credential and Read/Write switches are deleted with it.'),
-            t('A connection still used by a source cannot be deleted - remove or move those sources first.'),
-          ]}
+          consequences={deleteConsequences()}
           onConfirm={() => { remove.mutate(); setConfirmDelete(false) }}
           onCancel={() => setConfirmDelete(false)}
         />
       )}
-    </>
+    </Card>
+  )
+}
+
+// THE CONNECTIONS, one full-width card under another, laid out by the width the list is given, not
+// the window's: the Settings window's column is narrower than the viewport by the rail and the
+// window's margins, and the same tab is drawn on a phone. The container is the wrapper - a container
+// query cannot ask the element it styles. From 40rem (about 300px of details beside Test, Edit and
+// Delete) a card's buttons sit beside its details, right-aligned; below it, under them. Written out
+// whole, so Tailwind finds each class in the source.
+const SIDE_ROW = '[@container(min-width:40rem)]:flex-row [@container(min-width:40rem)]:items-start [@container(min-width:40rem)]:gap-6'
+
+function ConnectionList({ children }: { children: ReactNode }) {
+  return (
+    <div className="[container-type:inline-size]">
+      <div role="list" className="space-y-3">
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -302,7 +362,7 @@ function ConnectorManagementRow({ pending, trackChange, onRequestEnable, focused
         <SwitchRow
           className="py-0"
           title={t('Add and remove sources')}
-          caption={t('Let the agent add and remove sources for you; removing one deletes its index.')}
+          caption={t('Let the agent add and remove sources.')}
           checked={checked}
           onChange={v => {
             if (v) {
@@ -373,7 +433,7 @@ export function ConnectorsTab({ trackChange, pending, focusKey }: {
   }
 
   return (
-    <SettingsSections intro={t('The servers your sources and the agent reach, each with your credential.')}>
+    <SettingsSections intro={t('The servers your sources and agent reach.')}>
       {/* Tour anchor on the CONNECTION LIST, not on the paragraph above it. The walkthrough step
           is called "Connect your tools" and talks about tokens and permissions; highlighting the
           sentence that introduces them left the reader looking at a caption while the card beside
@@ -395,17 +455,17 @@ export function ConnectorsTab({ trackChange, pending, focusKey }: {
             title={t('No connections yet.')}
             action={<Button onClick={openNew}><Plus size={14} />{t('Add connection')}</Button>}
           >
-            {t('Every source on a server or a service reads through one. Add the one you have an account on.')}
+            {t('Sources read through a connection. Add the one you have an account on.')}
           </EmptyState>
         ) : (
           // Twenty a page (LIST_PAGE_SIZE), in the browser: the pickers read every connection.
           <PagedItems items={connections}>
             {page => (
-              <List>
+              <ConnectionList>
                 {page.map(c => (
                   <ConnectionRow key={c.id} connection={c} onEdit={() => setEditing(c)} />
                 ))}
-              </List>
+              </ConnectionList>
             )}
           </PagedItems>
         )}

@@ -45,17 +45,13 @@ public class SlackConnectionPlugin implements ConnectionPlugin {
             .mark("slack")
             .auth(AuthMethod.of(AuthKind.TOKEN, "Bot token",
                             FieldSpec.secret("token", "Bot token").asRequired().placeholder("xoxb-...")
-                                    .help("From your own Slack app's OAuth & Permissions page, once it is installed "
-                                            + "to your workspace."),
+                                    .help("From your Slack app's OAuth & Permissions page."),
                             FieldSpec.secret(USER_TOKEN, "User token").placeholder("xoxp-...")
-                                    .help("Optional. Lets private channels you are in be indexed without inviting "
-                                            + "the app to them.")),
+                                    .help("Optional. Indexes your private channels without inviting the app.")),
                     AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Slack",
                             FieldSpec.text("clientId", "Client ID").asRequired(),
                             FieldSpec.secret("clientSecret", "Client secret").asRequired()
-                                    .help("From your own Slack app's Basic Information page. Slack returns only to "
-                                            + "an https:// address, so paste the bot token where Proxyma is not "
-                                            + "served over https.")))
+                                    .help("From your Slack app's Basic Information page.")))
             .baseUrl(FieldSpec.url("baseUrl", "API URL").defaultValue(SlackApi.DEFAULT_BASE_URL).asAdvanced()
                     .help("Leave as it is unless you reach Slack through a relay."))
             .sourceTypes(ConnectorType.SLACK)

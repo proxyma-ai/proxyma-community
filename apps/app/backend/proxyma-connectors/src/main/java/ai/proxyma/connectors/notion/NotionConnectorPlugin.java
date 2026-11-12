@@ -56,8 +56,7 @@ public class NotionConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.NOTION)
             .protocol(ConnectionProtocol.NOTION)
             .displayName("Notion")
-            .description("Notion pages and database rows shared with your integration, each page one document "
-                    + "with its properties.")
+            .description("Notion pages and database rows shared with your integration.")
             .noun("Notion pages", "Notion pages")
             .addTitle("Add Notion pages")
             .order(52)
@@ -65,9 +64,7 @@ public class NotionConnectorPlugin implements ConnectorPlugin {
             .mark("notion")
             .fields(
                     FieldSpec.list(PAGES, "Pages and databases").placeholder("https://www.notion.so/...")
-                            .help("One per line, as a link or an ID. A page brings every page under it, a "
-                                    + "database all its rows. Leave empty for everything shared with the "
-                                    + "integration."))
+                            .help("One per line, as a link or an ID. Empty for everything shared."))
             .capabilities(Capabilities.builder().incremental().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("notion")

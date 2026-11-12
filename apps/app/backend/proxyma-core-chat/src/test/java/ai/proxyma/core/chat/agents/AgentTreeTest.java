@@ -44,8 +44,8 @@ import static org.mockito.Mockito.when;
 /**
  * THE AGENT TREE: every agent is a conversation of its own and may deploy children down to the
  * configured depth; a child reports by ending a turn that worked for its parent - not while work of
- * its own still runs - and what the user says to a child reaches its parent with the answer; a
- * parent controls its children and theirs, and nobody else's; and a child can never do more than the
+ * its own still runs - and a person's message into a child is refused, since a person reads a
+ * child and talks to its root (2026-11-04); a parent controls its children and theirs, and nobody else's; and a child can never do more than the
  * root it works under. Driven over map-backed repositories and a mocked chat, so no turn runs.
  */
 class AgentTreeTest {
@@ -165,7 +165,7 @@ class AgentTreeTest {
         void reportsAndEnds() {
             String id = deploy(ROOT, "Summarize", null);
             String conv = node(id).getConversationId();
-            tree.turnEnded(conv, "Do Summarize", "Three findings.", null);
+            tree.turnEnded(conv, "Three findings.", null);
             List<AgentInbox.Taken> got = mail(ROOT);
             assertThat(got).singleElement().satisfies(t -> {
                 assertThat(t.kind()).isEqualTo(AgentInbox.Kind.REPORT);
@@ -177,10 +177,57 @@ class AgentTreeTest {
         }
 
         @Test
+        @DisplayName("the report reaches the parent's inbox before the parent's page hears the agent is done (0.40.1 feedback)")
+        void reportBeforeDoneStatus() {
+            String id = deploy(ROOT, "List tasks", null);
+            published.clear();
+            tree.turnEnded(node(id).getConversationId(), "Eleven open.", null);
+            // The inbox's event is what wakes the parent (ChatService.onInboxPosted), synchronously: the
+            // turn it starts is announced to the page ('turn-start') at that point. The page closes its
+            // stream on the status saying the agent is done and owes nothing, so that status must come
+            // AFTER the wake, or the turn the report starts reaches nobody until a reload.
+            int posted = published.indexOf(new AgentInboxPostedEvent(ROOT));
+            int done = -1;
+            for (int i = 0; i < published.size(); i++) {
+                if (published.get(i) instanceof ai.proxyma.core.chat.event.ChatEvent e
+                        && ROOT.equals(e.conversationId())
+                        && ai.proxyma.core.chat.event.ChatEvent.Type.AGENT_STATUS.value().equals(e.streamType())
+                        && e.data().contains("\"status\":\"" + AgentNode.DONE + "\"")) {
+                    done = i;
+                }
+            }
+            assertThat(posted).as("the report was posted").isNotNegative();
+            assertThat(done).as("the parent's page was told the agent is done").isNotNegative();
+            assertThat(posted).as("delivered before the final status").isLessThan(done);
+            assertThat(published.get(done)).asString().contains("\"owesReport\":false");
+        }
+
+        @Test
+        @DisplayName("a verified agent's checked report also reaches the parent before its final status")
+        void checkedReportBeforeDoneStatus() {
+            String id = deploy(ROOT, "Checked", null);
+            AgentNode n = node(id);
+            n.setLastReport("Draft.");
+            nodes.save(n);
+            published.clear();
+            tree.deliverChecked(UUID.fromString(id), "Draft.\n\nScore: 9/10");
+            int posted = published.indexOf(new AgentInboxPostedEvent(ROOT));
+            int status = -1;
+            for (int i = 0; i < published.size(); i++) {
+                if (published.get(i) instanceof ai.proxyma.core.chat.event.ChatEvent e
+                        && ai.proxyma.core.chat.event.ChatEvent.Type.AGENT_STATUS.value().equals(e.streamType())) {
+                    status = i;
+                }
+            }
+            assertThat(posted).isNotNegative();
+            assertThat(posted).isLessThan(status);
+        }
+
+        @Test
         @DisplayName("a LONG agent stays, idle, for more work")
         void longStays() {
             String id = deploy(ROOT, "Watcher", "long");
-            tree.turnEnded(node(id).getConversationId(), "Do Watcher", "Watching.", null);
+            tree.turnEnded(node(id).getConversationId(), "Watching.", null);
             assertThat(node(id).getStatus()).isEqualTo(AgentNode.IDLE);
         }
 
@@ -190,12 +237,12 @@ class AgentTreeTest {
             String id = deploy(ROOT, "Lead", null);
             String conv = node(id).getConversationId();
             when(chat.hasBackgroundWork(conv)).thenReturn(true);
-            tree.turnEnded(conv, "Do Lead", "I've started two helpers.", null);
+            tree.turnEnded(conv, "I've started two helpers.", null);
             assertThat(mail(ROOT)).as("an interim answer is no report").isEmpty();
             assertThat(node(id).getStatus()).isEqualTo(AgentNode.WAITING);
 
             when(chat.hasBackgroundWork(conv)).thenReturn(false);
-            tree.turnEnded(conv, null, "Both helpers agree: ship it.", null);
+            tree.turnEnded(conv, "Both helpers agree: ship it.", null);
             assertThat(mail(ROOT)).singleElement().extracting(AgentInbox.Taken::text).isEqualTo("Both helpers agree: ship it.");
         }
 
@@ -203,41 +250,51 @@ class AgentTreeTest {
         @DisplayName("a failed turn still reports, so the parent is never left waiting")
         void failureReports() {
             String id = deploy(ROOT, "Fetch", null);
-            tree.turnEnded(node(id).getConversationId(), "Do Fetch", null, "429 Too Many Requests");
+            tree.turnEnded(node(id).getConversationId(), null, "429 Too Many Requests");
             assertThat(mail(ROOT)).singleElement().extracting(AgentInbox.Taken::text).asString().contains("429");
             assertThat(node(id).getStatus()).isEqualTo(AgentNode.FAILED);
+            assertThat(node(id).getStopReason()).isEqualTo(AgentNode.REASON_ERROR);
         }
 
         @Test
-        @DisplayName("what the USER says to a child reaches its parent with the answer - and is no report on the task")
-        void userTalkIsForwarded() {
+        @DisplayName("a turn that gave up on a rate limit fails with that reason as a code, for the agents map to word")
+        void rateLimitedFailureIsCoded() {
+            String id = deploy(ROOT, "Fetch", null);
+            tree.turnEnded(node(id).getConversationId(), null,
+                    AgentTree.RATE_LIMITED_PREFIX + " - the provider kept refusing for its rate limit. (429)");
+            assertThat(node(id).getStatus()).isEqualTo(AgentNode.FAILED);
+            assertThat(node(id).getStopReason()).isEqualTo(AgentNode.REASON_RATE_LIMITED);
+        }
+
+        @Test
+        @DisplayName("an agent that reports carries no stop reason, and one given work again loses the one it had")
+        void reportCarriesNoReason() {
+            String id = deploy(ROOT, "Summarize", null);
+            tree.turnEnded(node(id).getConversationId(), "Done.", null);
+            assertThat(node(id).getStatus()).isEqualTo(AgentNode.DONE);
+            assertThat(node(id).getStopReason()).isNull();
+
+            String l = deploy(ROOT, "Watcher", "LONG");
+            AgentNode n = node(l);
+            n.setStopReason(AgentNode.REASON_ERROR);
+            nodes.save(n);
+            tree.tell(ROOT, l, "Look again.");
+            assertThat(node(l).getStopReason()).isNull();
+        }
+
+        @Test
+        @DisplayName("a child is read-only to a person: it is told apart from the root, and its turn sends its parent the report and nothing else (2026-11-04)")
+        void childIsReadOnlyToAPerson() {
             String id = deploy(ROOT, "Researcher", null);
             String conv = node(id).getConversationId();
-            tree.turnEnded(conv, "Do Researcher", "First pass.", null);
-            mail(ROOT);
-            // A new task, then the user talks to the child directly.
-            tree.tell(ROOT, id, "Also check the EU rules.");
-            mail(node(id).getConversationId());
-            tree.turnEnded(conv, "Skip the EU rules, I have them.", "Understood, skipping them.", null);
+            // What ChatService.isDeployedAgent asks before it refuses a person's message
+            // (DeployedAgentReadOnlyTest pins the refusal itself, a new turn and a typed message alike).
+            assertThat(tree.isChild(conv)).isTrue();
+            assertThat(tree.isChild(ROOT)).as("the conversation the person opened").isFalse();
+            tree.turnEnded(conv, "First pass.", null);
             List<AgentInbox.Taken> got = mail(ROOT);
-            assertThat(got).singleElement().satisfies(t -> {
-                assertThat(t.kind()).isEqualTo(AgentInbox.Kind.USER_TALK);
-                assertThat(t.text()).contains("Skip the EU rules", "Understood, skipping them.");
-            });
-            assertThat(node(id).isReportOwed()).as("the task is still owed").isTrue();
-        }
-
-        @Test
-        @DisplayName("what the user types into a child's running turn is forwarded too")
-        void injectedIsForwarded() {
-            String id = deploy(ROOT, "Writer", null);
-            String conv = node(id).getConversationId();
-            tree.userSpoke(conv, "Make it shorter.");
-            tree.turnEnded(conv, "Do Writer", "Here is the short version.", null);
-            List<AgentInbox.Taken> got = mail(ROOT);
-            assertThat(got).extracting(AgentInbox.Taken::kind)
-                    .containsExactly(AgentInbox.Kind.USER_TALK, AgentInbox.Kind.REPORT);
-            assertThat(got.get(0).text()).contains("Make it shorter.");
+            assertThat(got).extracting(AgentInbox.Taken::kind).containsExactly(AgentInbox.Kind.REPORT);
+            assertThat(got.get(0).text()).isEqualTo("First pass.");
         }
     }
 
@@ -265,7 +322,7 @@ class AgentTreeTest {
         void messageIsWork() {
             String id = deploy(ROOT, "Long one", "LONG");
             String conv = node(id).getConversationId();
-            tree.turnEnded(conv, "Do Long one", "Ready.", null);
+            tree.turnEnded(conv, "Ready.", null);
             published.clear();
             tree.tell(ROOT, id, "Now look at the logs.");
             assertThat(node(id).isReportOwed()).isTrue();
@@ -284,6 +341,9 @@ class AgentTreeTest {
             assertThat(tree.control(ROOT, a, "stop")).containsEntry("success", true);
             assertThat(node(a).getStatus()).isEqualTo(AgentNode.STOPPED);
             assertThat(node(a1).getStatus()).isEqualTo(AgentNode.STOPPED);
+            // Stopped by an agent above it - the code the map words as "by its parent".
+            assertThat(node(a).getStopReason()).isEqualTo(AgentNode.REASON_PARENT);
+            assertThat(node(a1).getStopReason()).isEqualTo(AgentNode.REASON_PARENT);
             verify(chat).stop(node(a1).getConversationId());
             assertThat(node(b).getStatus()).isEqualTo(AgentNode.RUNNING);
         }
@@ -309,13 +369,26 @@ class AgentTreeTest {
             String a1 = deploy(node(a).getConversationId(), "A1", null);
             assertThat(tree.controlInTree(node(a).getConversationId(), a1, "pause")).containsEntry("success", true);
             assertThat(tree.controlInTree("conv-somebody-else", a1, "stop")).containsEntry("success", false);
+            // What the person stops is coded as theirs, the agents under it included.
+            String b = deploy(ROOT, "B", null);
+            String b1 = deploy(node(b).getConversationId(), "B1", null);
+            assertThat(tree.controlInTree(ROOT, b, "stop")).containsEntry("success", true);
+            assertThat(node(b).getStopReason()).isEqualTo(AgentNode.REASON_USER);
+            assertThat(node(b1).getStopReason()).isEqualTo(AgentNode.REASON_USER);
+            // Dismissed is done, not stopped: no reason; what it deployed is stopped with it.
+            String c = deploy(ROOT, "C", "LONG");
+            String c1 = deploy(node(c).getConversationId(), "C1", null);
+            tree.controlInTree(ROOT, c, "dismiss");
+            assertThat(node(c).getStatus()).isEqualTo(AgentNode.DONE);
+            assertThat(node(c).getStopReason()).isNull();
+            assertThat(node(c1).getStopReason()).isEqualTo(AgentNode.REASON_USER);
         }
 
         @Test
         @DisplayName("awaitAgents takes the report it waited for, so the agent does not read it twice")
         void awaitTakes() {
             String a = deploy(ROOT, "A", null);
-            tree.turnEnded(node(a).getConversationId(), "Do A", "Done: 42.", null);
+            tree.turnEnded(node(a).getConversationId(), "Done: 42.", null);
             Map<String, Object> out = tree.await(ROOT, List.of(a), 5);
             assertThat(out.get("reports").toString()).contains("Done: 42.");
             assertThat(inbox.hasPending(ROOT)).isFalse();
@@ -333,12 +406,12 @@ class AgentTreeTest {
             while (tree.waitingOn(ROOT) != 2 && System.currentTimeMillis() < until) Thread.sleep(10);
             assertThat(tree.waitingOn(ROOT)).isEqualTo(2);
 
-            tree.turnEnded(node(a).getConversationId(), "Do A", "Done: 1.", null);
+            tree.turnEnded(node(a).getConversationId(), "Done: 1.", null);
             until = System.currentTimeMillis() + 5_000;
             while (tree.waitingOn(ROOT) != 1 && System.currentTimeMillis() < until) Thread.sleep(10);
             assertThat(tree.waitingOn(ROOT)).isEqualTo(1);
 
-            tree.turnEnded(node(b).getConversationId(), "Do B", "Done: 2.", null);
+            tree.turnEnded(node(b).getConversationId(), "Done: 2.", null);
             waiter.join(5_000);
             assertThat(waiter.isAlive()).isFalse();
             assertThat(tree.waitingOn(ROOT)).isZero();
@@ -361,12 +434,12 @@ class AgentTreeTest {
             assertThat(System.currentTimeMillis() - started).isLessThan(5_000);
             assertThat(out.get()).containsEntry("success", false);
 
-            tree.turnEnded(node(a).getConversationId(), "Do A", "Done: 42.", null);
+            tree.turnEnded(node(a).getConversationId(), "Done: 42.", null);
             assertThat(inbox.hasPending(ROOT)).isTrue();
             assertThat(inbox.take(ROOT)).contains("Done: 42.");
             // And the next wait, started after the give-up, waits as before.
             String b = deploy(ROOT, "B", null);
-            tree.turnEnded(node(b).getConversationId(), "Do B", "Done: 7.", null);
+            tree.turnEnded(node(b).getConversationId(), "Done: 7.", null);
             assertThat(tree.await(ROOT, List.of(b), 5).get("reports").toString()).contains("Done: 7.");
         }
 
@@ -390,6 +463,40 @@ class AgentTreeTest {
             String a = (String) tree.deploy(ROOT, "u-1", new AgentTree.Deploy("Y", "Do Y", null, null, "claude-haiku-5-5")).get("agentId");
             assertThat(node(a).getProviderId()).isEqualTo("gw");
             assertThat(node(a).getModel()).isEqualTo("claude-haiku-5-5");
+        }
+
+        @Test
+        @DisplayName("an agent deployed with no model runs on its parent's: a deployed parent's own, else what the root runs on")
+        @SuppressWarnings("unchecked")
+        void noModelNamedIsTheParents() {
+            AgentModels models = mock(AgentModels.class);
+            when(models.choose(any(), eq("claude-haiku-5-5"))).thenReturn(new AgentModels.Choice("gw", "claude-haiku-5-5", null));
+            org.springframework.beans.factory.ObjectProvider<AgentModels> p = mock(org.springframework.beans.factory.ObjectProvider.class);
+            when(p.getIfAvailable()).thenReturn(models);
+            tree.setModels(p);
+            child.setMaxDepth(3);
+
+            // Under the conversation the user opened: no model of its own, so the root's or the chat's.
+            String plain = deploy(ROOT, "Plain", null);
+            assertThat(node(plain).getModel()).isNull();
+            assertThat(node(plain).getProviderId()).isNull();
+
+            // Under an agent deployed on a cheaper model: that model, two levels down.
+            String cheap = (String) tree.deploy(ROOT, "u-1", new AgentTree.Deploy("Cheap", "Do it", null, null, "claude-haiku-5-5")).get("agentId");
+            String kid = deploy(node(cheap).getConversationId(), "Kid", null);
+            String grandkid = deploy(node(kid).getConversationId(), "Grandkid", null);
+            for (String id : List.of(kid, grandkid)) {
+                assertThat(node(id).getProviderId()).isEqualTo("gw");
+                assertThat(node(id).getModel()).isEqualTo("claude-haiku-5-5");
+            }
+            // A model named for the child wins over the parent's.
+            when(models.choose(any(), eq("claude-sonnet-5-5"))).thenReturn(new AgentModels.Choice("gw", "claude-sonnet-5-5", null));
+            String named = (String) tree.deploy(node(cheap).getConversationId(), "u-1",
+                    new AgentTree.Deploy("Named", "Do it", null, null, "claude-sonnet-5-5")).get("agentId");
+            assertThat(node(named).getModel()).isEqualTo("claude-sonnet-5-5");
+            // Under a deployed parent with no model of its own: still the root's or the chat's.
+            String plainKid = deploy(node(plain).getConversationId(), "Plain kid", null);
+            assertThat(node(plainKid).getModel()).isNull();
         }
 
         @Test
@@ -438,6 +545,43 @@ class AgentTreeTest {
         }
 
         @Test
+        @DisplayName("a child of an agent given only some tool sets is given only those - a server connected since included")
+        void inheritsRootAllowList() {
+            AgentTreeModule m = module(rootModule(new AgentProfile(null, null, null, Set.of("searchIndexedSources"), null,
+                    "agent:7", Set.of("Memory & Knowledge"), false, Set.of("YouTube"))));
+            String a = deploy(ROOT, "A", null);
+            String a1 = deploy(node(a).getConversationId(), "A1", null);
+            for (String child : List.of(a, a1)) {
+                AgentProfile p = m.profileFor(node(child).getConversationId(), "u-1").orElseThrow();
+                assertThat(p.allowsSkill("YouTube")).isTrue();
+                assertThat(p.allowsSkill("Jira")).isFalse();
+                assertThat(p.allowsSkill("MCP: Added Later")).isFalse();
+                assertThat(p.allowsSkill("Reply style", false)).isTrue();
+                assertThat(p.allows("searchIndexedSources")).isFalse();
+            }
+        }
+
+        @Test
+        @DisplayName("a child of an agent pinned to a connection uses that connection too, at every depth; a locked root pins nothing")
+        void inheritsRootConnectionPins() {
+            java.util.UUID channel = java.util.UUID.randomUUID();
+            java.util.UUID site = java.util.UUID.randomUUID();
+            AgentTreeModule m = module(rootModule(new AgentProfile(null, null, null, null, null, "agent:7", null, false, null,
+                    java.util.Map.of("youtube", channel, "JIRA", site))));
+            String a = deploy(ROOT, "A", null);
+            String a1 = deploy(node(a).getConversationId(), "A1", null);
+            for (String child : List.of(a, a1)) {
+                AgentProfile p = m.profileFor(node(child).getConversationId(), "u-1").orElseThrow();
+                assertThat(p.connectionPin("youtube")).contains(channel);
+                assertThat(p.connectionPin("jira")).as("a service named in any case").contains(site);
+                assertThat(p.connectionPin("confluence")).isEmpty();
+            }
+            assertThat(AgentProfile.LOCKED.connectionPin("youtube")).isEmpty();
+            assertThat(new AgentProfile(null, null, null, null, null, null, null, true, null,
+                    java.util.Map.of("youtube", channel)).connectionPin("youtube")).as("locked: nothing is pinned").isEmpty();
+        }
+
+        @Test
         @DisplayName("at the deepest level deployAgent is not given; a locked root locks its children; another user gets nothing")
         void limits() {
             AgentTreeModule m = module();
@@ -449,6 +593,31 @@ class AgentTreeTest {
 
             AgentTreeModule lockedRoot = module(rootModule(AgentProfile.LOCKED));
             assertThat(lockedRoot.profileFor(node(a).getConversationId(), "u-1").orElseThrow().locked()).isTrue();
+        }
+
+        @Test
+        @DisplayName("what it runs on: its own model, else its root's (a saved agent's), else the chat's - never a Settings model for deployed agents")
+        void runsOn() {
+            AgentTreeModule plain = module();
+            String a = deploy(ROOT, "A", null);
+            assertThat(plain.runsOn(node(a), null)).isEqualTo(new AgentTreeModule.RunsOn(null, null));
+            // A model an older build stored for deployed agents is read past: there is no such setting.
+            child = new com.fasterxml.jackson.databind.ObjectMapper().convertValue(
+                    Map.of("provider", "p-cheap", "model", "cheap-model"), SubAgentSettings.class);
+            assertThat(plain.runsOn(node(a), null)).isEqualTo(new AgentTreeModule.RunsOn(null, null));
+
+            AgentProfile saved = new AgentProfile("p-saved", "saved-model", null, null, null, null, null);
+            assertThat(plain.runsOn(node(a), saved)).isEqualTo(new AgentTreeModule.RunsOn("p-saved", "saved-model"));
+
+            AgentNode own = node(a);
+            own.setProviderId("p-own");
+            own.setModel("own-model");
+            assertThat(plain.runsOn(own, saved)).isEqualTo(new AgentTreeModule.RunsOn("p-own", "own-model"));
+            // And profileFor runs it on the same.
+            nodes.save(own);
+            AgentTreeModule withRoot = module(rootModule(saved));
+            assertThat(withRoot.profileFor(own.getConversationId(), "u-1").orElseThrow().model()).isEqualTo("own-model");
+            assertThat(withRoot.rootProfile(ROOT, "u-1")).isEqualTo(saved);
         }
 
         @Test

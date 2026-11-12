@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Cpu, FolderPlus } from 'lucide-react'
+import { Cpu, FolderPlus, KeyRound } from 'lucide-react'
 import type { TabKey } from '@/features/settings/components/SettingsModal'
 import { FEATURES } from '@/config/features'
 import { useAuthStore } from '@/store/authStore'
 import { useSettingsModalStore } from '@/store/settingsModalStore'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { indexingApi } from '@/features/indexing/services/indexingApi'
+import { providersApi } from '@/features/settings/services/providersApi'
+import { GeminiQuickStart } from '@/features/settings/components/GeminiQuickStart'
+import { useOpenRouterSignIn } from '@/features/settings/hooks/useOpenRouterSignIn'
+import { offersGeminiQuickStart } from '@/features/settings/utils/geminiQuickStart'
 import { ChatStartLinks as KitChatStartLinks, ExternalLink } from '@/components/ui/kit'
 import { keys } from '@/services/queryKeys'
 import { useCanReadAgentSettings } from '../hooks/useCanReadAgentSettings'
@@ -21,6 +26,8 @@ import { useTranslation } from '@/i18n'
  * do. The review's F27 (approved 2026-09-30) found a row of centered chips, three of them external
  * links, on the one screen whose job is to get a question typed. So it asks the deployment instead:
  *
+ *   - no AI provider at all, on Desktop and Home Server -> Get a free Gemini key (GeminiQuickStart,
+ *     since 2026-10-30), with "Use another provider" beside it for anyone who has a key elsewhere;
  *   - no chat model set up  -> Set up a model (Settings > AI Providers), for whoever may set one;
  *   - no sources at all     -> Add a source;
  *   - otherwise             -> nothing but Help.
@@ -34,7 +41,8 @@ import { useTranslation } from '@/i18n'
  *
  * A guest on server mode has no Settings and no Sources, so sees Help only.
  */
-export function ChatStartLinks() {
+/** `onStage`: on the new chat's stage - left-aligned at every width, a step larger (the kit's). */
+export function ChatStartLinks({ onStage = false }: { onStage?: boolean } = {}) {
   const { t, locale } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
@@ -48,11 +56,24 @@ export function ChatStartLinks() {
     queryFn: () => indexingApi.getSummary(true),
     enabled: canManage,
   })
+  // The provider list, on Desktop and Home Server only: on Enterprise Server it is an
+  // administrator's (/api/v1/providers/** is ADMIN-gated), and a guest asking would be a 401.
+  const { data: providers, isSuccess: providersLoaded } = useQuery({
+    queryKey: keys.providerInstances(),
+    queryFn: providersApi.list,
+    enabled: !FEATURES.auth,
+  })
+  const guide = offersGeminiQuickStart({ multiUser: FEATURES.auth, providersLoaded, providerCount: providers?.length ?? 0 })
+  const [guideOpen, setGuideOpen] = useState(false)
+  // Sign in with OpenRouter (2026-11-07): an AI model with no key copied, beside the free Gemini key.
+  const openRouter = useOpenRouterSignIn()
   const noModel = canSetModel && !!chat && !String(chat.model ?? '').trim()
   const noSources = canManage && !!summary && summary.totalSources === 0
   const docs = `https://proxyma.ai${locale === 'en' ? '' : `/${locale}`}/docs/`
 
-  const action = noModel
+  const action = guide
+    ? { icon: KeyRound, label: t('Get a free Gemini key'), onClick: () => setGuideOpen(true) }
+    : noModel
     ? { icon: Cpu, label: t('Set up a model'), onClick: () => useSettingsModalStore.getState().open('AI Providers') }
     : noSources
       ? { icon: FolderPlus, label: t('Add a source'), onClick: () => navigate('/sources') }
@@ -61,6 +82,17 @@ export function ChatStartLinks() {
   const openTab = (tab: TabKey) => () => useSettingsModalStore.getState().open(tab)
 
   const links = [
+    ...(guide ? [
+      {
+        key: 'openrouter',
+        render: (cls: string) => (
+          <button type="button" onClick={() => void openRouter.start()} disabled={openRouter.waiting} className={cls}>
+            {openRouter.waiting ? t('Waiting for OpenRouter...') : t('Sign in with OpenRouter')}
+          </button>
+        ),
+      },
+      { key: 'provider', render: (cls: string) => <button type="button" onClick={openTab('AI Providers')} className={cls}>{t('Use another provider')}</button> },
+    ] : []),
     ...(canManage ? [
       { key: 'skills', render: (cls: string) => <button type="button" onClick={openTab('Skills')} className={cls}>{t('Skills')}</button> },
       { key: 'assistants', render: (cls: string) => <button type="button" onClick={openTab('AI Assistants')} className={cls}>{t('Use from other AI assistants')}</button> },
@@ -73,6 +105,7 @@ export function ChatStartLinks() {
     // nothing to tap is placed mid-screen there - and centered under the composer from `sm` up.
     <nav aria-label={t('Get started')}>
       <KitChatStartLinks
+        onStage={onStage}
         primary={action ? {
           label: action.label,
           icon: action.icon,
@@ -80,6 +113,7 @@ export function ChatStartLinks() {
         } : undefined}
         links={links}
       />
+      {guideOpen && <GeminiQuickStart onClose={() => setGuideOpen(false)} />}
     </nav>
   )
 }

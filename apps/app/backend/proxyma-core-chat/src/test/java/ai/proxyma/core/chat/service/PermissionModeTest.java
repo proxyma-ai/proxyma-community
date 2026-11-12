@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -110,6 +111,19 @@ class PermissionModeTest {
         assertThat(decide(SAVE_NOTE)).isEqualTo(ChatService.READ_ONLY_REFUSAL);
         chatService.setPermissionMode(CONV, PermissionMode.AUTO);
         assertThat(decide(SAVE_NOTE)).isNull();
+    }
+
+    @Test
+    @DisplayName("a reply under a YouTube comment takes the same gate: Ask pauses it, Read-only refuses it, a Write switch that is off refuses it")
+    void youtubeReplyIsAWrite() {
+        ToolCall reply = new ToolCall("call-4", "function", "replyToYouTubeComment",
+                "{\"commentId\":\"Ugx123\",\"text\":\"A D5 dizi.\"}");
+        assertThat(decide(reply)).isEqualTo("{\"success\":false,\"error\":\"" + ChatService.STOPPED_BEFORE_ANSWER + "\"}");
+        chatService.setPermissionMode(CONV, PermissionMode.READ_ONLY);
+        assertThat(decide(reply)).isEqualTo(ChatService.READ_ONLY_REFUSAL);
+        chatService.setPermissionMode(CONV, PermissionMode.AUTO);
+        when(guard.checkWriteAllowed(eq("replyToYouTubeComment"), any())).thenReturn("YouTube write is turned off.");
+        assertThat(decide(reply)).contains("YouTube write is turned off.");
     }
 
     @Test

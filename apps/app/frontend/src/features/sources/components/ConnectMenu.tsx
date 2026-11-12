@@ -229,7 +229,7 @@ export function ConnectMenu({ types, categories, open, onOpenChange, onPick, fil
           <Presence show={switchedOff.length > 0 && !query.trim()}>
             <div className="border-t border-line/45">
               <MenuEmpty>
-                {t('{names} appears here once an administrator turns it on in Settings > Network.|{names} appear here once an administrator turns them on in Settings > Network.', {
+                {t('An administrator can turn {names} on in Settings > Network.|An administrator can turn {names} on in Settings > Network.', {
                   count: switchedOff.length,
                   names: switchedOff.map(d => t(d.displayName)).join(', '),
                 })}

@@ -8,15 +8,16 @@ export type ChipVariant = 'outline' | 'file' | 'solid' | 'filter'
  * The classes of a chip, for a chip that cannot be a React element - the composer builds its
  * mention chips as DOM nodes inside a contentEditable, where React does not render.
  *
- * ONE SHAPE for every chip since the 2026-10 kit rebuild: `rounded-md px-2 py-0.5 text-xs`. The
+ * ONE SHAPE for every chip since the 2026-10 kit rebuild: `rounded-sm px-2 py-0.5 text-xs`. The
  * app had four - a full pill (`rounded-control`, 9999px, whose own comments said "not a pill"), and
  * three `rounded-md` boxes at three paddings - and the same file was a pill before it was sent and
- * a box after. `rounded-md` is the radius the token rules give badges; a pill around a word reads
- * as something to click.
+ * a box after. `rounded-sm` (6px) since 2026-11-08, the Badge's corner: 8px on a 22px chip was all
+ * but a pill again ("The badges should not be pill style, they should be similar to the primary
+ * buttons, but smaller" - the maintainer).
  */
 export function chipClass(variant: ChipVariant = 'outline', opts: { pressed?: boolean; interactive?: boolean; fillClass?: string } = {}): string {
   return cn(
-    'inline-flex items-center gap-1 max-w-full rounded-md px-2 py-0.5 text-xs align-baseline whitespace-nowrap',
+    'inline-flex items-center gap-1 max-w-full rounded-sm px-2 py-0.5 text-xs align-baseline whitespace-nowrap',
     variant === 'outline' && 'border border-line text-ink-secondary',
     variant === 'file' && 'border border-line/60 bg-surface-alt text-ink-secondary',
     // A source type's or a skill's own fill, chosen by the caller (`fillClass`), with white on it.

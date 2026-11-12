@@ -1,5 +1,6 @@
 package ai.proxyma.core.system.controller;
 
+import ai.proxyma.core.common.update.UpdateStatusChangedEvent;
 import ai.proxyma.core.system.event.EventSinkService;
 import ai.proxyma.core.registry.event.ConnectorOperationEvent;
 import ai.proxyma.core.registry.event.ConnectorRegisteredEvent;
@@ -155,6 +156,21 @@ public class EventStreamController {
     @Async @EventListener
     public void on(ConnectorRemovedEvent e) {
         emit(typed("connector-removed", e.getConnectorId()), new EventSinkService.Scope(e.getUserId(), e.isShared()));
+    }
+
+    // The updater found, downloaded or staged a release (UpdateService - Desktop and Home Server; it is
+    // not loaded on Enterprise Server). The status and the version alone: the desktop window's "Restart
+    // to update" control re-reads /api/v1/update/status for the rest. GLOBAL, because the editions that
+    // update themselves have one user.
+    static final String UPDATE_STATUS = "update-status";
+
+    @Async @EventListener
+    public void on(UpdateStatusChangedEvent e) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("type", UPDATE_STATUS);
+        body.put("status", e.status());
+        body.put("version", e.version() == null ? "" : e.version());
+        emit(body, EventSinkService.Scope.GLOBAL);
     }
 
     private static Map<String, Object> typed(String type, Object connectorId) {

@@ -110,10 +110,10 @@ public class LocalPathController {
         String suggestedName = body != null ? body.get("suggestedName") : null;
         return Mono.fromCallable(() -> {
             if (GraphicsEnvironment.isHeadless()) {
-                return cancelled("No desktop session is available to show a folder chooser");
+                return cancelled(notice("No desktop session is available to show a folder chooser."));
             }
             if (!chooserOpen.compareAndSet(false, true)) {
-                return cancelled("A folder chooser is already open");
+                return cancelled(notice("A folder chooser is already open."));
             }
             try {
                 // Native Explorer first; the Swing chooser is the fallback for non-Windows hosts
@@ -357,6 +357,11 @@ public class LocalPathController {
         out.put("cancelled", true);
         if (reason != null) out.put("reason", reason);
         return ResponseEntity.ok(out);
+    }
+
+    // A reason the page shows and translates (tools/i18n/server-messages.mjs reads notice("...")).
+    private static String notice(String sentence) {
+        return sentence;
     }
 
     // answered=false means the native dialog never ran (not Windows, no PowerShell, script

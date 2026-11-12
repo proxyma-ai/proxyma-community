@@ -117,6 +117,14 @@ public class AgentNode {
     @Column(length = 500)
     private String stopNote;
 
+    /**
+     * Why it ended other than by finishing, as a code the agents map words in the reader's language
+     * - one of the REASON_ constants; null for an agent that finished, or has not ended. The stop
+     * note above is the sentence the agents read; this is what a person reads.
+     */
+    @Column(length = 16)
+    private String stopReason;
+
     /** The fan-out (AgentFanOuts) it works one item of, when it does; its report goes there. */
     private UUID fanOutId;
 
@@ -140,12 +148,29 @@ public class AgentNode {
 
     public static final String VERIFIER = "VERIFIER";
 
+    /** Stopped at a deadline: its own, or an ancestor's it was stopped with. */
+    public static final String REASON_DEADLINE = "DEADLINE";
+    /** Stopped at a spent budget: its own, or an ancestor's it was stopped with. */
+    public static final String REASON_BUDGET = "BUDGET";
+    /** Stopped with its whole tree at the run's own limit - a saved agent's run budget or time. */
+    public static final String REASON_RUN_LIMIT = "RUN_LIMIT";
+    /** Stopped by the agent that deployed it, or one above that. */
+    public static final String REASON_PARENT = "PARENT";
+    /** Stopped by the person whose tree it is. */
+    public static final String REASON_USER = "USER";
+    /** Failed: the provider kept refusing for its rate limit. */
+    public static final String REASON_RATE_LIMITED = "RATE_LIMITED";
+    /** Failed for any other reason. */
+    public static final String REASON_ERROR = "ERROR";
+
     public Double getBudgetUsd() { return budgetUsd; }
     public void setBudgetUsd(Double budgetUsd) { this.budgetUsd = budgetUsd; }
     public Instant getDeadlineAt() { return deadlineAt; }
     public void setDeadlineAt(Instant deadlineAt) { this.deadlineAt = deadlineAt; }
     public String getStopNote() { return stopNote; }
     public void setStopNote(String stopNote) { this.stopNote = stopNote; }
+    public String getStopReason() { return stopReason; }
+    public void setStopReason(String stopReason) { this.stopReason = stopReason; }
     public UUID getFanOutId() { return fanOutId; }
     public void setFanOutId(UUID fanOutId) { this.fanOutId = fanOutId; }
     public Integer getItemIndex() { return itemIndex; }

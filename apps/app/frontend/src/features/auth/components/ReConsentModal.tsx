@@ -82,8 +82,8 @@ export function ReConsentModal({ user }: Props) {
         <DialogTitle>{firstTime ? t('Please review our terms') : t('Our terms have changed')}</DialogTitle>
         <DialogDescription className="mt-2">
           {firstTime
-            ? t('Your account was created before we started recording which version of our terms each user accepted. Please review and accept them to continue.')
-            : t('We have updated our Terms of Service, Privacy Policy and End User License Agreement. Please review and accept the current version to continue.')}
+            ? t('Please review and accept our terms to continue.')
+            : t('Our terms have changed. Please review and accept them to continue.')}
         </DialogDescription>
 
         {/* The same component the signup and setup forms use, so the gate cannot end up asking

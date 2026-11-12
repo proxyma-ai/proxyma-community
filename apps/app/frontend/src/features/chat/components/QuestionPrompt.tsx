@@ -194,9 +194,9 @@ function Choices({ q, picked, other, disabled, onToggle, onOther }: {
           disabled={disabled}
           onChange={e => onOther(e.target.value)}
           placeholder={t('Other - type your own answer')}
-          // Its own focus ring, inside the row's frame: the kit ChoiceRow draws none round a field
-          // inside it, and `outline-none` left keyboard focus here invisible (CHAT-13).
-          className="flex-1 min-w-0 bg-transparent text-sm text-ink-primary placeholder:text-ink-disabled py-1 px-1 -mx-1 rounded-sm focus-ring"
+          // No border or ring of its own: the kit ChoiceRow's border takes the brand while the field
+          // has focus (CHAT-13 - keyboard focus stays visible), and a ring here overlapped that border.
+          className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm text-ink-primary placeholder:text-ink-disabled py-1"
         />
       </ChoiceRow>
     </div>

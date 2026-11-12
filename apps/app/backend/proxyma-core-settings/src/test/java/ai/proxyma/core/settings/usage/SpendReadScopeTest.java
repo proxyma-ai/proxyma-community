@@ -63,16 +63,16 @@ class SpendReadScopeTest {
     @DisplayName("a user's export of the call log is their own calls; an administrator's is everyone's")
     void exportIsScopedLikeThePage() {
         LlmCallRepository repository = mock(LlmCallRepository.class);
-        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(repository.search(any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
         LlmCallsController controller = new LlmCallsController(repository, mock(ModelPricingService.class));
         ReflectionTestUtils.setField(controller, "multiUser", true);
 
-        as("u-42", "ROLE_USER", controller.export(30, null, null, null, null, null, null, "csv"));
-        verify(repository).search(any(), any(), eq("u-42"), any(), any(), any(), any(), any(Pageable.class));
-        verify(repository, never()).search(any(), any(), isNull(), any(), any(), any(), any(), any(Pageable.class));
+        as("u-42", "ROLE_USER", controller.export(30, null, null, null, null, null, null, "csv", null, null));
+        verify(repository).search(any(), any(), eq("u-42"), any(), any(), any(), any(), any(), any(Pageable.class));
+        verify(repository, never()).search(any(), any(), isNull(), any(), any(), any(), any(), any(), any(Pageable.class));
 
-        as("a-1", "ROLE_ADMIN", controller.export(30, null, null, null, null, null, null, "json"));
-        verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(Pageable.class));
+        as("a-1", "ROLE_ADMIN", controller.export(30, null, null, null, null, null, null, "json", null, null));
+        verify(repository).search(any(), any(), isNull(), any(), any(), any(), any(), any(), any(Pageable.class));
     }
 }

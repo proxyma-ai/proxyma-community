@@ -73,6 +73,7 @@ node --test "${TESTS[@]}"
 step "4/4  Generated lists and catalogs"
 node tools/i18n/server-messages.mjs --check
 node tools/i18n/connector-labels.mjs --check
+node tools/i18n/tool-names.mjs --check
 I18N_STRICT=1 node libs/ui-kit/i18n/check-catalogs.mjs
 node libs/ui-kit/sync.mjs --check
 (cd apps/app/frontend && node src/styles/proxyma/verify-kit.mjs)

@@ -53,23 +53,22 @@ public class SalesforceConnectionPlugin implements ConnectionPlugin {
             .mark("salesforce")
             .auth(AuthMethod.of(AuthKind.OAUTH2_CODE, "Sign in with Salesforce",
                             FieldSpec.text("clientId", "Consumer key")
-                                    .help("From the org's External Client App, with OAuth, PKCE and the api, id and "
-                                            + "refresh_token scopes."),
+                                    .help("From the org's External Client App."),
                             FieldSpec.secret("clientSecret", "Consumer secret")),
                     AuthMethod.of(AuthKind.KEY_PAIR, "JWT bearer (integration user)",
                             FieldSpec.text(SalesforceJwt.CONSUMER_KEY, "Consumer key").asRequired()
-                                    .help("From the External Client App whose JWT bearer flow has your certificate."),
+                                    .help("From the External Client App that has your certificate."),
                             FieldSpec.text(AuthMethod.USERNAME, "User name").asRequired()
                                     .placeholder("integration@acme.com")
-                                    .help("The integration user's Salesforce user name, pre-authorized for the app."),
+                                    .help("The integration user's Salesforce user name."),
                             FieldSpec.secret(SalesforceJwt.PRIVATE_KEY, "Private key").asRequired()
-                                    .help("The PEM private key of the certificate uploaded to the app, unencrypted."),
+                                    .help("The unencrypted PEM private key of the certificate."),
                             FieldSpec.text(SalesforceJwt.AUDIENCE, "Audience").asAdvanced()
                                     .placeholder(SalesforceJwt.LOGIN)
-                                    .help("Told from the address when empty: https://test.salesforce.com for a sandbox.")))
+                                    .help("Optional. https://test.salesforce.com for a sandbox.")))
             .baseUrl(FieldSpec.url("baseUrl", "My Domain URL").asRequired()
                     .placeholder("https://acme.my.salesforce.com")
-                    .help("Your org's address. For a sandbox: https://acme--uat.sandbox.my.salesforce.com"))
+                    .help("Your org's address."))
             .sourceTypes(ConnectorType.SALESFORCE)
             .docsAnchor("salesforce")
             .build();

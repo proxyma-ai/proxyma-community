@@ -14,7 +14,6 @@ import ai.proxyma.core.settings.dto.GraphSettings;
 import ai.proxyma.core.settings.dto.GuardrailSettings;
 import ai.proxyma.core.settings.dto.QueryExpansionSettings;
 import ai.proxyma.core.settings.dto.RerankingSettings;
-import ai.proxyma.core.settings.dto.SubAgentSettings;
 import ai.proxyma.core.settings.dto.ChatSettings.Tone;
 import ai.proxyma.core.settings.service.SettingsService;
 import org.slf4j.Logger;
@@ -53,7 +52,6 @@ public class LlmProviderFactory {
     private volatile EmbeddingModel embeddingModel;
     private volatile ChatModel queryExpansionChatModel;
     private volatile ChatModel rerankingChatModel;
-    private volatile ChatModel subAgentChatModel;
     private volatile ChatModel ocrChatModel;
     private volatile ChatModel graphChatModel;
     private volatile ChatModel guardrailChatModel;
@@ -77,7 +75,6 @@ public class LlmProviderFactory {
     // Null whenever sub-agents have no model of their own or it failed to build - DelegateTool
     // treats null as "delegation unavailable" and tells the main agent to do the work itself,
     // rather than failing the turn.
-    public ChatModel getSubAgentChatModel() { return subAgentChatModel; }
 
     // Null whenever the OCR engine is not the vision one, no model is configured, or the model
     // failed to build - OcrService reports OCR as unavailable in that case rather than failing a
@@ -130,12 +127,10 @@ public class LlmProviderFactory {
         // A role now points somewhere else, or an instance's address changed: ask again.
         rememberedLimits.clear();
         switch (event.role()) {
-            // The sub-agents too: with no provider of their own they run on the agent's.
-            case ChatSettings.PREFIX -> { initChat(); initSubAgent(); }
+            case ChatSettings.PREFIX -> initChat();
             case EmbeddingSettings.PREFIX -> initEmbedding();
             case QueryExpansionSettings.PREFIX -> initQueryExpansion();
             case RerankingSettings.PREFIX -> initReranking();
-            case SubAgentSettings.PREFIX -> initSubAgent();
             case GraphSettings.PREFIX -> initGraph();
             case GuardrailSettings.PREFIX -> initGuardrail();
             case OcrSettings.PREFIX -> initOcr();
@@ -197,26 +192,6 @@ public class LlmProviderFactory {
         } catch (Exception e) {
             logInitFailure("reranking model", providerDisplayName(s.getProvider()), s.getModel(), e);
             rerankingChatModel = null;
-        }
-    }
-
-    private void initSubAgent() {
-        SubAgentSettings s = settingsService.getSettings(SubAgentSettings.PREFIX, SubAgentSettings.class);
-        // No model of its own: a sub-agent runs on the agent's (DefaultLlmGateway.bindingFor), so
-        // there is nothing to build here.
-        if (s.getModel() == null || s.getModel().isBlank()) {
-            subAgentChatModel = null;
-            return;
-        }
-        try {
-            // CONCISE: a sub-agent reports findings back to another model, not to a person -
-            // there is no value in it spending output tokens on prose style.
-            ChatSettings agent = settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class);
-            subAgentChatModel = buildChatModel(s.provider(agent), s.getModel(), Tone.CONCISE, s.maxOutputTokens(agent));
-            log.debug("Sub-agent model reinitialized: {}/{}", providerDisplayName(s.provider(agent)), s.getModel());
-        } catch (Exception e) {
-            logInitFailure("sub-agent model", providerDisplayName(s.getProvider()), s.getModel(), e);
-            subAgentChatModel = null;
         }
     }
 
@@ -298,9 +273,6 @@ public class LlmProviderFactory {
         RerankingSettings rerank = settingsService.getSettings(RerankingSettings.PREFIX, RerankingSettings.class);
         if (provider.equals(rerank.getProvider())) initReranking();
 
-        SubAgentSettings sub = settingsService.getSettings(SubAgentSettings.PREFIX, SubAgentSettings.class);
-        if (provider.equals(sub.provider(chat))) initSubAgent();
-
         OcrSettings ocr = settingsService.getSettings(OcrSettings.PREFIX, OcrSettings.class);
         if (provider.equals(ocr.getProvider())) initOcr();
 
@@ -320,7 +292,6 @@ public class LlmProviderFactory {
         initEmbedding();
         initQueryExpansion();
         initReranking();
-        initSubAgent();
         initOcr();
         initGraph();
         initGuardrail();
@@ -374,8 +345,8 @@ public class LlmProviderFactory {
      * request that failed are all {@link ModelLimits#UNKNOWN}, remembered for a shorter time.
      *
      * <p>The first call for a model is an HTTP request, waited on for at most
-     * {@link #LIMITS_WAIT_SECONDS}. It is made when the role's model is built (initChat,
-     * initSubAgent), so the readers on a request path find it already answered.
+     * {@link #LIMITS_WAIT_SECONDS}. It is made when the role's model is built (initChat), so the
+     * readers on a request path find it already answered.
      */
     public ModelLimits modelLimits(String providerId, String model) {
         if (providerId == null || providerId.isBlank() || model == null || model.isBlank()) return ModelLimits.UNKNOWN;

@@ -4,7 +4,8 @@ import {
   FilePlus, FileSearch, FileText, FileType, FileX, Files, FolderOpen, FolderTree, Save, GitBranch, GitCommitHorizontal,
   GitCompare, GitMerge, GitPullRequest, GitPullRequestArrow, GitPullRequestDraft, Globe, Info,
   History, List, MessageSquare, Paperclip, MessageSquarePlus, MessageSquareX, Pencil, Plug, Plus, Search, Tag,
-  Tags, Terminal, Timer, Trash2, UserCheck, Users, Waypoints, Wrench, Shapes, type LucideIcon,
+  Tags, Terminal, Timer, Trash2, UserCheck, Users, Waypoints, Wrench, Shapes, Gauge, ListVideo, ChartLine, Eye,
+  type LucideIcon,
 } from 'lucide-react'
 import { markIcon, type GlyphComponent } from '@/components/ui/kit'
 
@@ -66,6 +67,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   // The tree of agents (since 2026-10-28): every agent can deploy agents of its own.
   deployAgent:          Bot,          // a panel of its own in the thread, with this robot
   tellAgent:            BotMessageSquare, // a message to another agent of the tree
+  tellPerson:           MessageSquare,    // a Constellations lead's words to the person, in their lead chat
   awaitAgents:          Hourglass,    // waiting on the reports of agents it deployed
   controlAgent:         SlidersHorizontal, // pausing, resuming, stopping or listing them
   alarm:                AlarmClock,
@@ -122,6 +124,17 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   createBitbucketBranch:  GitBranch,
   deleteBitbucketBranch:  Trash2,
   attachJiraFile:         Paperclip,
+  // The YouTube channel: the comments read, and a reply posted under one.
+  listYouTubeComments:    MessageSquare,
+  getYouTubeViewerHistory: History,
+  listYouTubeChannelReplies: MessageSquareReply,
+  listWaitingYouTubeReplies: MessageSquareReply,
+  replyToYouTubeComment:  MessageSquareReply,
+  // ... and the channel's numbers: its stats, its uploads, the Analytics reports, the impressions.
+  getYouTubeChannelStats: Gauge,
+  listYouTubeVideos:      ListVideo,
+  getYouTubeAnalytics:    ChartLine,
+  getYouTubeReach:        Eye,
   searchConversations:    History,
   attachConfluenceFile:   Paperclip,
   updateConfluenceLabels: Tags,
@@ -169,8 +182,8 @@ const VERB_ICONS: Record<string, LucideIcon> = {
   log:      Timer,
   render:   AppWindow,
   convert:  FileType,
-  // Not in CONJUGATIONS - those tools fall through to derive()'s humanized fallback for their
-  // wording. An icon is cheaper to be right about than a verb, so they get one anyway.
+  // Not in CONJUGATIONS - every tool's wording is in PHRASES now, and these verbs never needed
+  // conjugating. An icon is cheaper to be right about than a verb, so they get one anyway.
   browse:   FolderTree,
   call:     Terminal,
   download: Download,

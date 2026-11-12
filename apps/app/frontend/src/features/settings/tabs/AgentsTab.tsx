@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useState, useEffect, useRef } from 'react'
+import { MarkdownField } from '@/components/ui/MarkdownField'
+import { useQuery } from '@tanstack/react-query'
 import {
-  Button, Caption, DialogBody, DialogFooter, DialogHeader, FieldSkeleton, InlineCode, ListRow,
-  Presence, RadioGroupSkeleton, SettingsSection, SettingsSections, Skeleton, SwitchRow, Textarea,
+  Button, Caption, DialogBody, DialogHeader, FieldSkeleton, InlineCode, ListRow,
+  Presence, RadioGroupSkeleton, SettingsSection, SettingsSections, Skeleton, SwitchRow,
 } from '@/components/ui/kit'
 import { configApi } from '@/services/configApi'
 import { settingsApi } from '../services/settingsApi'
@@ -11,6 +12,7 @@ import { withReason } from '@/services/apiError'
 import { useSettings } from '../hooks/useSettings'
 import { useResolved } from '../pages/shared'
 import { useModelLimits } from '../hooks/useModelLimits'
+import { useFocusLeave, useSettingGroup } from '../hooks/useSettingGroup'
 import { unsetLimit, type UnsetLimit } from '../utils/modelDefaults'
 import { useAuthStore } from '@/store/authStore'
 import { useToastStore } from '@/store/toastStore'
@@ -18,11 +20,12 @@ import { FEATURES } from '@/config/features'
 import { queryClient } from '@/app/QueryClient'
 import { useTranslation } from '@/i18n'
 import { Rich } from '@/i18n/kit'
-import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
+import { ModalShell } from '@/components/ui/ModalShell'
 import type { TabProps } from '../pages/shared'
 import { ChoiceField, ProviderModelRow, useModelComboboxLabels, useProviderInstances } from '../components/settingsParts'
 import { useProviderModels } from '../hooks/useProviderModels'
-import { Combobox, FormColumns, Select, Tooltip, iconButton } from '@/components/ui/kit'
+import { Combobox, FormColumns, IconButton, Select } from '@/components/ui/kit'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 import { X } from 'lucide-react'
 
 // - Agents tab: the main agent, then the agents it deploys -
@@ -259,8 +262,8 @@ export function ChatTab({ trackChange, pending }: TabProps) {
           <ChoiceField
             label={t('Prompt cache')}
             hint={cacheField === 'on'
-              ? t('How long the provider keeps the conversation cached; 1 hour costs more.')
-              : t('To cache, switch {provider} to Anthropic Messages in AI Providers.', { provider: agentInstance?.name ?? '' })}
+              ? t('How long the conversation stays cached. 1 hour costs more.')
+              : t('To cache, switch {provider} to Anthropic Messages.', { provider: agentInstance?.name ?? '' })}
             value={promptCache}
             onChange={v => trackChange('chat', 'prompt-cache', v)}
             options={PROMPT_CACHE_OPTIONS}
@@ -282,7 +285,7 @@ export function ChatTab({ trackChange, pending }: TabProps) {
             title={t('System prompt')}
             caption={canEditSystemPrompt
               ? t("Overrides the agent's entire system prompt")
-              : t('The instructions the agent starts every conversation with. Read-only.')}
+              : t('What the agent starts every conversation with. Read-only.')}
           />
         </Presence>
       </SettingsSection>
@@ -299,38 +302,6 @@ export function ChatTab({ trackChange, pending }: TabProps) {
   )
 }
 
-// THE AGENTS THE AGENT DEPLOYS (the tree of agents, since 2026-10-28; "sub-agents" before then,
-// and the settings prefix is still `sub-agent`). Every agent can deploy agents of its own, each in
-// a conversation of its own, down to the maximum depth set here. Lives on this tab rather than a
-// tab of its own because a deployed agent is still the agent, run by the same loop. Kept visually
-// separate (divider + its own description). The model and limits are what a deployed agent runs
-// on unless the agent deploying it names a model. A deployed agent runs as a conversation of its
-// own on the agent's loop, so it takes the agent's output ceiling, context window and prompt cache;
-// the four deployed-agent fields for those and a time limit went on 2026-10-28, when nothing read
-// them any more (the model still titles new conversations).
-//
-// NOTHING HERE HAS TO BE SET, since 2026-10-03: every field follows the agent's until it is given
-// a value of its own (SubAgentSettings), and the empty choice of each control says so. Choosing it
-// again clears the stored value - an empty value takes performSave's deleteField path.
-function SubAgentModelRow({ trackChange, pending }: TabProps) {
-  const { t } = useTranslation()
-  const agentModel = useResolved('chat', 'model', pending, '')
-  const agentProvider = useResolved('chat', 'provider', pending, '')
-  return (
-    <ProviderModelRow
-      role="sub-agent"
-      providerLabel="Deployed agent provider"
-      modelLabel="Deployed agent model"
-      modelPlaceholder={agentModel || 'claude-haiku-4-5'}
-      unsetProviderLabel={t('Same as the agent')}
-      fallbackProvider={agentProvider}
-      modelHint={t("Empty uses the agent's model. A cheaper one here cuts cost, and it also titles new conversations.")}
-      trackChange={trackChange}
-      pending={pending}
-    />
-  )
-}
-
 /**
  * WHICH MODELS AN AGENT MAY NAME for an agent it deploys (the maintainer's request, 2026-10-29): any
  * model a configured provider lists, only the entries chosen here, or all but them. An entry is a
@@ -341,22 +312,27 @@ function SubAgentModelRow({ trackChange, pending }: TabProps) {
 function DeployedModelRule({ trackChange, pending }: TabProps) {
   const { t } = useTranslation()
   const rule = useResolved('sub-agent', 'model-rule', pending, 'ANY') || 'ANY'
+  // THE LIST IS ONE SETTING, saved whole when the person leaves it (the click-to-edit rule,
+  // 2026-11-02): a row's provider and its model are one entry, and a row half chosen - a provider
+  // whose model is still being typed - is not an entry anybody meant. The rule above saves on change.
+  const list = useSettingGroup()
   const raw = useResolved('sub-agent', 'model-list', pending, '')
-  const entries = parseModelList(raw)
+  const entries = parseModelList(list.value('sub-agent', 'model-list', raw))
   const { data: instances = [] } = useProviderInstances()
-  const save = (next: ModelEntry[]) => trackChange('sub-agent', 'model-list', formatModelList(next))
+  const save = (next: ModelEntry[]) =>
+    list.set({ prefix: 'sub-agent', field: 'model-list', value: formatModelList(next) }, { saved: raw })
   return (
     <div className="space-y-3">
       <ChoiceField
         label={t('Models agents may choose')}
-        hint={t('Applies when an agent picks a model for one it deploys.')}
+        hint={t('For agents that pick a model for others.')}
         value={rule}
         onChange={v => trackChange('sub-agent', 'model-rule', v)}
         options={MODEL_RULE_OPTIONS}
         horizontal
       />
       <Presence show={rule !== 'ANY'}>
-        <div className="space-y-2">
+        <div className="space-y-2" {...list.bind}>
           {entries.map((e, i) => (
             <ModelRuleEntry
               key={i}
@@ -424,11 +400,7 @@ function ModelRuleEntry({ entry, instances, onChange, onRemove }: {
           aria-label={t('Model')}
         />
       </FormColumns>
-      <Tooltip label={t('Remove')}>
-        <button type="button" onClick={onRemove} aria-label={t('Remove')} className={iconButton('md', 'danger')}>
-          <X size={16} aria-hidden="true" />
-        </button>
-      </Tooltip>
+      <IconButton icon={X} label={t('Remove')} tone="danger" onClick={onRemove} />
     </div>
   )
 }
@@ -440,6 +412,16 @@ function followingAgent(options: { key: string; label: string }[], agentValue: s
   return [{ key: '', label: agents ? `${same} (${t(agents)})` : same }, ...options]
 }
 
+// THE AGENTS THE AGENT DEPLOYS (the tree of agents, since 2026-10-28; "sub-agents" before then,
+// and the settings prefix is still `sub-agent`). Every agent can deploy agents of its own, each in
+// a conversation of its own, down to the maximum depth set here. Lives on this tab rather than a
+// tab of its own because a deployed agent is still the agent, run by the same loop. Kept visually
+// separate (divider + its own description).
+//
+// NO MODEL OF ITS OWN, since 2026-11-02 (the maintainer: the provider and model for deployed agents
+// "contradicts with the option below"): a deployed agent runs on the model the agent deploying it
+// names, from the models this section allows, else on its parent's. The pickers, and the
+// `sub-agent` provider, model and endpoint settings behind them, are gone.
 function SubAgentSection({ trackChange, pending }: TabProps) {
   const { t } = useTranslation()
   // No switch, since 2026-10-03 (the maintainer's request): deploying agents is how the agent
@@ -457,11 +439,11 @@ function SubAgentSection({ trackChange, pending }: TabProps) {
   return (
     <SettingsSection
       title={t('Deployed agents')}
-      caption={t('Agents the main agent deploys to handle parts of the work.')}
+      caption={t('Agents that handle parts of the work.')}
     >
       <ChoiceField
         label={t('Max depth')}
-        hint={t('How many levels of agents may work under the one in your conversation.')}
+        hint={t('How many levels of agents may work under yours.')}
         value={maxDepth}
         onChange={v => trackChange('sub-agent', 'max-depth', v)}
         options={MAX_DEPTH_OPTIONS}
@@ -477,8 +459,6 @@ function SubAgentSection({ trackChange, pending }: TabProps) {
         checked={peerMessaging}
         onChange={v => trackChange('sub-agent', 'peer-messaging', String(v))}
       />
-
-      <SubAgentModelRow trackChange={trackChange} pending={pending} />
 
       <DeployedModelRule trackChange={trackChange} pending={pending} />
 
@@ -496,23 +476,31 @@ function SubAgentSection({ trackChange, pending }: TabProps) {
   )
 }
 
-// Only rendered when canEditSystemPrompt - SUPER_ADMIN, in the server edition only (see caller;
-// desktop does not show this at all) - so the modal is already gated on visibility and its own
-// content doesn't need to call that out again. See ChatService.resolveSystemPrompt and
+// Only rendered when canReadSystemPrompt - editable for a SUPER_ADMIN in the server edition, and
+// read-only on Desktop proper (see caller). See ChatService.resolveSystemPrompt and
 // ChatSystemPromptController for the matching backend enforcement.
 //
 // There is one prompt (no smart/light variant): the built-in default or an admin's saved custom
 // prompt, backed by a markdown file on disk (SystemPromptService), not a page-level settings field,
-// so this modal owns its own Save/Cancel and calls the dedicated endpoints directly - same
-// reasoning as SkillModal, and deliberately NOT wired through trackChange/pending: that made every
-// keystroke here dirty the whole Settings page, so the page's own Save/Cancel bar showed through
-// this modal's blurred backdrop while editing a prompt that Done didn't actually persist on its own.
+// so this dialog calls the dedicated endpoints directly - same reasoning as SkillModal.
+//
+// SAVED WHEN IT IS LEFT, since 2026-11-02 (the click-to-edit rule): leaving the editor writes the
+// prompt if it changed, and so does closing the dialog - there is no Save, Cancel or "Discard
+// unsaved changes?" any more. "Reset to default" writes the default at once. A refused save keeps
+// the text in the editor (a toast says why), so leaving it again tries again; the endpoint is a
+// plain overwrite, with nothing to say whether someone else saved in between.
 function SystemPromptModal({ onClose, readOnly = false }: { onClose: () => void; readOnly?: boolean }) {
   const { t } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
   const [resetting, setResetting] = useState(false)
   const [value, setValue] = useState('')
   const [seeded, setSeeded] = useState(false)
+  // What the server holds - the text the editor opened on, then the last one saved. Refs, so a save
+  // made as the dialog closes reads the text as it was left.
+  const saved = useRef<string | null>(null)
+  const current = useRef('')
+  current.current = value
+  const [status, setStatus] = useState<'saving' | 'saved' | null>(null)
 
   // The effective prompt (an admin's saved custom prompt, or the built-in default) - never blank,
   // so the editor always opens on real content. A reader who cannot edit is shown what a
@@ -526,20 +514,42 @@ function SystemPromptModal({ onClose, readOnly = false }: { onClose: () => void;
   // A prompt saved by a version before 0.1.2 may still carry these. Nothing newer does.
   const hasLegacyMarkers = value.includes('{{#IF_DELEGATION}}')
 
-  // Seeds the editable textarea once, so the user's own edits are never clobbered by a background
-  // refetch - same one-time catch-up pattern as SkillModal's detail field.
-  // The seeded prompt is also the baseline the dirty check compares against.
-  const { dirty, rebase } = useFormDirty(value)
+  // Seeds the editor once, so the user's own edits are never clobbered by a background refetch -
+  // same one-time catch-up pattern as SkillModal's detail field.
   useEffect(() => {
     if (seeded) return
-    if (prompt !== undefined) { setValue(prompt); rebase(prompt); setSeeded(true) }
-  }, [prompt, seeded, rebase])
+    if (prompt !== undefined) { setValue(prompt); saved.current = prompt; setSeeded(true) }
+  }, [prompt, seeded])
+
+  // Writes `text` when it differs from what the server holds.
+  async function saveText(text: string) {
+    if (readOnly || saved.current === null || text === saved.current) return
+    setStatus('saving')
+    try {
+      await settingsApi.saveChatSystemPrompt(text)
+      saved.current = text
+      void queryClient.invalidateQueries({ queryKey: ['chat-system-prompt'] })
+      setStatus('saved')
+    } catch (e) {
+      setStatus(null)
+      addToast(withReason(t('Failed to save system prompt'), e), 'danger')
+    }
+  }
+  // Leaving the editor - or the dialog closing - saves it.
+  const leave = useFocusLeave(() => { void saveText(current.current) })
+  useEffect(() => {
+    if (status !== 'saved') return
+    const timer = setTimeout(() => setStatus(null), 2500)
+    return () => clearTimeout(timer)
+  }, [status])
 
   // A failure says so - it was an unhandled rejection, and the button simply stopped turning.
   async function resetToDefault() {
     setResetting(true)
     try {
-      setValue(await settingsApi.getChatSystemPromptDefault())
+      const text = await settingsApi.getChatSystemPromptDefault()
+      setValue(text)
+      await saveText(text)
     } catch (e) {
       addToast(withReason(t('Could not load the default prompt'), e), 'danger')
     } finally {
@@ -547,86 +557,68 @@ function SystemPromptModal({ onClose, readOnly = false }: { onClose: () => void;
     }
   }
 
-  const save = useMutation({
-    mutationFn: () => settingsApi.saveChatSystemPrompt(value),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-system-prompt'] })
-      addToast(t('System prompt saved'), 'success')
-      onClose()
-    },
-    onError: (e: unknown) => addToast(withReason(t('Failed to save system prompt'), e), 'danger'),
-  })
-
   return (
     <ModalShell
       onClose={onClose}
-      closable={!save.isPending}
-      dirty={dirty}
-      // A fixed height, so the dialog does not change size as the prompt loads; the textarea is
+      // A fixed height, so the dialog does not change size as the prompt loads; the editor is
       // its one scrolling region.
       size="xl"
       fill
       ariaLabel={t('System prompt')}
     >
-      {requestClose => (<>
-        <DialogHeader
-          title={t('System prompt')}
-          actions={!readOnly && (
+      <DialogHeader
+        title={t('System prompt')}
+        actions={!readOnly && (
+          <div className="flex items-center gap-3">
+            {/* The quiet word that the prompt was written, as beside the Settings window's title. */}
+            <SaveStatus word={status} />
             <Button variant="hyperlink" onClick={resetToDefault} disabled={resetting}>
               {resetting ? t('Resetting...') : t('Reset to default')}
             </Button>
-          )}
-        />
-        <DialogBody className="flex-1 min-h-0 flex flex-col gap-3">
-          {/* What the server does to this text (SystemPromptService, ChatService.resolveSystemPrompt),
-              so an admin editing it knows what not to "clean up" and what they will not find in it:
-              PRODUCT_NAME becomes the deployment's name, and the section on delegating is added from
-              outside. The IF_DELEGATION markers are named only to a prompt that still has them. */}
-          {readOnly ? (
-            <Caption>
-              {t("What the agent is given when a conversation starts. Today's date and the lists of skills and workflows are added to it.")}
-            </Caption>
-          ) : (
-            <Caption>
-              <InlineCode>{'{{PRODUCT_NAME}}'}</InlineCode>{' '}
-              {t("becomes this deployment's name - keep it as it is. The section on deploying agents is added to this prompt automatically.")}
-              {/* One sentence with its two markers as slots, so a translation orders it its own way. */}
-              {hasLegacyMarkers && (<>
-                {' '}
-                <Rich
-                  text={t('Text between {open} and {close} is included only while the agent can deploy agents.')}
-                  parts={{
-                    open: <InlineCode>{'{{#IF_DELEGATION}}'}</InlineCode>,
-                    close: <InlineCode>{'{{/IF_DELEGATION}}'}</InlineCode>,
-                  }}
-                />
-              </>)}
-            </Caption>
-          )}
-          {/* Read-only is a DISABLED field, as an official skill's Detail is (0.28.0 feedback): the
-              reader cannot change it, so it must not look like a box waiting to be typed in. */}
-          <Textarea
+          </div>
+        )}
+      />
+      <DialogBody className="flex-1 min-h-0 flex flex-col gap-3">
+        {/* What the server does to this text (SystemPromptService, ChatService.resolveSystemPrompt),
+            so an admin editing it knows what not to "clean up" and what they will not find in it:
+            PRODUCT_NAME becomes the deployment's name, and the section on delegating is added from
+            outside. The IF_DELEGATION markers are named only to a prompt that still has them. */}
+        {readOnly ? (
+          <Caption>
+            {t('What the agent starts every conversation with.')}
+          </Caption>
+        ) : (
+          <Caption>
+            <InlineCode>{'{{PRODUCT_NAME}}'}</InlineCode>{' '}
+            {t("becomes this deployment's name. Keep it as it is.")}
+            {/* One sentence with its two markers as slots, so a translation orders it its own way. */}
+            {hasLegacyMarkers && (<>
+              {' '}
+              <Rich
+                text={t('Text between {open} and {close} is used only while agents can be deployed.')}
+                parts={{
+                  open: <InlineCode>{'{{#IF_DELEGATION}}'}</InlineCode>,
+                  close: <InlineCode>{'{{/IF_DELEGATION}}'}</InlineCode>,
+                }}
+              />
+            </>)}
+          </Caption>
+        )}
+        {/* Read-only is a DISABLED field, as an official skill's Detail is (0.28.0 feedback): the
+            reader cannot change it, so it must not look like a box waiting to be typed in. The
+            wrapper hears the editor's focus leaving, which is when the prompt is saved. */}
+        <div className="flex-1 min-h-0 flex flex-col" {...leave}>
+          <MarkdownField
             fill
             value={value}
-            readOnly={readOnly}
             disabled={readOnly}
             aria-label={t('System prompt')}
-            onChange={e => setValue(e.target.value)}
-            className="py-2"
+            onChange={setValue}
           />
-        </DialogBody>
-        {/* No footer when there is nothing to save: a dialog closes on its backdrop and on Escape,
-            and a lone Close button is the footer the rule forbids (.claude/rules/frontend.md). */}
-        {!readOnly && (
-          <DialogFooter>
-            <Button variant="secondary" onClick={requestClose} disabled={save.isPending}>{t('Cancel')}</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
-              {save.isPending ? t('Saving...') : t('Save')}
-            </Button>
-          </DialogFooter>
-        )}
-      </>)}
+        </div>
+      </DialogBody>
+      {/* No footer: nothing waits for a Save, and a dialog closes on its backdrop and on Escape - a
+          lone Close button is the footer the rule forbids (.claude/rules/frontend.md). */}
     </ModalShell>
   )
 }
-

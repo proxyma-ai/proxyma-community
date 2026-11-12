@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { useStore } from 'zustand'
 import { History, LogIn, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Power, Settings, SquarePen, Trash2 } from 'lucide-react'
 import {
-  AppSidebar, BRAND_LINK, ConfirmDialog, HoverActions, IconButton, Presence, SidebarSection, Tooltip, WorkingBadge, cn, sidebarRow, textLink, useIdleRotation,
+  AppSidebar, BRAND_LINK, Button, Caption, ConfirmDialog, HoverActions, IconButton, Presence, SidebarSection, StatusDot, Tooltip, WorkingBadge, cn, sidebarRow, useIdleRotation,
 } from '@/components/ui/kit'
 import { Logo } from '@/components/ui/Logo'
 import { AppearanceRow, LanguageRow } from './SidebarPreferences'
@@ -22,6 +22,7 @@ import { useSettingsModalStore } from '@/store/settingsModalStore'
 import { useToastStore } from '@/store/toastStore'
 import { withReason } from '@/services/apiError'
 import type { Conversation } from '@/features/chat/types/chat.types'
+import { conversationTitle } from '@/features/chat/utils/conversationTitle'
 import { useFeedbackModalStore } from '@/store/feedbackModalStore'
 import { useQuitStore } from '@/store/quitStore'
 import { FEATURES } from '@/config/features'
@@ -168,7 +169,7 @@ export function Sidebar({ compact = false }: {
               <Presence show={!!busy} collapse={false} className={folded ? 'absolute top-0.5 right-0.5' : undefined}>
                 {busy && (
                   <WorkingBadge count={busy.count}
-                    label={t('{count} conversation still working - go to the latest|{count} conversations still working - go to the latest', { count: busy.count })}
+                    label={busy.label ?? t('{count} conversation still working|{count} conversations still working', { count: busy.count })}
                     onClick={() => navigate(busy.path)} />
                 )}
               </Presence>
@@ -252,15 +253,15 @@ function RecentChats({ activeId, onOpen, onHistory, onDeletedOpen }: {
       />
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col gap-0.5">
         {recent.length === 0 ? (
-          <p className="px-2.5 py-1 text-xs text-ink-caption">{t('Your conversations appear here.')}</p>
+          <Caption className="px-2.5 py-1">{t('Your conversations appear here.')}</Caption>
         ) : recent.map(c => (
           <div key={c.id} className="group relative shrink-0">
-            <Tooltip label={c.title || t('New conversation')} fullWidth>
+            <Tooltip label={conversationTitle(c, t)} fullWidth>
               <button type="button" onClick={() => onOpen(c.id)} aria-current={c.id === activeId ? 'page' : undefined}
                 className={cn(sidebarRow({ active: c.id === activeId }), 'h-8 touch:h-10 touch:pr-16 mouse:group-hover:pr-16 group-focus-within:pr-16')}>
                 {c.pinned && <Pin size={12} className="shrink-0 text-ink-caption fill-current" aria-label={t('Pinned')} />}
-                <span className="flex-1 min-w-0 truncate text-left">{c.title || t('New conversation')}</span>
-                {running.includes(c.id) && <span aria-label={t('Working')} className="shrink-0 w-1.5 h-1.5 rounded-full bg-success animate-pulse" />}
+                <span className="flex-1 min-w-0 truncate text-left">{conversationTitle(c, t)}</span>
+                {running.includes(c.id) && <StatusDot label={t('Working')} />}
               </button>
             </Tooltip>
             <HoverActions className="absolute right-1 top-1/2 -translate-y-1/2">
@@ -271,18 +272,17 @@ function RecentChats({ activeId, onOpen, onHistory, onDeletedOpen }: {
           </div>
         ))}
         <Presence show={canShowMore && recent.length > 0}>
-          <button type="button" onClick={showMore} disabled={list.isFetchingNextPage}
-            className={cn(textLink('quiet'), 'text-xs mx-2.5 my-1 self-start')}>
+          <Button variant="quiet" size="sm" onClick={showMore} disabled={list.isFetchingNextPage} className="mx-2.5 my-1 self-start">
             {t('Show more')}
-          </button>
+          </Button>
         </Presence>
       </div>
       {confirming && (
         <ConfirmDialog
           title={t('Delete conversation')}
           description={t('You are about to {verb}:', { verb: t('delete') })}
-          subject={confirming.title}
-          consequences={[t('The conversation and every message in it are deleted. This cannot be undone.')]}
+          subject={conversationTitle(confirming, t)}
+          consequences={[t('The conversation is deleted. This cannot be undone.')]}
           confirmLabel={t('Delete')}
           cancelLabel={t('Cancel')}
           pendingLabel={t('Deleting...')}

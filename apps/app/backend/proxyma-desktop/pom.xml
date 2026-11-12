@@ -6,7 +6,7 @@
     <parent>
         <groupId>ai.proxyma</groupId>
         <artifactId>proxyma-parent</artifactId>
-        <version>0.40.1</version>
+        <version>0.41.0</version>
     </parent>
 
     <artifactId>proxyma-desktop</artifactId>
@@ -268,6 +268,28 @@
                                     <property name="out" value="${project.build.outputDirectory}/static/THIRD-PARTY-NOTICES.txt"/>
                                     <property name="copy" value="${project.build.directory}/THIRD-PARTY-NOTICES.txt"/>
                                 </ant>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- THE SPLASH'S ART, from the application jar this build packages
+                         (proxyma.app.jar): whatever it carries under splash/ is copied into the
+                         launcher jar, where SplashSlides looks for it. An application jar that
+                         carries none - this module's own - adds nothing, and the splash draws its
+                         own. Package phase and after the shade above, so the installer, the
+                         launcher part and the .deb all take the jar with it. -->
+                    <execution>
+                        <id>launcher-splash-art</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <zip destfile="${project.build.directory}/${project.artifactId}-${project.version}-launcher.jar"
+                                     update="true">
+                                    <mappedresources>
+                                        <zipfileset src="${proxyma.app.jar}" includes="BOOT-INF/classes/splash/**" erroronmissingarchive="false"/>
+                                        <globmapper from="BOOT-INF/classes/*" to="*"/>
+                                    </mappedresources>
+                                </zip>
                             </target>
                         </configuration>
                     </execution>

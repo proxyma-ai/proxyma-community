@@ -297,22 +297,12 @@ final class TrayMenu {
     }
 
     /**
-     * Text at the app's weight, 400. The shipped Space Grotesk is the VARIABLE font, whose default
-     * instance is 300, and Java cannot select a point on its weight axis - so the outline is filled
-     * and then stroked by a fraction of a pixel, which is the difference between the two. Falling
-     * back to a sans-serif, the stroke is skipped.
+     * Text at the app's weight, 400. The shipped Inter is the STATIC Regular instance (since
+     * 2026-10-30), so it is drawn as it is. Space Grotesk before it was the variable font, whose
+     * default instance is 300, and its outline had to be stroked by a fraction of a pixel to reach 400.
      */
     private static void drawRegular(Graphics2D g2, String text, int x, int y) {
-        if (UI_FONT.getFamily().equals(Font.SANS_SERIF)) {
-            g2.drawString(text, x, y);
-            return;
-        }
-        Shape outline = g2.getFont().createGlyphVector(g2.getFontRenderContext(), text).getOutline(x, y);
-        g2.fill(outline);
-        Stroke previous = g2.getStroke();
-        g2.setStroke(new BasicStroke(0.45f));
-        g2.draw(outline);
-        g2.setStroke(previous);
+        g2.drawString(text, x, y);
     }
 
     private static Color blend(Color top, Color under, float alpha) {
@@ -371,9 +361,9 @@ final class TrayMenu {
         int DwmSetWindowAttribute(Pointer hwnd, int attribute, IntByReference value, int size);
     }
 
-    /** Space Grotesk, the app's UI face, shipped in the jar beside the splash's Orbitron. */
+    /** Inter Regular, the app's UI face, shipped in the jar beside the splash's Orbitron. */
     private static Font loadUiFont() {
-        try (InputStream in = TrayMenu.class.getResourceAsStream("/fonts/SpaceGrotesk.ttf")) {
+        try (InputStream in = TrayMenu.class.getResourceAsStream("/fonts/Inter.ttf")) {
             if (in != null) return Font.createFont(Font.TRUETYPE_FONT, in);
         } catch (Exception e) {
             log.debug("Could not load the UI font: {}", e.getMessage());

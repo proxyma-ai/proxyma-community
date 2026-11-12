@@ -55,8 +55,12 @@ import java.util.UUID;
         @Index(name = "idx_llm_call_subject", columnList = "subjectKind,subjectId,recordedAt"),
         @Index(name = "idx_llm_call_role", columnList = "role,recordedAt"),
         @Index(name = "idx_llm_call_model", columnList = "provider,model,recordedAt"),
+        @Index(name = "idx_llm_call_conversation", columnList = "conversationId,recordedAt"),
 })
 public class LlmCall {
+
+    /** The longest conversation id kept; a conversation's id is a UUID. */
+    public static final int CONVERSATION_ID_MAX = 64;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -127,9 +131,22 @@ public class LlmCall {
     /** Until when what the call read or wrote stays in the provider's cache; null with no outcome. */
     private Instant cacheWarmUntil;
 
+    /**
+     * The conversation the call was made for - a chat turn's, a deployed agent's, a saved agent's run,
+     * its title and its condensations - or null for a call made for none (embeddings, rerank, background
+     * work) and a row written before 2026-11-04. Its ID ONLY, never a word of the conversation: what
+     * agent it was is looked up when the log is read (LlmCallLabels), not stored. Nullable, as every
+     * column added to a table that already has rows must be.
+     */
+    @Column(length = CONVERSATION_ID_MAX)
+    private String conversationId;
+
     public LlmCall() {
         this.recordedAt = Instant.now();
     }
+
+    public String getConversationId() { return conversationId; }
+    public void setConversationId(String conversationId) { this.conversationId = conversationId; }
 
     public String getCostSource() { return costSource; }
     public void setCostSource(String costSource) { this.costSource = costSource; }

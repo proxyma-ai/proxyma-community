@@ -17,6 +17,9 @@ class SettingsWriteValidationTest {
     void unknownUserFieldIsRefused() {
         assertThat(SettingsController.invalidWrite("jira", "anything-at-all", "x")).isNotNull();
         assertThat(SettingsController.invalidWrite("onboarding", "tour-completed", "true")).isNull();
+        // Each page walkthrough's "seen" flag (useWalkthroughOnFirstVisit); refused, it showed on every visit.
+        assertThat(SettingsController.invalidWrite("onboarding", "youtube-tour-completed", "true")).isNull();
+        assertThat(SettingsController.invalidWrite("onboarding", "constellations-tour-completed", "true")).isNull();
         assertThat(SettingsController.invalidWrite("connector-tools", "connector-management", "true")).isNull();
     }
 

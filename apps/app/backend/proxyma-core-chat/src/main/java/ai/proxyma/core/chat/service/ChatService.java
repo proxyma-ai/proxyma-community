@@ -132,40 +132,41 @@ public class ChatService {
     // act more naturally - e.g. greet the user by name - without contradicting a custom prompt that
     // doesn't expect a name placeholder at all.
     private String resolveSystemPrompt(String userDisplayName, String userId, String conversationId) {
-        // Delegation guidance is put in by resolve() when this deployment can actually delegate -
-        // `delegate` is not advertised as a tool when it cannot (ToolSkillGating), so the prompt must
-        // not name it. Read here and persisted in the SystemMessage like everything else below - and
-        // written again at the start of a later turn if any of it has changed since. See
-        // refreshSystemPrompt.
-        // Every agent may deploy agents (AgentTree): the guidance on how is always in.
-        boolean canDelegate = true;
-        String prompt = SystemPromptService.instructions(systemPromptService.read(),
-                productIdentity.getProductName(), canDelegate);
-        // Injected instead of a getCurrentDateTime tool - the agent needs "what's today" far more
-        // often than a tool round-trip is worth, and this covers it for free. Resolved at
-        // conversation start and persisted with the SystemMessage (same staleness tradeoff as the
-        // skills block below), so a conversation resumed days later still shows its start date -
-        // acceptable, and the only case where knowing the exact live time would have mattered.
-        java.time.LocalDate today = java.time.LocalDate.now();
-        prompt += SystemPromptService.DATE_LEAD + today + " ("
-                + today.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + ").";
-        if (userDisplayName != null && !userDisplayName.isBlank()) {
-            prompt += "\n\nYou are talking with " + userDisplayName + ". You may address them by name " +
-                    "when it feels natural (e.g. a greeting), but don't force it into every reply.";
-        }
+        // A module's own head for a conversation it owns (ChatModule.basePrompt - a saved agent's,
+        // SystemPromptService.AGENT_BASE or its own), in place of the product's instructions, their
+        // delegation guidance and the reminder at the end. Everything after the head is as for any
+        // conversation.
+        String moduleBase = moduleBasePrompt(conversationId, userId);
+        // Delegation guidance is put in by resolve() - every agent may deploy agents (AgentTree), so
+        // it is always in the product's own prompt. Read here and persisted in the SystemMessage like
+        // everything else below - and written again at the start of a later turn if any of it has
+        // changed since. See refreshSystemPrompt.
+        boolean productBase = moduleBase == null;
+        String productName = productIdentity.getProductName();
+        String prompt = productBase
+                ? SystemPromptService.instructions(systemPromptService.read(), productName, true)
+                : moduleBase.replace("{{PRODUCT_NAME}}", productName == null ? "" : productName);
         // What a product module says about THIS conversation - the key-account panel names the one
-        // account it works on (ChatModule). Identity only, so refreshSystemPrompt's whole-prompt
-        // comparison does not see it move between turns.
+        // account it works on, a saved agent who it is (ChatModule). Identity only, so
+        // refreshSystemPrompt's whole-prompt comparison does not see it move between turns. Right
+        // after the head, before anything that differs between two conversations of the same agent
+        // (the date, the person): the provider caches the prompt by its PREFIX, so an agent's
+        // conversations share everything up to the first line that differs.
         prompt += moduleContext(conversationId, userId);
-        // Appended last, and - unlike the block this replaced - never rewritten afterwards. It
-        // advertises every skill visible to this user by name and short description only; a body
-        // reaches the model as a message instead (readSkill's result, or applyPickedSkills below).
+        // Appended after the head and the module's context, and - unlike the block this replaced -
+        // never rewritten afterwards. It advertises every skill visible to this user by name and
+        // short description only; a body reaches the model as a message instead (readSkill's
+        // result, or applyPickedSkills below).
         // What this installation's license leaves out, and its limits - before the skills, which
         // mark the skills it leaves out. Empty on a tier with nothing left out. See LicenseToolScope.
         String license = licenseToolScope != null ? licenseToolScope.promptSection() : "";
         if (!license.isBlank()) prompt += "\n\n" + license;
-        String skills = chatSkillService.formatForSystemPrompt(userId);
-        if (!skills.isBlank()) prompt += "\n\n" + skills;
+        // Less, for a saved agent, the skills it may not read (AgentProfile) - listing one would have it
+        // spend a call to be refused, and an agent given only a few tool sets is told of those alone.
+        java.util.function.Predicate<String> listed = skillsListedFor(conversationId, userId);
+        String skills = listed == null ? chatSkillService.formatForSystemPrompt(userId)
+                : chatSkillService.formatForSystemPrompt(userId, listed);
+        if (skills != null && !skills.isBlank()) prompt += "\n\n" + skills;
         // Same point in the same method, and for the same cache reason: the system prompt is the
         // provider's cached prompt prefix, so appending a workflow catalog later - when the user
         // first types "/" - would cascade-invalidate that cache on every subsequent turn of the
@@ -175,9 +176,28 @@ public class ChatService {
         // offer them to the user, which is a door to a feature with no handle on it.
         String workflows = workflowsEnabled ? workflowService.formatForSystemPrompt(userId) : "";
         if (!workflows.isBlank()) prompt += "\n\n" + workflows;
+        // Injected instead of a getCurrentDateTime tool - the agent needs "what's today" far more
+        // often than a tool round-trip is worth, and this covers it for free. Resolved at
+        // conversation start and persisted with the SystemMessage (same staleness tradeoff as the
+        // skills block above), so a conversation resumed days later still shows its start date -
+        // acceptable, and the only case where knowing the exact live time would have mattered.
+        // Since 2026-11-02 after everything that is the same for every conversation of an agent and
+        // a person, not before the module's context: it moves daily, and the person's name differs
+        // between two people's conversations with one saved agent, so either one earlier cut the
+        // cached prefix short. sameButForDate finds the date wherever it is.
+        java.time.LocalDate today = java.time.LocalDate.now();
+        prompt += SystemPromptService.DATE_LEAD + today + " ("
+                + today.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + ").";
+        // userDisplayName is appended dynamically (not baked into the prompt via a placeholder, since
+        // it's absent for anonymous/desktop-mode chats) so the agent knows who it's talking to.
+        if (userDisplayName != null && !userDisplayName.isBlank()) {
+            prompt += "\n\nYou are talking with " + userDisplayName + ". You may address them by name " +
+                    "when it feels natural (e.g. a greeting), but don't force it into every reply.";
+        }
         // Said once more, last: several thousand words of skills now stand between the model and
-        // the section that told it how to work. See SystemPromptService.DELEGATION.
-        if (canDelegate) prompt += "\n\n" + SystemPromptService.DELEGATION_REMINDER;
+        // the section that told it how to work. See SystemPromptService.DELEGATION. Not under a
+        // module's head, which has no such section to remind of.
+        if (productBase) prompt += "\n\n" + SystemPromptService.DELEGATION_REMINDER;
         // The system-prompt canary, when it is switched on. Empty otherwise, and appended LAST so
         // that a leak has to recite everything above it to reach the marker - a truncated recital
         // of the first few lines is a leak this cannot see either way, and putting the marker
@@ -185,6 +205,31 @@ public class ChatService {
         //
         // Nothing anywhere tells the model what it is. See GuardrailService.canaryLine.
         return prompt + guardrailService.canaryLine();
+    }
+
+    // Which skills the system prompt lists for this conversation, or null for every one visible to the
+    // user - an ordinary conversation, or an agent whose profile narrows no skill.
+    private java.util.function.Predicate<String> skillsListedFor(String conversationId, String userId) {
+        if (conversationId == null || chatModules.isEmpty()) return null;
+        Optional<AgentProfile> profile = AgentProfiles.of(chatModules, conversationId, userId);
+        if (profile.isEmpty() || !profile.get().narrowsSkills()) return null;
+        return name -> agentMayRead(profile.get(), name);
+    }
+
+    // The first module's own head for this conversation (ChatModule.basePrompt), or null for the
+    // product's. A module that fails to answer is passed over: the product's prompt is the safe one.
+    private String moduleBasePrompt(String conversationId, String userId) {
+        if (conversationId == null || chatModules.isEmpty()) return null;
+        for (ChatModule module : chatModules) {
+            try {
+                Optional<String> base = module.basePrompt(conversationId, userId);
+                if (base != null && base.isPresent() && !base.get().isBlank()) return base.get().strip();
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not give conversation {} its instructions: {}", conversationId,
+                        e.getMessage());
+            }
+        }
+        return null;
     }
 
     /**
@@ -314,6 +359,9 @@ public class ChatService {
         if (requestedSkillIds.isEmpty()) return;
         List<ChatSkillService.InjectableSkill> picked =
                 chatSkillService.injectableSkills(requestedSkillIds, userId);
+        // A saved agent's preloaded skills, or a pick in its conversation, load only what it may read.
+        java.util.function.Predicate<String> readable = skillsListedFor(conversationId, userId);
+        if (readable != null) picked = picked.stream().filter(skill -> readable.test(skill.name())).toList();
         if (picked.isEmpty()) return;
 
         Set<String> loaded = loadedSkillIds(conversationId);
@@ -396,6 +444,15 @@ public class ChatService {
         // it null keeps the conversation on unlockedSkillNames()'s history-scan fallback.
         if (stored != null && !changed) return;
         chatMemory.setUnlockedSkillNames(conversationId, String.join("\n", unlocked));
+    }
+
+    /** How often the thinking's text is sent to the page while it streams. */
+    private static final long THINKING_TEXT_EVERY_NANOS = 150_000_000L;
+
+    // The last whitespace in what is held, or -1: a piece of the thinking ends there.
+    private static int lastSpace(CharSequence held) {
+        for (int i = held.length() - 1; i >= 0; i--) if (Character.isWhitespace(held.charAt(i))) return i;
+        return -1;
     }
 
     private static final String FORCED_ANSWER_INSTRUCTION =
@@ -556,6 +613,15 @@ public class ChatService {
         // A wait is as long as the wait it was asked for: awaitAgents held to 60 seconds was given up
         // while it still waited, and the report it then took reached nobody (feedback 8a3e3c01).
         if (ai.proxyma.core.chat.agents.AgentTree.AWAIT_TOOL.equals(toolName)) return awaitToolTimeoutSeconds();
+        // A module's tool that waits for another agent says how long it may (ChatModule.toolTimeoutSeconds).
+        for (ChatModule module : chatModules) {
+            try {
+                int own = module.toolTimeoutSeconds(toolName);
+                if (own > 0) return own;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say how long '{}' may run: {}", toolName, e.getMessage());
+            }
+        }
         if (!SEARCH_TOOLS.contains(toolName)) return TOOL_CALL_TIMEOUT_SECONDS;
         try {
             return settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class).searchTimeoutSeconds();
@@ -697,7 +763,17 @@ public class ChatService {
                             boolean continuation, String surface) {
         long turnStartedNanos = System.nanoTime();
         // A turn a PERSON opened - not a continuation, not one a module or the tree started.
-        if (!unattendedStarts.remove(conversationId) && !continuation && message != null) personSpoke(conversationId);
+        boolean personTurn = !unattendedStarts.remove(conversationId) && !continuation && message != null;
+        if (personTurn) {
+            // A deployed agent takes no message from a person (the maintainer, 2026-11-04): the page
+            // shows its conversation read-only and ChatController refuses first; this is the floor.
+            if (isDeployedAgent(conversationId)) {
+                turnsDispatched.remove(conversationId);
+                throw new IllegalStateException(DEPLOYED_AGENT_REFUSAL);
+            }
+            personSpoke(conversationId);
+            personSaid(conversationId, message);
+        }
         // Refused before anything is persisted or any provider is contacted, so an exhausted
         // budget costs nothing and leaves no half-written turn. The per-user quota deliberately
         // never blocks chat; this one is the deployment's bill and does.
@@ -851,22 +927,35 @@ public class ChatService {
                             .filter(n -> workflow == null || !workflow.name().equalsIgnoreCase(n))
                             .toList();
             Set<String> requestedSkillIds = chatSkillService.resolveIdsForNames(plainSkillMentions, userId);
+            // A conversation a module or an agent opened is titled from what its first message SAYS,
+            // never from the header written for the model (ConversationOpening); a person's, from
+            // their words.
+            ConversationOpening.Opening titled = continuation ? null
+                    : personTurn ? ConversationOpening.Opening.plain(message)
+                    : ConversationOpening.of(message, chatModules);
             boolean isNewConversation = !continuation
-                    && chatMemory.ensureConversation(conversationId, message, userId, guestSessionId, null, surface);
+                    && chatMemory.ensureConversation(conversationId, titled.title(), userId, guestSessionId, null,
+                            surface, titled.kind());
 
             // Fired here, immediately after the first user message creates the conversation, so the
             // history list stops showing a truncated placeholder while the answer is still being
             // written (ConversationTitleService pushes a 'title' event when it resolves, mid-turn).
             // This used to run AFTER react() instead, because both calls hit the same
-            // GPU-constrained chat model and the title call kept losing that race - the reason it
-            // is safe to move back is that titles now run on the SUB-AGENT's model whenever one is
-            // configured, so the two no longer compete. With no sub-agent configured it does fall
-            // back to the main model and that contention returns; the cost of losing is unchanged
-            // and cosmetic (the placeholder title stands, and it never blocks the turn).
+            // GPU-constrained chat model and the title call kept losing that race. Both run on the
+            // agent's model (the sub-agent model titles borrowed went on 2026-11-02), so that
+            // contention is back; the cost of losing is cosmetic (the placeholder title stands,
+            // and it never blocks the turn).
             // Not for an agent another agent deployed: it has the title it was deployed with, and a
             // model call to name it again would be spent on every child.
-            if (isNewConversation && (agentTree == null || !agentTree.isChild(conversationId))) {
-                conversationTitleService.generateTitleAsync(conversationId, message);
+            // Nor for one titled by its kind: the page words that, and no model call is spent on it.
+            // NAMED BY THE MODEL THE CONVERSATION RUNS ON (2026-11-11, the maintainer: "Let the configured model generate
+            // conversation title"): the main agent's for an ordinary chat, else the model chosen for it - a saved agent's
+            // own, a workflow's. A team all on Ollama showed a cost: its lead chat's title, made on the main agent's model.
+            if (isNewConversation && titled.nameFrom() != null
+                    && (agentTree == null || !agentTree.isChild(conversationId))) {
+                conversationTitleService.generateTitleAsync(conversationId, titled.nameFrom(),
+                        titleModel(provider, workflow == null ? null : workflow.provider(),
+                                workflow == null ? null : workflow.model(), profile));
             }
             // A deployed agent starts on the servers its parent switched to (useServer): the task was
             // written against them, and a Jira key from one server means nothing on another.
@@ -948,7 +1037,9 @@ public class ChatService {
             LlmGateway.SessionOptions sessionOptions = (ownModel
                     ? tunedOptions.on(new LlmGateway.ModelOverride(provider, model))
                     : tunedOptions).line(conversationId);
-            LlmCaller chatCaller = LlmCaller.forUser(LlmRole.CHAT, userId);
+            // Filed under this conversation in the per-call log - the one way to tell an agent's calls
+            // from another's, since every agent is a conversation of its own on this loop.
+            LlmCaller chatCaller = LlmCaller.forUser(LlmRole.CHAT, userId).inConversation(conversationId);
             LlmSession session = llmGateway.open(chatCaller, sessionOptions.cached(turnCache));
             // How this turn steps up to an hour, when Auto chose five minutes and a background
             // sub-agent is then started: null where there is nothing to step up to.
@@ -970,8 +1061,13 @@ public class ChatService {
             boolean streaming = session.streams();
 
             TurnLatencyTracker latency = new TurnLatencyTracker();
-            String userTurn = continuation ? null : buildUserTurn(message, mentions, plainSkillMentions,
-                    workflow == null ? List.of() : List.of(workflow.name()), attachmentPaths);
+            // A mention a product module claims (a Constellations project, addressed through its
+            // leader) is no source to prioritize: it leaves that list, and the module's note goes in
+            // its place (ChatModule.claimMentions).
+            ModuleMentions claimed = continuation ? ModuleMentions.NONE
+                    : claimModuleMentions(chatModules, conversationId, userId, mentions);
+            String userTurn = continuation ? null : buildUserTurn(message, claimed.sourceMentions(), plainSkillMentions,
+                    workflow == null ? List.of() : List.of(workflow.name()), attachmentPaths) + claimed.block();
             Long lastBeforeTurn = chatMemory.lastMessageId(conversationId);
             turnFloors.put(conversationId, lastBeforeTurn == null ? 0L : lastBeforeTurn);
             // What opens the turn: what the user sent, or the reports nobody was there to receive.
@@ -985,6 +1081,11 @@ public class ChatService {
                 eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
                         ChatEvent.Type.DONE.value(), null, null, doneData(conversationId)));
                 return new ChatResult("", conversationId, 0);
+            }
+            // A turn a module opened with mail - a teammate's message or reply to a saved agent: the
+            // transcript leaves a running turn's opening to the stream, so the stream says it.
+            if (!continuation && ai.proxyma.core.chat.agents.AgentInbox.isInboxMessage(message)) {
+                publishMailIn(conversationId, message);
             }
             ChatResult result;
             try {
@@ -1065,6 +1166,13 @@ public class ChatService {
             return new ChatResult(finalAnswer, conversationId, result.iterations());
         } catch (RuntimeException e) {
             ended[1] = failureText(e);
+            // Kept in the conversation, so whoever opens it later sees why the turn ended - a run
+            // nobody watched included. Never in the way of the failure itself.
+            try {
+                chatMemory.markTurnFailed(conversationId, Failures.describe(e));
+            } catch (RuntimeException ignored) {
+                // The failure is still thrown and announced; only the record of it is lost.
+            }
             throw e;
         } finally {
             turnEnded(conversationId, (System.nanoTime() - turnStartedNanos) / 1_000_000, ended[0]);
@@ -1084,6 +1192,8 @@ public class ChatService {
             // when its bounded wait timed out, in which case this turn ran unserialized and holds
             // nothing to give back.
             if (memoryLocked) chatMemory.unlockMemory(conversationId);
+            // What the agent told the person from elsewhere while this turn held the memory (writeNote).
+            flushNotes(conversationId);
             // LAST, with the turn fully gone: a report that landed after this turn's final step
             // found a turn running and left itself for it. Nothing took it, so a turn is started
             // for it now.
@@ -1094,11 +1204,11 @@ public class ChatService {
             // were text, that was a loop logging a stack trace several times a second for as long
             // as the server ran. The report stays owed, and the user's next turn takes it.
             // The agent tree hears that this conversation's turn is over: a child reports to its
-            // parent, and what the user said to a child goes up with its answer. Before the wake, so
-            // a child that still has mail is not reported as finished by a turn that did not read it.
+            // parent. Before the wake, so a child that still has mail is not reported as finished by
+            // a turn that did not read it.
             if (agentTree != null && !deliveredNothing) {
                 try {
-                    agentTree.turnEnded(conversationId, continuation ? null : message, ended[0], ended[1]);
+                    agentTree.turnEnded(conversationId, ended[0], ended[1]);
                 } catch (RuntimeException e) {
                     log.warn("[Chat] the agent tree could not settle conversationId={}: {}", conversationId, e.getMessage());
                 }
@@ -1163,10 +1273,12 @@ public class ChatService {
      * in view - the conversation's first step, or the first after a condensation took the earlier copy
      * into its summary. A MESSAGE, never the system prompt, so the cached prefix holds: it lands after
      * what the step has just written (the opening message, or a tool round and what came with it), and
-     * so never between a tool call and its result.
+     * so never between a tool call and its result. At a turn's first step with a copy in view, what changed
+     * in it since is written instead, as a short note (ChatModule.memoryChanges) - nothing when nothing did.
      */
-    private List<Message> withModuleMemory(String conversationId, List<Message> history) {
-        if (conversationId == null || chatModules.isEmpty() || hasMemoryInView(history)) return history;
+    private List<Message> withModuleMemory(String conversationId, List<Message> history, boolean turnStart) {
+        if (conversationId == null || chatModules.isEmpty()) return history;
+        if (hasMemoryInView(history)) return turnStart ? withMemoryChanges(conversationId, history) : history;
         String userId = SearchContext.getUserId();
         StringBuilder text = new StringBuilder();
         for (ChatModule module : chatModules) {
@@ -1187,6 +1299,37 @@ public class ChatService {
         List<Message> out = new ArrayList<>(history);
         out.add(memory);
         return out;
+    }
+
+    // What changed in the memory a conversation was given, as a context note after the turn's opening.
+    private List<Message> withMemoryChanges(String conversationId, List<Message> history) {
+        String userId = SearchContext.getUserId();
+        StringBuilder text = new StringBuilder();
+        for (ChatModule module : chatModules) {
+            try {
+                module.memoryChanges(conversationId, userId).filter(c -> !c.isBlank()).ifPresent(c -> {
+                    if (!text.isEmpty()) text.append("\n\n");
+                    text.append(c.strip());
+                });
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not tell conversation {} what changed: {}", conversationId, e.getMessage());
+            }
+        }
+        if (text.isEmpty()) return history;
+        Message note = memoryChangesMessage(text.toString());
+        chatMemory.add(conversationId, List.of(note));
+        publishAgentMail(conversationId, List.of(new ai.proxyma.core.chat.agents.AgentInbox.Taken(
+                null, ai.proxyma.core.chat.agents.AgentInbox.Kind.CONTEXT, null, null, "", Instant.now())));
+        List<Message> out = new ArrayList<>(history);
+        out.add(note);
+        return out;
+    }
+
+    /** The note what changed in a module's memory is written as: a context note, never a second copy of the memory. */
+    static Message memoryChangesMessage(String text) {
+        return new org.springframework.ai.chat.messages.UserMessage(ai.proxyma.core.chat.agents.AgentInbox.render(List.of(
+                new ai.proxyma.core.chat.agents.AgentInbox.Taken(null, ai.proxyma.core.chat.agents.AgentInbox.Kind.CONTEXT,
+                        null, null, text, Instant.now()))));
     }
 
     /** The message a module's memory is written as: inbox-shaped, so the thread draws it as one line. */
@@ -1223,12 +1366,45 @@ public class ChatService {
         return hasBackgroundWork(conversationId) ? "more" : "";
     }
 
+    /** A conversation's own model: its provider instance's id (null for the chat's provider) and the model. */
+    public record ConversationModel(String providerId, String model) {}
+
+    /**
+     * THE MODEL THIS CONVERSATION'S TURNS RUN ON WHEN IT IS NOT THE CHAT'S - a saved agent's own, from
+     * the module holding the conversation for it (AgentProfile, as TurnModel reads it); empty for every
+     * ordinary chat, which runs on the chat settings' pair. What the page names in "Waiting for ..." and
+     * beside the composer: a lead chat named the chat's model while its turns ran on the agent's
+     * (the maintainer, 2026-11-03). Never throws.
+     */
+    public Optional<ConversationModel> agentModelOf(String conversationId, String userId) {
+        try {
+            return AgentProfiles.of(chatModules, conversationId, userId).filter(AgentProfile::ownModel)
+                    .map(p -> new ConversationModel(p.providerId(), p.model()));
+        } catch (RuntimeException e) {
+            log.debug("[Chat] could not read the model conversation {} runs on: {}", conversationId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     /** Whether agents it deployed are working, a background job runs, or mail is still owed to its agent. */
     public boolean hasBackgroundWork(String conversationId) {
         return owed(conversationId)
                 || (agentTree != null && agentTree.hasBusyChildren(conversationId))
                 || (backgroundJobs != null && backgroundJobs.hasRunning(conversationId))
-                || (approvalInbox != null && approvalInbox.hasPending(conversationId));
+                || (approvalInbox != null && approvalInbox.hasPending(conversationId))
+                || moduleAnswerOwed(conversationId);
+    }
+
+    // A module's answer still to come (ChatModule.awaitsAnswer) - a project lead's, in the main chat.
+    private boolean moduleAnswerOwed(String conversationId) {
+        for (ChatModule module : chatModules) {
+            try {
+                if (module.awaitsAnswer(conversationId)) return true;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether it owes {} an answer: {}", conversationId, e.getMessage());
+            }
+        }
+        return false;
     }
 
     /**
@@ -1239,7 +1415,7 @@ public class ChatService {
     static String failureText(Throwable e) {
         String why = Failures.describe(e);
         return ModelCall.isRateLimited(e)
-                ? "RATE LIMITED - the provider kept refusing for its rate limit. Deploy fewer agents at once, "
+                ? ai.proxyma.core.chat.agents.AgentTree.RATE_LIMITED_PREFIX + " - the provider kept refusing for its rate limit. Deploy fewer agents at once, "
                         + "or wait before trying again. (" + why + ")"
                 : why;
     }
@@ -1305,6 +1481,22 @@ public class ChatService {
         return false;
     }
 
+    /**
+     * The tools to offer, less askUser where nobody watches ({@link #unwatched}): there it can only
+     * be answered "nobody is watching" (awaitUserAnswers), so offering it costs its schema on every
+     * call and invites a cheap model to wait on a person who is not there. A model that calls it
+     * anyway is still answered at once, as before. Nor to a deployed agent: a person reads its
+     * conversation and does not talk to it, so its questions go to the agent that deployed it.
+     */
+    List<ToolCallback> withoutQuestionsWhereUnwatched(String conversationId, List<ToolCallback> advertised) {
+        if (advertised.stream().noneMatch(cb -> ai.proxyma.core.chat.question.ChatOnlyTools.ASK_USER
+                .equals(cb.getToolDefinition().name()))) return advertised;
+        if (!unwatched(conversationId) && !isDeployedAgent(conversationId)) return advertised;
+        return advertised.stream()
+                .filter(cb -> !ai.proxyma.core.chat.question.ChatOnlyTools.ASK_USER.equals(cb.getToolDefinition().name()))
+                .toList();
+    }
+
     /** Something reached a conversation's inbox: its running turn reads it, or one is started for it. */
     @org.springframework.context.event.EventListener
     public void onInboxPosted(ai.proxyma.core.chat.agents.AgentInboxPostedEvent event) {
@@ -1345,9 +1537,13 @@ public class ChatService {
                 : agentInbox.takeWhere(conversationId, t -> true);
         String fromModules = takeModuleInputs(conversationId);
         if (mail.isEmpty()) {
-            return fromModules == null ? null : new org.springframework.ai.chat.messages.UserMessage(fromModules);
+            if (fromModules == null) return null;
+            // A teammate's reply a module handed over is mail too, and the thread says so at this point.
+            publishMailIn(conversationId, fromModules);
+            return new org.springframework.ai.chat.messages.UserMessage(fromModules);
         }
         publishAgentMail(conversationId, mail);
+        if (fromModules != null) publishMailIn(conversationId, fromModules);
         String text = ai.proxyma.core.chat.agents.AgentInbox.render(mail);
         if (fromModules != null) text = text + "\n\n" + fromModules;
         return new org.springframework.ai.chat.messages.UserMessage(text);
@@ -1355,13 +1551,30 @@ public class ChatService {
 
     // The thread's line where the agent read its mail - 'agent-mail', one entry per item.
     private void publishAgentMail(String conversationId, List<ai.proxyma.core.chat.agents.AgentInbox.Taken> mail) {
+        publishMailItems(conversationId, mail.stream().map(t -> new ai.proxyma.core.chat.agents.AgentInbox.Item(
+                t.fromAgentId() == null ? null : t.fromAgentId().toString(), t.fromTitle(),
+                t.kind().name().toLowerCase(Locale.ROOT), t.text())).toList());
+    }
+
+    // The same line for inbox-shaped text that was not posted - a module's pending input, a note.
+    private void publishMailIn(String conversationId, String content) {
+        List<ai.proxyma.core.chat.agents.AgentInbox.Item> items = ai.proxyma.core.chat.agents.AgentInbox.itemsIn(content);
+        if (!items.isEmpty()) publishMailItems(conversationId, items);
+    }
+
+    private void publishMailItems(String conversationId, List<ai.proxyma.core.chat.agents.AgentInbox.Item> items) {
         try {
             List<Map<String, Object>> entries = new ArrayList<>();
-            for (ai.proxyma.core.chat.agents.AgentInbox.Taken t : mail) {
+            // As the transcript shows the same items once reloaded (ChatModule.shownMail).
+            ShownBy shownBy = ShownBy.of(chatModules);
+            for (ai.proxyma.core.chat.agents.AgentInbox.Item item : items) {
+                ai.proxyma.core.chat.agents.AgentInbox.Item t = shownBy.mail(item);
                 Map<String, Object> e = new java.util.LinkedHashMap<>();
-                e.put("agentId", t.fromAgentId() == null ? null : t.fromAgentId().toString());
-                e.put("title", t.fromTitle() == null ? null : SensitivePaths.scrub(t.fromTitle()));
-                e.put("kind", t.kind().name().toLowerCase(Locale.ROOT));
+                e.put("agentId", t.agentId());
+                e.put("title", t.title() == null ? null : SensitivePaths.scrub(t.title()));
+                e.put("kind", t.kind());
+                String text = ai.proxyma.core.chat.agents.AgentInbox.shownText(t.kind(), t.text());
+                if (text != null) e.put("text", SensitivePaths.scrub(text));
                 entries.add(e);
             }
             eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
@@ -1417,6 +1630,17 @@ public class ChatService {
         }
     }
 
+    // Every module hears what a person wrote to open a turn (ChatModule.personSaid).
+    private void personSaid(String conversationId, String message) {
+        for (ChatModule module : chatModules) {
+            try {
+                module.personSaid(conversationId, message);
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not hear what a person said in {}: {}", conversationId, e.getMessage());
+            }
+        }
+    }
+
     // Every module is told how long the turn took (ChatModule.turnEnded); none may fail the turn.
     private void turnEnded(String conversationId, long durationMs, String answer) {
         for (ChatModule module : chatModules) {
@@ -1441,6 +1665,105 @@ public class ChatService {
      */
     public void pendingInputArrived(String conversationId) {
         wake(conversationId);
+    }
+
+    // -- Words the agent wrote elsewhere, for the person in this conversation (writeNote) ----------
+
+    private record Note(String text, String titleHint, String owner, String surface, Runnable written) {}
+
+    // Notes waiting for the conversation's turn or condensation to end. In memory: the wait is a turn.
+    private final ConcurrentHashMap<String, java.util.concurrent.ConcurrentLinkedQueue<Note>> notesOwed =
+            new ConcurrentHashMap<>();
+
+    /**
+     * WRITES WHAT A CONVERSATION'S AGENT SAID ELSEWHERE INTO THE CONVERSATION, WITH NO TURN - a project
+     * lead telling the person, from a scheduled run, what needs them (Constellations' tellPerson). The
+     * conversation is the person's own with that agent: created for {@code owner} under {@code surface}
+     * when it does not exist yet, with its system prompt, as a first message would.
+     *
+     * <p>{@code text} is inbox-shaped (AgentInbox.render, a Kind that wakes nobody), so the transcript
+     * draws it as mail with its words and the agent reads it, in its next turn there, as something it
+     * already said. NOTHING ANSWERS IT: no turn is started, so no model call is spent on words the agent
+     * wrote itself. Written at once when the conversation is idle; while a turn or a condensation holds
+     * its memory, when that ends - never between a tool call and its result. A page following the
+     * conversation is told (agent-mail), and {@code written} runs once it is in.
+     */
+    public void writeNote(String conversationId, String owner, String surface, String text, String titleHint,
+                          Runnable written) {
+        if (conversationId == null || text == null || text.isBlank()) return;
+        ConversationPaths.requireValidId(conversationId);
+        Note note = new Note(text, titleHint, owner, surface, written);
+        // Added under the map's lock, as flushNotes drops an emptied queue under it: never into a queue
+        // nobody holds.
+        notesOwed.compute(conversationId, (k, q) -> {
+            java.util.concurrent.ConcurrentLinkedQueue<Note> out = q == null ? new java.util.concurrent.ConcurrentLinkedQueue<>() : q;
+            out.add(note);
+            return out;
+        });
+        flushNotes(conversationId);
+    }
+
+    /**
+     * Writes {@code text} (inbox-shaped, AgentInbox.render) into an EXISTING conversation for its agent to read at
+     * its next turn, starting none - as {@link #writeNote}, under the conversation's own owner. False, and nothing
+     * written, when there is no such conversation. What the approvals inbox does with an outcome its agent need
+     * not act on (ChatModule.approvalOutcomeQuiet).
+     */
+    public boolean noteForNextTurn(String conversationId, String text) {
+        if (conversationId == null || text == null || text.isBlank()) return false;
+        Optional<Conversation> conversation = chatMemory.findConversation(conversationId);
+        if (conversation.isEmpty()) return false;
+        writeNote(conversationId, conversation.get().getUserId(), conversation.get().getSurface(), text, null, null);
+        return true;
+    }
+
+    /** Whether a module says this approval outcome is a note rather than a turn (ChatModule.approvalOutcomeQuiet). */
+    public boolean approvalOutcomeQuiet(String conversationId, String toolName, boolean failed) {
+        if (conversationId == null) return false;
+        for (ChatModule module : chatModules) {
+            try {
+                if (module.approvalOutcomeQuiet(conversationId, toolName, failed)) return true;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether an approval outcome wakes {}: {}", conversationId,
+                        e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /** Whether notes wait for this conversation's turn to end. For tests. */
+    int notesWaiting(String conversationId) {
+        java.util.concurrent.ConcurrentLinkedQueue<Note> q = notesOwed.get(conversationId);
+        return q == null ? 0 : q.size();
+    }
+
+    // Writes the notes owed to a conversation if nothing holds its memory; else its holder's end does.
+    private void flushNotes(String conversationId) {
+        java.util.concurrent.ConcurrentLinkedQueue<Note> q = notesOwed.get(conversationId);
+        if (q == null || q.isEmpty() || isActive(conversationId)) return;
+        if (!chatMemory.tryLockMemory(conversationId)) return;
+        try {
+            for (Note n; (n = q.poll()) != null; ) writeNow(conversationId, n);
+        } finally {
+            chatMemory.unlockMemory(conversationId);
+        }
+        notesOwed.computeIfPresent(conversationId, (k, left) -> left.isEmpty() ? null : left);
+    }
+
+    private void writeNow(String conversationId, Note n) {
+        try {
+            chatMemory.ensureConversation(conversationId, n.titleHint() == null ? n.text() : n.titleHint(), n.owner(),
+                    null, null, n.surface());
+            if (chatMemory.lastMessageId(conversationId) == null) {
+                chatMemory.add(conversationId, List.of(new SystemMessage(resolveSystemPrompt(null, n.owner(), conversationId))));
+            }
+            chatMemory.add(conversationId, List.of(new org.springframework.ai.chat.messages.UserMessage(n.text())));
+            chatMemory.recordExchange(conversationId);
+            publishMailIn(conversationId, n.text());
+            if (n.written() != null) n.written().run();
+        } catch (RuntimeException e) {
+            log.warn("[Chat] a note for conversation {} could not be written: {}", conversationId, e.getMessage());
+        }
     }
 
     /**
@@ -1611,6 +1934,17 @@ public class ChatService {
     // javadoc for how the timings were accumulated across react()'s iterations. Whether anything
     // keeps it is the listener's decision. Deliberately takes no userId/conversationId - the record
     // is anonymous by construction (see ChatTurnLatencyRecordedEvent's javadoc).
+    /**
+     * The model a conversation is titled on: the one its turn runs on (TurnModel) when that is a model chosen for it - a
+     * workflow's or a saved agent's own; null for the main agent's, which the TITLE role resolves to.
+     */
+    static LlmGateway.ModelOverride titleModel(String chatProvider, String workflowProvider, String workflowModel,
+                                               Optional<AgentProfile> profile) {
+        TurnModel m = TurnModel.of(chatProvider, null, workflowProvider, workflowModel,
+                profile == null ? null : profile.orElse(null));
+        return m.own() ? new LlmGateway.ModelOverride(m.provider(), m.model()) : null;
+    }
+
     private void publishTurnLatency(String provider, String model, TurnLatencyTracker latency) {
         long totalDurationMs = (System.nanoTime() - latency.turnStartNanos) / 1_000_000;
         long streamStart = latency.streamStartNanos.get();
@@ -1709,13 +2043,35 @@ public class ChatService {
      * What a conversation's agent is doing at this moment, read from memory alone - no query, and
      * nothing of what was said. {@code running}: a turn runs, since {@code startedAt} (epoch ms);
      * {@code tool}: the NAME of the tool call it is in, the latest when several run, else null - never
-     * its arguments or result; {@code rateLimited}: its model call is waiting out a provider's rate
+     * its result; {@code toolSubject}: that call's subject, a few short scrubbed argument values as JSON
+     * (TurnActivity), for the person whose conversation it is ONLY - else null; {@code rateLimited}: its model call is waiting out a provider's rate
      * limit; {@code awaitingApproval}: a write of this conversation waits for a person, as a prompt in
      * the page or in the approvals inbox (ApprovalInbox), turn or no turn; {@code waitingOnAgents}: how
-     * many agents a wait of its (awaitAgents) is still for.
+     * many agents a wait of its (awaitAgents) is still for; {@code prompting}: the turn itself is held by a
+     * prompt in the page - an approval or a consent switch it waits on - rather than a write parked in the inbox,
+     * which holds nothing (2026-11-10: an agent working through a tool showed only "waiting for approval" while
+     * drafts of earlier turns waited).
      */
     public record TurnState(boolean running, long startedAt, String tool, boolean rateLimited,
-                            boolean awaitingApproval, int waitingOnAgents) {}
+                            boolean awaitingApproval, int waitingOnAgents, String toolSubject, boolean prompting) {
+
+        public TurnState(boolean running, long startedAt, String tool, boolean rateLimited,
+                         boolean awaitingApproval, int waitingOnAgents, String toolSubject) {
+            this(running, startedAt, tool, rateLimited, awaitingApproval, waitingOnAgents, toolSubject,
+                    running && awaitingApproval);
+        }
+
+        public TurnState(boolean running, long startedAt, String tool, boolean rateLimited,
+                         boolean awaitingApproval, int waitingOnAgents) {
+            this(running, startedAt, tool, rateLimited, awaitingApproval, waitingOnAgents, null);
+        }
+
+        /** The same state with no subject - what another person's conversation shows. */
+        public TurnState withoutSubject() {
+            return toolSubject == null ? this
+                    : new TurnState(running, startedAt, tool, rateLimited, awaitingApproval, waitingOnAgents, null, prompting);
+        }
+    }
 
     /**
      * The state of each of these conversations that is doing something: a turn running, or a write
@@ -1742,8 +2098,9 @@ public class ChatService {
             if (turn == null && !approval) continue;
             int waiting = turn == null || agentTree == null ? 0 : agentTree.waitingOn(id);
             out.put(id, turn == null
-                    ? new TurnState(false, 0, null, false, true, 0)
-                    : new TurnState(true, turn.startedAt(), turn.tool(), turn.rateLimited(), approval, waiting));
+                    ? new TurnState(false, 0, null, false, true, 0, null, false)
+                    : new TurnState(true, turn.startedAt(), turn.tool(), turn.rateLimited(), approval, waiting,
+                            turn.subject(), prompting.contains(id)));
         }
         return out;
     }
@@ -1789,7 +2146,25 @@ public class ChatService {
         return queue == null ? 0 : queue.size();
     }
 
-    public enum InjectOutcome { ACCEPTED, NOT_RUNNING, BLOCKED }
+    public enum InjectOutcome { ACCEPTED, NOT_RUNNING, BLOCKED, REFUSED }
+
+    /**
+     * Why a person's message into a deployed agent's conversation is refused - a new turn (ChatController
+     * and {@link #turn}) or one typed into its running turn ({@link #inject}). A deployed agent takes its
+     * work from the agent that deployed it; the person talks to that agent (the maintainer, 2026-11-04).
+     */
+    public static final String DEPLOYED_AGENT_REFUSAL =
+            notice("A deployed agent takes no messages. Ask the agent that deployed it instead.");
+
+    // Marks a sentence a person reads, for the list the page translates from (tools/i18n/server-messages.mjs).
+    private static String notice(String sentence) {
+        return sentence;
+    }
+
+    /** Whether a conversation is an agent another agent deployed - read-only to a person. */
+    public boolean isDeployedAgent(String conversationId) {
+        return agentTree != null && agentTree.isChild(conversationId);
+    }
 
     public record InjectResult(InjectOutcome outcome, String message) {}
 
@@ -1815,6 +2190,8 @@ public class ChatService {
      * nothing waiting, whatever was accepted before it began.
      */
     public InjectResult inject(String conversationId, String text, String clientId, String userId) {
+        // Refused before anything else: a deployed agent takes no message from a person, running or not.
+        if (isDeployedAgent(conversationId)) return new InjectResult(InjectOutcome.REFUSED, DEPLOYED_AGENT_REFUSAL);
         if (conversationId == null || text == null || text.isBlank() || !isActive(conversationId)
                 || condensingNow.contains(conversationId)) {
             return new InjectResult(InjectOutcome.NOT_RUNNING, null);
@@ -1830,7 +2207,6 @@ public class ChatService {
         }
         injected.computeIfAbsent(conversationId, k -> new java.util.concurrent.ConcurrentLinkedQueue<>())
                 .add(new Injected(clientId, message));
-        if (agentTree != null) agentTree.userSpoke(conversationId, message);
         personSpoke(conversationId);
         return new InjectResult(InjectOutcome.ACCEPTED, null);
     }
@@ -1912,6 +2288,7 @@ public class ChatService {
             condensingNow.remove(conversationId);
             injected.remove(conversationId);
             abortFlags.remove(conversationId, abort);
+            flushNotes(conversationId);
         }
     }
 
@@ -2005,7 +2382,7 @@ public class ChatService {
                     ? chatEventSink.turnStartSequence(conversationId)
                     : chatEventSink.currentSequence(conversationId)) - 1;
             List<ChatMessageResponse> messages = transcript(chatMemory.findAllMessages(conversationId),
-                    workflowRunService.runIdsByTriggerMessage(conversationId), floor);
+                    workflowRunService.runIdsByTriggerMessage(conversationId), floor, ShownBy.of(chatModules));
             // A turn that began, or ended, while the rows were being read: the rows and the
             // position describe two different moments. Read again, once.
             if (attempt == 0 && !Objects.equals(floor, turnFloors.get(conversationId))) continue;
@@ -2013,7 +2390,8 @@ public class ChatService {
                     .filter(e -> conversationId.equals(e.conversationId()) && e.sequence() <= asOf)
                     .sorted(java.util.Comparator.comparingLong(ChatEvent::sequence))
                     .map(e -> new ai.proxyma.core.chat.dto.ConversationDetail.PendingPrompt(e.streamType(),
-                            e.callId(), e.toolName(), SensitivePaths.scrub(e.data()), e.parentCallId()))
+                            e.callId(), e.toolName(), SensitivePaths.scrub(e.data()), e.parentCallId(),
+                            promptContexts.get(e.callId())))
                     .toList();
             return new Transcript(messages, asOf, prompts, hasBackgroundWork(conversationId));
         }
@@ -2023,6 +2401,56 @@ public class ChatService {
     // (TranscriptTest). liveTurnFloor is null unless a turn is running - see turnFloors.
     static List<ChatMessageResponse> transcript(List<ChatMessage> rows, Map<Long, String> workflowRunsByMessage,
                                                 Long liveTurnFloor) {
+        return transcript(rows, workflowRunsByMessage, liveTurnFloor, ShownBy.NONE);
+    }
+
+    /**
+     * What the modules say about how the page shows what they wrote (ChatModule.shownOpening and
+     * shownMail), as one value, so transcript() stays a function of its arguments.
+     */
+    interface ShownBy {
+        ShownBy NONE = of(List.of());
+
+        Optional<ChatModule.Shown> opening(String content);
+
+        ai.proxyma.core.chat.agents.AgentInbox.Item mail(ai.proxyma.core.chat.agents.AgentInbox.Item item);
+
+        /** The first module that answers decides; one that throws is passed over (ChatModule's contract). */
+        static ShownBy of(List<ChatModule> modules) {
+            List<ChatModule> asked = modules == null ? List.of() : List.copyOf(modules);
+            return new ShownBy() {
+                @Override
+                public Optional<ChatModule.Shown> opening(String content) {
+                    if (content == null) return Optional.empty();
+                    for (ChatModule m : asked) {
+                        try {
+                            Optional<ChatModule.Shown> s = m.shownOpening(content);
+                            if (s != null && s.isPresent()) return s;
+                        } catch (RuntimeException e) {
+                            log.debug("[Chat] a chat module could not say how a message is shown: {}", e.getMessage());
+                        }
+                    }
+                    return Optional.empty();
+                }
+
+                @Override
+                public ai.proxyma.core.chat.agents.AgentInbox.Item mail(ai.proxyma.core.chat.agents.AgentInbox.Item item) {
+                    for (ChatModule m : asked) {
+                        try {
+                            ai.proxyma.core.chat.agents.AgentInbox.Item s = m.shownMail(item);
+                            if (s != null && !s.equals(item)) return s;
+                        } catch (RuntimeException e) {
+                            log.debug("[Chat] a chat module could not say how mail is shown: {}", e.getMessage());
+                        }
+                    }
+                    return item;
+                }
+            };
+        }
+    }
+
+    static List<ChatMessageResponse> transcript(List<ChatMessage> rows, Map<Long, String> workflowRunsByMessage,
+                                                Long liveTurnFloor, ShownBy shownBy) {
         boolean liveTurnReached = false;
         List<ChatMessageResponse> result = new ArrayList<>();
         List<PendingToolCall> pending = new ArrayList<>();
@@ -2037,8 +2465,20 @@ public class ChatService {
         // is what an ordinary multi-iteration turn already does, and dropping them would erase the
         // record of writes a workflow actually performed.
         boolean insideHiddenStep = false;
+        // Why the turn the rows so far belong to FAILED: shown once its rows are done - at the next
+        // message, or at the end.
+        String failedToFlush = null;
 
         for (ChatMessage row : rows) {
+            String failed = JpaChatMemoryRepository.readTurnError(row.getMetadataJson());
+            // A failed turn's last row may be one the transcript skips (a skill it loaded, a workflow's
+            // scaffolding): the failure is still that turn's, shown after it.
+            if (failed != null && (SmartChatMemory.isCondensedSummaryMarker(row.getContent())
+                    || SmartChatMemory.isSkillMarker(row.getContent())
+                    || FORCED_ANSWER_INSTRUCTION.equals(row.getContent())
+                    || SmartChatMemory.isWorkflowMarker(row.getContent()))) {
+                failedToFlush = failed;
+            }
             // A condensation handoff summary (USER) and its synthetic role-alternation bridge
             // (ASSISTANT) - see SmartChatMemory.condense() - are internal bookkeeping, never
             // something the user actually said or the model actually replied; skip both entirely
@@ -2071,6 +2511,11 @@ public class ChatService {
                     // never carried into the reply that follows it, and never dropped.
                     flushToolCalls(result, pending, stepLimitToFlush);
                     stepLimitToFlush = null;
+                    // The failure of the turn before this message, after that turn's steps.
+                    if (failedToFlush != null) {
+                        result.add(failureRow(failedToFlush));
+                        failedToFlush = null;
+                    }
                     // A real user message ends any run that was still in progress - a run that was
                     // interrupted (a restart, a Stop) never reaches its last step, and without this
                     // its suppression would swallow every later reply in the conversation.
@@ -2083,20 +2528,50 @@ public class ChatService {
                         // rest of that turn: its 'sub-agent-reported' event is replayed, and a row
                         // here as well would say it twice.
                         if (liveTurnFloor != null && row.getId() != null && row.getId() > liveTurnFloor) return result;
+                        // Mail that OPENED a turn carries the turn's markers after it like any opening -
+                        // the preloaded skills' "[Context: ...]" note above all - which are the model's
+                        // and would otherwise read as the last item's own words (the maintainer's
+                        // screenshot, 2026-11-05). Taken off here, as sanitizeUserContent does for a
+                        // person's message; each item then as its module shows it (ChatModule.shownMail).
+                        String mailContent = sanitizeUserContent(row.getContent()).content();
                         List<ChatMessageResponse.AgentMail> reported =
-                                ai.proxyma.core.chat.agents.AgentInbox.entriesIn(row.getContent()).stream()
-                                        .map(r -> new ChatMessageResponse.AgentMail(r[0],
-                                                r[1] == null ? null : SensitivePaths.scrub(r[1]), r[2]))
+                                ai.proxyma.core.chat.agents.AgentInbox.itemsIn(mailContent).stream()
+                                        .map(shownBy::mail)
+                                        .map(r -> {
+                                            // The words of a message, a reply or what the agent told the
+                                            // person - drawn as mail, never as the person's bubble.
+                                            String text = ai.proxyma.core.chat.agents.AgentInbox.shownText(r.kind(), r.text());
+                                            return new ChatMessageResponse.AgentMail(r.agentId(),
+                                                    r.title() == null ? null : SensitivePaths.scrub(r.title()), r.kind(),
+                                                    text == null ? null : SensitivePaths.scrub(text));
+                                        })
                                         .toList();
                         result.add(new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT,
                                 "", null, null, null, null, null, null, reported));
+                        if (failed != null) failedToFlush = failed;
                         continue;
                     }
                     SanitizedUserContent sanitized = sanitizeUserContent(row.getContent());
+                    // A message a module wrote to open a turn - a run's opening, a note for a lead -
+                    // starts with a header written for the model, in English: drawn as a mail line
+                    // the page names in the reader's language, or as the person's own words with the
+                    // header off (ChatModule.shownOpening). Nobody typed it, so it is not a bubble.
+                    ChatModule.Shown shown = shownBy.opening(sanitized.content()).orElse(null);
+                    if (shown != null && shown.mail() != null) {
+                        ai.proxyma.core.chat.agents.AgentInbox.Item mail = shown.mail();
+                        String words = ai.proxyma.core.chat.agents.AgentInbox.shownWords(mail.text());
+                        result.add(new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT,
+                                "", null, null, null, null, null, null, List.of(new ChatMessageResponse.AgentMail(
+                                        mail.agentId(), mail.title() == null ? null : SensitivePaths.scrub(mail.title()),
+                                        mail.kind(), words == null ? null : SensitivePaths.scrub(words)))));
+                        liveTurnReached = liveTurnFloor != null && row.getId() != null && row.getId() > liveTurnFloor;
+                        break;
+                    }
+                    String said = shown != null ? shown.personText() : sanitized.content();
                     // sanitizeUserContent already replaces the attachment paths it knows about;
                     // the scrub is the catch-all behind it, for a path the user simply typed.
                     result.add(new ChatMessageResponse(row.getId(), row.getRole(),
-                            SensitivePaths.scrub(sanitized.content()), null,
+                            SensitivePaths.scrub(said), null,
                             sanitized.attachmentNames().isEmpty() ? null : sanitized.attachmentNames(),
                             sanitized.mentions().isEmpty() ? null : sanitized.mentions(),
                             sanitized.skillMentions().isEmpty() ? null : sanitized.skillMentions(),
@@ -2152,9 +2627,18 @@ public class ChatService {
             // The turn's opening message is the last thing the transcript says about a turn that
             // is still running - see turnFloors.
             if (liveTurnReached) return result;
+            // Marked on the LAST row a failed turn wrote: shown once that turn's rows are done.
+            if (failed != null) failedToFlush = failed;
         }
         flushToolCalls(result, pending, stepLimitToFlush);
+        if (failedToFlush != null) result.add(failureRow(failedToFlush));
         return result;
+    }
+
+    // The row that says a turn failed and why, as the 'error' event said it live.
+    private static ChatMessageResponse failureRow(String why) {
+        return new ChatMessageResponse(null, ai.proxyma.core.chat.domain.MessageRole.ASSISTANT,
+                SensitivePaths.scrub(why), null, null, null, null, null, null, null, true);
     }
 
     // Gives the tool calls no message has claimed a row of their own, and empties the list. Also
@@ -2650,9 +3134,10 @@ public class ChatService {
         // Less the skills a saved agent is not given (AgentProfile.withheldSkills): their tools are
         // never unlocked, however the skill came to be read.
         Set<String> unlocked = unlockedForAgent(conversationId, unlockedSkillNames(conversationId));
-        List<ToolCallback> advertised = withExternalTools(toolSkillGating.resolveAdvertised(
+        List<ToolCallback> advertised = withoutQuestionsWhereUnwatched(conversationId,
+                withExternalTools(toolSkillGating.resolveAdvertised(
                 toolCallbacks, coreToolCallbacks, unlocked, conversationId,
-                SearchContext.getUserId()), unlocked, SearchContext.getUserId());
+                SearchContext.getUserId()), unlocked, SearchContext.getUserId()));
         // Advertised per CALL now - the session owns the options object that used to be mutated
         // here, which read as though the options were constant across a turn. They never were.
         log.debug("[Chat] iter={} advertising {} tool(s)", iteration, advertised.size());
@@ -2667,7 +3152,7 @@ public class ChatService {
                     List.of(new org.springframework.ai.chat.messages.UserMessage(FORCED_ANSWER_INSTRUCTION)));
         }
 
-        List<Message> promptMessages = withModuleMemory(conversationId, chatMemory.get(conversationId));
+        List<Message> promptMessages = withModuleMemory(conversationId, chatMemory.get(conversationId), iteration == 1);
 
         // One model call, streamed - the same call a sub-agent makes (ModelCall). What is this
         // loop's own is what happens to each piece of it: the answer goes out as TEXT events, a
@@ -2685,13 +3170,37 @@ public class ChatService {
         latency.streamStartNanos.compareAndSet(-1, System.nanoTime());
 
         final int thisIteration = iteration;
+        // WHAT THE MODEL THINKS, shown as it streams (2026-11-11): scrubbed as the answer is - its own output scrubber,
+        // then server paths - sent at most every THINKING_TEXT_EVERY_NANOS, and each piece cut at its last space so a
+        // path is never split across two pieces before SensitivePaths sees it. Never stored.
+        StreamingScrubber thinkingScrubber = guardrailService.outputScrubber();
+        StringBuilder thinkingHeld = new StringBuilder();
+        long[] thinkingSentAt = {0L};
+        java.util.function.Consumer<Boolean> sendThinking = all -> {
+            if (all) thinkingHeld.append(thinkingScrubber.drain());
+            int cut = all ? thinkingHeld.length() : lastSpace(thinkingHeld) + 1;
+            if (cut <= 0) return;
+            String piece = SensitivePaths.scrub(thinkingHeld.substring(0, cut));
+            thinkingHeld.delete(0, cut);
+            thinkingSentAt[0] = System.nanoTime();
+            if (piece.isEmpty()) return;
+            eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                    ChatEvent.Type.THINKING_TEXT.value(), null, null, piece));
+        };
         ModelCall.Outcome outcome = ModelCall.run(session, streaming, promptMessages, advertised, abort::get,
                 scrubber, new ModelCall.Listener() {
                     @Override public void firstChunk() {
                         latency.firstTokenNanos.compareAndSet(-1, System.nanoTime());
                     }
 
+                    @Override public void thinkingText(String text) {
+                        thinkingHeld.append(thinkingScrubber.accept(text));
+                        if (System.nanoTime() - thinkingSentAt[0] >= THINKING_TEXT_EVERY_NANOS) sendThinking.accept(false);
+                    }
+
                     @Override public void text(String text) {
+                        // The answer has begun: what is left of the thinking goes first.
+                        if (thinkingHeld.length() > 0 || thinkingSentAt[0] != 0L) sendThinking.accept(true);
                         // An intermediate workflow step's text is buffered and DROPPED rather than
                         // streamed: it is returned to the runner as that step's output and rendered
                         // inside the step's own row (see WorkflowRunSnapshot.Step.output). Streaming
@@ -2747,6 +3256,8 @@ public class ChatService {
                         latency.success = false;
                     }
                 });
+        // A call that ended on a tool call, with no answer: what is left of its thinking is sent now.
+        sendThinking.accept(true);
         if (scrubber.fired()) {
             log.info("[Guardrail] OUTPUT redacted while streaming conversationId={} rules={}",
                     conversationId, scrubber.findings().stream().map(f -> f.rule()).toList());
@@ -3037,18 +3548,33 @@ public class ChatService {
     // existed - the two abort cases stay a success:false envelope, and a genuine future failure
     // stays the bare Failures.describe() text that every other failure path in callTool produces.
     private ToolResponse abandon(String conversationId, ToolCall toolCall, String trackingId, String payload) {
-        // A wait for agents is not left running: what it would take next, nobody would read.
-        if (agentTree != null && ai.proxyma.core.chat.agents.AgentTree.AWAIT_TOOL.equals(toolCall.name())) {
+        toolGivenUp(conversationId, toolCall.name());
+        // Same derivation as callTool()'s own events, so an abandoned call inside a workflow step
+        // or a sub-agent stays nested there rather than jumping to the top level as it settles.
+        publishToolResult(conversationId, trackingId, payload);
+        return new ToolResponse(toolCall.id(), toolCall.name(), payload);
+    }
+
+    /**
+     * Nobody will read what this call returns: a wait it runs is not left running, so what it would
+     * take next stays for the conversation - awaitAgents' reports, and a module's waits
+     * (ChatModule.toolAbandoned: a project lead's answer comes as mail instead).
+     */
+    void toolGivenUp(String conversationId, String toolName) {
+        if (agentTree != null && ai.proxyma.core.chat.agents.AgentTree.AWAIT_TOOL.equals(toolName)) {
             try {
                 agentTree.abandonWaits(conversationId);
             } catch (RuntimeException e) {
                 log.warn("[Chat] could not end the waits of conversationId={}: {}", conversationId, e.getMessage());
             }
         }
-        // Same derivation as callTool()'s own events, so an abandoned call inside a workflow step
-        // or a sub-agent stays nested there rather than jumping to the top level as it settles.
-        publishToolResult(conversationId, trackingId, payload);
-        return new ToolResponse(toolCall.id(), toolCall.name(), payload);
+        for (ChatModule module : chatModules) {
+            try {
+                module.toolAbandoned(conversationId, toolName);
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not end its wait in conversationId={}: {}", conversationId, e.getMessage());
+            }
+        }
     }
 
     // Whose row a tool event nests under: the running workflow step's, else nobody's - which is
@@ -3062,7 +3588,7 @@ public class ChatService {
     private void publishToolStart(String conversationId, String trackingId, String toolName, String arguments) {
         // A background job's call is not what the turn is doing: the turn goes on beside it.
         if (trackingId != null && !trackingId.startsWith(BACKGROUND_CALL_PREFIX)) {
-            turnActivity.toolStarted(conversationId, trackingId, toolName);
+            turnActivity.toolStarted(conversationId, trackingId, toolName, arguments);
         }
         eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
                 ChatEvent.Type.TOOL_START.value(), trackingId, toolName, arguments, parentCallId(conversationId)));
@@ -3090,6 +3616,54 @@ public class ChatService {
 
     private void promptClosed(String trackingId) {
         openPrompts.remove(trackingId);
+        promptContexts.remove(trackingId);
+    }
+
+    // What each open approval's write is about, once its lookup answered - handed to a page with the
+    // prompt (pendingPrompts), as the TOOL_APPROVAL_CONTEXT event hands it to a page following along.
+    private final ConcurrentHashMap<String, ai.proxyma.core.chat.approval.ApprovalContext> promptContexts =
+            new ConcurrentHashMap<>();
+
+    private ai.proxyma.core.chat.approval.ApprovalContexts approvalContexts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApprovalContexts(ai.proxyma.core.chat.approval.ApprovalContexts approvalContexts) {
+        this.approvalContexts = approvalContexts;
+    }
+
+    // Hands an open prompt what its write is about: kept for a page that loads it (pendingPrompts) and sent to the
+    // pages following along. Dropped when the prompt closed meanwhile.
+    private void showApprovalContext(String conversationId, ToolCall toolCall, String trackingId,
+                                     ai.proxyma.core.chat.approval.ApprovalContext context) {
+        if (!openPrompts.containsKey(trackingId)) return;
+        String json = context.toJson();
+        if (json == null) return;
+        promptContexts.put(trackingId, context);
+        if (!openPrompts.containsKey(trackingId)) {
+            promptContexts.remove(trackingId);
+            return;
+        }
+        eventPublisher.publishEvent(new ChatEvent(conversationId, chatEventSink.nextSequence(conversationId),
+                ChatEvent.Type.TOOL_APPROVAL_CONTEXT.value(), trackingId, toolCall.name(), json, null));
+    }
+
+    // Looks up what an approval's write is about BESIDE the prompt, never before it: the card is up at
+    // once, and the context follows within ApprovalContexts' limit - or never, and the card shows the
+    // arguments as it always did. Dropped when the prompt closed meanwhile.
+    private void describeApproval(String conversationId, ToolCall toolCall, String trackingId, String userId) {
+        if (approvalContexts == null) return;
+        try {
+            BlockingWork.executor().execute(() -> {
+                try {
+                    approvalContexts.resolve(toolCall.name(), toolCall.arguments(), conversationId, userId)
+                            .ifPresent(context -> showApprovalContext(conversationId, toolCall, trackingId, context));
+                } catch (RuntimeException e) {
+                    log.debug("[Chat] no approval context for '{}': {}", toolCall.name(), e.getMessage());
+                }
+            });
+        } catch (RuntimeException e) {
+            log.debug("[Chat] approval context not asked for '{}': {}", toolCall.name(), e.getMessage());
+        }
     }
 
     // The Audit Logs page's record of each call, made here rather than in the tool wrapper below
@@ -3163,10 +3737,28 @@ public class ChatService {
     private Set<String> unlockedForAgent(String conversationId, Set<String> unlocked) {
         if (unlocked.isEmpty() || chatModules.isEmpty()) return unlocked;
         Optional<AgentProfile> profile = AgentProfiles.of(chatModules, conversationId, SearchContext.getUserId());
-        if (profile.isEmpty() || (profile.get().withheldSkills() == null && !profile.get().locked())) return unlocked;
+        if (profile.isEmpty() || !profile.get().narrowsSkills()) return unlocked;
         Set<String> out = new LinkedHashSet<>();
-        for (String name : unlocked) if (profile.get().allowsSkill(name)) out.add(name);
+        for (String name : unlocked) if (agentMayRead(profile.get(), name)) out.add(name);
         return out;
+    }
+
+    // Whether a saved agent's profile lets it read this skill: a tool set (a group, a module's skill, a
+    // connected MCP server) only as its allow-list and denials say, any other skill unless denied by name.
+    private boolean agentMayRead(AgentProfile profile, String skillName) {
+        return profile.allowsSkill(skillName, isToolSetSkill(skillName));
+    }
+
+    // A skill that offers tools of its own kind: one of the gate's groups, or a connected MCP server's.
+    private boolean isToolSetSkill(String skillName) {
+        if (skillName == null) return false;
+        if (toolSkillGating.isToolGroup(skillName)) return true;
+        try {
+            return externalTools != null && externalTools.owns(skillName.strip());
+        } catch (RuntimeException e) {
+            // Not knowing, it is taken for one: an allow-list then withholds it rather than gives it.
+            return true;
+        }
     }
 
     // Null when this conversation may call the tool; the sentence the model reads when it may not.
@@ -3185,10 +3777,10 @@ public class ChatService {
                     + "agent's Access tab; work with the tools you were offered.");
         }
         Set<String> skills = profile.get().withheldSkills();
-        if (skills == null || skills.isEmpty()) return null;
+        if ((skills == null || skills.isEmpty()) && profile.get().allowedSkills() == null) return null;
         if (READ_SKILL.equals(toolName)) {
             String skill = skillNameOf(arguments);
-            if (skill != null && !profile.get().allowsSkill(skill)) {
+            if (skill != null && !agentMayRead(profile.get(), skill)) {
                 return failure("The skill " + skill + " is not given to this agent. Its tools are set on the "
                         + "agent's Access tab; work with the tools you were offered.");
             }
@@ -3310,6 +3902,9 @@ public class ChatService {
                 toolExecutionStarted.remove(trackingId);
                 SearchContext.removeToolCallId();
             }
+            // A write the server approved itself: how it went is recorded on its request (made, failed,
+            // or held for a limit and retried by the inbox, which the agent then reads instead).
+            result = finishAutoApproval(trackingId, result);
             // Raw /mcp tool calls (e.g. from an IDE) never reach here, so they still get the
             // tool's unmodified result: external MCP clients have their own context handling and
             // aren't expecting a proprietary "resultOffloaded" envelope. Only an agent loop, which
@@ -3337,10 +3932,72 @@ public class ChatService {
             // connector, say), which put a null result into the ToolResponse and the TOOL_RESULT
             // event rather than anything the agent or the user could read.
             result = Failures.describe(e, "Tool call failed");
+            // An automatically approved write that threw is FAILED on its request, not left as being made.
+            finishAutoApproval(trackingId, failure(result));
             threwCalls.add(trackingId);
             publishToolResult(conversationId, trackingId, result);
         }
         return new ToolResponse(toolCall.id(), toolCall.name(), result);
+    }
+
+    // The requests the server approved itself (ApprovalInbox.approveAutomatically), by the tracking id of the
+    // call they let through: finished with the call's result (ApprovalInbox.finishAutomatic) once it ran.
+    private final Map<String, UUID> autoApprovals = new ConcurrentHashMap<>();
+
+    // Keeps the write in the approvals inbox, approved by the server: null to let the call run now, or what
+    // the agent reads instead when nothing is to be made (done another way, already approved, being edited).
+    private String approveAutomatically(String conversationId, String userId, ToolCall toolCall, String trackingId,
+                                        String by, String note) {
+        ai.proxyma.core.chat.agents.ApprovalInbox.AutoApproval a =
+                approvalInbox.approveAutomatically(conversationId, userId, toolCall, by);
+        if (!a.proceed()) {
+            noteApproval(trackingId, "Not made: nothing left to do", true);
+            return a.refusal();
+        }
+        autoApprovals.put(trackingId, a.requestId());
+        noteApproval(trackingId, note, false);
+        return null;
+    }
+
+    // How an automatically approved call went, recorded on its request; what the agent reads.
+    private String finishAutoApproval(String trackingId, String result) {
+        UUID request = autoApprovals.remove(trackingId);
+        if (request == null || approvalInbox == null) return result;
+        try {
+            return approvalInbox.finishAutomatic(request, result);
+        } catch (RuntimeException e) {
+            log.warn("[Chat] could not record how approved request {} went: {}", request, e.getMessage());
+            return result;
+        }
+    }
+
+    /** Why a module refuses a person's decision on this conversation's waiting writes (ChatModule.decisionRefused). */
+    public Optional<String> decisionRefused(String conversationId) {
+        if (conversationId == null) return Optional.empty();
+        for (ChatModule module : chatModules) {
+            try {
+                Optional<String> why = module.decisionRefused(conversationId);
+                if (why != null && why.isPresent()) return why;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether conversation {}'s writes may be decided: {}",
+                        conversationId, e.getMessage());
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Whether a module approves this conversation's writes itself (ChatModule.autoApproves). */
+    boolean autoApproves(String conversationId) {
+        if (conversationId == null || approvalInbox == null) return false;
+        for (ChatModule module : chatModules) {
+            try {
+                if (module.autoApproves(conversationId)) return true;
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not say whether conversation {}'s writes are approved: {}",
+                        conversationId, e.getMessage());
+            }
+        }
+        return false;
     }
 
     // Pauses the ReAct loop for a write-capable tool call until the user accepts (once, or "all"
@@ -3394,21 +4051,60 @@ public class ChatService {
             }
         }
 
-        // Auto skips the PAUSE and nothing else: the switches checked above still decided whether
-        // this write may happen at all, and the tool checks the connection's Write switch again.
-        if (mode == PermissionMode.AUTO) {
-            noteApproval(trackingId, "Allowed: Auto permission mode", false);
-            return null;
-        }
-        // A request a person approved in the approvals inbox, run now under the id it was given.
+        // A request a person approved in the approvals inbox, run now under the id it was given. Before
+        // Auto: in a conversation running in Auto where nobody watches, Auto keeps the write in the inbox
+        // (below), and the inbox's own run of it must not be kept a second time.
         if (approvalInbox != null && approvalInbox.consumeApproved(toolCall.id())) {
             noteApproval(trackingId, "Approved in the approvals inbox", false);
             return null;
         }
-        // Nobody watches this conversation: the write is kept for a person, and the turn goes on.
+        // Auto skips the PAUSE and nothing else: the switches checked above still decided whether
+        // this write may happen at all, and the tool checks the connection's Write switch again.
+        if (mode == PermissionMode.AUTO) {
+            // Where nobody watches (a saved agent's run set to Auto), the write is still KEPT in the
+            // approvals inbox, approved by the server at once, so it is listed with every decided one
+            // (2026-11-05, the maintainer's auto-approve). It runs here, in the turn, as Auto always did.
+            if (unwatched(conversationId)) {
+                return approveAutomatically(conversationId, userId, toolCall, trackingId,
+                        ai.proxyma.core.chat.agents.ApprovalInbox.AUTO_AGENT, "Approved automatically: Auto permission mode");
+            }
+            noteApproval(trackingId, "Allowed: Auto permission mode", false);
+            return null;
+        }
+        // Nobody watches this conversation: the write is kept for a person, and the turn goes on - or,
+        // where its module approves its writes (a project switched to auto-approve), approved at once.
         if (unwatched(conversationId)) {
+            if (autoApproves(conversationId)) {
+                return approveAutomatically(conversationId, userId, toolCall, trackingId,
+                        ai.proxyma.core.chat.agents.ApprovalInbox.AUTO_PROJECT, "Approved automatically by the project");
+            }
             noteApproval(trackingId, "Waiting in the approvals inbox", false);
             return approvalInbox.park(conversationId, userId, toolCall);
+        }
+
+        // A write for a subject the person already APPROVED, held for a limit (a YouTube reply waiting for the daily quota),
+        // is made by the server once the limit lifts: the person is not asked again (2026-11-05).
+        if (approvalInbox != null) {
+            Optional<String> held = approvalInbox.alreadyHeld(toolCall.name(), toolCall.arguments(), userId);
+            if (held.isPresent()) {
+                noteApproval(trackingId, "Already approved: waiting for a limit to reset", true);
+                return held.get();
+            }
+        }
+        // A write whose card must be whole (ApprovalContexts.requiresWhole - the YouTube reply's) is looked up BEFORE the
+        // person is asked, and refused, nothing asked, when its card would lack a field: the same rule as the inbox's.
+        ai.proxyma.core.chat.approval.ApprovalContext whole = null;
+        if (approvalContexts != null && approvalContexts.requiresWhole(toolCall.name())) {
+            ai.proxyma.core.chat.approval.ApprovalContexts.Prepared ready = approvalContexts.prepare(toolCall.name(),
+                    toolCall.arguments(), conversationId, userId);
+            if (ready.refused()) {
+                log.info("[Chat] write '{}' refused before asking: {} trackingId={}", toolCall.name(), ready.refusal(),
+                        trackingId);
+                noteApproval(trackingId, "Refused: what it is about could not be read", true);
+                return "{\"success\":false,\"status\":\"REFUSED\",\"error\":"
+                        + toJsonString(ready.refusal() + " Nothing was kept or changed.") + "}";
+            }
+            whole = ready.context();
         }
 
         CompletableFuture<ApprovalDecision> future = registerPendingApproval(conversationId, trackingId);
@@ -3419,6 +4115,8 @@ public class ChatService {
                     toolCall.arguments() != null ? toolCall.arguments() : "{}", null));
             log.info("[Chat] approval requested: '{}' trackingId={} conversationId={}",
                     toolCall.name(), trackingId, conversationId);
+            if (whole != null) showApprovalContext(conversationId, toolCall, trackingId, whole);
+            else describeApproval(conversationId, toolCall, trackingId, userId);
 
             ApprovalDecision decision = null;
             // Distinguishes *why* a DENY happened for the log line below - "aborted"/"timed out"
@@ -3487,6 +4185,10 @@ public class ChatService {
      * same abort checkpoint, so Stop ends the wait at once. Returns the result the model reads.
      */
     String awaitUserAnswers(String conversationId, ToolCall toolCall, String trackingId, AtomicBoolean abort) {
+        if (isDeployedAgent(conversationId)) {
+            return failure("Nobody answers a deployed agent's questions directly. Ask the agent that deployed you "
+                    + "with tellAgent, or decide with your best judgment and say what you assumed.");
+        }
         if (unwatched(conversationId)) {
             return failure("Nobody is watching this conversation to answer: it runs on a schedule or for another "
                     + "agent. Decide with your best judgment and say what you assumed, or ask the agent that leads you.");
@@ -3850,6 +4552,46 @@ public class ChatService {
     private static final String SKILL_MENTION_MARKER = "\n\n[Context: The user has explicitly requested these skills - ";
     private static final String WORKFLOW_MENTION_MARKER = "\n\n[Context: The user invoked this workflow - ";
     private static final String ATTACHMENT_MARKER = "\n\n[Attached file(s): ";
+    // What a product module said about the mentions it claimed (claimModuleMentions); the claimed
+    // names follow it in quotes, so the sent message draws them as chips again.
+    private static final String MODULE_MENTION_MARKER = "\n\n[Context: The user addressed - ";
+    private static final String MODULE_MENTION_NAMES = " Addressed: ";
+
+    /** A message's mentions once the modules have claimed theirs: the rest, and the block for the claimed. */
+    record ModuleMentions(List<String> sourceMentions, List<String> claimedNames, String block) {
+        static final ModuleMentions NONE = new ModuleMentions(List.of(), List.of(), "");
+    }
+
+    /**
+     * Asks every module which of these mentions are its own (ChatModule.claimMentions). Only a name the
+     * message really mentions can be claimed, and a module that fails costs only its own claim. With
+     * nothing claimed the mentions are returned as they came and the block is empty.
+     */
+    static ModuleMentions claimModuleMentions(List<ChatModule> modules, String conversationId, String userId,
+                                              List<String> mentions) {
+        if (mentions == null || mentions.isEmpty() || modules == null || modules.isEmpty()) {
+            return new ModuleMentions(mentions == null ? List.of() : mentions, List.of(), "");
+        }
+        Set<String> claimed = new LinkedHashSet<>();
+        List<String> notes = new ArrayList<>();
+        for (ChatModule module : modules) {
+            try {
+                ai.proxyma.core.chat.module.MentionClaim c = module.claimMentions(conversationId, userId, mentions);
+                if (c == null || c.isEmpty()) continue;
+                boolean any = false;
+                for (String name : c.names()) if (mentions.contains(name) && claimed.add(name)) any = true;
+                if (any && c.note() != null && !c.note().isBlank()) notes.add(c.note().replace('"', '\'').strip());
+            } catch (RuntimeException e) {
+                log.warn("[Chat] a chat module could not read the mentions of a message in {}: {}", conversationId,
+                        e.getMessage());
+            }
+        }
+        if (claimed.isEmpty()) return new ModuleMentions(mentions, List.of(), "");
+        List<String> rest = mentions.stream().filter(m -> !claimed.contains(m)).toList();
+        String block = MODULE_MENTION_MARKER + String.join(" ", notes) + MODULE_MENTION_NAMES
+                + claimed.stream().map(n -> "\"" + n + "\"").collect(Collectors.joining(", ")) + "]";
+        return new ModuleMentions(rest, List.copyOf(claimed), block);
+    }
     private static final Pattern QUOTED_SEGMENT = Pattern.compile("\"([^\"]+)\"");
 
     /**
@@ -3868,16 +4610,17 @@ public class ChatService {
                 "already been given. Requested: " + skillList + "]";
     }
 
-    private record SanitizedUserContent(
+    record SanitizedUserContent(
             String content, List<String> attachmentNames, List<String> mentions, List<String> skillMentions) {}
 
-    private static SanitizedUserContent sanitizeUserContent(String raw) {
+    static SanitizedUserContent sanitizeUserContent(String raw) {
         if (raw == null) return new SanitizedUserContent(raw, List.of(), List.of(), List.of());
         int mentionIdx = raw.indexOf(MENTION_MARKER);
         int skillMentionIdx = raw.indexOf(SKILL_MENTION_MARKER);
         int workflowIdx = raw.indexOf(WORKFLOW_MENTION_MARKER);
         int attachmentIdx = raw.indexOf(ATTACHMENT_MARKER);
-        int[] all = { mentionIdx, skillMentionIdx, workflowIdx, attachmentIdx };
+        int moduleIdx = raw.indexOf(MODULE_MENTION_MARKER);
+        int[] all = { mentionIdx, skillMentionIdx, workflowIdx, attachmentIdx, moduleIdx };
         int cutIdx = -1;
         for (int idx : all) {
             if (idx >= 0 && (cutIdx < 0 || idx < cutIdx)) cutIdx = idx;
@@ -3887,9 +4630,18 @@ public class ChatService {
         List<String> attachmentNames = attachmentIdx < 0 ? List.of()
                 : extractFileNames(raw.substring(attachmentIdx + ATTACHMENT_MARKER.length(),
                         markerBlockEnd(attachmentIdx, raw, all)));
-        List<String> mentions = mentionIdx < 0 ? List.of()
+        List<String> mentions = new ArrayList<>(mentionIdx < 0 ? List.of()
                 : extractQuotedNames(raw.substring(mentionIdx + MENTION_MARKER.length(),
-                        markerBlockEnd(mentionIdx, raw, all)));
+                        markerBlockEnd(mentionIdx, raw, all))));
+        // What a module claimed is an "@Name" chip on screen like any other mention, so it is read back
+        // into the same list: sent again (a rewind), the module claims it again.
+        if (moduleIdx >= 0) {
+            String block = raw.substring(moduleIdx + MODULE_MENTION_MARKER.length(), markerBlockEnd(moduleIdx, raw, all));
+            int names = block.lastIndexOf(MODULE_MENTION_NAMES);
+            if (names >= 0) {
+                for (String n : extractQuotedNames(block.substring(names))) if (!mentions.contains(n)) mentions.add(n);
+            }
+        }
         // Workflow names are returned in the SAME field as skill names, and deliberately: "/Name"
         // is one namespace on screen, so MessageBubble renders both kinds of chip from this one
         // list and does not need to know (or be told twice) which kind it is looking at. The
@@ -3903,7 +4655,7 @@ public class ChatService {
             skillMentions.addAll(extractQuotedNames(raw.substring(workflowIdx + WORKFLOW_MENTION_MARKER.length(),
                     markerBlockEnd(workflowIdx, raw, all))));
         }
-        return new SanitizedUserContent(clean, attachmentNames, mentions, List.copyOf(skillMentions));
+        return new SanitizedUserContent(clean, attachmentNames, List.copyOf(mentions), List.copyOf(skillMentions));
     }
 
     // Each marker's own instructional text ends where the next marker (whichever of the others

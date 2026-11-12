@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Caption, Chip, FieldLabel, FieldSkeleton, Input, Presence, Skeleton } from '@/components/ui/kit'
+import { Button, Caption, Chip, Field, FieldLabel, FieldSkeleton, Input, Presence, Skeleton } from '@/components/ui/kit'
+import { EditableText } from '@/components/ui/EditableText'
 import { keys } from '@/services/queryKeys'
 import { indexingApi } from '../services/indexingApi'
 import { useTranslation } from '@/i18n'
@@ -24,11 +25,16 @@ interface Props {
   value: string[]
   onChange: (next: string[]) => void
   disabled?: boolean
+  /**
+   * An EXISTING source's filter (the maintainer, 2026-11-02): the typed extensions are click-to-edit,
+   * like every saved text, rather than a box. The dialog saves what `onChange` reports.
+   */
+  saved?: boolean
 }
 
 // Shared by the Add Local Folder modal and the connector detail modal, so a folder's file types
 // are chosen and later changed through the exact same control.
-export function FileTypeFilter({ value, onChange, disabled }: Props) {
+export function FileTypeFilter({ value, onChange, disabled, saved }: Props) {
   const { t } = useTranslation()
   const { data: catalog, isLoading } = useQuery({
     queryKey: keys.fileTypeCatalog(),
@@ -117,6 +123,17 @@ export function FileTypeFilter({ value, onChange, disabled }: Props) {
         })}
       </div>
 
+      {saved ? (
+        <Field label={t('Other file types')} hint={t('Comma-separated.')}>
+          <EditableText
+            value={customText}
+            label={t('Other file types')}
+            placeholder="json, log, yaml"
+            editable={!disabled}
+            onCommit={text => setCustom(text)}
+          />
+        </Field>
+      ) : (
       <Input
         label={t('Other file types')}
         // A format example, not prose - the words are file extensions.
@@ -129,12 +146,13 @@ export function FileTypeFilter({ value, onChange, disabled }: Props) {
           if (e.key === 'Enter') { e.preventDefault(); setCustom(draft) }
         }}
         disabled={disabled}
-        hint={t('Comma-separated. Anything with no dedicated converter is indexed as plain text.')}
+        hint={t('Comma-separated.')}
       />
+      )}
 
       <Presence show={value.length === 0}>
         <Caption>
-          {t('Nothing selected - every supported file type will be indexed.')}
+          {t('Nothing selected: every supported type is indexed.')}
         </Caption>
       </Presence>
     </div>

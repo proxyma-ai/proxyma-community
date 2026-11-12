@@ -32,8 +32,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/legal")
 public class LegalDocumentController {
 
-    private static final String LAST_UPDATED = LegalDocuments.CURRENT_VERSION;
-
     // Where each document is published. Absolute now that they are not this app's own routes, and
     // hardcoded rather than configurable because they are the addresses named inside the documents
     // themselves and recorded against every consent - not a per-deployment detail.
@@ -42,6 +40,9 @@ public class LegalDocumentController {
     private static final String EULA_URL = "https://proxyma.ai/eula";
 
     private final String dataProcessingAgreement = read("legal/data-processing-agreement.md");
+    // The DPA's own date, from its "Last updated" line - not the consent version, which follows the Terms, Privacy
+    // Policy and EULA (2026-11-11 release review: the DPA read 2026-10-30 and was served as 2026-11-09).
+    private final String dpaLastUpdated = lastUpdatedOf(dataProcessingAgreement);
 
     // Only meaningful for a deployment we host, where we are a processor acting on the customer's
     // behalf. Served unconditionally anyway: a self-hosting customer whose procurement asks for a
@@ -50,7 +51,7 @@ public class LegalDocumentController {
     public Mono<ResponseEntity<Map<String, Object>>> getDataProcessingAgreement() {
         return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
                 "content", dataProcessingAgreement,
-                "lastUpdated", LAST_UPDATED,
+                "lastUpdated", dpaLastUpdated,
                 "version", LegalDocuments.CURRENT_VERSION)));
     }
 
@@ -68,6 +69,13 @@ public class LegalDocumentController {
                 "termsUrl", TERMS_URL,
                 "privacyUrl", PRIVACY_URL,
                 "eulaUrl", EULA_URL)));
+    }
+
+    /** The date on a document's "Last updated" line (yyyy-mm-dd), else the consent version. */
+    static String lastUpdatedOf(String content) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("Last updated:\\**\\s*(\\d{4}-\\d{2}-\\d{2})")
+                .matcher(content == null ? "" : content);
+        return m.find() ? m.group(1) : LegalDocuments.CURRENT_VERSION;
     }
 
     private static String read(String path) {

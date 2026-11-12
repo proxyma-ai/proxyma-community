@@ -85,6 +85,9 @@ public class McpGuardService {
 
     public void checkBitbucketWrite(String userId) { checkWrite(ConnectorType.BITBUCKET, "Bitbucket", userId); }
 
+    // YouTube's one write - a reply under a comment, posted as the channel (YouTubeTools).
+    public void checkYouTubeWrite(String userId) { checkWrite(ConnectorType.YOUTUBE_CHANNEL, "YouTube", userId); }
+
     private void checkWrite(ConnectorType type, String label, String userId) {
         checkTier(type, label);
         target(type, userId).filter(t -> !t.allowWrite()).ifPresent(t -> {
@@ -129,6 +132,7 @@ public class McpGuardService {
             else if (WriteToolRegistry.JIRA_NAMES.contains(toolName)) checkJiraWrite(userId);
             else if (WriteToolRegistry.CONFLUENCE_NAMES.contains(toolName)) checkConfluenceWrite(userId);
             else if (WriteToolRegistry.BITBUCKET_NAMES.contains(toolName)) checkBitbucketWrite(userId);
+            else if (WriteToolRegistry.YOUTUBE_NAMES.contains(toolName)) checkYouTubeWrite(userId);
             return null;
         } catch (IllegalStateException e) {
             return e.getMessage();

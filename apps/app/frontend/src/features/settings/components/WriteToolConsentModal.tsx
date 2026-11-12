@@ -63,7 +63,7 @@ export function WriteToolConsentModal({ connectorLabel, onAccept, onCancel }: Pr
           shake={shake.shaking}
           onChange={v => { setAcknowledged(v); if (v) setError('') }}
         >
-          {t('I have read this and I am responsible for reviewing every write action.')}
+          {t('I will review every write action.')}
         </Checkbox>
         <FieldNote error={error || undefined} />
       </DialogBody>

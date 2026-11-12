@@ -23,8 +23,12 @@ import java.util.Set;
  * The agent tree as the chat sees it: a CHILD conversation runs under its tree's root profile - the
  * narrowing a saved agent of Constellations has, or none for a conversation the user opened - so a
  * child can never do more than the agent that deployed it. On top of that it may run on a model of
- * its own (given at deployAgent, else Settings > Agents' child model), and at the deepest level it
+ * its own (named at deployAgent, else its parent's - AgentTree.deploy), and at the deepest level it
  * is not given deployAgent. Its system prompt says which agent it is and for whom it works.
+ *
+ * <p>Its root's narrowing comes whole: the tool sets, the sources, the memory and the connections its
+ * root is pinned to (AgentProfile.connectionPins), so a child of an agent tied to one YouTube channel
+ * replies on that channel too.
  *
  * <p>First of the modules, so AgentProfiles asks it before the others; it asks the others itself,
  * about the ROOT conversation, and answers nothing for a conversation that is not a child.
@@ -60,34 +64,43 @@ public class AgentTreeModule implements ChatModule {
         if (found.isEmpty()) return Optional.empty();
         AgentNode n = found.get();
         if (n.getUserId() != null && !n.getUserId().equals(userId)) return Optional.of(AgentProfile.LOCKED);
-        List<ChatModule> others = modules.orderedStream().filter(m -> m != this).toList();
-        Optional<AgentProfile> rootProfile = AgentProfiles.of(others, n.getRootConversationId(), userId);
-        AgentProfile root = rootProfile.orElse(null);
+        AgentProfile root = rootProfile(n.getRootConversationId(), userId);
         if (root != null && root.locked()) return Optional.of(AgentProfile.LOCKED);
 
         Set<String> withheld = new HashSet<>();
         if (root != null && root.withheldTools() != null) withheld.addAll(root.withheldTools());
         if (n.getDepth() >= tree.maxDepth()) withheld.add(DEPLOY);
 
-        String provider = n.getProviderId();
-        String model = n.getModel();
-        if (model == null && root != null && root.ownModel()) {
-            provider = root.providerId();
-            model = root.model();
-        }
-        if (model == null) {
-            SubAgentSettings child = childSettings();
-            if (child.getModel() != null && !child.getModel().isBlank()) {
-                provider = child.getProvider() == null || child.getProvider().isBlank() ? null : child.getProvider();
-                model = child.getModel();
-            }
-        }
+        RunsOn runs = runsOn(n, root);
         // Its step limit: the root's (a saved agent's), else Settings > Agents' for deployed agents
         // when set there, else the chat's own.
         Integer steps = root != null && root.maxSteps() != null ? root.maxSteps() : childSettings().getMaxIterations();
-        return Optional.of(new AgentProfile(provider, model, steps,
+        return Optional.of(new AgentProfile(runs.providerId(), runs.model(), steps,
                 withheld.isEmpty() ? null : withheld, root == null ? null : root.sourceIds(),
-                root == null ? null : root.memoryKey(), root == null ? null : root.withheldSkills()));
+                root == null ? null : root.memoryKey(), root == null ? null : root.withheldSkills(), false,
+                root == null ? null : root.allowedSkills(), root == null ? null : root.connectionPins()));
+    }
+
+    /** A provider instance and a model; the provider null for the chat's own, both null for the chat's model. */
+    public record RunsOn(String providerId, String model) {}
+
+    /** The profile the other modules give a tree's ROOT conversation - a saved agent's - or null for none. */
+    public AgentProfile rootProfile(String rootConversationId, String userId) {
+        List<ChatModule> others = modules.orderedStream().filter(m -> m != this).toList();
+        return AgentProfiles.of(others, rootConversationId, userId).orElse(null);
+    }
+
+    /**
+     * What a deployed agent runs on: the model it was deployed with - one its deployer named from the
+     * models Settings allow, or its parent's, which AgentTree.deploy records when none was named - else
+     * its root's own (a saved agent's), else the chat's own (two nulls). There is no Settings model for
+     * deployed agents since 2026-11-02 (the maintainer: it contradicted the models agents may choose).
+     * The agents map shows it; profileFor runs it.
+     */
+    public RunsOn runsOn(AgentNode n, AgentProfile root) {
+        if (n.getModel() != null) return new RunsOn(n.getProviderId(), n.getModel());
+        if (root != null && root.ownModel()) return new RunsOn(root.providerId(), root.model());
+        return new RunsOn(null, null);
     }
 
     /**
@@ -125,6 +138,21 @@ public class AgentTreeModule implements ChatModule {
         return modules.orderedStream().filter(m -> m != this).anyMatch(m -> {
             try {
                 return m.parksApprovals(root);
+            } catch (RuntimeException e) {
+                return false;
+            }
+        });
+    }
+
+    /** A deployed agent's writes are approved automatically exactly as its tree root's are. */
+    @Override
+    public boolean autoApproves(String conversationId) {
+        Optional<AgentNode> found = tree.node(conversationId);
+        if (found.isEmpty()) return false;
+        String root = found.get().getRootConversationId();
+        return modules.orderedStream().filter(m -> m != this).anyMatch(m -> {
+            try {
+                return m.autoApproves(root);
             } catch (RuntimeException e) {
                 return false;
             }

@@ -2,7 +2,10 @@
 
 import type { ComponentType, ReactNode } from 'react'
 import { Check, Languages } from 'lucide-react'
-import { APPEARANCE_PREFERENCES, type AppearancePreference } from './appearance'
+import {
+  ACCENT_PREFERENCES, ACCENT_SWATCH, APPEARANCE_PREFERENCES, BACKDROP_PREFERENCES,
+  type AccentPreference, type AppearancePreference, type BackdropPreference,
+} from './appearance'
 import { AppearanceIcon } from './AppearanceMenu'
 import { SubmenuRow, type SubmenuOptionRender } from './SubmenuRow'
 import { MenuSurface, menuRow } from './menu'
@@ -142,8 +145,30 @@ export function SidebarChoiceRow<T extends string>({ icon: Icon, title, choices,
   return folded ? <Tooltip label={title}>{menu}</Tooltip> : menu
 }
 
-/** Appearance as a row of the sidebar's foot: System, Light and Dark, each with its glyph; a choice keeps the list open. */
-export function SidebarAppearanceRow({ title, names, current, onChoose, folded }: {
+/**
+ * The background and the accent beside the appearance (appearance.ts `applyLook`), offered in the same
+ * list when an app passes them: the app does, the consoles do not yet.
+ */
+export interface LookChoices {
+  /** "Background", translated. */
+  backdropTitle: string
+  backdropNames: Record<BackdropPreference, string>
+  backdrop: BackdropPreference
+  onBackdrop: (backdrop: BackdropPreference) => void
+  /** "Accent color", translated. */
+  accentTitle: string
+  accentNames: Record<AccentPreference, string>
+  accent: AccentPreference
+  onAccent: (accent: AccentPreference) => void
+}
+
+/**
+ * Appearance as a row of the sidebar's foot: System, Light and Dark, each with its glyph; a choice keeps
+ * the list open. With `look`, the same list goes on to the background (Flat, Gradient) and a row of the
+ * accent colors as swatches (the maintainer, 2026-11-09: "Make an appearance setting so we can choose.
+ * Also, allow the user to select the accent color as well") - every choice keeps it open, to compare.
+ */
+export function SidebarAppearanceRow({ title, names, current, onChoose, folded, look }: {
   /** "Appearance", translated. */
   title: string
   /** Each preference's name, translated. */
@@ -151,22 +176,96 @@ export function SidebarAppearanceRow({ title, names, current, onChoose, folded }
   current: AppearancePreference
   onChoose: (preference: AppearancePreference) => void
   folded: boolean
+  look?: LookChoices
 }) {
   const CurrentIcon = ({ size, className }: { size?: number | string; className?: string }) =>
     <AppearanceIcon preference={current} size={typeof size === 'number' ? size : 16} className={className} />
-  return (
-    <SidebarChoiceRow
-      icon={CurrentIcon}
-      title={title}
-      choices={APPEARANCE_PREFERENCES}
-      current={current}
-      nameOf={c => names[c]}
-      iconOf={c => <AppearanceIcon preference={c} size={15} className="shrink-0" />}
-      onChoose={onChoose}
-      closeOnChoose={false}
-      folded={folded}
-    />
+  if (!look) {
+    return (
+      <SidebarChoiceRow
+        icon={CurrentIcon}
+        title={title}
+        choices={APPEARANCE_PREFERENCES}
+        current={current}
+        nameOf={c => names[c]}
+        iconOf={c => <AppearanceIcon preference={c} size={15} className="shrink-0" />}
+        onChoose={onChoose}
+        closeOnChoose={false}
+        folded={folded}
+      />
+    )
+  }
+  const heading = 'px-3 pt-2 pb-1 text-xs font-medium text-ink-caption'
+  const check = (on: boolean) =>
+    <Check size={14} aria-hidden="true" className={cn('shrink-0', on ? 'text-brand-legible' : 'invisible')} />
+  const menu = (
+    <MenuSurface
+      className={folded ? undefined : 'w-full'}
+      panelClassName="w-64"
+      side="top"
+      role="menu"
+      ariaLabel={title}
+      trigger={({ open, toggle, controls }) => (
+        <button type="button" onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-controls={controls}
+          aria-label={folded ? `${title}: ${names[current]}` : undefined} className={sidebarRow({ folded })}>
+          <CurrentIcon size={16} className="shrink-0" />
+          {!folded && (
+            <>
+              <span className="flex-1 min-w-0 truncate text-left">{title}</span>
+              <span className="shrink-0 text-xs text-ink-caption">{names[current]}</span>
+            </>
+          )}
+        </button>
+      )}
+    >
+      {() => (
+        <div className="py-1">
+          <div role="group" aria-label={title}>
+            {APPEARANCE_PREFERENCES.map(c => (
+              <button key={c} type="button" role="menuitemradio" aria-checked={c === current}
+                onClick={() => onChoose(c)} className={menuRow()}>
+                <AppearanceIcon preference={c} size={15} className="shrink-0" />
+                <span className="flex-1 min-w-0 truncate text-left">{names[c]}</span>
+                {check(c === current)}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label={look.backdropTitle} className="mt-1 border-t border-line/60">
+            <p className={heading} aria-hidden="true">{look.backdropTitle}</p>
+            {BACKDROP_PREFERENCES.map(b => (
+              <button key={b} type="button" role="menuitemradio" aria-checked={b === look.backdrop}
+                onClick={() => look.onBackdrop(b)} className={menuRow()}>
+                <span aria-hidden="true" className="h-[15px] w-[15px] shrink-0 rounded-[4px] border border-line"
+                  style={{ background: b === 'gradient'
+                    ? 'linear-gradient(to top right, rgb(7 8 9), rgb(var(--brand-accent)))'
+                    : 'rgb(var(--surface-alt))' }} />
+                <span className="flex-1 min-w-0 truncate text-left">{look.backdropNames[b]}</span>
+                {check(b === look.backdrop)}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label={look.accentTitle} className="mt-1 border-t border-line/60">
+            <p className={heading} aria-hidden="true">{look.accentTitle}</p>
+            <div className="flex items-center gap-2 px-3 pb-2 pt-0.5">
+              {ACCENT_PREFERENCES.map(a => (
+                <Tooltip key={a} label={look.accentNames[a]}>
+                  <button type="button" role="menuitemradio" aria-checked={a === look.accent} aria-label={look.accentNames[a]}
+                    onClick={() => look.onAccent(a)}
+                    // Square, with the kit's small corner - never a pill or a dot - and the chosen one
+                    // outlined clear of its color, which reads on either appearance.
+                    className={cn('h-6 w-6 shrink-0 rounded-md focus-ring transition-[outline-color] duration-fast ease-out',
+                      'outline outline-2 outline-offset-2',
+                      a === look.accent ? 'outline-ink-primary' : 'outline-transparent mouse:hover:outline-line')}
+                    style={{ backgroundColor: ACCENT_SWATCH[a] }} />
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </MenuSurface>
   )
+  return folded ? <Tooltip label={title}>{menu}</Tooltip> : menu
 }
 
 /** Language as a row of the sidebar's foot: every language by its own name; a pick closes the list. */

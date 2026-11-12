@@ -23,13 +23,13 @@ import { useTranslation } from '@/i18n'
 // users their documents are safe on disk while deleting the only copy. Of the two ways to get this
 // wrong, that is the one that loses data rather than merely alarming somebody.
 const UPLOADED_CONSEQUENCES = [
-  'The source and all its items will be permanently deleted from the server',
-  'All associated vector embeddings will be removed from the vector database',
+  'The source and its items are deleted from the server',
+  'Its search index is removed',
 ]
 const LOCAL_FOLDER_CONSEQUENCES = [
-  'Your own files and folders are NOT touched - nothing is moved, changed or deleted on your disk',
-  'Proxyma stops indexing this source and forgets what it had indexed from it',
-  'All associated vector embeddings will be removed from the vector database',
+  'Your files on disk are not touched',
+  'Proxyma stops indexing it and removes its index',
+  'Its search index is removed',
 ]
 
 interface Props {

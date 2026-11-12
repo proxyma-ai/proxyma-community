@@ -46,6 +46,16 @@ public interface ConnectorSession extends AutoCloseable {
      */
     InputStream fetch(ItemMetadata item);
 
+    /**
+     * What the service calls this source and where its page is ({@link SourceLabel}), from what this
+     * session has ALREADY read - asked after {@link #verifyAccess()} and after a pass, so it makes no
+     * request of its own. Null when it learned nothing, which leaves the source's name as it is. MUST
+     * NOT throw.
+     */
+    default SourceLabel label() {
+        return null;
+    }
+
     @Override
     default void close() {}
 }

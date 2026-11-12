@@ -1,14 +1,17 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BarList, Button, ConfirmDialog, FieldLabel, InlineNotice, MetaList, Presence, SectionHeading,
+  BarList, Button, ConfirmDialog, FieldLabel, InlineNotice, MetaList, Presence, RowActions, SectionHeading,
 } from '@/components/ui/kit'
 import { keys } from '@/services/queryKeys'
 import { useTranslation } from '@/i18n'
 import { withReason } from '@/services/apiError'
 import { useToastStore } from '@/store/toastStore'
 import { auditApi, type AuditTab } from '../services/auditApi'
-import { AuditEventLog } from './AuditEventLog'
+import { DownloadMenu } from '@/components/ui/DownloadMenu'
+import {
+  AuditEventLog, exportQuery, NO_EVENT_FILTERS, useAuditEvents, type EventFilters,
+} from './AuditEventLog'
 import { PeriodSelect } from './PeriodSelect'
 
 export { PeriodSelect }
@@ -44,6 +47,10 @@ export function AuditTabBody({ tab, title, caption, multiUser, summary: drawSumm
   const { t } = useTranslation()
   const [days, setDays] = useState(30)
   const { data, isError, error } = useAuditSummary(tab, days)
+  // The log's filters live here, not in the table, so the heading's "Download log" asks for exactly
+  // the rows the table shows - the same debounced search, the same order.
+  const [filters, setFilters] = useState<EventFilters>(NO_EVENT_FILTERS)
+  const log = useAuditEvents(tab, days, filters)
   return (
     <>
       <section className="space-y-6">
@@ -57,14 +64,28 @@ export function AuditTabBody({ tab, title, caption, multiUser, summary: drawSumm
       </section>
       {extra}
       <section>
+        {/* The log's own actions in its heading, Download log then Clear log - the destructive one
+            last (the maintainer, 2026-11-08). Download is offered everywhere; Clear only where the
+            server says this viewer may (`canClear` - never on Enterprise Server). */}
         <SectionHeading
           caption={logCaption}
-          action={data?.canClear ? <ClearAuditButton tab={tab} /> : undefined}
+          action={(
+            <RowActions destructive={data?.canClear ? <ClearAuditButton tab={tab} /> : undefined}>
+              <DownloadMenu onDownload={format => auditApi.export(exportQuery(log.query), format)} />
+            </RowActions>
+          )}
         >
           {/* Not "Logs": that is the page's own title, right above (the UI review, 2026-10-28). */}
           {t('Entries')}
         </SectionHeading>
-        <AuditEventLog tab={tab} days={days} summary={data} multiUser={multiUser} />
+        <AuditEventLog
+          tab={tab}
+          summary={data}
+          multiUser={multiUser}
+          filters={filters}
+          setFilters={setFilters}
+          log={log}
+        />
       </section>
     </>
   )
@@ -91,7 +112,8 @@ function ClearAuditButton({ tab }: { tab: AuditTab }) {
   })
   return (
     <>
-      <Button variant="danger-quiet" onClick={() => setConfirming(true)}>{t('Clear log')}</Button>
+      {/* Fades in beside Download log: it arrives with the summary that says it may be offered. */}
+      <Button variant="danger-quiet" className="animate-fade-in" onClick={() => setConfirming(true)}>{t('Clear log')}</Button>
       {confirming && (
         <ConfirmDialog
           title={t('Clear this log?')}

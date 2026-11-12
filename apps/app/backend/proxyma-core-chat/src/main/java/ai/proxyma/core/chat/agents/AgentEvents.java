@@ -1,5 +1,6 @@
 package ai.proxyma.core.chat.agents;
 
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.event.ConversationsDeletedEvent;
 import ai.proxyma.core.chat.model.AgentEvent;
 import ai.proxyma.core.chat.model.AgentNode;
@@ -88,6 +89,6 @@ public class AgentEvents {
     static String clip(String detail) {
         if (detail == null) return null;
         String one = detail.replaceAll("\\s+", " ").strip();
-        return one.length() <= AgentEvent.DETAIL_MAX ? one : one.substring(0, AgentEvent.DETAIL_MAX - 3) + "...";
+        return one.length() <= AgentEvent.DETAIL_MAX ? one : Utf16.cut(one, AgentEvent.DETAIL_MAX - 3) + "...";
     }
 }

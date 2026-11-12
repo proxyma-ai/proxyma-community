@@ -31,6 +31,7 @@ class LogTailRedactionTest {
                 "2026-10-14 DEBUG GET https://jira.contoso.internal/rest/api/2/search?jql=project%3DSECRET",
                 "2026-10-14 DEBUG Authorization: Bearer " + KEY,
                 "2026-10-14 DEBUG body {\"api_key\": \"AIzaSyD-ExampleExampleExampleExample\", \"model\": \"gpt\"}",
+                "2026-10-31 DEBUG Gemini call with AQ.Ab8RN6ExampleExampleExampleExampleExample failed",
                 "2026-10-14 DEBUG password=hunter2-correct-horse token=abc123def456",
                 "2026-10-14 DEBUG session " + JWT,
                 "2026-10-14 DEBUG mcp token " + MCP,
@@ -42,7 +43,7 @@ class LogTailRedactionTest {
 
         String sent = provider.readTail();
 
-        assertThat(sent).doesNotContain("alice", "u-17", "SECRET", KEY, "AIzaSyD", "hunter2", "abc123def456",
+        assertThat(sent).doesNotContain("alice", "u-17", "SECRET", KEY, "AIzaSyD", "AQ.Ab8RN6", "hunter2", "abc123def456",
                 JWT, MCP);
         assertThat(sent).contains("merger-plan.pdf", "https://jira.contoso.internal/rest/api/2/search?...",
                 "Bearer ***", "\"model\": \"gpt\"", "finished: 42 items");

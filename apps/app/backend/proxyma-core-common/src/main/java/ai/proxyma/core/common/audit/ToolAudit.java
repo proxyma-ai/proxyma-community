@@ -79,7 +79,23 @@ public final class ToolAudit {
         if (result == null) return AuditEntry.FAILED;
         String head = result.length() > 64 ? result.substring(0, 64) : result;
         if (head.startsWith("Error: ")) return AuditEntry.FAILED;
-        return head.replace(" ", "").startsWith("{\"success\":false") ? AuditEntry.FAILED : AuditEntry.OK;
+        if (!head.replace(" ", "").startsWith("{\"success\":false")) return AuditEntry.OK;
+        // THE APPROVALS INBOX'S ANSWERS ARE NOT FAILURES (2026-11-11 review: a team's figures showed 359 failed replies -
+        // drafts parked for approval, or refused before they were kept, while YouTube's quota was spent).
+        String status = statusOf(result.length() > 200 ? result.substring(0, 200) : result);
+        if ("WAITING_FOR_APPROVAL".equals(status)) return AuditEntry.PENDING;
+        if (status != null && INBOX_NOT_MADE.contains(status)) return AuditEntry.NOT_MADE;
+        return AuditEntry.FAILED;
+    }
+
+    // The statuses the approvals inbox answers with when it neither keeps nor makes a write (ApprovalInbox).
+    private static final java.util.Set<String> INBOX_NOT_MADE = java.util.Set.of("REFUSED", "NOT_MADE", "ALREADY_APPROVED",
+            "BEING_EDITED");
+    private static final java.util.regex.Pattern STATUS = java.util.regex.Pattern.compile("\"status\"\\s*:\\s*\"([A-Z_]+)\"");
+
+    private static String statusOf(String head) {
+        java.util.regex.Matcher m = STATUS.matcher(head);
+        return m.find() ? m.group(1) : null;
     }
 
     static String oneLine(String text, int max) {

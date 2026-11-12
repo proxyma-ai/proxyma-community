@@ -31,9 +31,9 @@ public class FreshdeskConnectionPlugin implements ConnectionPlugin {
             .auth(AuthMethod.of(AuthKind.TOKEN, "API key",
                     FieldSpec.text(FreshdeskApi.DOMAIN, "Domain").asRequired().placeholder("yourcompany")
                             .pattern("[A-Za-z0-9][A-Za-z0-9-]*")
-                            .help("The first part of your Freshdesk address - yourcompany in yourcompany.freshdesk.com."),
+                            .help("yourcompany in yourcompany.freshdesk.com."),
                     FieldSpec.secret(FreshdeskApi.TOKEN, "API key").asRequired()
-                            .help("In Freshdesk, open your profile picture > Profile settings > View API key.")))
+                            .help("In Freshdesk: profile picture > Profile settings > View API key.")))
             .baseUrl(FieldSpec.url("baseUrl", "Freshdesk address").placeholder("https://yourcompany.freshdesk.com").asAdvanced()
                     .help("Only for an address other than your domain's."))
             .sourceTypes(ConnectorType.FRESHDESK)

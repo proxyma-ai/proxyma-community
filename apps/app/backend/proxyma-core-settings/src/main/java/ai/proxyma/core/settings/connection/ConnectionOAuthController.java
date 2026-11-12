@@ -9,11 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,10 +37,17 @@ import java.util.UUID;
  * The browser-facing half of an OAuth2 sign-in for a connection - every service that declares one
  * (OAuth2ConnectionService), Microsoft 365 apart, which keeps its own.
  *
- * <p>The connection is created first, like any other; its "Sign in with ..." button then NAVIGATES
- * to {@code /instances/{id}/oauth/start}, which answers 302 to the service. The service sends the
- * browser back to {@code /oauth/callback}, which answers 302 to the SPA with a CODE and nothing else
- * - a link that carried its own text would let anyone make this product's page show what they wrote.
+ * <p>The connection is created first, like any other. On Enterprise Server its "Sign in with ..."
+ * button then NAVIGATES to {@code /instances/{id}/oauth/start}, which answers 302 to the service. The
+ * service sends the browser back to {@code /oauth/callback}, which answers 302 to the SPA with a CODE
+ * and nothing else - a link that carried its own text would let anyone make this product's page show
+ * what they wrote.
+ *
+ * <p>On Desktop and Home Server the button asks {@code POST /instances/{id}/oauth/begin} for the
+ * address and OPENS it in a new window - on Desktop the system browser, as any app signs in - and the
+ * page watches the connection until it reads signed in. That flow is unbound
+ * (OAuth2ConnectionService's class note), and its callback answers with a short page of its own
+ * ({@link #page}) rather than the SPA, which is behind the access gate in that browser.
  *
  * <p><b>{@code /oauth/callback} is permitAll in the security configuration, and that is not a
  * relaxation</b> - the same reasoning as Microsoft's: a session can expire while the person is at
@@ -85,6 +94,26 @@ public class ConnectionOAuthController {
                 });
     }
 
+    /**
+     * A sign-in to open in the person's own browser - Desktop and Home Server. Behind the access gate
+     * like every API; the caller's own connection only.
+     */
+    @PostMapping("/instances/{id}/oauth/begin")
+    public Mono<ResponseEntity<Map<String, Object>>> begin(@PathVariable String id, ServerWebExchange exchange) {
+        String redirectUri = redirectUri(exchange.getRequest().getURI());
+        return CallerRoles.userId(exchange)
+                .flatMap(uid -> Mono.fromCallable(() -> {
+                    try {
+                        String url = oauth.begin(uid.isEmpty() ? null : uid, UUID.fromString(id), redirectUri);
+                        return ResponseEntity.ok(Map.<String, Object>of("authorizeUrl", url));
+                    } catch (IllegalArgumentException e) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).<Map<String, Object>>body(Map.of("error", e.getMessage()));
+                    } catch (IllegalStateException e) {
+                        return ResponseEntity.badRequest().<Map<String, Object>>body(Map.of("error", e.getMessage()));
+                    }
+                }).subscribeOn(Schedulers.boundedElastic()));
+    }
+
     @GetMapping("/oauth/callback")
     public Mono<Void> callback(@RequestParam(required = false) String state,
                                @RequestParam(required = false) String code,
@@ -92,6 +121,12 @@ public class ConnectionOAuthController {
                                ServerWebExchange exchange) {
         var cookie = exchange.getRequest().getCookies().getFirst(OAuth2ConnectionService.FLOW_COOKIE);
         String binding = cookie == null ? null : cookie.getValue();
+        // A sign-in opened in the person's own browser ends on a page of its own: the app is behind
+        // the access gate there. So does one whose flow is gone, when no cookie says this browser
+        // started it - on a single-user edition that is the system browser too.
+        var unbound = oauth.unboundService(state);
+        boolean ownPage = !multiUser && (unbound.isPresent() || binding == null);
+        String service = unbound.orElse(null);
         return CallerRoles.userId(exchange)
                 .flatMap(sessionUser -> Mono.fromCallable(() -> oauth.complete(new OAuth2ConnectionService.CallbackRequest(
                                 state, code, error, binding, sessionUser.isEmpty() ? null : sessionUser)))
@@ -103,8 +138,55 @@ public class ConnectionOAuthController {
                 .flatMap(outcome -> {
                     // Cleared on every path: the flow it bound is spent either way.
                     clearFlowCookie(exchange);
-                    return redirect(exchange, spaUrl(outcome));
+                    return ownPage ? writePage(exchange, outcome, service) : redirect(exchange, spaUrl(outcome));
                 });
+    }
+
+    /**
+     * The page a sign-in in the person's own browser ends on - written whole from fixed sentences and
+     * the service's name from the catalog, never from the request, so nobody can make it say what they
+     * wrote. Its one inline script closes a window the app opened (SecurityHeadersConfig's callback policy).
+     */
+    static String page(OAuth2ConnectionService.Outcome outcome, String service) {
+        String to = service == null ? "the service" : service;
+        String title = switch (outcome) {
+            case CONNECTED -> "Signed in to " + to;
+            case DENIED -> "Sign-in was declined";
+            case EXPIRED -> "This sign-in has expired";
+            case NOT_CONFIGURED -> "Sign-in is not set up";
+            case FAILED -> "Sign-in failed";
+            case INCOMPLETE -> "Signed in to " + to + ", with something not allowed";
+        };
+        String body = switch (outcome) {
+            case CONNECTED -> "You can close this tab and return to Proxyma.";
+            case DENIED -> "Nothing was connected. You can close this tab and try again from Proxyma.";
+            case EXPIRED -> "Start the sign-in again from Proxyma. A sign-in link works once, for ten minutes.";
+            case NOT_CONFIGURED -> "The connection has no OAuth client. Add its client ID and secret in Proxyma, then sign in again.";
+            case FAILED -> "The sign-in was not completed. Try again from Proxyma.";
+            case INCOMPLETE -> "Proxyma needs a permission you did not allow. Return to Proxyma: it says which, and how to sign in again.";
+        };
+        return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Proxyma - " + escape(title) + "</title>"
+                + "<style>body{font-family:system-ui,sans-serif;background:#f2f4f5;color:#0f1215;margin:0;display:grid;"
+                + "place-items:center;min-height:100vh}main{max-width:28rem;padding:2rem}h1{font-size:1.25rem;margin:0 0 .5rem}"
+                + "p{margin:0;line-height:1.5;color:#353b42}@media(prefers-color-scheme:dark){body{background:#1f1f1f;color:#f5f6f7}"
+                + "p{color:#cfd0d2}}</style></head><body><main><h1>" + escape(title) + "</h1><p>" + escape(body) + "</p></main>"
+                + (outcome == OAuth2ConnectionService.Outcome.CONNECTED ? "<script>setTimeout(function(){window.close()},1500)</script>" : "")
+                + "</body></html>";
+    }
+
+    // The catalog's names are the product's own, but nothing reaches HTML unescaped.
+    static String escape(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    private static Mono<Void> writePage(ServerWebExchange exchange, OAuth2ConnectionService.Outcome outcome, String service) {
+        var response = exchange.getResponse();
+        response.setStatusCode(outcome == OAuth2ConnectionService.Outcome.CONNECTED ? HttpStatus.OK : HttpStatus.BAD_REQUEST);
+        response.getHeaders().setContentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8));
+        response.getHeaders().setCacheControl("no-store");
+        byte[] bytes = page(outcome, service).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
     }
 
     /** Signs one of the caller's own connections out; the connection and its sources stay. */

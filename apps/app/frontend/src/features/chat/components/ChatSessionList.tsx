@@ -3,8 +3,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { Trash2, Pin, PinOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
-  ConfirmDialog, EmptyState, FadeSwap, HoverActions, IconButton, List, ListRow, ListRowSkeleton, MetaList, Presence, Readout, StatusDot, Tooltip,
-  pageCount, usePageFor,
+  ConfirmDialog, EmptyState, FadeSwap, HoverActions, IconButton, List, ListRow, ListRowSkeleton, MetaList, Presence, Readout, StatusDot, TEXT, Tooltip,
+  cn, pageCount, usePageFor,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
 import { keys } from '@/services/queryKeys'
@@ -12,6 +12,7 @@ import { chatApi, type ConversationListSource } from '../services/chatApi'
 import { useToastStore } from '@/store/toastStore'
 import { formatRelativeTime } from '@/utils/formatRelativeTime'
 import type { Conversation } from '../types/chat.types'
+import { conversationTitle } from '../utils/conversationTitle'
 import { useActiveConversations } from '../hooks/useActiveConversations'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { useTranslation } from '@/i18n'
@@ -99,7 +100,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
           // bubble over centered disabled-grey text, which said what was missing and not how to
           // change that.
           <EmptyState className="px-4 sm:px-6" action={emptyAction}>
-            {t('Your conversations are listed here, newest first, from the first question you ask.')}
+            {t('Your conversations appear here.')}
           </EmptyState>
         ) : (
           <>
@@ -114,8 +115,8 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
               {conversations.map((c: Conversation) => {
                 const deleting = del.isPending && del.variables === c.id
                 const pinLabel = c.pinned
-                  ? t('Unpin - this conversation will then be deleted after 7 days without activity')
-                  : t('Pin - keeps this conversation forever. Unpinned conversations are deleted after 7 days without activity')
+                  ? t('Unpin. Deleted after 7 days without use')
+                  : t('Pin to keep it')
                 return (
                   <ListRow
                     key={c.id}
@@ -126,7 +127,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
                     // made every row a different height).
                     titleClamp={1}
                     leading={isWorking(c.id) ? <StatusDot label={t('Still working')} /> : undefined}
-                    title={<Tooltip label={c.title} className="block min-w-0"><span className="block truncate">{c.title}</span></Tooltip>}
+                    title={<Tooltip label={conversationTitle(c, t)} className="block min-w-0"><span className="block truncate">{conversationTitle(c, t)}</span></Tooltip>}
                     // The facts UNDER the title, as every list row's meta line (maintainer, 2026-10-06):
                     // they sat at the right of the title, squeezing it, and said only the time. The
                     // pin mark leads, then when it was last active, then how many messages the person
@@ -140,7 +141,7 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
                           <span className="sr-only">{t('Pinned')}</span>
                         </Presence>
                         <MetaList
-                          className="text-xs text-ink-caption truncate"
+                          className={cn(TEXT.caption, 'truncate')}
                           items={[
                             <Readout key="when">{formatRelativeTime(c.updatedAt, { compact: true, t })}</Readout>,
                             <Readout key="count">{t('{count} message|{count} messages', { count: c.messageCount })}</Readout>,
@@ -192,8 +193,8 @@ export function ChatSessionList({ activeId, onSelect, emptyAction, source = CHAT
         <ConfirmDialog
           title={t('Delete conversation')}
           description={t('You are about to {verb}:', { verb: t('delete') })}
-          subject={confirming.title}
-          consequences={[t('The conversation and every message in it are deleted. This cannot be undone.')]}
+          subject={conversationTitle(confirming, t)}
+          consequences={[t('The conversation is deleted. This cannot be undone.')]}
           confirmLabel={t('Delete')}
           cancelLabel={t('Cancel')}
           pendingLabel={t('Deleting...')}

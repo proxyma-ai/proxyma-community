@@ -1,8 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  ACCENT_PREFERENCES,
+  ACCENT_SWATCH,
   APPEARANCE_PREFERENCES,
   applyAppearance,
+  applyLook,
+  parseAccent,
+  parseBackdrop,
   parseAppearance,
   resolveAppearance,
   themeColor,
@@ -65,4 +70,27 @@ test('the chrome colour of each appearance is its canvas, as the pre-paint scrip
   const { THEME_COLOR } = await import('./appearanceScript.ts')
   assert.equal(themeColor(resolveAppearance('light', true)), THEME_COLOR.light)
   assert.equal(themeColor(resolveAppearance('dark', false)), THEME_COLOR.dark)
+})
+
+test('a background reads back as itself, and anything else is flat', () => {
+  assert.equal(parseBackdrop('gradient'), 'gradient')
+  for (const v of [null, undefined, '', 'flat', 'Gradient', 'mesh']) assert.equal(parseBackdrop(v), 'flat')
+})
+
+test('every accent reads back as itself, anything else is teal, and each has a swatch', () => {
+  for (const a of ACCENT_PREFERENCES) {
+    assert.equal(parseAccent(a), a)
+    assert.match(ACCENT_SWATCH[a], /^#[0-9a-f]{6}$/)
+  }
+  for (const v of [null, undefined, '', 'Blue', 'purple']) assert.equal(parseAccent(v), 'teal')
+})
+
+test('the defaults stamp nothing; anything else is one attribute each', () => {
+  const attrs = new Map<string, string>([['data-backdrop', 'gradient'], ['data-accent', 'rose']])
+  const target = { setAttribute: (n: string, v: string) => { attrs.set(n, v) }, removeAttribute: (n: string) => { attrs.delete(n) } }
+  applyLook(target, 'flat', 'teal')
+  assert.equal(attrs.size, 0)
+  applyLook(target, 'gradient', 'violet')
+  assert.equal(attrs.get('data-backdrop'), 'gradient')
+  assert.equal(attrs.get('data-accent'), 'violet')
 })

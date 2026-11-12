@@ -1,4 +1,5 @@
 import { http } from '@/services/httpClient'
+import type { OpenRouterStatus } from '../utils/openRouterSignIn'
 
 // A configured place to get models from. Mirrors ProviderInstanceView on the backend - note there
 // is no `apiKey` field in either direction on a read: the server sends a mask and a boolean, and
@@ -57,4 +58,10 @@ export const providersApi = {
     http.patch<ProviderInstance>(`/api/v1/providers/instances/${id}`, input).then(r => r.data),
   remove: (id: string) =>
     http.delete<void>(`/api/v1/providers/instances/${id}`).then(() => undefined),
+  /** Sign in with OpenRouter (OpenRouterSignIn): the address the person's browser opens. Desktop and Home Server. */
+  beginOpenRouterSignIn: () =>
+    http.post<{ authorizeUrl: string }>('/api/v1/providers/openrouter/sign-in').then(r => r.data.authorizeUrl),
+  /** Where the last OpenRouter sign-in stands. */
+  openRouterSignInStatus: () =>
+    http.get<OpenRouterStatus>('/api/v1/providers/openrouter/sign-in').then(r => r.data),
 }

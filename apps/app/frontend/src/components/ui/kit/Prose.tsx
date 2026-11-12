@@ -21,23 +21,26 @@ import { TEXT } from './typeScale'
  * size, `my-1` paragraphs, lists hanging their markers outside. One set of classes, so the
  * markdown renderer stops carrying its own.
  *
- * The thread reads at `TEXT.body`, 16/26 (since 2026-10-28; 15px from 2026-10-15, the UI's 14px
- * before that): an answer is the one thing in the product read at length. A table in it stays 14px
- * (`ProseTable`), as in every other table. EVERY TEXT BLOCK IS CAPPED AT 70ch (the review measured
- * answers at 99-113 characters a line); a table or a code block keeps the column's width.
+ * The thread reads at `TEXT.body`, 13/20 (since 2026-10-31, the maintainer's 13px base, VS Code's;
+ * 14/22 the day before, 16/26 from 2026-10-28): the UI's own size with a reading leading. Headings
+ * are modest - `#` 14, `##` and `###` 13 semibold - so an answer's structure never outshouts the
+ * page. A table in it is 13px (`ProseTable`), as in every other table. EVERY TEXT BLOCK RUNS THE
+ * COLUMN'S FULL WIDTH, as a table and a code block do (the maintainer, 2026-10-31: "Always utilize
+ * full width of the chat interface"); it was capped at 70ch, which left a note under a table wrapping
+ * at half the table's width.
  */
 export const PROSE_CHAT = {
-  h1: cn(TEXT.title, 'mt-4 mb-2 max-w-[70ch]'),
-  h2: cn(TEXT.section, 'mt-3 mb-2 max-w-[70ch]'),
-  h3: 'text-base font-medium text-ink-primary mt-2 mb-1 max-w-[70ch]',
-  p: 'my-1 text-base max-w-[70ch]',
+  h1: cn(TEXT.title, 'mt-4 mb-2'),
+  h2: cn(TEXT.section, 'mt-3 mb-2'),
+  h3: 'text-base font-semibold text-ink-primary mt-2 mb-1',
+  p: 'my-1 text-base',
   /** A list; nested lists sit tight under their item (`depth > 0`). */
   list: (ordered: boolean, depth: number) => cn(
     ordered ? 'list-decimal' : 'list-disc',
-    'list-outside pl-6 space-y-1 text-base max-w-[70ch]',
+    'list-outside pl-6 space-y-1 text-base',
     depth === 0 ? 'my-2' : 'mt-1',
   ),
-  quote: 'border-l-2 border-line pl-3 my-2 text-ink-caption text-base max-w-[70ch]',
+  quote: 'border-l-2 border-line pl-3 my-2 text-ink-caption text-base',
   hr: 'border-line/40 my-3',
   /** A link in running text: the paragraph's own weight, brand ink, underlined under a mouse only. */
   link: 'text-brand-legible underline-offset-[3px] mouse:hover:underline focus-ring rounded-sm',
@@ -84,7 +87,7 @@ export function ProseTable({ headers, rows, nowrap, className }: {
 
 /**
  * A SPREADSHEET, as a spreadsheet - a grid with every cell ruled and the row numbers pinned at the
- * left, 13px. Not prose: a sheet or a CSV previewed is read by row and column, and the grid is
+ * left, 12px. Not prose: a sheet or a CSV previewed is read by row and column, and the grid is
  * what tells a reader that cell C14 is a cell. Cells are cut at 24rem with the rest on hover.
  * `headerRow` sets the first row in primary ink and medium weight - a sheet's column names.
  */

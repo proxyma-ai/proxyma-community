@@ -129,4 +129,18 @@ class AgentModelsTest {
         assertThat(rule.modelRule()).isEqualTo(SubAgentSettings.MODELS_ANY);
         assertThat(AgentModels.allowed(rule, home.toString(), "anything")).isTrue();
     }
+
+    @Test
+    @DisplayName("a person's picker is offered every model one provider lists - the agents' rule does not narrow it")
+    void providerModelsOfOneProvider() {
+        assertThat(models.providerModels(home.toString())).containsExactly("claude-sonnet-5-5", "claude-haiku-5-5");
+        assertThat(models.providerModels(gateway.toString())).containsExactly("claude-haiku-5-5", "gpt-5-mini");
+        // The rule is for what an agent names itself (deployAgent); a person choosing by hand sees all.
+        rule.setModelRule(SubAgentSettings.MODELS_ONLY);
+        rule.setModelList(home + "|claude-haiku-5-5");
+        assertThat(models.providerModels(home.toString())).containsExactly("claude-sonnet-5-5", "claude-haiku-5-5");
+        assertThat(models.choose(home.toString(), "claude-sonnet-5-5").ok()).as("the agent itself is still held to it").isFalse();
+        assertThat(models.providerModels(UUID.randomUUID().toString())).as("a provider not configured").isEmpty();
+        assertThat(models.providerModels(" ")).isEmpty();
+    }
 }

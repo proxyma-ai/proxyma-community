@@ -2,6 +2,7 @@ package ai.proxyma.core.settings.connection;
 
 import ai.proxyma.core.common.audit.AuditCategory;
 import ai.proxyma.core.common.audit.AuditEntry;
+import ai.proxyma.core.common.concurrent.BlockingWork;
 import ai.proxyma.core.connector.ConnectionProtocol;
 import ai.proxyma.core.connector.spi.ApiClient;
 import ai.proxyma.core.connector.spi.ApiResponse;
@@ -23,7 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -46,6 +49,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -59,6 +63,20 @@ import java.util.concurrent.locks.ReentrantLock;
  * random {@code state}, bound to the browser that started it by a cookie, and sends the browser to
  * the service; {@link #complete} accepts the callback only with that state, that cookie, and - on
  * Enterprise Server - the same person signed in, then exchanges the code with the verifier.
+ *
+ * <p><b>IN THE SYSTEM BROWSER ON THE SINGLE-USER EDITIONS, since 2026-10-31</b> ({@link #begin}): the
+ * sign-in opens like any other app's - in the person's own browser, which on Desktop shares no cookie
+ * with the Proxyma window, and Google refuses a sign-in inside an embedded window altogether. Such a
+ * flow is UNBOUND - no browser cookie - and its callback is accepted on the state alone, as
+ * McpOAuthService's is. That is safe there because:
+ * <ul>
+ *   <li>only the gated window can create a flow ({@code begin} is behind AccessGate, and only the
+ *       owner's own connection), so nobody else can start one to be completed in this browser;</li>
+ *   <li>the state is 256 random bits, single-use and good for ten minutes;</li>
+ *   <li>the PKCE verifier never leaves this server, so a code someone intercepts is useless to them.</li>
+ * </ul>
+ * An unbound flow is never created, and never accepted, where there are accounts: Enterprise Server
+ * keeps the cookie-bound flow and the same-person check.
  *
  * <p><b>Tokens live encrypted on the connection row</b> (its secret, a JSON object), and never leave
  * this class except as an access token handed to a session (ResolvedCredentials), which ConnectorHttp
@@ -100,10 +118,14 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
     static final String SCOPE = "scope";
     static final List<String> GRANT_KEYS = List.of(ACCESS_TOKEN, REFRESH_TOKEN, EXPIRES_AT, SCOPE);
 
-    /** How a callback ended - a code the SPA turns into a sentence; never text of its own. */
+    /**
+     * How a callback ended - a code the SPA turns into a sentence; never text of its own. INCOMPLETE is a
+     * sign-in the person allowed only part of (ConnectionPlugin.consentShortfall): kept, and marked as
+     * needing a new sign-in with the reason on the connection.
+     */
     public enum Outcome {
         CONNECTED("connected"), DENIED("denied"), EXPIRED("expired"), FAILED("failed"),
-        NOT_CONFIGURED("not_configured");
+        NOT_CONFIGURED("not_configured"), INCOMPLETE("incomplete");
 
         private final String code;
 
@@ -114,6 +136,7 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
 
     public record FlowStart(String authorizeUrl, String browserBinding) {}
 
+    // binding is null for an UNBOUND flow (begin), accepted on its state alone on a single-user edition.
     record Flow(UUID connectionId, String ownerKey, String verifier, String binding, String redirectUri,
                 Instant expires) {}
 
@@ -166,6 +189,35 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
      * @throws IllegalStateException    when no OAuth client is set up for the service
      */
     public FlowStart start(String userId, UUID connectionId, String redirectUri) {
+        return start(userId, connectionId, redirectUri, true);
+    }
+
+    /**
+     * A sign-in to open in the person's own browser, single-user editions only: the authorize URL,
+     * with no cookie to bind it (see the class note). The page opens it in a new window - on Desktop
+     * the system browser - and watches the connection until it reads signed in.
+     *
+     * @throws IllegalArgumentException as {@link #start}
+     * @throws IllegalStateException    as {@link #start}, and on an edition with accounts
+     */
+    public String begin(String userId, UUID connectionId, String redirectUri) {
+        if (multiUser) throw new IllegalStateException("This sign-in opens in the same browser on a server with accounts.");
+        return start(userId, connectionId, redirectUri, false).authorizeUrl();
+    }
+
+    /**
+     * The service a flow still waiting under this state signs in to, when that flow is UNBOUND - the
+     * callback then answers with a page of its own rather than the app, which is behind the access
+     * gate in the person's browser. Empty for a bound flow, an unknown state, or an edition with accounts.
+     */
+    public Optional<String> unboundService(String state) {
+        if (multiUser || state == null) return Optional.empty();
+        Flow flow = pending.get(state);
+        if (flow == null || flow.binding() != null) return Optional.empty();
+        return repository.findById(flow.connectionId()).map(c -> catalog.displayName(c.getProtocol()));
+    }
+
+    private FlowStart start(String userId, UUID connectionId, String redirectUri, boolean bound) {
         String owner = ConnectorConnectionService.ownerKey(userId);
         ConnectorConnection c = repository.findByIdAndOwnerId(connectionId, owner)
                 .orElseThrow(() -> new IllegalArgumentException("No such connection"));
@@ -180,7 +232,7 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
         }
         String state = randomValue();
         String verifier = randomValue();
-        String binding = randomValue();
+        String binding = bound ? randomValue() : null;
         pending.put(state, new Flow(c.getId(), owner, verifier, binding, redirectUri,
                 clock.instant().plus(FLOW_LIFETIME)));
 
@@ -191,9 +243,9 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
         query.put("state", state);
         query.put("code_challenge", challenge(verifier));
         query.put("code_challenge_method", "S256");
-        List<String> scopes = new ArrayList<>(spec.scopes());
-        // Write scopes only while the connection's Write switch is on - incremental consent.
-        if (c.isAllowWrite()) scopes.addAll(spec.writeScopes());
+        // Write scopes only while the connection's Write switch is on - incremental consent - less any
+        // read scope they cover (OAuth2Spec.requestedScopes).
+        List<String> scopes = spec.requestedScopes(c.isAllowWrite());
         if (!scopes.isEmpty()) query.put("scope", String.join(" ", scopes));
         query.putAll(spec.extraAuthorizeParams());
         return new FlowStart(spec.authorizeUrl() + (spec.authorizeUrl().contains("?") ? "&" : "?") + form(query), binding);
@@ -205,12 +257,19 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
     /**
      * Finishes a sign-in. Single use: the flow is removed whatever happens next. Refused unless the
      * browser carries the cookie that flow was started with and, where there are accounts, the
-     * person signed in is the one who started it.
+     * person signed in is the one who started it - or, for an UNBOUND flow on a single-user edition,
+     * on its state alone (see the class note).
      */
     public Outcome complete(CallbackRequest request) {
         Flow flow = request.state() == null ? null : pending.remove(request.state());
         if (flow == null || clock.instant().isAfter(flow.expires())) return Outcome.EXPIRED;
-        if (request.cookie() == null || !MessageDigest.isEqual(
+        if (flow.binding() == null) {
+            // Never created where there are accounts; refused there all the same, should one exist.
+            if (multiUser) {
+                log.warn("[OAuth] An unbound sign-in reached a server with accounts - refused");
+                return Outcome.FAILED;
+            }
+        } else if (request.cookie() == null || !MessageDigest.isEqual(
                 request.cookie().getBytes(StandardCharsets.UTF_8), flow.binding().getBytes(StandardCharsets.UTF_8))) {
             log.warn("[OAuth] A sign-in callback came back without its browser's cookie - refused");
             return Outcome.FAILED;
@@ -220,14 +279,15 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
             log.warn("[OAuth] A sign-in callback came back under another account's session - refused");
             return Outcome.FAILED;
         }
-        if (request.error() != null) return Outcome.DENIED;
-        if (request.code() == null || request.code().isBlank()) return Outcome.FAILED;
+        // From here the flow is this connection's own: a refusal or a failure is remembered for the page waiting on it.
+        if (request.error() != null) return failed(flow, Outcome.DENIED);
+        if (request.code() == null || request.code().isBlank()) return failed(flow, Outcome.FAILED);
 
         ConnectorConnection c = repository.findById(flow.connectionId()).orElse(null);
         if (c == null || !c.getOwnerId().equals(flow.ownerKey())) return Outcome.FAILED;
         OAuth2Spec spec = spec(c).orElse(null);
         Client client = client(c).orElse(null);
-        if (spec == null || client == null) return Outcome.NOT_CONFIGURED;
+        if (spec == null || client == null) return failed(flow, Outcome.NOT_CONFIGURED);
 
         Map<String, String> form = new LinkedHashMap<>();
         form.put("grant_type", "authorization_code");
@@ -235,23 +295,30 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
         form.put("redirect_uri", flow.redirectUri());
         form.put("code_verifier", flow.verifier());
         Map<String, String> secret = storedSecret(c);
+        String granted;
         try {
             JsonNode token = tokenRequest(spec, client, form);
+            // What THIS answer says was allowed - never a scope an earlier grant left in the stored secret.
+            granted = token.hasNonNull("scope") ? token.path("scope").asText() : null;
             // Inside the try: an answer with no token in it - Slack's 200 with ok:false, a gateway's
             // empty object - is a failed sign-in like any refusal, never an exception out of the callback.
             applyGrant(secret, token);
             keepGrantFields(c, spec, token);
         } catch (RuntimeException e) {
             log.warn("[OAuth] Exchanging the code for {} failed: {}", c.getProtocol(), e.getMessage());
-            return Outcome.FAILED;
+            return failed(flow, Outcome.FAILED);
         }
         c.setSecret(encryption.encrypt(ConfigJson.write(secret)));
         Instant now = clock.instant();
-        c.setStatus(ConnectionStatus.CONNECTED);
-        c.setStatusDetail(null);
+        // GRANULAR CONSENT: what the person allowed, as the answer names it. A grant that cannot serve the
+        // connection is kept - what it allows still works - but never reads as fine.
+        Optional<String> shortfall = shortfall(c, granted);
+        c.setStatus(shortfall.isPresent() ? ConnectionStatus.NEEDS_RECONNECT : ConnectionStatus.CONNECTED);
+        c.setStatusDetail(shortfall.orElse(null));
         c.setConnectedAt(now);
         c.setLastRefreshedAt(now);
         repository.save(c);
+        failures.remove(c.getId());
         events.publishEvent(new ConnectionChangedEvent(c.getId(), false));
         AuditEntry.of(AuditCategory.SOURCES, "connection.signed-in")
                 .user(ConnectorConnection.LOCAL_OWNER.equals(c.getOwnerId()) ? null : c.getOwnerId())
@@ -259,7 +326,15 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
                 .summary("Signed in to " + c.getName())
                 .detail("service", catalog.displayName(c.getProtocol()))
                 .record();
-        return Outcome.CONNECTED;
+        return shortfall.isPresent() ? Outcome.INCOMPLETE : Outcome.CONNECTED;
+    }
+
+    // The plugin's sentence for a grant whose scopes cannot serve the connection; nothing when the answer
+    // named no scopes (a service that does not say, or an older grant).
+    private Optional<String> shortfall(ConnectorConnection c, String scope) {
+        if (scope == null || scope.isBlank()) return Optional.empty();
+        Set<String> granted = Set.copyOf(List.of(scope.strip().split("[\\s,]+")));
+        return catalog.connectionPlugin(c.getProtocol()).flatMap(p -> p.consentShortfall(granted, c.isAllowWrite()));
     }
 
     /** Forgets a connection's grant - the connection and its sources stay, signed out. */
@@ -267,6 +342,9 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
         ConnectorConnection c = repository.findByIdAndOwnerId(connectionId, ConnectorConnectionService.ownerKey(userId))
                 .orElseThrow(() -> new IllegalArgumentException("No such connection"));
         Map<String, String> secret = storedSecret(c);
+        // Removed at the service too, where it can be (YouTube's policies: a revocation in the app is
+        // passed on right away) - not only forgotten here.
+        revokeGrant(c);
         GRANT_KEYS.forEach(secret::remove);
         c.setSecret(secret.isEmpty() ? null : encryption.encrypt(ConfigJson.write(secret)));
         c.setStatus(null);
@@ -299,6 +377,11 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
             }
 
             @Override
+            public ApiResponse refuseBeforeSending(HttpMethod method, URI uri) {
+                return OAuth2ConnectionService.this.refuseBeforeSending(connectionId, method, uri);
+            }
+
+            @Override
             public void invalidate() {
                 appTokens.remove(connectionId);
                 // The token the service just refused - the stored one now. Remembered by VALUE, so a
@@ -307,6 +390,175 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
                         .ifPresent(token -> refused.put(connectionId, token));
             }
         };
+    }
+
+    /**
+     * A connection saved or deleted: an application token cached for it (client credentials, a service
+     * account) may have been issued to a client the edit just replaced, so the next call asks again.
+     */
+    @org.springframework.context.event.EventListener
+    public void onConnectionChanged(ConnectionChangedEvent event) {
+        if (event.connectionId() != null) appTokens.remove(event.connectionId());
+    }
+
+    /**
+     * THE BUILT-IN CLIENT'S DAILY SHARE (BuiltInQuota): a request through a connection that signs in with
+     * the built-in client - on Desktop, with no client typed on it - costs its plugin's units, and one past
+     * the install's budget is answered, unsent, as the service answers a spent quota. Anything else - a
+     * person's own client, a deployment's, a service that meters nothing - is never counted.
+     */
+    ApiResponse refuseBeforeSending(UUID connectionId, HttpMethod method, URI uri) {
+        if (multiUser || quota == null || builtIn == null) return null;
+        ConnectorConnection c = repository.findById(connectionId).orElse(null);
+        if (c == null || c.getProtocol() == null || ownClient(c).isPresent()) return null;
+        if (builtIn.of(c.getProtocol()).isEmpty()) {
+            // SIGNED IN THROUGH THE BUILT-IN CLIENT, WHICH IS NOT OFFERED NOW - its add-on lapsed (2026-11-11 review: the
+            // token in hand kept working, unmetered, until it expired). Nothing is sent; the person is told why.
+            if (!builtIn.configured(c.getProtocol())) return null;
+            HttpHeaders off = new HttpHeaders();
+            off.setContentType(MediaType.APPLICATION_JSON);
+            return new ApiResponse(uri, 403, off, BUILT_IN_OFF_BODY.getBytes(StandardCharsets.UTF_8));
+        }
+        int units = catalog.connectionPlugin(c.getProtocol()).map(p -> p.requestUnits(method, uri)).orElse(0);
+        String call = callOf(method, uri);
+        if (quota.spend(c.getProtocol(), units, call)) return null;
+        // A connection's Test asking whose account this is - a channel just connected - is answered from a small reserve:
+        // only inside asIdentityCheck, never by what a thread is called (2026-11-11 review).
+        boolean identity = Boolean.TRUE.equals(IDENTITY_CHECK.get())
+                && catalog.connectionPlugin(c.getProtocol()).map(p -> p.identityRequest(method, uri)).orElse(false);
+        if (identity && quota.spendReserve(c.getProtocol(), units)) return null;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new ApiResponse(uri, 403, headers, BuiltInQuota.SPENT_BODY.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * When a connection that signs in with the built-in client may send again, while the install's daily share for its
+     * service is spent (BuiltInQuota.resetsAt); empty for a share not spent, a person's own client, or none metered.
+     */
+    public java.util.Optional<java.time.Instant> builtInSpentUntil(UUID connectionId) {
+        if (multiUser || quota == null || builtIn == null || connectionId == null) return java.util.Optional.empty();
+        ConnectorConnection c = repository.findById(connectionId).orElse(null);
+        if (c == null || c.getProtocol() == null || ownClient(c).isPresent() || builtIn.of(c.getProtocol()).isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        long budget = quota.budget(c.getProtocol());
+        return budget > 0 && quota.spentToday(c.getProtocol()) >= budget
+                ? java.util.Optional.of(quota.resetsAt().toInstant()) : java.util.Optional.empty();
+    }
+
+    // The built-in clients' daily budget (BuiltInQuota); optional, so a test can build this without it.
+    private BuiltInQuota quota;
+
+    /** What a connection signed in through a built-in client reads once that client is not offered any more. */
+    static final String BUILT_IN_OFF_MESSAGE = "Proxyma's built-in sign-in is available only while its add-on is active. "
+            + "Activate the add-on, or connect with your own Google Cloud app.";
+    static final String BUILT_IN_OFF_BODY = "{\"error\":{\"code\":403,\"message\":\"" + BUILT_IN_OFF_MESSAGE
+            + "\",\"errors\":[{\"reason\":\"proxymaBuiltInClientOff\",\"domain\":\"proxyma\",\"message\":\""
+            + BUILT_IN_OFF_MESSAGE + "\"}]}}";
+
+    private static final ThreadLocal<Boolean> IDENTITY_CHECK = new ThreadLocal<>();
+
+    /**
+     * Runs {@code work} - a connection's Test - as a check of whose account the connection is: a request the plugin calls
+     * an identity request (ConnectionPlugin.identityRequest) may then go through the built-in client's small daily
+     * reserve once its share is spent. Nothing else ever does.
+     */
+    public static <T> T asIdentityCheck(java.util.function.Supplier<T> work) {
+        Boolean before = IDENTITY_CHECK.get();
+        IDENTITY_CHECK.set(Boolean.TRUE);
+        try {
+            return work.get();
+        } finally {
+            if (before == null) IDENTITY_CHECK.remove();
+            else IDENTITY_CHECK.set(before);
+        }
+    }
+
+    /**
+     * A request as the daily tally names it: the API's resource ("commentThreads", "comments.insert" for a write) and
+     * what made it, read off the thread's name - the source sync, a scheduled pass, background work or a page.
+     */
+    static String callOf(HttpMethod method, URI uri) {
+        String path = uri == null || uri.getRawPath() == null ? "" : uri.getRawPath();
+        String[] parts = path.replaceAll("/+$", "").split("/");
+        String resource = parts.length == 0 ? "?" : parts[parts.length - 1];
+        if (method != null && !HttpMethod.GET.equals(method)) resource += "." + method.name().toLowerCase(java.util.Locale.ROOT);
+        String thread = Thread.currentThread().getName();
+        String by = thread.startsWith("sync-") ? "the source sync"
+                : thread.startsWith("scheduler-") ? "a scheduled pass"
+                // A page's request: the web server's own threads, and the pool its controllers hand blocking work to.
+                : thread.startsWith("http-") || thread.startsWith("reactor-") || thread.startsWith("boundedElastic-") ? "a page"
+                : "background work";
+        return resource + " by " + by;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBuiltInQuota(BuiltInQuota quota) {
+        this.quota = quota;
+    }
+
+    // -- revocation ----------------------------------------------------------------------------
+
+    /**
+     * Revokes a connection's grant at the service (RFC 7009), where its spec names where: the refresh
+     * token, which revokes the whole grant at Google, else the access token. Best effort and on a worker -
+     * a service that cannot be reached holds up no delete and no sign-out, which forget the grant here
+     * either way - and logged by outcome only, never with the token.
+     */
+    public void revokeGrant(ConnectorConnection c) {
+        if (c == null) return;
+        OAuth2Spec spec = spec(c).orElse(null);
+        if (spec == null || spec.revokeUrl() == null) return;
+        Map<String, String> secret = storedSecret(c);
+        String token = secret.get(REFRESH_TOKEN);
+        if (token == null || token.isBlank()) token = secret.get(ACCESS_TOKEN);
+        if (token == null || token.isBlank()) return;
+        String revokeUrl = spec.revokeUrl();
+        String held = token;
+        String service = catalog.displayName(c.getProtocol());
+        revoker.execute(() -> {
+            try {
+                URI uri = URI.create(revokeUrl);
+                ApiClient client = http.client(uri.getScheme() + "://" + uri.getRawAuthority())
+                        .service("The sign-in service").maxAttempts(2).build();
+                ApiResponse answer = client.postForm(revokeUrl, Map.of("token", held));
+                // A 400 is "invalid_token": revoked already, or expired - gone either way.
+                if (answer.ok() || answer.status() == 400) log.info("[OAuth] A {} sign-in was revoked", service);
+                else log.warn("[OAuth] Revoking a {} sign-in was answered {}", service, answer.status());
+            } catch (RuntimeException e) {
+                log.warn("[OAuth] Revoking a {} sign-in failed: {}", service, e.getMessage());
+            }
+        });
+    }
+
+    // Where a revocation runs: a worker, so a slow service holds no request and no transaction.
+    private java.util.concurrent.Executor revoker = BlockingWork.executor();
+
+    /** Tests: run revocations on the calling thread. */
+    void setRevokerForTest(java.util.concurrent.Executor revoker) {
+        this.revoker = revoker;
+    }
+
+    /**
+     * A sign-in that came back refused (the person said no on the consent screen) or failed, as the page waiting on it
+     * needs to know - 2026-11-09, the maintainer: "ensure the app handle the scenario that the login failed or the user
+     * refuse the consent". The connection itself is left as it was: a refused second sign-in must not break a grant
+     * that still works. So it is kept here, in memory, per connection, until a sign-in succeeds, and shown on the
+     * connection (ConnectorConnectionView.signInFailure); a restart forgets it, which costs only the page's wait.
+     */
+    public record SignInFailure(String outcome, Instant at) {}
+
+    private final Map<UUID, SignInFailure> failures = new ConcurrentHashMap<>();
+
+    private Outcome failed(Flow flow, Outcome outcome) {
+        failures.put(flow.connectionId(), new SignInFailure(outcome.name(), clock.instant()));
+        return outcome;
+    }
+
+    /** The last sign-in of this connection that was refused or failed, since its last one that succeeded. */
+    public Optional<SignInFailure> lastFailure(UUID connectionId) {
+        return Optional.ofNullable(failures.get(connectionId));
     }
 
     // The last access token a service refused, per connection: never handed out again.
@@ -403,7 +655,7 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
                 form.put("assertion", serviceAccountAssertion(c, spec));
                 token = tokenRequest(spec, null, form);
             } else {
-                Client client = ownClient(c).or(() -> client(c)).orElseThrow(() -> new ConnectorAuthException(
+                Client client = ownClient(c).or(() -> multiUser ? deploymentClient(c.getProtocol()) : Optional.empty()).orElseThrow(() -> new ConnectorAuthException(
                         "This connection has no client id and secret. Add them in Settings > Connections."));
                 form.put("grant_type", "client_credentials");
                 if (spec.clientGrantScopes() && !spec.scopes().isEmpty()) form.put("scope", String.join(" ", spec.scopes()));
@@ -600,10 +852,25 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
     }
 
     // The OAuth client a connection signs in through: the deployment's on Enterprise Server, else the
-    // one its owner typed on it.
+    // one its owner typed on it, else - on Desktop, for a service that has one - the built-in client
+    // (BuiltInOAuthClients). The grant is refreshed through the same client it was issued to: a typed
+    // client replacing the built-in one is a change of client, which forgets the grant.
     private Optional<Client> client(ConnectorConnection c) {
         if (multiUser) return deploymentClient(c.getProtocol());
-        return ownClient(c);
+        return ownClient(c).or(() -> builtInClient(c));
+    }
+
+    private Optional<Client> builtInClient(ConnectorConnection c) {
+        if (builtIn == null) return Optional.empty();
+        return builtIn.of(c.getProtocol()).map(b -> new Client(b.id(), b.secret()));
+    }
+
+    // Desktop's built-in OAuth clients (BuiltInOAuthClients); optional, so a test can build this without them.
+    private BuiltInOAuthClients builtIn;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBuiltInClients(BuiltInOAuthClients builtIn) {
+        this.builtIn = builtIn;
     }
 
     // The client typed on the connection. A client-credentials grant uses it on every edition: that

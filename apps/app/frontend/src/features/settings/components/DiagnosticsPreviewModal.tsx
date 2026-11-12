@@ -48,15 +48,15 @@ export function DiagnosticsPreviewModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-1">
             <DialogDescription className="text-ink-primary">
               {status.sending
-                ? t('Sending is on. {count} finished day is waiting to be sent.|Sending is on. {count} finished days are waiting to be sent.', { count: status.daysWaiting })
+                ? t('Sending is on. {count} day waiting.|Sending is on. {count} days waiting.', { count: status.daysWaiting })
                 : status.blockedByEdition
-                  ? t('Proxyma Enterprise Server never sends diagnostics, so nothing here is stored or sent.')
+                  ? t('Enterprise Server never sends diagnostics.')
                   : !status.configured
-                    ? t('This installation has no diagnostics address, so nothing here is stored or sent.')
-                    : t('Sending is off, so nothing is stored or sent. This is what would be sent if you turned it on.')}
+                    ? t('No diagnostics address is set, so nothing is stored or sent.')
+                    : t('Sending is off. This is what would be sent.')}
             </DialogDescription>
             <Caption>
-              {t('Today ({day}, UTC) is still being collected and is sent only after it ends. Days are sent together, about once a day.', { day: status.today })}
+              {t('Today ({day}, UTC) is sent after it ends.', { day: status.today })}
             </Caption>
             {status.lastSentAt && (
               <Caption>

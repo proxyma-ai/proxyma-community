@@ -1,5 +1,5 @@
 import { FEATURES } from '@/config/features'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@/i18n'
 import { MessageBubble } from './MessageBubble'
 import { ThinkingIndicator } from './ThinkingIndicator'
@@ -8,7 +8,10 @@ import { StepLimitPrompt } from './StepLimitPrompt'
 import { AgentMailNotice, AgentPrompts } from './AgentPrompts'
 import { QUIET_MS, waitFace } from '../utils/waitState'
 import { settledLength } from '../utils/threadOps'
+import { withheldByAnswer } from '../utils/guardrailNotes'
+import { personView } from '../utils/personView'
 import { revealScrollTop } from '../utils/threadReveal'
+import { threadAffordances } from '../utils/agentTranscript'
 import { catchUpIn, followsChange, holdAfterScroll, keyPushesDown, promptScrollTop, pushesPastEnd } from '../utils/threadFollow'
 import { useChatStore } from '../instance/ChatInstanceContext'
 import { ToolCallList } from './ToolCallList'
@@ -16,8 +19,8 @@ import { WorkflowStepTable } from './WorkflowStepTable'
 import { ChatThreadSkeleton } from '@/components/ui/Skeleton'
 import { useLeavingItems } from '../hooks/useLeavingItems'
 import { MessageErrorBoundary } from '@/components/ui/ErrorBoundaries'
-import { Presence, THREAD_COLUMN, cn, prefersReducedMotion } from '@/components/ui/kit'
-import type { ChatMessage, ToolCallInfo, PendingApproval, PendingEnableRequest, WorkflowRunSnapshot } from '../types/chat.types'
+import { Presence, TEXT, THREAD_COLUMN, cn, prefersReducedMotion } from '@/components/ui/kit'
+import type { ChatMessage, ToolCallInfo, PendingApproval, PendingEnableRequest, PendingQuestion, WorkflowRunSnapshot } from '../types/chat.types'
 
 interface Props {
   messages: ChatMessage[]
@@ -62,14 +65,44 @@ interface Props {
   // panel's own rather than the page's, which step up at `sm` - a breakpoint of the WINDOW, wide
   // long before the panel is.
   compact?: boolean
+  // Draws the words of the mail that has them - a teammate's message or reply - under its line
+  // (AgentMailNotice). A Constellations agent's own chat, where the team's internal work is the point.
+  mailText?: boolean
+  // Draws what the person and the agent said and did, without its teammates' mail (utils/personView.ts):
+  // the agent's tool calls stay, finished and running. A Constellations project's lead chat.
+  personOnly?: boolean
+  // A DEPLOYED AGENT'S TRANSCRIPT (AgentTranscriptDialog, since 2026-11-04): read-only to the person -
+  // no rating, retry, rewind or question to answer - while a write it waits on is still decided here
+  // and the agents it deployed still open from their panels (agentTranscript.ts, threadAffordances).
+  transcript?: boolean
 }
 
-export function ChatWindow({ messages, streaming, toolCalls = [], loading = false, onRetry, conversationId, pendingApprovals = [], pendingEnableRequests = [], condensing = false, onRewind, attachedToolCallCount = 0, readOnly = false, workflowRuns = {}, compact = false }: Props) {
+// Stable empties for what a view does not offer: a fresh [] each render would read as a change to every
+// effect that follows the prompts.
+const NO_APPROVALS: PendingApproval[] = []
+const NO_ENABLE_REQUESTS: PendingEnableRequest[] = []
+const NO_QUESTIONS: PendingQuestion[] = []
+
+export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], loading = false, onRetry, conversationId, pendingApprovals = [], pendingEnableRequests = [], condensing = false, onRewind, attachedToolCallCount = 0, readOnly = false, workflowRuns = {}, compact = false, mailText = false, personOnly = false, transcript = false }: Props) {
   const { t } = useTranslation()
+  // What the reader may do here, by how the thread is drawn.
+  const can = threadAffordances(transcript ? 'transcript' : readOnly ? 'shared' : 'chat')
+  if (!can.messageActions) {
+    onRetry = undefined
+    onRewind = undefined
+  }
+  if (!can.approvals) {
+    pendingApprovals = NO_APPROVALS
+    pendingEnableRequests = NO_ENABLE_REQUESTS
+  }
+  // The thread as drawn. Kept by identity between renders, so the effects that follow `messages`
+  // run when the thread changes, not on every render.
+  const messages = useMemo(() => personOnly ? personView(allMessages) : allMessages, [personOnly, allMessages])
   // The thread's side gutter: the page's own (PAGE_GUTTER) on the chat page - 12px on a phone, 24px
   // from `sm` - so the thread lines up with the header (the UI review, 2026-10-28); 12px in a panel.
   const gutter = compact ? 'px-3' : 'px-3 sm:px-6'
-  const pendingQuestions = useChatStore(s => s.pendingQuestions)
+  const askedQuestions = useChatStore(s => s.pendingQuestions)
+  const pendingQuestions = can.questions ? askedQuestions : NO_QUESTIONS
   // NOT WHILE CONDENSING, nor on the render that ends it. A condensation adds nothing to read, and
   // following it to the bottom pulled a reader who had scrolled up back down two or three times
   // per click - on the click, on condense-end and on done.
@@ -189,7 +222,8 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
   // Tool calls already attached to a message (any message, not just the last one - a turn can
   // span several messages, one per ReAct iteration) are rendered inline with that message; only
   // the trailing calls not yet claimed by a message belong in the transient "in progress" list.
-  const pendingToolCalls = toolCalls.slice(attachedToolCallCount).filter(notInAStep)
+  const unclaimedCalls = toolCalls.slice(attachedToolCallCount).filter(notInAStep)
+  const pendingToolCalls = unclaimedCalls
   const showPendingTools = pendingToolCalls.length > 0
   // WHICH WAIT THE ROW UNDER THE TURN SHOWS - the full table is in utils/waitState.ts. The provider
   // wait and thinking name the model; a running tool and streaming text show nothing, since each is
@@ -369,6 +403,16 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
     else sections[sections.length - 1].push(i)
   })
 
+  // The latest answer keeps its actions in view - copy, rate, retry - where every other message,
+  // the latest question included, shows them under the pointer (the maintainer, 2026-11-04).
+  let latestAnswer = -1
+  messages.forEach((m, i) => {
+    if (m.role !== 'user' && m.content) latestAnswer = i
+  })
+
+  // Each finished turn's withheld sources, on its final answer only (guardrailNotes).
+  const withheld = withheldByAnswer(messages, settled, streaming)
+
   const renderMessage = (i: number, stickyQuestion: boolean) => {
     const m = messages[i]
     const ownToolCalls = m.toolCalls?.filter(notInAStep)
@@ -388,11 +432,13 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
             The conversation id is for a deployed agent's own controls - one working in the
             background is held by the message that deployed it, however long ago. */}
         {ownToolCalls && ownToolCalls.length > 0 && (
-          <ToolCallList toolCalls={ownToolCalls} conversationId={readOnly ? undefined : conversationId} />
+          <ToolCallList toolCalls={ownToolCalls} conversationId={can.agentControls ? conversationId : undefined} />
         )}
-        {m.agentMail && m.agentMail.length > 0 && <AgentMailNotice entries={m.agentMail} />}
+        {m.agentMail && m.agentMail.length > 0 && <AgentMailNotice entries={m.agentMail} withText={mailText || personOnly} />}
         {!stepsOnly && <MessageBubble message={m} onRetry={onRetry} isLast={i === messages.length - 1}
-          endsTurn={i < messages.length - 1 ? messages[i + 1].role === 'user' : !streaming} conversationId={conversationId} allMessages={messages} messageIndex={i} streaming={streaming} onRewind={onRewind} readOnly={readOnly} />}
+          latest={i === latestAnswer}
+          endsTurn={i < messages.length - 1 ? messages[i + 1].role === 'user' : !streaming} conversationId={conversationId} allMessages={messages} messageIndex={i} streaming={streaming} onRewind={onRewind} readOnly={!can.messageActions}
+          withheld={withheld.get(i)} />}
         {/* Below the message that invoked it, and therefore above the reply the run produces
             - the position the design asks for, reached by anchoring to the one message that
             is certain to exist. A run that fails in its first step never writes an assistant
@@ -473,7 +519,7 @@ export function ChatWindow({ messages, streaming, toolCalls = [], loading = fals
                 aria-label={t('Back to the question')}
                 className="pointer-events-auto h-10 w-full flex items-center justify-end bg-transparent rounded-md focus-ring"
               >
-                <span className="max-w-[78%] truncate text-sm font-medium text-ink-primary" aria-hidden="true">
+                <span className={cn(TEXT.label, 'max-w-[78%] truncate')} aria-hidden="true">
                   {pinned.content}
                 </span>
               </button>

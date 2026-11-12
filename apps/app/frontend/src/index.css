@@ -44,3 +44,48 @@
    them are the kit's now: the drop zone, the indeterminate bar, the right slide-in, the section
    rules, the pinned question's fade, the composer's light, the dialog minimum and the stacked
    table. */
+
+/* THE CANVAS'S HAND IN LIGHT (Constellations' CrewCanvas, `.canvas-grab` / `.canvas-grabbing`; the
+   maintainer, 2026-10-31: "in light mode, the hand in canvas is white"). The browser draws its grab
+   cursors as a white hand with a hairline edge, which reads on a dark page and all but vanishes on a
+   light one. In Light the canvas wears lucide's Hand and HandGrab instead - primary ink with a white
+   halo, so it shows on the canvas and on a card alike; in Dark, the browser's own. Hotspot at the
+   middle; the plain cursor follows as the fallback. */
+.canvas-grab { cursor: grab; }
+.canvas-grabbing { cursor: grabbing; }
+:root:not([data-mode="dark"]) .canvas-grab { cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"%3E%3Cg stroke="%23ffffff" stroke-width="4"%3E%3Cpath d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/%3E%3Cpath d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/%3E%3Cpath d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/%3E%3Cpath d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/%3E%3C/g%3E%3Cg stroke="%230f1215" stroke-width="1.75"%3E%3Cpath d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/%3E%3Cpath d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/%3E%3Cpath d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/%3E%3Cpath d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/%3E%3C/g%3E%3C/svg%3E') 12 12, grab; }
+:root:not([data-mode="dark"]) .canvas-grabbing { cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"%3E%3Cg stroke="%23ffffff" stroke-width="4"%3E%3Cpath d="M18 11.5V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1.4"/%3E%3Cpath d="M14 10V8a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/%3E%3Cpath d="M10 9.9V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v5"/%3E%3Cpath d="M6 14a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/%3E%3Cpath d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8 2 2 0 1 1 4 0"/%3E%3C/g%3E%3Cg stroke="%230f1215" stroke-width="1.75"%3E%3Cpath d="M18 11.5V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1.4"/%3E%3Cpath d="M14 10V8a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/%3E%3Cpath d="M10 9.9V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v5"/%3E%3Cpath d="M6 14a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/%3E%3Cpath d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8 2 2 0 1 1 4 0"/%3E%3C/g%3E%3C/svg%3E') 12 12, grabbing; }
+
+/* A MESSAGE BETWEEN AGENTS, ON ITS LINE (Constellations' AgentLinkLayer, `.link-run`; the maintainer,
+   2026-11-05: "When the agents are communicating with each other, the connected lines should be
+   animated"). While one agent's message to another is in flight - asked and not yet answered, or a
+   reply being read - a short run of brand color travels the line between them, from the sender to
+   the recipient, again and again for as long as the exchange lasts; `data-back` runs it the other
+   way. The idea of the landing site's `.flow-run` (globals.css), repeating: `pathLength="1"` on the
+   path makes one dash serve a line of any length. Canvas-only, so here beside the canvas's hand
+   rather than in the kit, which carries what more than one app draws.
+
+   A DRAWING PASS, NOT A TRANSITION, so outside the kit's 120/200/300ms on purpose: a run crossing a
+   line in 300ms reads as a flicker, not a direction. REDUCED MOTION: no run at all - the line is
+   tinted instead (AgentLinkLayer), where the kit's own rule would leave a run frozen part way. */
+.link-run {
+  stroke-dasharray: 0.14 1.2;
+  stroke-dashoffset: 0.14;
+  animation: link-run 1600ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.link-run[data-back='true'] { animation-name: link-run-back; }
+@keyframes link-run {
+  0%   { stroke-dashoffset: 0.14; opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { stroke-dashoffset: -1; opacity: 0; }
+}
+@keyframes link-run-back {
+  0%   { stroke-dashoffset: -1; opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { stroke-dashoffset: 0.14; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .link-run { display: none; }
+}

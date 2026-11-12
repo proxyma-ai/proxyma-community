@@ -51,8 +51,7 @@ public class HubSpotConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.HUBSPOT)
             .protocol(ConnectionProtocol.HUBSPOT)
             .displayName("HubSpot")
-            .description("HubSpot companies, contacts, deals and tickets, each with its notes, activity and "
-                    + "associated records.")
+            .description("HubSpot companies, contacts, deals and tickets.")
             .noun("HubSpot source", "HubSpot sources")
             .addTitle("Add HubSpot records")
             .order(70)
@@ -66,10 +65,10 @@ public class HubSpotConnectorPlugin implements ConnectorPlugin {
                                     new FieldSpec.Option("deals", "Deals"),
                                     new FieldSpec.Option("tickets", "Tickets")))
                             .defaultValue(DEFAULT_OBJECTS)
-                            .help("The connection reads the whole HubSpot account, so this source cannot be shared."),
+                            .help("Reads the whole HubSpot account. This source cannot be shared."),
                     FieldSpec.text(API_VERSION, "API version").asAdvanced().placeholder(HubSpotApi.DEFAULT_VERSION)
                             .pattern("\\s*(20[0-9]{2}-(0[1-9]|1[0-2])|v[34])\\s*")
-                            .help("HubSpot's dated API version. Leave empty for the one this version of Proxyma was built on."))
+                            .help("Empty for the default."))
             .capabilities(Capabilities.builder().incremental().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("hubspot")

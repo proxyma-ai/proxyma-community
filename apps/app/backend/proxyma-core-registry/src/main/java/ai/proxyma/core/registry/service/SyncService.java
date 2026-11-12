@@ -1414,6 +1414,32 @@ public class SyncService {
     // closing - Spring's executors stop taking tasks on the close event, before anything else stops
     // - and that refusal reached the item as an exception: RH-17200 was recorded FAILED for a
     // notification nobody would have seen. Losing a notice never fails the work it describes.
+    /**
+     * Names the source after what its pass's session learned the service calls it - a YouTube
+     * channel's title and page ({@link ai.proxyma.core.connector.spi.SourceLabel}) - so a source
+     * registered under a generic name, or renamed in the service since, shows its own. A targeted
+     * update of the name and config, and only while the config is the one read here. Never throws:
+     * a pass is never failed by its source's name.
+     */
+    public void applyLabel(UUID connectorId, ai.proxyma.core.connector.spi.ConnectorPlugin plugin, ConnectorSession session) {
+        try {
+            if (connectorId == null || plugin == null || session == null) return;
+            ai.proxyma.core.connector.spi.SourceLabel label = session.label();
+            if (label == null) return;
+            RegisteredConnector r = connectorRepository.findById(connectorId).orElse(null);
+            if (r == null || r.isDeleting()) return;
+            SourceLabels.apply(plugin, r.getConnectorType(), r.getName(), r.getConfig(), label).ifPresent(next -> {
+                String was = r.getConfig() == null ? "" : r.getConfig();
+                if (connectorRepository.updateLabel(connectorId, next.name(), next.config(), was) > 0) {
+                    log.info("[Sync] connector={} is now named after its source: {}", connectorId, next.name());
+                    notifyPage(new ConnectorSyncedEvent(this, connectorId));
+                }
+            });
+        } catch (RuntimeException e) {
+            log.debug("[Sync] Could not name connector={} after its source: {}", connectorId, e.getMessage());
+        }
+    }
+
     private void notifyPage(org.springframework.context.ApplicationEvent event) {
         try {
             eventPublisher.publishEvent(event);

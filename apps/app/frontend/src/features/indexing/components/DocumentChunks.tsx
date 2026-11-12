@@ -67,7 +67,7 @@ export function DocumentPreviewDialog({ connectorId, documentId, title, onClose 
   const { t } = useTranslation()
   return (
     <ModalShell onClose={onClose} size="xl" fill ariaLabel={title}>
-      <DialogHeader title={title} subtitle={t('The indexed text of this document, as it was split for search.')} />
+      <DialogHeader title={title} subtitle={t('The indexed text of this document.')} />
       <DialogBody scroll>
         <DocumentChunks connectorId={connectorId} documentId={documentId} />
       </DialogBody>

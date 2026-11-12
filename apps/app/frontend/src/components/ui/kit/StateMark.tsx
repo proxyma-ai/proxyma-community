@@ -129,6 +129,7 @@ export function StatusDot({ tone = 'accent', pulse = true, label, className }: {
  * under it and you are on another page: the working dot (it blinks: an icon alone) and how many,
  * on a faint brand tint, a button to the work. Colour-only response to the pointer, like every
  * icon control; 44px on glass. Drawn by hand on the header's nav word and again in the phone menu.
+ * The Badge's shape, `rounded-sm`, never a pill (2026-11-08).
  */
 export function WorkingBadge({ count, label, onClick, className }: {
   count: number
@@ -144,13 +145,13 @@ export function WorkingBadge({ count, label, onClick, className }: {
         onClick={onClick}
         aria-label={label}
         className={cn(
-          'inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-full px-2 touch:h-tap touch:min-w-tap',
+          'inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-sm px-2 touch:h-tap touch:min-w-tap',
           'bg-surface-alt text-brand-legible mouse:hover:text-ink-primary focus-ring',
           className,
         )}
       >
         <StatusDot />
-        <span className="data-readout text-2xs font-semibold">{count}</span>
+        <span className="data-readout text-xs font-semibold">{count}</span>
       </button>
     </Tooltip>
   )

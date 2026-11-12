@@ -31,7 +31,7 @@ export function SourceChunksModal({ connector, onClose }: Props) {
     <ModalShell onClose={onClose} size="xl" fill ariaLabel={connector.name}>
       <DialogHeader
         title={connector.name}
-        subtitle={t('Every indexed chunk in this source. Open an item to read what it was split into.')}
+        subtitle={t('Every indexed chunk in this source.')}
       />
       <DialogBody scroll flush>
         {isLoading ? (

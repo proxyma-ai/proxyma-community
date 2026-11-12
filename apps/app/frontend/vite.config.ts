@@ -86,7 +86,8 @@ function webNotices(dependencies: Dependency[]): string {
 // need a hash kept in step with every edit. It was a hand-written copy in public/ until 2026-10-28;
 // the two consoles' prepaint plugin is the same shape.
 function appearanceInit(storageKey: string): Plugin {
-  const source = appearanceInitScript(storageKey) + '\n'
+  // The background and the accent too (themeStore.ts BACKDROP_STORAGE_KEY, ACCENT_STORAGE_KEY).
+  const source = appearanceInitScript(storageKey, 'system', { backdropKey: 'proxyma-backdrop', accentKey: 'proxyma-accent' }) + '\n'
   return {
     name: 'proxyma-appearance-init',
     configureServer(server) {

@@ -37,14 +37,32 @@ export const THEME_COLOR = {
  * The script's source for one app's storage key. `fallback` is what nothing stored means - every
  * app follows the operating system (`system`) since 2026-09-25.
  */
-export function appearanceInitScript(storageKey: string, fallback: 'system' | 'light' | 'dark' = 'system'): string {
+export function appearanceInitScript(
+  storageKey: string,
+  fallback: 'system' | 'light' | 'dark' = 'system',
+  look?: { backdropKey: string; accentKey: string },
+): string {
   const key = JSON.stringify(storageKey)
   const colors = JSON.stringify(THEME_COLOR)
   return `(function(){var p=null;try{p=localStorage.getItem(${key})}catch(e){}`
+    + (look ? lookPart(look.backdropKey, look.accentKey) : '')
     + `if(p==='gray'||p==='black'){p='dark';try{localStorage.setItem(${key},'dark')}catch(e){}}if(p!=='system'&&p!=='light'&&p!=='dark')p=${JSON.stringify(fallback)};`
     + `if(p==='system'){var d=!window.matchMedia||window.matchMedia('(prefers-color-scheme: dark)').matches;p=d?'dark':'light'}`
     + `var r=document.documentElement;r.setAttribute('data-mode',p);r.removeAttribute('data-shade');`
     + `var c=${colors}[p];var m=document.querySelector('meta[name="theme-color"]');`
     + `if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m)}`
     + `m.setAttribute('content',c)})()`
+}
+
+/**
+ * The background and the accent (appearance.ts `parseBackdrop`, `parseAccent`, `applyLook`), read from
+ * their own keys and stamped before the first paint, so a reader who chose Gradient or Violet never
+ * sees a frame of flat teal. The accents are listed here as in ACCENT_PREFERENCES - the test holds the
+ * two together.
+ */
+function lookPart(backdropKey: string, accentKey: string): string {
+  const accents = JSON.stringify(['blue', 'violet', 'green', 'amber', 'rose'])
+  return `var lb=null,la=null;try{lb=localStorage.getItem(${JSON.stringify(backdropKey)});la=localStorage.getItem(${JSON.stringify(accentKey)})}catch(e){}`
+    + `var lr=document.documentElement;if(lb==='gradient')lr.setAttribute('data-backdrop','gradient');`
+    + `if(${accents}.indexOf(la)>=0)lr.setAttribute('data-accent',la);`
 }

@@ -23,6 +23,7 @@ test('no parameter is nothing to report; an unknown value is a failure, never si
   assert.equal(connectionSignInCode(''), null)
   assert.equal(connectionSignInCode('?connection-oauth=connected'), 'connected')
   assert.equal(connectionSignInCode('connection-oauth=NOT_CONFIGURED'), 'not_configured')
+  assert.equal(connectionSignInCode('?connection-oauth=incomplete'), 'incomplete')
   assert.equal(connectionSignInCode('?connection-oauth=<script>'), 'failed')
   assert.equal(connectionSignInCode('?connection-oauth='), 'failed')
 })

@@ -157,6 +157,41 @@ class TranscriptTest {
     }
 
     @Test
+    @DisplayName("a turn that failed is read back with why, after its steps and before the next message")
+    void aFailedTurnSaysWhy() {
+        // A scheduled run whose model could not be reached: its message, and the failure marked on it.
+        ChatMessage opened = user("[Scheduled run] answer the comments");
+        opened.setMetadataJson(JpaChatMemoryRepository.withTurnError(null, "The server refused the connection."));
+        assertThat(shape(transcript(List.of(opened))))
+                .containsExactly("USER:[Scheduled run] answer the comments", "ASSISTANT:The server refused the connection.");
+        assertThat(transcript(List.of(opened)).get(1).error()).isTrue();
+
+        // A turn that took a step before failing, then a later message: the failure sits between them.
+        ChatMessage step = assistant("", "a");
+        ChatMessage answered = results("a");
+        answered.setMetadataJson(JpaChatMemoryRepository.withTurnError(null, "Rate limited."));
+        var transcript = transcript(List.of(user("q"), step, answered, user("again"), assistant("ok")));
+        assertThat(shape(transcript)).containsExactly(
+                "USER:q", "ASSISTANT:[a]", "ASSISTANT:Rate limited.", "USER:again", "ASSISTANT:ok");
+        assertThat(transcript.get(2).error()).isTrue();
+        assertThat(transcript.get(4).error()).isNull();
+
+        // Marked on a row the transcript skips (a skill the turn loaded): still shown.
+        ChatMessage skill = user("q2");
+        ChatMessage loaded = row(MessageRole.USER, null);
+        loaded.setContent(skillMarkerContent());
+        loaded.setMetadataJson(JpaChatMemoryRepository.withTurnError(null, "No model."));
+        assertThat(shape(transcript(List.of(skill, loaded)))).containsExactly("USER:q2", "ASSISTANT:No model.");
+    }
+
+    // A skill-loaded row as SmartChatMemory writes it.
+    private static String skillMarkerContent() {
+        String content = "[SKILL: Agent team] Instructions.";
+        assertThat(SmartChatMemory.isSkillMarker(content)).isTrue();
+        return content;
+    }
+
+    @Test
     @DisplayName("a last step that wrote nothing and called nothing still gets its notice")
     void stepLimitWithNothingToPutItUnder() {
         ChatMessage last = assistant("");
@@ -274,5 +309,161 @@ class TranscriptTest {
         assertThat(transcript).hasSize(2);
         assertThat(transcript.get(1).toolCalls()).hasSize(3);
         assertThat(transcript.get(1).toolCalls().subList(0, 2)).allMatch(ToolCallResponse::done);
+    }
+
+    @Test
+    @DisplayName("a teammate's reply or message and what the agent told the person are mail with their words, never the person's bubble")
+    void agentWordsAreMailNotThePersons() {
+        String reportFrom = "[Report from Price check (agent 0f3c9a52-6a33-4d47-9d5b-2d6a0a1b2c3d)]\nThe whole report.";
+        var transcript = transcript(List.of(
+                user("fix the drafts waiting for approval for now"),
+                user("[Reply from Viet tra loi]\nDa nhan. Toi khong dang gi them.\n\nDa gui duyet: 0"),
+                user("[Reply from Scout: it could not answer]\nThe quota is spent."),
+                user("[Message from Reply Writer (Writes replies), your peer]\nTwo drafts need a decision."),
+                user("[You told the person (from your scheduled run)]\nNeeds your decision: 8 items."),
+                user(reportFrom),
+                assistant("I asked the Reply Writer.")));
+
+        assertThat(transcript).hasSize(7);
+        assertThat(transcript.get(0).role()).isEqualTo(MessageRole.USER);
+        assertThat(transcript.subList(1, 6)).allSatisfy(m -> {
+            assertThat(m.role()).as("drawn as mail, not as the person's").isEqualTo(MessageRole.ASSISTANT);
+            assertThat(m.content()).isEmpty();
+            assertThat(m.id()).as("nothing on it can be rated or rewound").isNull();
+        });
+        assertThat(transcript.get(1).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("reply");
+            assertThat(a.title()).isEqualTo("Viet tra loi");
+            assertThat(a.text()).isEqualTo("Da nhan. Toi khong dang gi them.\n\nDa gui duyet: 0");
+        });
+        assertThat(transcript.get(2).agentMail().get(0).title()).isEqualTo("Scout: it could not answer");
+        assertThat(transcript.get(3).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("message");
+            assertThat(a.text()).isEqualTo("Two drafts need a decision.");
+        });
+        assertThat(transcript.get(4).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("told");
+            assertThat(a.text()).isEqualTo("Needs your decision: 8 items.");
+        });
+        assertThat(transcript.get(5).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("report");
+            assertThat(a.agentId()).isEqualTo("0f3c9a52-6a33-4d47-9d5b-2d6a0a1b2c3d");
+            assertThat(a.text()).as("a report is read in its agent's own panel").isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("the note a turn's opening carries for the model - its preloaded skills - is never a mail's words")
+    void openingMailCarriesNoModelNote() {
+        // A saved agent's turn opened by a teammate's message, with its skills preloaded: the stored row is the
+        // message and then the "[Context: ...]" block for the model (the maintainer's screenshot, 2026-11-05).
+        String stored = "[Message from Lead]\nList the new comments."
+                + ChatService.skillMentionBlock(List.of("YouTube"));
+        var transcript = transcript(List.of(user(stored), assistant("Done.")));
+
+        assertThat(transcript.get(0).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("message");
+            assertThat(a.text()).isEqualTo("List the new comments.");
+        });
+        assertThat(transcript).noneSatisfy(m -> assertThat(String.valueOf(m.content()) + m.agentMail())
+                .contains("[Context:"));
+    }
+
+    @Test
+    @DisplayName("a person's message never shows the notes appended for the model, and keeps its chips")
+    void personsMessageShowsNoModelNote() {
+        var transcript = transcript(List.of(
+                user("Summarize the channel." + ChatService.skillMentionBlock(List.of("YouTube"))),
+                assistant("Here it is.")));
+
+        assertThat(transcript.get(0).content()).isEqualTo("Summarize the channel.");
+        assertThat(transcript.get(0).skillMentions()).containsExactly("YouTube");
+    }
+
+    // A module that wrote "[Run, ...]" openings, a header over a person's words, and messages whose sender
+    // heading carries words for the model.
+    private static final ChatService.ShownBy MODULE = ChatService.ShownBy.of(List.of(new ShowingModule()));
+
+    private static final class ShowingModule implements ai.proxyma.core.chat.module.ChatModule {
+        @Override public List<Object> toolObjects() { return List.of(); }
+        @Override public Map<String, java.util.Set<String>> skillToolGroups() { return Map.of(); }
+        @Override public java.util.Set<String> ownToolNames() { return java.util.Set.of(); }
+        @Override public boolean offersToolsIn(String conversationId, String userId) { return false; }
+        @Override public java.util.Optional<String> systemContext(String conversationId, String userId) { return java.util.Optional.empty(); }
+        @Override public boolean licensed() { return true; }
+
+        @Override
+        public java.util.Optional<Shown> shownOpening(String content) {
+            if (content.startsWith("[Run, ")) return java.util.Optional.of(Shown.asMail("run_schedule",
+                    content.substring(content.indexOf('\n') + 1)));
+            if (content.startsWith("[Relayed]\n")) return java.util.Optional.of(Shown.asPerson(content.substring(10)));
+            if (content.startsWith("[Throws")) throw new IllegalStateException("a module that fails costs only itself");
+            return java.util.Optional.empty();
+        }
+
+        @Override
+        public ai.proxyma.core.chat.agents.AgentInbox.Item shownMail(ai.proxyma.core.chat.agents.AgentInbox.Item item) {
+            return item.title() != null && item.title().endsWith(", your peer")
+                    ? new ai.proxyma.core.chat.agents.AgentInbox.Item(item.agentId(),
+                            item.title().substring(0, item.title().length() - 11), item.kind(), item.text())
+                    : item;
+        }
+    }
+
+    @Test
+    @DisplayName("a module's opening is drawn as the line it names, its header and the model's notes off")
+    void moduleOpeningsAreShownAsTheModuleSays() {
+        List<ChatMessage> rows = List.of(
+                user("[Run, 2026-11-05 09:00 UTC]\nCheck the new comments."
+                        + ChatService.skillMentionBlock(List.of("YouTube"))),
+                assistant("Checked."),
+                user("[Relayed]\nWhat did the team find?"),
+                assistant("Two questions."),
+                user("[Throws]\nkept as typed"),
+                user("[Message from Ana (Writer), your peer]\nA draft is ready."));
+
+        var transcript = ChatService.transcript(rows, Map.of(), null, MODULE);
+
+        assertThat(transcript.get(0).role()).as("nobody typed it").isEqualTo(MessageRole.ASSISTANT);
+        assertThat(transcript.get(0).id()).isNull();
+        assertThat(transcript.get(0).content()).isEmpty();
+        assertThat(transcript.get(0).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.kind()).isEqualTo("run_schedule");
+            assertThat(a.text()).as("the task, without the model's note").isEqualTo("Check the new comments.");
+        });
+        assertThat(transcript.get(2).role()).isEqualTo(MessageRole.USER);
+        assertThat(transcript.get(2).content()).isEqualTo("What did the team find?");
+        assertThat(transcript.get(4).content()).isEqualTo("[Throws]\nkept as typed");
+        assertThat(transcript.get(5).agentMail()).singleElement().satisfies(a -> {
+            assertThat(a.title()).isEqualTo("Ana (Writer)");
+            assertThat(a.text()).isEqualTo("A draft is ready.");
+        });
+    }
+
+    @Test
+    @DisplayName("a module's opening of a turn still running is the last thing the transcript says, as a person's is")
+    void moduleOpeningOfARunningTurn() {
+        ChatMessage before = assistant("earlier");
+        long floor = before.getId();
+        List<ChatMessage> rows = List.of(before, user("[Run, now]\nGo."), assistant("partial"));
+
+        var transcript = ChatService.transcript(rows, Map.of(), floor, MODULE);
+
+        assertThat(transcript).hasSize(2);
+        assertThat(transcript.get(1).agentMail()).singleElement()
+                .satisfies(a -> assertThat(a.kind()).isEqualTo("run_schedule"));
+    }
+
+    @Test
+    @DisplayName("several items in one row each keep their own words")
+    void severalItemsKeepTheirOwnWords() {
+        var items = ai.proxyma.core.chat.agents.AgentInbox.itemsIn(
+                "[Reply from A]\nfirst\nanswer\n\n[Reply from B]\nsecond");
+        assertThat(items).extracting(ai.proxyma.core.chat.agents.AgentInbox.Item::text)
+                .containsExactly("first\nanswer", "second");
+        assertThat(ChatService.isScaffolding("[Reply from A]\nfirst")).as("an earlier conversation read back leaves it out")
+                .isTrue();
+        assertThat(ai.proxyma.core.chat.agents.AgentInbox.shownText("told", "x".repeat(9_000)))
+                .hasSizeLessThanOrEqualTo(ai.proxyma.core.chat.agents.AgentInbox.SHOWN_TEXT_MAX);
     }
 }

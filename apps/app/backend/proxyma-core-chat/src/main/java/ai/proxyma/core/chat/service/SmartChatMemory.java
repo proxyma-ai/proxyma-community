@@ -1,4 +1,5 @@
 package ai.proxyma.core.chat.service;
+import ai.proxyma.core.system.util.Utf16;
 import ai.proxyma.core.chat.event.ChatEvent;
 import ai.proxyma.core.chat.model.Conversation;
 import ai.proxyma.core.chat.model.ChatMessage;
@@ -459,6 +460,15 @@ public class SmartChatMemory implements ChatMemory {
     @Transactional("chatTransactionManager")
     public boolean ensureConversation(String conversationId, String firstMessage, String userId, String guestSessionId,
                                       String enabledSkillIdsCsv, String surface) {
+        return ensureConversation(conversationId, firstMessage, userId, guestSessionId, enabledSkillIdsCsv, surface, null);
+    }
+
+    // As above, for a conversation a module or an agent opened (ConversationOpening): `titleKind` is
+    // the kind the page words, and `firstMessage` only the words that are data - none at all leaves
+    // the title empty rather than "New conversation", which the page would show in English.
+    @Transactional("chatTransactionManager")
+    public boolean ensureConversation(String conversationId, String firstMessage, String userId, String guestSessionId,
+                                      String enabledSkillIdsCsv, String surface, String titleKind) {
         ConversationPaths.requireValidId(conversationId);
         Optional<Conversation> existing = conversationRepository.findById(conversationId);
         if (existing.isPresent()) {
@@ -477,7 +487,12 @@ public class SmartChatMemory implements ChatMemory {
         c.setId(conversationId);
         c.setUserId(userId);
         if (userId == null) c.setGuestSessionId(guestSessionId);
-        c.setTitle(autoTitle(firstMessage));
+        boolean kinded = titleKind != null && !titleKind.isBlank();
+        c.setTitle(kinded && (firstMessage == null || firstMessage.isBlank()) ? null : autoTitle(firstMessage));
+        if (kinded) {
+            String kind = titleKind.strip();
+            c.setTitleKind(kind.length() <= Conversation.TITLE_KIND_MAX ? kind : kind.substring(0, Conversation.TITLE_KIND_MAX));
+        }
         c.setCreatedAt(Instant.now());
         c.setUpdatedAt(Instant.now());
         c.setMessageCount(0);
@@ -586,6 +601,16 @@ public class SmartChatMemory implements ChatMemory {
         return conversationRepository.pageAmongOfUser(userId, ids, pageable);
     }
 
+    // The same list on Desktop and Home Server, where nobody signs in and every conversation has the
+    // null owner (or "_local"/"local", the names some subsystems give the one person): those of `ids`
+    // with no account behind them. Refused where there are accounts. Without it a page that keeps its
+    // own bindings - a Constellations agent's Chat tab - listed nothing on Desktop, its count beside it.
+    @Transactional(value = "chatTransactionManager", readOnly = true)
+    public Page<Conversation> listLocalConversationsAmong(java.util.Collection<String> ids, Pageable pageable) {
+        if (multiUser || ids == null || ids.isEmpty()) return Page.empty(pageable);
+        return conversationRepository.pageAmongUnowned(ids, pageable);
+    }
+
     @Transactional("chatTransactionManager")
     public void setPinned(String conversationId, boolean pinned) {
         conversationRepository.updatePinned(conversationId, pinned);
@@ -603,6 +628,15 @@ public class SmartChatMemory implements ChatMemory {
     public java.util.List<Conversation> findConversations(java.util.Collection<String> ids) {
         if (ids == null || ids.isEmpty()) return java.util.List.of();
         return conversationRepository.findAllById(ids);
+    }
+
+    /** Every row's role and time, oldest first - when the main agent worked (AgentTreeView.workedOf). */
+    @Transactional(value = "chatTransactionManager", readOnly = true)
+    public java.util.List<ai.proxyma.core.chat.agents.AgentTreeView.Stamp> messageStamps(String conversationId) {
+        return messageRepository.findStampsByConversationId(conversationId).stream()
+                .map(row -> new ai.proxyma.core.chat.agents.AgentTreeView.Stamp(
+                        (MessageRole) row[0], (Instant) row[1], Boolean.TRUE.equals(row[2])))
+                .toList();
     }
 
     // The ids of the skills whose instructions are already in this conversation's history, so a
@@ -687,6 +721,22 @@ public class SmartChatMemory implements ChatMemory {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Records, on the conversation's LAST row, why the turn that wrote it failed - so the transcript can
+     * show the error after a reload, as the event stream showed it live (the maintainer, 2026-10-31: a
+     * scheduled run whose model could not be reached read as an agent still thinking). Nothing when
+     * the conversation has no row yet.
+     */
+    @Transactional("chatTransactionManager")
+    public void markTurnFailed(String conversationId, String why) {
+        List<ChatMessage> messages = messageRepository.findByConversationIdOrderByCreatedAtAscIdAsc(conversationId);
+        if (messages.isEmpty() || why == null || why.isBlank()) return;
+        ChatMessage last = messages.get(messages.size() - 1);
+        String bounded = why.length() > 1000 ? why.substring(0, 1000) + "..." : why;
+        last.setMetadataJson(JpaChatMemoryRepository.withTurnError(last.getMetadataJson(), bounded));
+        messageRepository.save(last);
     }
 
     /**
@@ -883,7 +933,7 @@ public class SmartChatMemory implements ChatMemory {
         if (PAGING_TOOLS.contains(toolName)) {
             log.warn("[SmartMemory] tool '{}' returned {} chars, over its own limit - cut, not offloaded",
                     toolName, result.length());
-            return result.substring(0, MAX_INLINE_RESULT_CHARS)
+            return Utf16.cut(result, MAX_INLINE_RESULT_CHARS)
                     + "\n... [cut here: the result was too long. Ask for fewer lines or a narrower query.]";
         }
 
@@ -1113,6 +1163,18 @@ public class SmartChatMemory implements ChatMemory {
         return false;
     }
 
+    /**
+     * Takes this conversation's memory lock only if nobody holds it - no turn, no condensation - and
+     * never waits. True means the caller holds it and must pair this with {@link #unlockMemory}.
+     */
+    public boolean tryLockMemory(String conversationId) {
+        MemoryLock held = memoryLocks.compute(conversationId,
+                (k, v) -> { MemoryLock m = v != null ? v : new MemoryLock(); m.refs++; return m; });
+        if (held.lock.tryLock()) return true;
+        releaseRef(conversationId);
+        return false;
+    }
+
     public void unlockMemory(String conversationId) {
         MemoryLock held = memoryLocks.get(conversationId);
         if (held == null) return;
@@ -1169,7 +1231,7 @@ public class SmartChatMemory implements ChatMemory {
         SpendSubject owner = conversationRepository.findById(conversationId)
                 .map(c -> SpendSubject.user(c.getUserId()))
                 .orElse(SpendSubject.ANONYMOUS);
-        LlmSession session = llmGateway.open(LlmCaller.of(LlmRole.CONDENSATION, owner),
+        LlmSession session = llmGateway.open(LlmCaller.of(LlmRole.CONDENSATION, owner).inConversation(conversationId),
                 LlmGateway.SessionOptions.plain().line(conversationId + "/condense"));
         String provider = session.provider();
         String model = session.model();

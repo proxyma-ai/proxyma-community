@@ -49,8 +49,7 @@ public class SalesforceConnectorPlugin implements ConnectorPlugin {
     static final ConnectorDescriptor DESCRIPTOR = ConnectorDescriptor.builder(ConnectorType.SALESFORCE)
             .protocol(ConnectionProtocol.SALESFORCE)
             .displayName("Salesforce")
-            .description("Salesforce accounts, contacts, opportunities, leads and cases, each with its notes, "
-                    + "activity and related records.")
+            .description("Salesforce accounts, contacts, opportunities, leads and cases.")
             .noun("Salesforce source", "Salesforce sources")
             .addTitle("Add Salesforce records")
             .order(71)
@@ -65,10 +64,10 @@ public class SalesforceConnectorPlugin implements ConnectorPlugin {
                                     new FieldSpec.Option("Lead", "Leads"),
                                     new FieldSpec.Option("Case", "Cases")))
                             .defaultValue(DEFAULT_OBJECTS)
-                            .help("Read as the connection's Salesforce user, so this source cannot be shared."),
+                            .help("Read as your Salesforce user. This source cannot be shared."),
                     FieldSpec.text(API_VERSION, "API version").asAdvanced().placeholder(SalesforceApi.DEFAULT_VERSION)
                             .pattern("\\s*[0-9]{2,3}\\.0\\s*")
-                            .help("Salesforce's REST API version. Leave empty for the one this version of Proxyma was built on."))
+                            .help("Empty for the default."))
             .capabilities(Capabilities.builder().incremental().liveRead().build())
             .syncEvery(Duration.ofHours(1))
             .docsAnchor("salesforce")

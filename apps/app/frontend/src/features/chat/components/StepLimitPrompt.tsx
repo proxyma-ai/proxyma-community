@@ -52,7 +52,7 @@ export function StepLimitPrompt({ pending, stepLimit, conversationId }: {
       ariaLabel={t('Step limit reached')}
       busy={done}
       title={t('The agent has used its {count} step and is not finished.|The agent has used its {count} steps and is not finished.', { count: stepLimit.limit })}
-      caption={t('Continue for up to {count} more step, or stop and get an answer from what it has found.|Continue for up to {count} more steps, or stop and get an answer from what it has found.', { count: stepLimit.more })}
+      caption={t('Continue up to {count} more step, or stop and answer now.|Continue up to {count} more steps, or stop and answer now.', { count: stepLimit.more })}
       status={done && <InlineNotice tone="progress">{t('Sending your answer')}</InlineNotice>}
       actions={!done && (
         <>

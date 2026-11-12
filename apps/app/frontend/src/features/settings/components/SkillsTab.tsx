@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { MarkdownField } from '@/components/ui/MarkdownField'
+import { EditableText } from '@/components/ui/EditableText'
+import { EditableMarkdown } from '@/components/ui/EditableMarkdown'
+import { quietly } from '@/components/ui/AutosaveFields'
+import { useAutosave } from '@/components/ui/useAutosave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { commaList, sameSet } from '@/components/ui/autosave'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import {
-  Badge, Button, Checkbox, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap,
-  Field, FormColumns, FormStack, Input, List, ListRow, PickBox, Presence, SearchInput, SettingsSection,
-  SettingsSections, SwitchRow, Textarea, TEXT,
+  Badge, Button, Checkbox, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap, Field, FormColumns, FormStack, Input, List, ListRow, PickBox, Presence, SearchInput, SettingsSection, SettingsSections, SwitchRow, Textarea, TEXT, IconButton,
 } from '@/components/ui/kit'
 import { PagedItems } from '@/components/ui/ListPager'
 import { ListSkeleton, TitleAction } from '../pages/shared'
@@ -18,6 +23,7 @@ import { queryClient } from '@/app/QueryClient'
 import { keys } from '@/services/queryKeys'
 import { useTranslation } from '@/i18n'
 import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
+import { catalogTypeName } from '@/features/indexing/utils/catalogRegistry'
 import { withReason } from '@/services/apiError'
 
 // Every field is the kit's - Input, Textarea, SearchInput, Checkbox - so a skill's text boxes are
@@ -64,7 +70,7 @@ export function SkillsTab() {
 
   return (
     // The introduction is SettingsSections' intro, as on every tab that opens with one.
-    <SettingsSections intro={t('Named instructions the agent loads only when a question needs them.')}>
+    <SettingsSections intro={t('Instructions the agent loads when needed.')}>
       <TitleAction>
         <Presence show={!isLoading && !noSkills} collapse={false}>
           <Button onClick={() => setModalTarget('new')}>
@@ -94,7 +100,7 @@ export function SkillsTab() {
             </Button>
           )}
         >
-          {t('A skill is a set of instructions the agent reads only when a question needs it.')}
+          {t('Instructions the agent reads when a question needs them.')}
         </EmptyState>
       ) : (
         // Each group a SUBSECTION - ruled off from the one above with the tighter subsection rhythm,
@@ -179,35 +185,237 @@ function SkillRow({ skill, onEditClick, onDeleteClick }: {
         </>
       ) : undefined}
       caption={skill.shortDescription && <span className="block truncate">{skill.shortDescription}</span>}
+      // ROW ACTIONS ARE ICONS in every Settings list (the maintainer, 2026-11-10), as Connections' and Providers' are.
       action={skill.canDelete && (
-        <Button variant="danger-quiet" onClick={onDeleteClick} aria-label={t('Delete {name}', { name: skill.name })}>
-          {t('Delete')}
-        </Button>
+        <IconButton icon={Trash2} tone="danger" onClick={onDeleteClick}
+          label={t('Delete {name}', { name: skill.name })} tooltip={t('Delete')} />
       )}
     />
   )
 }
 
-// Exported so the chat page's attach-skill menu (a later, separate task) can reuse this exact
-// form for creating a new skill inline.
+// Exported so the chat page's attach-skill menu can reuse this exact form for creating a new skill
+// inline.
+//
+// TWO DIALOGS BEHIND ONE NAME (the maintainer, 2026-11-02): ADDING a skill is a form with its Save
+// button; an EXISTING skill the reader may change is edited where it is read, field by field, each
+// saved as it is left (SkillEditDialog). A skill the reader may only read is the form's read-only view.
 export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
   skill: SkillSummary | null
   onClose: () => void
   readOnly?: boolean
-  // Fired with the created/updated skill right before onClose - lets a caller (e.g. the chat
-  // page's attach menu) auto-select a skill it just created without duplicating this form.
+  // Fired with the created skill right before onClose - lets a caller (e.g. the chat page's attach
+  // menu) auto-select a skill it just created without duplicating this form - and with an existing
+  // skill each time one of its fields is saved.
+  onSaved?: (skill: SkillDetail) => void
+}) {
+  if (skill && !readOnly) return <SkillEditDialog skill={skill} onClose={onClose} onSaved={onSaved} />
+  return <SkillForm skill={skill} onClose={onClose} onSaved={onSaved} />
+}
+
+/** What an existing skill's dialog saves: the update request, a field at a time over the rest. */
+interface SkillFields {
+  name: string
+  shortDescription: string
+  detail: string
+  tags: string[]
+  tools: string[]
+  connectorNames: string[]
+  shared: boolean
+}
+
+/**
+ * AN EXISTING SKILL, EDITED IN PLACE. Every field is the skill's own value, click-to-edit or a control
+ * that saves as it changes; the update endpoint takes the whole skill, so each save sends it whole with
+ * the one field changed (useAutosave). Nothing opens for editing until the detail has arrived - a save
+ * built before it would blank the detail, tags, tools and connectors. No footer: there is nothing left
+ * to save when the dialog closes.
+ */
+function SkillEditDialog({ skill, onClose, onSaved }: {
+  skill: SkillSummary
+  onClose: () => void
   onSaved?: (skill: SkillDetail) => void
 }) {
   const { t } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
-  const isEdit = skill !== null
+  const { data: existing } = useQuery({ queryKey: keys.chatSkill(skill.id), queryFn: () => skillsApi.get(skill.id) })
+  const [restoring, setRestoring] = useState(false)
+
+  const base = useMemo<SkillFields | undefined>(() => existing && {
+    name: existing.name,
+    shortDescription: existing.shortDescription,
+    detail: existing.detail,
+    tags: existing.tags,
+    tools: existing.tools,
+    connectorNames: existing.connectorNames,
+    shared: existing.shared,
+  }, [existing])
+
+  const { value, save, status } = useAutosave<SkillFields>(base, async next => {
+    const saved = await skillsApi.update(skill.id, next)
+    queryClient.invalidateQueries({ queryKey: keys.chatSkills() })
+    queryClient.invalidateQueries({ queryKey: keys.chatSkill(skill.id) })
+    onSaved?.(saved)
+    return {
+      name: saved.name, shortDescription: saved.shortDescription, detail: saved.detail, tags: saved.tags,
+      tools: saved.tools, connectorNames: saved.connectorNames, shared: saved.shared,
+    }
+  }, { failure: t('Failed to update skill') })
+
+  // Until the detail arrives, the summary's own fields stand in - shown, not yet editable.
+  const v: SkillFields = value ?? {
+    name: skill.name, shortDescription: skill.shortDescription, detail: '', tags: skill.tags,
+    tools: [], connectorNames: [], shared: skill.shared,
+  }
+  const loaded = value !== undefined
+
+  // The skill's seeded original, written at once: an action pressed on purpose, like Delete, and said
+  // in a toast. Tools, connectors and sharing are left alone - those are configuration an admin chose
+  // for this deployment, not part of the authored text the default describes.
+  async function restoreDefault() {
+    setRestoring(true)
+    try {
+      let d: { name: string; shortDescription: string; detail: string }
+      try {
+        d = await skillsApi.getDefault(skill.id)
+      } catch (e) {
+        addToast(withReason(t('Failed to load the default for this skill'), e), 'danger')
+        return
+      }
+      try {
+        await save({ name: d.name, shortDescription: d.shortDescription, detail: d.detail })
+        addToast(t('Default restored'), 'success')
+      } catch {
+        // Refused: useAutosave has said why, and the skill is as it was.
+      }
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  return (
+    <ModalShell onClose={onClose} initialFocus="panel" size="wide" fill ariaLabel={t('Edit skill')}>
+      {() => (<>
+        <DialogHeader
+          title={t('Edit skill')}
+          actions={<>
+            <SaveStatus word={status} />
+            {skill.hasDefault && (
+              // Built-in skills are seeded create-if-absent, so once edited nothing ever puts them back.
+              // Only offered where a seeded original actually exists (hasDefault).
+              <Button variant="hyperlink" onClick={restoreDefault} disabled={restoring || !loaded}>
+                {restoring ? t('Restoring...') : t('Restore default')}
+              </Button>
+            )}
+          </>}
+        />
+        {/* The same three columns as the form below: the short fields, what the skill reaches for,
+            then Detail - which fills its column and scrolls inside itself. */}
+        <DialogBody scroll className="flex flex-col">
+          <FormColumns cols={3} from="lg" density="columns" className="md:grid-cols-2 lg:grid-rows-1 lg:flex-1 lg:min-h-0">
+          <FormStack className="min-w-0">
+            <Field label={t('Name')} description={t('A short name others will see.')}>
+              <EditableText
+                value={v.name}
+                label={t('Name')}
+                placeholder={t('e.g. Jira Workflow')}
+                editable={loaded}
+                required={t('Name is required')}
+                onCommit={name => save({ name })}
+              />
+            </Field>
+            <Field label={t('Short description')} description={t('Sent with every prompt. Keep it short.')}>
+              <EditableText
+                value={v.shortDescription}
+                label={t('Short description')}
+                placeholder={t('Shown to the agent in every system prompt')}
+                multiline
+                editable={loaded}
+                required={t('Short description is required')}
+                onCommit={shortDescription => save({ shortDescription })}
+              />
+            </Field>
+            <Field label={t('Tags')} description={t('Comma-separated.')}>
+              <EditableText
+                value={v.tags.join(', ')}
+                label={t('Tags')}
+                placeholder="jira, reporting"
+                editable={loaded}
+                onCommit={text => {
+                  const tags = commaList(text)
+                  return sameSet(tags, v.tags) ? undefined : save({ tags })
+                }}
+              />
+            </Field>
+            {!skill.official && (
+              <SwitchRow
+                className="py-0"
+                title={t('Shared')}
+                caption={t('Every user can see and use it.')}
+                checked={v.shared}
+                onChange={shared => quietly(save({ shared }))}
+                disabled={!loaded}
+              />
+            )}
+          </FormStack>
+
+          <div className="min-w-0 space-y-4 lg:min-h-0 lg:flex lg:flex-col">
+            <SkillConnectorsField
+              names={v.connectorNames}
+              disabled={!loaded}
+              onAdd={n => { if (!v.connectorNames.includes(n)) quietly(save({ connectorNames: [...v.connectorNames, n] })) }}
+              onRemove={n => quietly(save({ connectorNames: v.connectorNames.filter(x => x !== n) }))}
+            />
+            <SkillToolsField
+              picked={v.tools}
+              disabled={!loaded}
+              onToggle={n => quietly(save({ tools: v.tools.includes(n) ? v.tools.filter(x => x !== n) : [...v.tools, n] }))}
+            />
+          </div>
+          <Field
+            label={t('Detail')}
+            description={t('Loaded only when this skill is needed.')}
+            className="md:col-span-2 lg:col-span-1 lg:min-h-0"
+          >
+            {id => (
+              <EditableMarkdown
+                id={id}
+                fill
+                value={v.detail}
+                onCommit={detail => save({ detail })}
+                placeholder={t('Steps the agent follows with this skill...')}
+                rows={10}
+                editable={loaded}
+                className="md:min-h-64"
+              />
+            )}
+          </Field>
+          </FormColumns>
+        </DialogBody>
+      </>)}
+    </ModalShell>
+  )
+}
+
+/**
+ * A NEW SKILL'S FORM, and a skill the reader may only read: every field held here until Save.
+ * Sharing is not on the new one - a brand-new skill always starts private server-side, so create()
+ * never sends it.
+ */
+function SkillForm({ skill, onClose, onSaved }: {
+  skill: SkillSummary | null
+  onClose: () => void
+  onSaved?: (skill: SkillDetail) => void
+}) {
+  const { t } = useTranslation()
+  const addToast = useToastStore(s => s.addToast)
+  // A skill passed in here is one the reader may only read.
+  const readOnly = skill !== null
   const { data: existing } = useQuery({
     queryKey: keys.chatSkill(skill?.id ?? ''),
     queryFn: () => skillsApi.get(skill!.id),
-    enabled: isEdit,
+    enabled: readOnly,
   })
-  const { data: allTools = [] } = useQuery({ queryKey: keys.chatTools(), queryFn: skillsApi.listTools })
-  const [toolSearch, setToolSearch] = useState('')
 
   const [name, setName] = useState(skill?.name ?? '')
   const [nameError, setNameError] = useState('')
@@ -219,88 +427,34 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
   const [tagsInput, setTagsInput] = useState('')
   const [tools, setTools] = useState<string[]>([])
   const [connectorNames, setConnectorNames] = useState<string[]>([])
-  const [connectorSearch, setConnectorSearch] = useState('')
-  const debouncedConnectorSearch = useDebounce(connectorSearch.trim(), 300)
-  const { data: connectorSuggestions = [] } = useMentionSuggestions(debouncedConnectorSearch ? debouncedConnectorSearch : null)
-  const availableConnectorSuggestions = connectorSuggestions.filter(r => !connectorNames.includes(r.name))
-  // Already known from the summary passed in (no need to wait for the detail fetch) - `shared`
-  // isn't part of what a create() call ever sends (see save.mutate below), so it only matters
-  // once isEdit is true anyway.
-  const [shared, setShared] = useState(skill?.shared ?? false)
-  const [restoring, setRestoring] = useState(false)
 
   // What the form holds, against what it opened with. Tools and connectors are sets as far as the
   // user is concerned, so unticking one and ticking it again is not a change.
   const formValues = {
-    name, shortDescription, detail, tagsInput, shared,
+    name, shortDescription, detail, tagsInput,
     tools: [...tools].sort(), connectorNames: [...connectorNames].sort(),
   }
-  const { dirty: formDirty, rebase } = useFormDirty(formValues)
+  const { dirty: formDirty } = useFormDirty(formValues)
   const dirty = !readOnly && formDirty
 
-  // Fills the form with the skill's seeded original WITHOUT saving - the user reviews it and still
-  // presses Save, so restoring is cancellable and never a silent write. Same contract as the
-  // System Prompt modal's reset. Deliberately leaves tools/connectorNames/shared alone:
-  // those are configuration an admin chose for this deployment, not part of the authored text the
-  // default describes, and silently reverting them would be a surprise nobody asked for.
-  async function restoreDefault() {
-    if (!skill) return
-    setRestoring(true)
-    try {
-      const d = await skillsApi.getDefault(skill.id)
-      setName(d.name)
-      setShortDescription(d.shortDescription)
-      setDetail(d.detail)
-      setNameError('')
-      setShortDescriptionError('')
-    } catch (e) {
-      addToast(withReason(t('Failed to load the default for this skill'), e), 'danger')
-    } finally {
-      setRestoring(false)
-    }
-  }
-
-  // Once the edit fetch resolves, seed the fields the summary didn't already carry - same
-  // one-time catch-up pattern the old SkillModal used for `detail` alone.
-  //
-  // The seeded values become the baseline, so the fill itself does not read as an edit. Name and
-  // short description come from the summary the form opened with, not from what may have been
-  // typed since - a name changed before the fetch landed is still a change.
+  // The read-only view fills in once the detail arrives.
   useEffect(() => {
     if (existing) {
       setDetail(existing.detail)
       setTagsInput(existing.tags.join(', '))
       setTools(existing.tools)
       setConnectorNames(existing.connectorNames)
-      rebase({
-        name: skill?.name ?? '',
-        shortDescription: skill?.shortDescription ?? '',
-        detail: existing.detail,
-        tagsInput: existing.tags.join(', '),
-        shared: skill?.shared ?? false,
-        tools: [...existing.tools].sort(),
-        connectorNames: [...existing.connectorNames].sort(),
-      })
     }
-    // `skill` is the summary this modal was opened for and does not change while it is open.
-  }, [existing, rebase])
+  }, [existing])
 
   const save = useMutation({
-    mutationFn: () => {
-      const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
-      // create() never sends shared - a brand-new skill always starts private server-side, so
-      // there is nothing meaningful to submit for that field yet.
-      return isEdit
-        ? skillsApi.update(skill.id, { name, shortDescription, detail, tags, tools, connectorNames, shared })
-        : skillsApi.create({ name, shortDescription, detail, tags, tools, connectorNames })
-    },
+    mutationFn: () => skillsApi.create({ name, shortDescription, detail, tags: commaList(tagsInput), tools, connectorNames }),
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: keys.chatSkills() })
-      if (isEdit) queryClient.invalidateQueries({ queryKey: keys.chatSkill(skill.id) })
       onSaved?.(saved)
       onClose()
     },
-    onError: (e: unknown) => addToast(withReason(isEdit ? t('Failed to update skill') : t('Failed to create skill'), e), 'danger'),
+    onError: (e: unknown) => addToast(withReason(t('Failed to create skill'), e), 'danger'),
   })
 
   const handleSave = () => {
@@ -325,51 +479,19 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
     save.mutate()
   }
 
-  const toggleTool = (toolName: string) => {
-    if (readOnly) return
-    setTools(prev => prev.includes(toolName) ? prev.filter(t => t !== toolName) : [...prev, toolName])
-  }
-
-  const addConnector = (name: string) => {
-    if (readOnly) return
-    setConnectorNames(prev => prev.includes(name) ? prev : [...prev, name])
-  }
-
-  const removeConnector = (name: string) => {
-    if (readOnly) return
-    setConnectorNames(prev => prev.filter(n => n !== name))
-  }
-
-  const filteredTools = toolSearch.trim()
-    ? allTools.filter(t =>
-        t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
-        t.description.toLowerCase().includes(toolSearch.toLowerCase()))
-    : allTools
-
   return (
     <ModalShell
       onClose={onClose}
       closable={!save.isPending}
       dirty={dirty}
-      initialFocus={isEdit ? 'panel' : 'first-field'}
+      initialFocus={readOnly ? 'panel' : 'first-field'}
       size="wide"
       fill
       // Named by what it holds, like every dialog - it opened with no accessible name.
-      ariaLabel={readOnly && skill ? skill.name : isEdit ? t('Edit skill') : t('Add skill')}
+      ariaLabel={readOnly && skill ? skill.name : t('Add skill')}
     >
       {requestClose => (<>
-        <DialogHeader
-          title={readOnly && skill ? skill.name : isEdit ? t('Edit skill') : t('Add skill')}
-          actions={!readOnly && skill?.hasDefault && skill.canEdit && (
-            // Same affordance and placement as the System Prompt modal's own "Reset to default",
-            // and there for the same reason: built-in skills are seeded create-if-absent, so once
-            // edited nothing ever puts them back. Only offered where a seeded original actually
-            // exists (hasDefault) and the user can save the result.
-            <Button variant="hyperlink" onClick={restoreDefault} disabled={restoring || save.isPending}>
-              {restoring ? t('Restoring...') : t('Restore default')}
-            </Button>
-          )}
-        />
+        <DialogHeader title={readOnly && skill ? skill.name : t('Add skill')} />
         {/* THREE COLUMNS FROM lg, since 2026-09-27 (the maintainer's rule that no dialog scrolls):
             the short fields, then what the skill reaches for - connectors and tools - then Detail.
             The panel has a fixed height there, and the two things of unknown length fill their
@@ -379,7 +501,7 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
         <DialogBody scroll className="flex flex-col">
           <FormColumns cols={3} from="lg" density="columns" className="md:grid-cols-2 lg:grid-rows-1 lg:flex-1 lg:min-h-0">
           <FormStack className="min-w-0">
-            <Field label={t('Name')} description={t('A short, memorable name - this is what the agent and other users will see.')}>
+            <Field label={t('Name')} description={t('A short name others will see.')}>
               {id => (
                 <Input
                   id={id}
@@ -392,7 +514,7 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
                 />
               )}
             </Field>
-            <Field label={t('Short description')} description={t('Shown to the agent in every system prompt, so keep it brief.')}>
+            <Field label={t('Short description')} description={t('Sent with every prompt. Keep it short.')}>
               {id => (
                 <Textarea
                   id={id}
@@ -406,7 +528,7 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
                 />
               )}
             </Field>
-            <Field label={t('Tags')} description={t('Comma-separated, used to organize your skills list.')}>
+            <Field label={t('Tags')} description={t('Comma-separated.')}>
               {id => (
                 <Input
                   id={id}
@@ -418,17 +540,15 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
               )}
             </Field>
 
-            {/* Sharing only makes sense once the skill actually exists - create() never sends the
-                field (see save.mutate above), so there is nothing for this control to do until
-                isEdit. */}
-            {isEdit && !skill.official && (
+            {/* Read-only only: whether somebody else's skill is shared, shown and not changed. */}
+            {skill && !skill.official && (
               <SwitchRow
                 className="py-0"
                 title={t('Shared')}
-                caption={t('Visible and selectable by every user, not just you.')}
-                checked={shared}
-                onChange={setShared}
-                disabled={readOnly}
+                caption={t('Every user can see and use it.')}
+                checked={skill.shared}
+                onChange={() => undefined}
+                disabled
               />
             )}
           </FormStack>
@@ -436,105 +556,33 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
           {/* The middle column: connectors on top, then the tool list filling what is left of the
               column and scrolling inside itself - there are dozens of tools. */}
           <div className="min-w-0 space-y-4 lg:min-h-0 lg:flex lg:flex-col">
-            <Field label={t('Connectors')} description={t('Prefer these connectors when the agent searches for this skill - a preference, not a restriction.')}>
-              <div className="space-y-2">
-                {/* Disabled while read-only: nothing can be added, and the field stays in place. */}
-                <SearchInput
-                  value={connectorSearch}
-                  onChange={setConnectorSearch}
-                  placeholder={t('Search connectors by name...')}
-                  ariaLabel={t('Connectors')}
-                  clearLabel={t('Clear search')}
-                  disabled={readOnly}
-                />
-                <Presence show={!!connectorSearch.trim()}>
-                  <PickBox>
-                    {availableConnectorSuggestions.length === 0 ? (
-                      <EmptyState className="py-2">{t('No matching connectors.')}</EmptyState>
-                    ) : (
-                      <List>
-                        {availableConnectorSuggestions.map(r => (
-                          <ListRow
-                            key={r.id}
-                            className="py-2"
-                            onClick={() => addConnector(r.name)}
-                            disabled={readOnly}
-                            title={r.name}
-                            trailing={<span className={TEXT.caption}>{r.type}</span>}
-                          />
-                        ))}
-                      </List>
-                    )}
-                  </PickBox>
-                </Presence>
-                <Presence show={connectorNames.length > 0}>
-                  <div className="flex flex-wrap gap-2">
-                    {connectorNames.map(name => (
-                      <Chip
-                        key={name}
-                        label={name}
-                        onRemove={readOnly ? undefined : () => removeConnector(name)}
-                        removeLabel={t('Remove {name}', { name })}
-                      />
-                    ))}
-                  </div>
-                </Presence>
-              </div>
-            </Field>
-            <Field
-              label={t('Tools')}
-              description={t("Let this skill's instructions also make these platform tools available to the agent.")}
-              className="lg:flex-1 lg:min-h-0"
-            >
-              <div className="space-y-2 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
-                <SearchInput
-                  value={toolSearch}
-                  onChange={setToolSearch}
-                  placeholder={t('Search tools...')}
-                  ariaLabel={t('Tools')}
-                  clearLabel={t('Clear search')}
-                  disabled={readOnly}
-                />
-                <PickBox maxHeight="max-h-72" fill>
-                  {filteredTools.length === 0 ? (
-                    <EmptyState className="py-3">
-                      {allTools.length === 0 ? t('No tools available.') : t('No tools match your search.')}
-                    </EmptyState>
-                  ) : (
-                    <List>
-                      {filteredTools.map(tool => (
-                        <Checkbox
-                          key={tool.name}
-                          className="flex py-2"
-                          checked={tools.includes(tool.name)}
-                          onChange={() => toggleTool(tool.name)}
-                          disabled={readOnly}
-                          hint={tool.description}
-                        >
-                          {tool.name}
-                        </Checkbox>
-                      ))}
-                    </List>
-                  )}
-                </PickBox>
-              </div>
-            </Field>
+            <SkillConnectorsField
+              names={connectorNames}
+              disabled={readOnly}
+              onAdd={n => setConnectorNames(prev => prev.includes(n) ? prev : [...prev, n])}
+              onRemove={n => setConnectorNames(prev => prev.filter(x => x !== n))}
+            />
+            <SkillToolsField
+              picked={tools}
+              disabled={readOnly}
+              onToggle={n => setTools(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])}
+            />
           </div>
           {/* The right column. Stretches to the row's height (grid items do by default), and the
               textarea fills it - so Detail is as tall as the dialog allows, never less than the ten
               rows it used to be, and scrolls inside itself past that. */}
           <Field
             label={t('Detail')}
-            description={t('Full instructions, loaded by the agent only when this skill is relevant.')}
+            description={t('Loaded only when this skill is needed.')}
             className="md:col-span-2 lg:col-span-1 lg:min-h-0"
           >
             {id => (
-              <Textarea
+              <MarkdownField
                 id={id}
                 fill
                 value={detail}
-                onChange={e => setDetail(e.target.value)}
-                placeholder={t('Step-by-step instructions the agent follows once it loads this skill...')}
+                onChange={setDetail}
+                placeholder={t('Steps the agent follows with this skill...')}
                 rows={10}
                 disabled={readOnly}
                 className="md:min-h-64"
@@ -545,8 +593,8 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
         </DialogBody>
         {/* NO CLOSE BUTTON, since 2026-09-24 (maintainer's request): Escape and a click outside
             the panel close it, both through ModalShell. The footer appears only once something
-            has changed, to carry Cancel and Save - a Save beside a form nobody has touched offers
-            an action that would do nothing. Read-only never has one. */}
+            has been typed, to carry Cancel and Save - a Save beside a form nobody has touched
+            offers an action that would do nothing. Read-only never has one. */}
         {!readOnly && dirty && (
           <DialogFooter>
             <Button variant="secondary" onClick={requestClose} disabled={save.isPending}>{t('Cancel')}</Button>
@@ -557,5 +605,123 @@ export function SkillModal({ skill, onClose, readOnly = false, onSaved }: {
         )}
       </>)}
     </ModalShell>
+  )
+}
+
+/**
+ * The connectors a skill prefers - a search for one to add, and the chosen ones as chips. Disabled
+ * while read-only (or loading): nothing can be added, and the field stays in place.
+ */
+function SkillConnectorsField({ names, disabled, onAdd, onRemove }: {
+  names: string[]
+  disabled: boolean
+  onAdd: (name: string) => void
+  onRemove: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  const [search, setSearch] = useState('')
+  const debounced = useDebounce(search.trim(), 300)
+  const { data: suggestions = [] } = useMentionSuggestions(debounced ? debounced : null)
+  const available = suggestions.filter(r => !names.includes(r.name))
+  return (
+    <Field label={t('Connectors')} description={t('Searched first with this skill.')}>
+      <div className="space-y-2">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t('Search connectors by name...')}
+          ariaLabel={t('Connectors')}
+          clearLabel={t('Clear search')}
+          disabled={disabled}
+        />
+        <Presence show={!!search.trim()}>
+          <PickBox>
+            {available.length === 0 ? (
+              <EmptyState className="py-2">{t('No matching connectors.')}</EmptyState>
+            ) : (
+              <List>
+                {available.map(r => (
+                  <ListRow
+                    key={r.id}
+                    className="py-2"
+                    onClick={() => onAdd(r.name)}
+                    disabled={disabled}
+                    title={r.name}
+                    trailing={<span className={TEXT.caption}>{t(catalogTypeName(r.type) ?? r.type)}</span>}
+                  />
+                ))}
+              </List>
+            )}
+          </PickBox>
+        </Presence>
+        <Presence show={names.length > 0}>
+          <div className="flex flex-wrap gap-2">
+            {names.map(name => (
+              <Chip
+                key={name}
+                label={name}
+                onRemove={disabled ? undefined : () => onRemove(name)}
+                removeLabel={t('Remove {name}', { name })}
+              />
+            ))}
+          </div>
+        </Presence>
+      </div>
+    </Field>
+  )
+}
+
+/** The tools a skill makes available - a filter over the catalog and a box per tool. */
+function SkillToolsField({ picked, disabled, onToggle }: {
+  picked: string[]
+  disabled: boolean
+  onToggle: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  const { data: allTools = [] } = useQuery({ queryKey: keys.chatTools(), queryFn: skillsApi.listTools })
+  const [toolSearch, setToolSearch] = useState('')
+  const q = toolSearch.trim().toLowerCase()
+  const filtered = q
+    ? allTools.filter(tool => tool.name.toLowerCase().includes(q) || tool.description.toLowerCase().includes(q))
+    : allTools
+  return (
+    <Field
+      label={t('Tools')}
+      description={t('Tools this skill makes available.')}
+      className="lg:flex-1 lg:min-h-0"
+    >
+      <div className="space-y-2 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+        <SearchInput
+          value={toolSearch}
+          onChange={setToolSearch}
+          placeholder={t('Search tools...')}
+          ariaLabel={t('Tools')}
+          clearLabel={t('Clear search')}
+          disabled={disabled}
+        />
+        <PickBox maxHeight="max-h-72" fill>
+          {filtered.length === 0 ? (
+            <EmptyState className="py-3">
+              {allTools.length === 0 ? t('No tools available.') : t('No tools match your search.')}
+            </EmptyState>
+          ) : (
+            <List>
+              {filtered.map(tool => (
+                <Checkbox
+                  key={tool.name}
+                  className="flex py-2"
+                  checked={picked.includes(tool.name)}
+                  onChange={() => { if (!disabled) onToggle(tool.name) }}
+                  disabled={disabled}
+                  hint={tool.description}
+                >
+                  {tool.name}
+                </Checkbox>
+              ))}
+            </List>
+          )}
+        </PickBox>
+      </div>
+    </Field>
   )
 }

@@ -14,7 +14,6 @@ import ai.proxyma.core.settings.dto.GuardrailSettings;
 import ai.proxyma.core.settings.dto.QueryExpansionSettings;
 import ai.proxyma.core.settings.dto.OcrSettings;
 import ai.proxyma.core.settings.dto.RerankingSettings;
-import ai.proxyma.core.settings.dto.SubAgentSettings;
 import ai.proxyma.core.settings.dto.NetworkShareSettings;
 import ai.proxyma.core.settings.dto.SvnSettings;
 import ai.proxyma.core.settings.event.DataCollectionChangedEvent;
@@ -90,7 +89,8 @@ public class SettingsService {
     private static final Set<String> MODEL_ROLE_PREFIXES = Set.of(
             ChatSettings.PREFIX, EmbeddingSettings.PREFIX,
             QueryExpansionSettings.PREFIX, RerankingSettings.PREFIX,
-            SubAgentSettings.PREFIX, GraphSettings.PREFIX,
+            // Not SubAgentSettings.PREFIX since 2026-11-02: deployed agents have no model of their own.
+            GraphSettings.PREFIX,
             // Same reason as every other role here: without this line, saving a guardrail model
             // writes the setting and never fires the reinit, so the factory keeps serving null and
             // the classifier stays off until the next restart - with the UI showing it as on.

@@ -114,8 +114,9 @@ export default {
      * Set on `theme`, not `extend`, so Tailwind's own steps are gone and a stray `rounded-xl` or
      * `rounded-3xl` compiles to nothing rather than to a sixth radius:
      *
-     *   rounded-sm    6px  a tiny chip only (a kbd)
-     *   rounded       8px  \ every CONTROL - buttons, fields, badges, chips, menu rows
+     *   rounded-sm    6px  a SMALL box - a badge, a chip (since 2026-11-08: the button's corner in
+     *                      proportion, never a pill), a kbd
+     *   rounded       8px  \ every CONTROL - buttons, fields, menu rows
      *   rounded-md    8px  /
      *   rounded-lg   12px  every SURFACE - panels, dialogs, popovers, menus, cards, the composer
      *   rounded-full       a genuine circle or pill - avatars, status dots, switches
@@ -219,34 +220,32 @@ export default {
         status: '99999',
       },
 
-      // THE TYPE SCALE, ten steps (since 2026-10-28, the UI review: the app rendered 31 size,
-      // leading and weight combinations and the site 64, with 15px and 17px roles and 13px at four
-      // line heights). Each step has ONE leading; the kit's `TEXT` roles (typeScale.ts) name what
-      // each is for, and nothing sets a size by hand:
+      // THE TYPE SCALE: a 13px BASE, VS Code's own interface size (2026-10-31, the maintainer: "too big
+      // text size", choosing VS Code's 13 over 12, which is small for Vietnamese diacritics). The
+      // 2026-10-30 scale had a 14px base, 16px titles and 20px page titles; the 2026-10-28 one 16px
+      // reading text. Five steps and a code size, each with ONE leading; the kit's `TEXT` roles
+      // (typeScale.ts) name what each is for, and nothing sets a size by hand:
       //
-      //   2xs  12/16  badges and kbd ONLY - what sits inside a small shape
-      //   xs   13/18  caption (and 13/20 code, `TEXT.code`)
-      //   sm   14/20  UI text - rows, labels (500), field text (400), buttons (600)
-      //   base 16/26  reading body - a chat answer, a manual, a paragraph (section: 16/24, 600)
-      //   lg   18/26  a dialog's or a Settings tab's title (600)
-      //   xl   20/28
-      //   2xl  24/32  a page's title (600)
-      //   3xl  30/38, 4xl 36/44, 5xl 48/56 - display, the landing site's
+      //   xs   12/16  caption, eyebrow, badge, key cap - everything that explains or sits in a shape
+      //   sm   13/18  UI text - rows, labels (500), field text (400), buttons (600)
+      //   base 13/20  reading text - a chat answer, a manual, a paragraph: UI size, looser leading
+      //   lg   14/20  a dialog's, a Settings tab's or a card's title, a Markdown heading (600)
+      //   xl   16/22  a page's title (600) - the largest text in the app; also a field on glass
+      //   code 12/18  the code face only (Consolas reads a step smaller than Inter)
+      //   3xl 30/38, 4xl 36/44, 5xl 48/56 - DISPLAY, the landing site's marketing pages only
       //
-      // NOTHING A PERSON READS IS UNDER 12px (the 2026-10-15 readability pass), and 12 is for a
-      // badge or a key cap, not running text. The odd steps the 2026-10-15 pass left (21, 25, 29,
-      // 37, 49) moved to the clear scale above.
+      // NOTHING A PERSON READS IS UNDER 12px. A text field on a touch screen is 16px whatever this says
+      // (proxyma-primitives.css), or Safari zooms in and stays zoomed.
       fontSize: {
-        '2xs':  ['12px', { lineHeight: '16px' }],
-        xs:     ['13px', { lineHeight: '18px' }],
-        sm:     ['14px', { lineHeight: '20px' }],
-        base:   ['16px', { lineHeight: '26px' }],
-        lg:     ['18px', { lineHeight: '26px' }],
-        xl:     ['20px', { lineHeight: '28px' }],
-        '2xl':  ['24px', { lineHeight: '32px' }],
-        '3xl':  ['30px', { lineHeight: '38px', letterSpacing: '-0.01em' }],
-        '4xl':  ['36px', { lineHeight: '44px', letterSpacing: '-0.01em' }],
-        '5xl':  ['48px', { lineHeight: '56px', letterSpacing: '-0.01em' }],
+        xs:     ['12px', { lineHeight: '16px' }],
+        sm:     ['13px', { lineHeight: '18px' }],
+        base:   ['13px', { lineHeight: '20px' }],
+        lg:     ['14px', { lineHeight: '20px' }],
+        xl:     ['16px', { lineHeight: '22px' }],
+        code:   ['12px', { lineHeight: '18px' }],
+        '3xl':  ['30px', { lineHeight: '38px', letterSpacing: '-0.02em' }],
+        '4xl':  ['36px', { lineHeight: '44px', letterSpacing: '-0.02em' }],
+        '5xl':  ['48px', { lineHeight: '56px', letterSpacing: '-0.02em' }],
       },
 
       colors: {
@@ -255,7 +254,11 @@ export default {
         // and what floats. `field` is a text control's fill - white in Light, a well in Dark.
         canvas:          'rgb(var(--canvas) / <alpha-value>)',
         surface:         'rgb(var(--surface) / <alpha-value>)',
-        'surface-alt':   'rgb(var(--surface-alt) / <alpha-value>)',
+        // A WELL OR A FILL IS ONE STEP DOWN FROM WHAT IT SITS ON (2026-10-31): a shade over whatever is
+        // under it, not a solid gray - a solid one was one step under a card and two under a dialog.
+        // `lift` is the same one step UP: the pill lifted out of a well, the sidebar's current row.
+        'surface-alt':   'rgb(var(--sunk) / calc(var(--sunk-alpha) * <alpha-value>))',
+        lift:            'rgb(var(--lift) / calc(var(--lift-alpha) * <alpha-value>))',
         'surface-float': 'rgb(var(--surface-float) / <alpha-value>)',
         // A text control's fill is GLASS in an app shell (since 2026-10-29): `--field-alpha` is 0.72 in
         // Light and 0.22 in Dark there, and 1 everywhere else, so `bg-field` is frosted on a glass card
@@ -271,7 +274,7 @@ export default {
         brand: {
           solid:  'rgb(var(--brand-solid) / <alpha-value>)',
           accent: 'rgb(var(--brand-accent) / <alpha-value>)',
-          pale:   'rgb(var(--brand-pale) / <alpha-value>)',
+          pale:   'rgb(var(--sunk) / calc(var(--sunk-alpha) * <alpha-value>))',
           // Foreground for text and icons sitting ON a brand-solid fill. Every such call
           // site used a literal `text-white`, which only holds while brand-solid stays
           // dark enough for it - and a call site cannot see how light the fill under it
@@ -289,7 +292,7 @@ export default {
           // chip or row. chip-bg is NEUTRAL since 2026-10-28 (--brand-pale is the surface-alt grey in
           // both modes) and chip-text is brand-legible, so a selection is teal ink on grey - never a
           // teal fill, which the review measured failing contrast in Dark.
-          'chip-bg':   'rgb(var(--brand-pale) / <alpha-value>)',
+          'chip-bg':   'rgb(var(--sunk) / calc(var(--sunk-alpha) * <alpha-value>))',
           'chip-text': 'rgb(var(--brand-legible) / <alpha-value>)',
         },
         // The status inks are TEXT colours (`text-danger`); `-solid` is the FILL behind a status
@@ -341,7 +344,7 @@ export default {
         },
       },
 
-      // The UI face (Space Grotesk - every word and every number, its tabular figures for a
+      // The UI face (Inter - every word and every number, its tabular figures for a
       // readout), the brand face (Orbitron - the wordmark ONLY) and the code face (code only). The `font-grotesk` / `font-orbitron` class aliases had no call
       // site left and went on 2026-10-14; the landing site's next/font variables of those names
       // are CSS variables the token file reads, not these classes.
@@ -369,10 +372,12 @@ export default {
         // keyframes, one cycle a second. The app's caret and working dot are 1s as well.
         pulse: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'agent-working': 'agent-working 1s ease-in-out infinite',
-        // THE MARK'S IDLE TURN where nothing measures it - a large mark at rest (Settings > About,
-        // the site's footer): one turn in twelve seconds, the 30 degrees a second `useIdleRotation`
-        // (IDLE_DEG_PER_S) turns the header's mark at. Reduced motion stops it (the primitives).
-        'mark-idle': 'spin 12s linear infinite',
+        // THE MARK'S TURN as a utility: one turn in `--mark-turn` (12s, proxyma-tokens.css), the speed
+        // every mark turns at (the maintainer, 2026-11-08: "the same speed everywhere") - the kit's
+        // `.mark-turn` class, which Logo applies, and the 30 degrees a second of IDLE_DEG_PER_S
+        // (react/markTurn.ts) are the same number. Prefer the class, which reduced motion leaves still
+        // by itself; this utility is stopped there by the primitives' blanket rule.
+        'mark-idle': 'spin var(--mark-turn) linear infinite',
       },
     },
   },

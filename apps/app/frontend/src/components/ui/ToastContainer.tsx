@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useToastStore } from '@/store/toastStore'
 import { useTourStore } from '@/store/tourStore'
+import { useToastDockStore } from '@/store/toastDockStore'
 import { ExternalLink, MOTION_MS, Presence, TOAST_DOCK, TOAST_LAYER, TOAST_STACK, Toast, cn, prefersReducedMotion, textLink } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 
@@ -54,6 +55,14 @@ function useLeaving<T extends { id: string }>(items: T[]): Array<{ item: T; leav
   return out
 }
 
+/**
+ * WHERE A NOTICE THAT CAN WAIT GOES (`placement: 'bottom'`; the self-review of 2026-11-11: the one-time "use Proxyma from
+ * your IDE" tip, persistent, sat over the Approvals page's filters): not under the header, where every page keeps its
+ * controls, but at the window's foot on the right - and in a conversation in the chat page's own dock above the
+ * composer, so it never lies over the send button. Urgent toasts keep the top.
+ */
+const BOTTOM_LAYER = 'fixed bottom-4 right-3 left-3 sm:left-auto sm:right-6 lg:right-8 z-toast pointer-events-none'
+
 export function ToastContainer() {
   const { t } = useTranslation()
   const toasts = useToastStore(s => s.toasts)
@@ -69,40 +78,48 @@ export function ToastContainer() {
   const tourActive = useTourStore(s => s.active)
   const hidden = menuOpen || tourActive
   const shown = useLeaving(toasts)
-  // Every toast is in the window's top right corner since 2026-10-29 (the maintainer's review); the
-  // chat page's dock above its composer is no longer used.
-  const dock: HTMLElement | null = null
+  // The chat page's dock above its composer (toastDockStore), where a notice that can wait goes in a conversation.
+  const dock = useToastDockStore(s => s.dock)
 
   if (shown.length === 0) return null
 
-  const cards = shown.map(({ item: toast, leaving }) => {
-    const card = renderToast(toast, leaving)
-    // Docked, a toast is in the flow: its height eases in and out (Presence), so the thread above
-    // it moves rather than jumping by a card's height.
-    return dock ? <Presence key={toast.id} show={!leaving}><div className="pb-2">{card}</div></Presence> : card
-  })
+  const top = shown.filter(({ item }) => item.placement !== 'bottom')
+  const bottom = shown.filter(({ item }) => item.placement === 'bottom')
+  // Stepping aside fades: `visibility` is transitioned with the opacity, so it turns hidden at
+  // the END of the fade out and visible at the START of the fade in.
+  const layer = (base: string) => cn(base, 'transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')
 
-  if (dock) {
-    return createPortal(
-      <div aria-hidden={hidden || undefined} className={cn(TOAST_DOCK, 'transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')}>
-        {cards}
-      </div>,
-      dock,
-    )
-  }
-
-  return createPortal(
-    // AT THE TOP, just under the header - never bottom-right, where it was until 2026-09-26. The
-    // chat composer lives at the bottom, and on every viewport narrower than a wide desktop a
-    // bottom-right toast sat on top of it: the history and send buttons could not be pressed
-    // until the toast was dismissed. Full width with a margin on a phone; a column at the right
-    // from `sm` up. That is the kit's TOAST_STACK.
-    // Stepping aside fades: `visibility` is transitioned with the opacity, so it turns hidden at
-    // the END of the fade out and visible at the START of the fade in.
-    <div aria-hidden={hidden || undefined} className={cn(TOAST_LAYER, 'transition-[opacity,visibility] duration-fast', hidden && 'invisible opacity-0')}>
-      <div className={TOAST_STACK}>{cards}</div>
-    </div>,
-    document.body,
+  return (
+    <>
+      {top.length > 0 && createPortal(
+        // AT THE TOP, just under the header - never bottom-right, where it was until 2026-09-26. The
+        // chat composer lives at the bottom, and on every viewport narrower than a wide desktop a
+        // bottom-right toast sat on top of it: the history and send buttons could not be pressed
+        // until the toast was dismissed. Full width with a margin on a phone; a column at the right
+        // from `sm` up. That is the kit's TOAST_STACK.
+        <div aria-hidden={hidden || undefined} className={layer(TOAST_LAYER)}>
+          <div className={TOAST_STACK}>{top.map(({ item, leaving }) => renderToast(item, leaving))}</div>
+        </div>,
+        document.body,
+      )}
+      {bottom.length > 0 && (dock
+        // Docked, a toast is in the flow: its height eases in and out (Presence), so the thread above
+        // it moves rather than jumping by a card's height.
+        ? createPortal(
+          <div aria-hidden={hidden || undefined} className={layer(TOAST_DOCK)}>
+            {bottom.map(({ item, leaving }) => (
+              <Presence key={item.id} show={!leaving}><div className="pb-2">{renderToast(item, leaving)}</div></Presence>
+            ))}
+          </div>,
+          dock,
+        )
+        : createPortal(
+          <div aria-hidden={hidden || undefined} className={layer(BOTTOM_LAYER)}>
+            <div className={TOAST_STACK}>{bottom.map(({ item, leaving }) => renderToast(item, leaving))}</div>
+          </div>,
+          document.body,
+        ))}
+    </>
   )
 
   // The parameter is `toast`, NOT `t`. It was `t`, and this component has a translation function

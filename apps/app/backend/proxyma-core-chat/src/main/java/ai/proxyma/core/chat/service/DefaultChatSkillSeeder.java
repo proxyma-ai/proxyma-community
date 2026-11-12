@@ -320,6 +320,50 @@ class DefaultChatSkillSeeder {
             """
         ),
         new SeededSkill(
+            "YouTube",
+            "The user's YouTube channel, live: comments waiting for an answer, a video, reply as the channel.",
+            """
+            # YouTube
+
+            The user's own channel, live, through their YouTube connection.
+
+            - `listYouTubeComments` lists the newest comments the channel has not answered yet \
+              (`unansweredOnly=false` for all), each with its author's `authorChannelId` and \
+              `emojiOnly`; `getYouTubeVideo` reads a video's title and description. Indexing the \
+              channel into search is `addSource` (type `youtube`).
+            - BEFORE replying to a viewer, call `getYouTubeViewerHistory` with their \
+              `authorChannelId`: their earlier comments and the owner's replies to them show how \
+              the owner addresses THIS viewer - how they call themselves and the viewer (in \
+              Vietnamese "minh-ban", "anh-em", "chi-em", "bo-con"...) or a name. Write the same \
+              way. With no history, follow how the owner writes to viewers in general - \
+              `listYouTubeChannelReplies` shows the owner's own replies across the channel, each \
+              beside the comment it answered.
+            - Answer from the user's OWN sources - their guides, product and price lists, FAQs - \
+              searched first with `searchIndexedSources`. Never invent a price, stock, a date or a \
+              promise; when the sources do not answer, leave the comment for the user and say why.
+            - A reply is short and friendly, in the commenter's language, and answers what was \
+              asked. No links unless the sources give them.
+            - YouTube offers no way to like or heart a comment. A comment with only emoji \
+              (`emojiOnly`) needs no words: answer with a short emoji in the owner's style, or \
+              leave it. Skip spam and abuse - list them for the user rather than replying.
+            - `replyToYouTubeComment` posts publicly AS THE CHANNEL. Draft the replies, show them, \
+              and post each once; never post the same answer twice to one comment. If it says it \
+              is not known whether a reply was posted, check with `listYouTubeComments` first.
+
+            ## The channel's numbers
+            - `getYouTubeChannelStats`: subscribers (rounded by YouTube), lifetime views, public \
+              videos. `listYouTubeVideos`: the newest uploads with views, likes and comments.
+            - `getYouTubeAnalytics` for a period (YYYY-MM-DD, at most 365 days) as a named report: \
+              overview (by day, with totals), topVideos, trafficSources, searchTerms, \
+              subscribedStatus, contentType (Shorts against videos), geography, retention (one \
+              video). Follow engagedViews for trends; the last two or three days are missing.
+            - `getYouTubeReach`: impressions and click-through rate per day and video. Its first \
+              call starts YouTube's collection, which shows nothing for about two days, and \
+              YouTube keeps only 60 days - keep your own history of what it returns.
+            - If one says to sign in again or to enable an API, tell the user exactly that.
+            """
+        ),
+        new SeededSkill(
             "Web",
             "Public web search, and fetching any URL (intranet too), incl. PDFs and page media.",
             """

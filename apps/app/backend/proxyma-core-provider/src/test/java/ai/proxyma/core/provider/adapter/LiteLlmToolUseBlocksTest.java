@@ -36,8 +36,9 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p>Against a loopback server replaying that order, through the real AnthropicApi: the native
  * adapter fails exactly as reported (which pins the cause), and the LiteLLM adapter, which gathers
- * each tool block's events and hands them over together (AnthropicToolUseBlocks), gets the text and
- * the whole tool call.
+ * each tool call and hands it over whole (AnthropicToolUseBlocks), gets the text and the whole tool
+ * call. The 0.40.1 feedback was the same error from a second deviation - one call split over two
+ * blocks, the second nameless - which is pinned the same way.
  */
 class LiteLlmToolUseBlocksTest {
 
@@ -80,6 +81,46 @@ class LiteLlmToolUseBlocksTest {
             + event("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"q\\\": \\\"x\\\"}\"}}")
             + event("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}")
             + END;
+
+    // 0.40.1 feedback: one tool call SPLIT over two blocks. LiteLLM opens a new block whenever a
+    // chunk's kind changes, so a chunk with no content between two pieces of the arguments is an
+    // (empty) text block, and the rest arrives in a tool_use block with an empty name and an id of
+    // its own (AnthropicStreamWrapper._should_start_new_content_block).
+    private static final String SPLIT_CALL = START
+            + event("content_block_start", "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"searchJiraIssues\",\"input\":{}}}")
+            + event("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"jql\\\": \\\"project = SAI AND assi\"}}")
+            + event("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}")
+            + event("content_block_start", "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}")
+            + event("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}")
+            + event("content_block_start", "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_2f6c\",\"name\":\"\",\"input\":{}}}")
+            + event("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"gnee = currentUser()\\\"}\"}}")
+            + event("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}")
+            + END;
+
+    @Test
+    @DisplayName("the native adapter fails on a tool call split over two blocks, as 0.40.1 reported")
+    void nativeFailsOnSplitCall() throws Exception {
+        String url = serve(SPLIT_CALL);
+        ChatModel model = new AnthropicAdapter(new SimpleClientHttpRequestFactory(), WebClient.builder())
+                .buildChatModel(new ResolvedProvider(UUID.randomUUID(), "Anthropic", ProviderProtocol.ANTHROPIC,
+                        url, "test-key", Map.of(), false), "claude-test", Tone.CONCISE, 1024);
+        Throwable failure = catchThrowable(() -> model.stream(new Prompt(new UserMessage("hi"))).blockLast(Duration.ofSeconds(10)));
+        assertThat(failure).isNotNull();
+        assertThat(String.valueOf(failure.getMessage()) + causes(failure)).contains("Unexpected end-of-input");
+    }
+
+    @Test
+    @DisplayName("through LiteLLM a split tool call is one call with all its arguments, and no call is nameless")
+    void liteLlmJoinsASplitCall() throws Exception {
+        List<ChatResponse> chunks = liteLlm(serve(SPLIT_CALL)).stream(prompt())
+                .collectList().block(Duration.ofSeconds(10));
+        List<AssistantMessage.ToolCall> calls = toolCalls(chunks);
+        assertThat(calls).singleElement().satisfies(c -> {
+            assertThat(c.id()).isEqualTo("toolu_1");
+            assertThat(c.name()).isEqualTo("searchJiraIssues");
+            assertThat(c.arguments()).isEqualTo("{\"jql\":\"project = SAI AND assignee = currentUser()\"}");
+        });
+    }
 
     @Test
     @DisplayName("the native adapter fails on a late content_block_stop exactly as the feedback reported")
