@@ -588,19 +588,6 @@ const DYNAMIC = [
     block,
     pattern: prop('label'),
   })),
-  // The frame's sidebar: its pages' `label`s, and the sample recent chats, one a line.
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/ui/AppFrame.tsx',
-    block: 'NAV',
-    pattern: prop('label'),
-  },
-  {
-    app: 'apps/landing',
-    file: 'apps/landing/src/components/ui/AppFrame.tsx',
-    block: 'RECENT',
-    pattern: ARRAY_ELEMENT,
-  },
 
   // QUOTA_MILESTONE_QUESTIONS - five survey rows, rendered through `t(label)` by BOTH the
   // milestone modal and the admin's feedback detail view. `id` is the key the backend stores the

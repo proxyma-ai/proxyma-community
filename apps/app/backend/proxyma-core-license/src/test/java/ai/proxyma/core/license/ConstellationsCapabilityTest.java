@@ -1,5 +1,6 @@
 package ai.proxyma.core.license;
 
+import ai.proxyma.contracts.license.Addons;
 import ai.proxyma.contracts.license.LicenseTier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,13 +42,18 @@ class ConstellationsCapabilityTest {
     }
 
     @Test
-    @DisplayName("an Enterprise license whose addons claim leaves Constellations out does not grant it")
-    void enterpriseClaimDecides() {
-        assertEquals(false, Features.of(LicenseTier.ENTERPRISE, java.util.List.of()).isConstellationsAllowed());
-        assertEquals(true, Features.of(LicenseTier.ENTERPRISE, java.util.List.of()).isKeyAccountsAllowed());
-        LicenseStatusResponse s = LicenseStatusResponse.of(LicenseTier.ENTERPRISE, null, true).withAddons(java.util.List.of());
-        assertEquals(false, s.constellationsAllowed());
-        assertEquals(java.util.List.of(), s.addons());
+    @DisplayName("an Enterprise license grants every add-on whatever its addons claim lists")
+    void enterpriseGrantsEveryAddon() {
+        // The Terms and the EULA say an Enterprise license includes every add-on (2026-11-12). A license
+        // issued 2026-10-30..11-07 lists Constellations alone and still opens the YouTube assistant.
+        Features none = Features.of(LicenseTier.ENTERPRISE, java.util.List.of());
+        assertEquals(true, none.isConstellationsAllowed());
+        assertEquals(true, none.hasAddon(Addons.YOUTUBE_ASSISTANT));
+        assertEquals(true, none.isKeyAccountsAllowed());
+        assertEquals(true, Features.of(LicenseTier.ENTERPRISE, java.util.List.of(Addons.CONSTELLATIONS))
+                .hasAddon(Addons.YOUTUBE_ASSISTANT));
+        assertEquals(false, Features.of(LicenseTier.COMMUNITY, java.util.List.of(Addons.CONSTELLATIONS))
+                .hasAddon(Addons.YOUTUBE_ASSISTANT));
     }
 
     @Test

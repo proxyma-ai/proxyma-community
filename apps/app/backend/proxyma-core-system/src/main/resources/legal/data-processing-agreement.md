@@ -1,20 +1,22 @@
 # Proxyma Data Processing Agreement
 
-**Document version:** 2026-10-30
+**Document version:** 2026-11-12
 **Effective date:** 2026-08-04
-**Last updated:** 2026-10-30
+**Last updated:** 2026-11-12
 
 ---
 
 ## 0. When this document applies, and when it does not
 
 This Data Processing Agreement ("DPA") applies **only** where we process personal data on your
-behalf: where you use a Proxyma Enterprise Server deployment that **we** host for you.
+behalf: where you use a Proxyma Enterprise Server deployment that **we** host for you. We host a
+deployment for a customer only where we have agreed in writing to do so.
 
 It does not cover the public Enterprise sandbox at enterprise-demo.proxyma.ai, although that is a
 Proxyma Enterprise Server deployment we host. We host it for anyone who wants to try the product,
-not on anyone's behalf: nobody using it gives us instructions under this DPA, its accounts are
-shared or self-registered, and everything in it is deleted every night. We process what visitors
+not on anyone's behalf: nobody using it gives us instructions under this DPA, its visitors use its
+shared accounts and cannot register accounts of their own, and everything in it is deleted every
+night. We process what visitors
 add there as a controller, as described in Privacy Policy section 3.8.
 
 It does **not** apply, and is not needed, in three cases:
@@ -27,8 +29,9 @@ It does **not** apply, and is not needed, in three cases:
 
 In these three cases nothing reaches us except the license checks described in Privacy Policy
 section 3.2, from Proxyma Enterprise Server (activating a license and its periodic re-check,
-which send the license and the deployment's random identifier, and at activation the server's
-name, which we do not store; and the Enterprise trial request, which sends that identifier and,
+which send the license and the deployment's random identifier, and at activation the edition and
+the server's name, which we do not store; releasing a license, which sends the license and that
+identifier; and the Enterprise trial request, which sends that identifier, the edition and,
 where available, one-way hashes of the host's and the cluster's identifiers), and what
 is sent from inside Proxyma: feedback a person submits; answer ratings; and, from Proxyma Desktop and Proxyma Home Server only, a daily
 diagnostics report of aggregate counts, durations, error types and settings, keyed to a random
@@ -37,7 +40,8 @@ conversation content or account details. Proxyma Desktop and Proxyma Home Server
 our license server unless an add-on is activated or its trial started (which sends the add-on's key
 or name, a random installation identifier, at activation the computer's name, which we do not store,
 and for a trial a one-way hash of the operating system's identifier; an installed add-on license is
-re-checked every few hours with the license and that identifier), and except installations at
+re-checked every few hours with the license and that identifier, which removing its key also
+sends), and except installations at
 version 0.35 or earlier, which ask for the trial those versions offer and check the license they
 hold, as Privacy Policy section 3.2 describes. A rating sends the rated answer and the question it replies to. Ratings and diagnostics are sent only from Proxyma Desktop and Proxyma Home Server, and only
 when "Send diagnostics to Proxyma" is turned on in Settings -> About -> Privacy; Proxyma Enterprise
@@ -94,11 +98,11 @@ contents searchable by the users you grant access to. We cannot assess that and 
 
 | | |
 |---|---|
-| **Subject matter** | Providing semantic search and AI chat over data sources you register, and keeping the working records your users create in the Service, such as key-account reviews |
+| **Subject matter** | Providing semantic search and AI chat over data sources you register, and keeping the working records your users create in the Service, such as key-account reviews, Constellations projects and the YouTube assistant's queue of a connected channel's comments |
 | **Duration** | As long as your account or deployment exists, plus the deletion period in section 10 |
 | **Nature and purpose** | Fetching, converting, chunking, embedding, indexing, retrieving and generating answers over your content; operating and securing the Service |
-| **Types of personal data** | Whatever your registered sources contain, which we do not control or inspect; plus your users' account identities, queries and conversations, and what they record in the Service, such as a client's contacts and notes about them in a key account |
-| **Categories of data subject** | Your users; any individual whose personal data appears in a source you register; and individuals your users record in the Service, for example a client's contacts |
+| **Types of personal data** | Whatever your registered sources contain, which we do not control or inspect; plus your users' account identities, queries and conversations, and what they record in the Service, such as a client's contacts and notes about them in a key account; the public names, channel identifiers and comments of people who comment on a YouTube channel you connect; and records of each user's use of the Service and its cost |
+| **Categories of data subject** | Your users; any individual whose personal data appears in a source you register; individuals your users record in the Service, for example a client's contacts; and people who comment on a YouTube channel you connect |
 
 We do not seek special-category data. If your sources contain it, you remain responsible for the
 lawfulness of that processing.
@@ -111,17 +115,22 @@ individual; there is currently one such person.
 
 ## 6. Security
 
+Sections 6 to 8 describe a deployment we host for you, and apply only where we have agreed in
+writing to host one.
+
 We implement appropriate technical and organizational measures, including:
 
 - Passwords stored as BCrypt hashes; connector credentials encrypted at rest with AES-256-GCM,
   under a key protected by DPAPI on Windows and held in a file readable only by the service
-  account on Linux, and never logged in full
+  account on Linux, or supplied by the operator through an environment variable or a key file,
+  and never logged in full
 - TLS in transit for access to the Service
 - Per-user access control on conversations, files and derived indexes
 - Role-based access control, with administrative capabilities restricted to designated roles
 - Rate limiting and login-attempt throttling
 - Backups on a schedule agreed for the deployment, with a documented restore procedure
-- Signed, verified license and authentication tokens (RS256), with key rotation support
+- Signed, verified license and authentication tokens (RS256); the license signing key can be
+  rotated, and the sign-in key replaced, which signs every user out
 
 The install manual describes these in more operational detail. We may change specific measures
 over time, provided the level of protection is not reduced.
@@ -135,8 +144,10 @@ sub-processors for a Proxyma Enterprise Server deployment we host are:
 |---|---|---|
 | Cloudflare, Inc. | DNS, CDN, DDoS protection, and TLS termination for traffic to the deployment we operate | Global edge network; established in the United States |
 | An AI provider you configure | Generating answers to your users' individual requests, and embedding and extracting your content when you choose a cloud model for those | Per that provider |
+| DuckDuckGo, or Google if a search key is configured | Answering the assistant's web searches, which send the words searched for | Established in the United States |
+| The mail server the operator configures | Sending password-reset messages to your users' email addresses, when email sending is turned on | Per that server |
 
-**The deployment we operate runs on hardware we operate ourselves, in Vietnam.** No third-party
+**A deployment we operate for you runs on hardware we operate ourselves, in Vietnam.** No third-party
 hosting provider is involved. Traffic reaches it through Cloudflare's edge network over an
 outbound tunnel; TLS terminates at that edge, so Cloudflare processes the traffic in transit,
 although it stores none of it for us.
@@ -153,7 +164,7 @@ penalty.
 
 ## 8. International transfers
 
-The hosted deployment is in Vietnam, traffic to it passes through Cloudflare's global edge
+A deployment we host for you is in Vietnam, traffic to it passes through Cloudflare's global edge
 network, and a cloud AI provider you configure may be anywhere. For transfers of personal data
 out of the EEA or the UK, the parties rely on the European Commission's Standard Contractual
 Clauses (Decision 2021/914), Module Two (Controller to Processor), incorporated into this DPA by
@@ -162,7 +173,10 @@ annexes are populated by sections 4, 6 and 7, and the governing law and forum cl
 values in section 13. For UK transfers, the UK Addendum applies.
 
 Personal data in the deployment does not leave Vietnam by being hosted; it leaves only when a
-cloud AI provider you configure is engaged, or in transit through Cloudflare's edge. Where
+cloud AI provider you configure is engaged; when the assistant searches the web (with
+DuckDuckGo by default, or Google if a search key is configured) or opens a web page; when it
+reaches a service or MCP server your users connect; when the deployment sends an account email
+through the mail server the operator configures; or in transit through Cloudflare's edge. Where
 Vietnamese law governs a transfer of Vietnamese data subjects' personal data out of Vietnam, the
 transferring party is responsible for its own transfer impact assessment dossier obligations
 under Decree No. 356/2025/ND-CP.
@@ -174,11 +188,18 @@ Self-hosting removes these transfers entirely.
 Taking into account the nature of the processing and the information available to us, we will:
 
 - **(a)** assist you in responding to data subject requests. Most can be handled directly in the
-  Service: a user can delete their own account and data, and an administrator can delete a user
+  Service: a user can delete their own data, and their own account unless your identity provider
+  manages it, and an administrator can delete a user
   or deregister a source, which also removes its derived index entries and embeddings. What a
   user recorded in a shared key account or Constellations project (activity log entries naming
   them, their comments and their edits) is kept when their user account is deleted, as that key
-  account's or project's audit trail. A
+  account's or project's audit trail, and a Constellations project's activity log is kept when
+  the project is deleted, except a YouTube channel's team, whose log is deleted with it. When a user account is deleted, the deployment's audit log keeps its
+  entries naming that user for its retention period (90 days by default), the per-call usage
+  record keeps each model call under the user's identifier for its retention period (365 days by
+  default), and the spend records that per-user limits count are kept for 8 days; the monthly
+  spending totals under the user's identifier and the records of workflow runs the user started,
+  with their inputs and answers, are deleted with the account. A
   copy of a user's data, and any other request that cannot be satisfied through the product, is provided
   on request to contact@proxyma.ai.
 - **(b)** notify you **without undue delay, and in any event within 48 hours**, after becoming
@@ -195,8 +216,9 @@ we will first return a copy of it to you; return is provided on request to conta
 Backups containing it are overwritten on the deployment's backup schedule and are not restored except
 to recover the Service.
 
-Deleting your account within the Service triggers the same deletion, subject to any grace period
-disclosed to you when you request it.
+Deleting a user's account within the Service deletes that user's data, except what section 9(a)
+says is kept, at once or after the grace period shown when the deletion is requested; the
+deployment's Customer Personal Data as a whole is deleted on termination or on request, as above.
 
 We will not retain Customer Personal Data unless Applicable Data Protection Law requires us to,
 in which case we will tell you what and why.

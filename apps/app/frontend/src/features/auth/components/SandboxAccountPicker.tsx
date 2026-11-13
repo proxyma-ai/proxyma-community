@@ -66,8 +66,11 @@ export function SandboxAccountPicker({ onPick }: { onPick: (email: string, passw
         })}
       </List>
       <Caption className="mt-3">
-        {t('Password for all three: {password}. Or create your own account.', { password })}
+        {t('Password for all three: {password}.', { password })}
       </Caption>
+      {/* The sandbox takes no sign-ups (SignUpPolicy: self-registration is off there), so a visitor uses one of
+          these three; its Privacy Policy section (3.8) sets the age. The maintainer, 2026-11-12. */}
+      <Caption className="mt-1">{t('You must be 16 or older to use the sandbox.')}</Caption>
     </div>
   )
 }

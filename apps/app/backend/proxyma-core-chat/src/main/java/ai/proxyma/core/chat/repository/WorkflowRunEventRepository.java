@@ -14,5 +14,7 @@ public interface WorkflowRunEventRepository extends JpaRepository<WorkflowRunEve
 
     List<WorkflowRunEvent> findByRunIdOrderBySeqAsc(UUID runId);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional("chatTransactionManager")
     void deleteByRunId(UUID runId);
 }

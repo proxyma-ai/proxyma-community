@@ -136,6 +136,18 @@ public interface ChatModule {
     }
 
     /**
+     * Whether this module KEEPS this conversation: it is part of something the module owns - a saved
+     * agent's conversation in a Constellations project - and goes when that thing does (the project,
+     * the team), never because it sat idle. The chat's conversation retention skips such a
+     * conversation and every agent deployed under it (ConversationRetentionSweep; the maintainer,
+     * 2026-11-12: a channel team quiet for a week lost its conversations, which the Privacy Policy says
+     * stay until the team is removed). Asked once a day per idle conversation; a cached lookup is fine.
+     */
+    default boolean keepsConversation(String conversationId) {
+        return false;
+    }
+
+    /**
      * Whether this module holds something for this conversation's agent that has not reached it yet -
      * a teammate's message, a reply. Asked whenever a turn could take it (between steps, at a turn's
      * end) and when {@code ChatService.pendingInputArrived} is called; it must be CHEAP - a map lookup,

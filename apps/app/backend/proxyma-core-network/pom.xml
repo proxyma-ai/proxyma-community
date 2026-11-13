@@ -6,7 +6,7 @@
     <parent>
         <groupId>ai.proxyma</groupId>
         <artifactId>proxyma-parent</artifactId>
-        <version>0.41.0</version>
+        <version>0.41.1</version>
     </parent>
 
     <artifactId>proxyma-core-network</artifactId>
@@ -33,6 +33,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- TrustedForwardedHeaders configures Tomcat's RemoteIpValve: the server runs on Tomcat (both
+             exec jars bundle it through spring-boot-starter-web, and Spring Boot prefers it), so this
+             module needs the class to compile. Optional: it adds nothing to any jar that has no Tomcat. -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 

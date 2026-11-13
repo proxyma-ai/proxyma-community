@@ -261,6 +261,34 @@ public class WorkflowGraphRunService {
         }
     }
 
+    // - deletion -
+
+    /**
+     * Deletes a conversation's runs with their events, when the conversation goes (ChatService.deleteOwned):
+     * a run carries its inputs and every step's output, and until 2026-11-12 nothing deleted it - the
+     * repository's delete had no caller, so a deleted conversation or account left its runs behind.
+     */
+    public void deleteForConversation(String conversationId) {
+        if (conversationId != null) deleteRuns(runs.findByConversationId(conversationId));
+    }
+
+    /** Deletes every run a user started, chat or not, with their events - an account's deletion. */
+    public void deleteForUser(String userId) {
+        if (userId != null) deleteRuns(runs.findByUserId(userId));
+    }
+
+    private void deleteRuns(List<WorkflowGraphRun> gone) {
+        for (WorkflowGraphRun run : gone) {
+            Live state = live.get(run.getId());
+            if (state != null) {   // a run still walking is stopped, so nothing writes it again
+                state.control.stop();
+                state.approvals.cancelAll();
+            }
+            events.deleteByRunId(run.getId());
+            runs.deleteById(run.getId());
+        }
+    }
+
     // - controls -
 
     public boolean pause(UUID runId, String requesterId, boolean superAdmin) {

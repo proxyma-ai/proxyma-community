@@ -504,6 +504,20 @@ public class ChatService {
     void setChatModules(List<ChatModule> chatModules) {
         this.chatModules = chatModules == null ? List.of() : List.copyOf(chatModules);
     }
+
+    // The workflow graph runs a conversation or a user leaves behind (deleteOwned, deleteAllByUserId). A
+    // provider, so building ChatService never waits on the runner's own graph of beans.
+    private org.springframework.beans.factory.ObjectProvider<ai.proxyma.core.chat.workflow.run.WorkflowGraphRunService> graphRuns;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGraphRuns(org.springframework.beans.factory.ObjectProvider<ai.proxyma.core.chat.workflow.run.WorkflowGraphRunService> graphRuns) {
+        this.graphRuns = graphRuns;
+    }
+
+    private void withGraphRuns(java.util.function.Consumer<ai.proxyma.core.chat.workflow.run.WorkflowGraphRunService> step) {
+        var service = graphRuns == null ? null : graphRuns.getIfAvailable();
+        if (service != null) step.accept(service);
+    }
     private final ToolSkillGating toolSkillGating;
     private final SystemPromptService systemPromptService;
     private final FeedbackRepository feedbackRepository;
@@ -2807,6 +2821,8 @@ public class ChatService {
         });
         chatMemory.deleteAllByUserId(userId);
         deleteOwned(conversationIds);
+        // Runs started outside any conversation (the Workflows page, a schedule) are the user's too.
+        cascade(userId, "workflow graph runs", () -> withGraphRuns(s -> s.deleteForUser(userId)));
     }
 
     // What conversations that are gone owned outside their own rows and folder.
@@ -2822,6 +2838,7 @@ public class ChatService {
             // so cascade-on-delete is not free here - and account deletion has to reach them too,
             // or a deleted user's run rows, which carry step titles and step OUTPUT, outlive them.
             cascade(id, "workflow runs", () -> workflowRunService.deleteForConversation(id));
+            cascade(id, "workflow graph runs", () -> withGraphRuns(s -> s.deleteForConversation(id)));
             // The same for its sub-agents: one still running is stopped, and none is left to
             // report to a conversation that is gone.
         }

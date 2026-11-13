@@ -19,7 +19,10 @@ public interface WorkflowGraphRunRepository extends JpaRepository<WorkflowGraphR
      *  problem WorkflowRunReconciler already solves for the markdown runner. */
     List<WorkflowGraphRun> findByStatusIn(List<String> statuses);
 
-    /** A conversation's runs must go when the conversation does. Free if this hung off a chat
-     *  message, deliberate work here - the same cost the markdown run table already pays. */
-    void deleteByConversationId(String conversationId);
+    /** A conversation's runs must go when the conversation does, and a user's with the user
+     *  (WorkflowGraphRunService.deleteRuns, which takes each run's events with it). Free if this
+     *  hung off a chat message, deliberate work here - the same cost the markdown run table pays. */
+    List<WorkflowGraphRun> findByConversationId(String conversationId);
+
+    List<WorkflowGraphRun> findByUserId(String userId);
 }

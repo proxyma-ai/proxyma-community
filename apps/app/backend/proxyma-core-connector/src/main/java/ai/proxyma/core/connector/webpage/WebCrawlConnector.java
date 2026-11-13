@@ -1386,56 +1386,122 @@ public class WebCrawlConnector implements ConnectorPlugin {
         }
     }
 
-    // Minimal robots.txt: honour Disallow prefixes for User-agent: * (and our own agent). Enough to
-    // respect a site's crawl wishes without a full RFC 9309 implementation.
-    private static final class RobotsTxt {
-        private final List<String> disallow;
+    // robots.txt as RFC 9309 reads it. A GROUP is a run of User-agent lines and the rules after it,
+    // so "User-agent: ProxymaCrawler / User-agent: Googlebot / Disallow: /" applies to us - every
+    // User-agent line used to reset the match, and such a group was ignored. The groups naming us
+    // are merged and followed - with no rules, nothing is refused - and only when none does are the
+    // "*" groups. A rule's path is matched
+    // from the start of the URL's path and query, "*" matching any run of characters and a final
+    // "$" the end; the longest matching rule decides, and Allow wins a tie with Disallow. A file
+    // that cannot be read allows everything, as before.
+    static final class RobotsTxt {
+        private record Rule(boolean allow, String path, Pattern pattern) {}
 
-        private RobotsTxt(List<String> disallow) {
-            this.disallow = disallow;
+        private final List<Rule> rules;
+
+        private RobotsTxt(List<Rule> rules) {
+            this.rules = rules;
         }
 
         static RobotsTxt fetch(RestClient client, String origin) {
-            List<String> disallow = new ArrayList<>();
             try {
-                String txt = siteFile(client, origin + "/robots.txt");
-                if (txt != null) {
-                    boolean applies = false;
-                    for (String raw : txt.split("\n")) {
-                        String line = raw.trim();
-                        int c = line.indexOf('#');
-                        if (c >= 0) line = line.substring(0, c).trim();
-                        if (line.isEmpty()) continue;
-                        String lower = line.toLowerCase(Locale.ROOT);
-                        if (lower.startsWith("user-agent:")) {
-                            String ua = line.substring(11).trim();
-                            applies = ua.equals("*") || ua.toLowerCase(Locale.ROOT).contains("proxyma");
-                        } else if (applies && lower.startsWith("disallow:")) {
-                            String path = line.substring(9).trim();
-                            if (!path.isEmpty()) disallow.add(path);
-                        }
-                    }
-                }
+                return parse(siteFile(client, origin + "/robots.txt"));
             } catch (Exception e) {
                 // No robots.txt (or unreachable) -> crawl is allowed.
+                return parse(null);
             }
-            return new RobotsTxt(disallow);
+        }
+
+        static RobotsTxt parse(String txt) {
+            List<Rule> ours = new ArrayList<>();
+            List<Rule> anyAgent = new ArrayList<>();
+            boolean namesUs = false;
+            if (txt != null) {
+                boolean groupNamesUs = false;
+                boolean groupNamesAny = false;
+                boolean inAgents = false;
+                for (String raw : txt.split("\r?\n|\r")) {
+                    String line = raw;
+                    int c = line.indexOf('#');
+                    if (c >= 0) line = line.substring(0, c);
+                    line = line.trim();
+                    int colon = line.indexOf(':');
+                    if (colon <= 0) continue;
+                    String key = line.substring(0, colon).trim().toLowerCase(Locale.ROOT);
+                    String value = line.substring(colon + 1).trim();
+                    if (key.equals("user-agent")) {
+                        if (!inAgents) {
+                            groupNamesUs = false;
+                            groupNamesAny = false;
+                            inAgents = true;
+                        }
+                        String agent = value.toLowerCase(Locale.ROOT);
+                        if (agent.equals("*")) groupNamesAny = true;
+                        else if (agent.contains("proxyma")) {
+                            groupNamesUs = true;
+                            namesUs = true;
+                        }
+                    } else if (key.equals("allow") || key.equals("disallow")) {
+                        inAgents = false;
+                        if (value.isEmpty()) continue;
+                        Rule rule = new Rule(key.equals("allow"), value, compileRule(value));
+                        if (groupNamesUs) ours.add(rule);
+                        if (groupNamesAny) anyAgent.add(rule);
+                    }
+                    // Sitemap, Crawl-delay and every other record: ignored, as RFC 9309 says.
+                }
+            }
+            return new RobotsTxt(namesUs ? ours : anyAgent);
+        }
+
+        // "*" is any run of characters, a final "$" the end of the URL; everything else is literal.
+        private static Pattern compileRule(String path) {
+            boolean anchored = path.endsWith("$");
+            String body = anchored ? path.substring(0, path.length() - 1) : path;
+            StringBuilder regex = new StringBuilder();
+            int from = 0;
+            for (int star = body.indexOf('*'); star >= 0; star = body.indexOf('*', from)) {
+                if (star > from) regex.append(Pattern.quote(body.substring(from, star)));
+                regex.append(".*");
+                from = star + 1;
+            }
+            if (from < body.length()) regex.append(Pattern.quote(body.substring(from)));
+            if (anchored) regex.append('$');
+            return Pattern.compile(regex.toString(), Pattern.DOTALL);
         }
 
         boolean allowed(String url) {
-            if (disallow.isEmpty()) return true;
-            String path;
+            if (rules.isEmpty()) return true;
+            String target;
             try {
-                path = URI.create(url).getPath();
+                URI uri = URI.create(url);
+                target = uri.getRawPath();
+                if (target == null || target.isEmpty()) target = "/";
+                if (uri.getRawQuery() != null) target += "?" + uri.getRawQuery();
             } catch (Exception e) {
                 return true;
             }
-            if (path == null || path.isEmpty()) path = "/";
-            for (String rule : disallow) {
-                if (rule.equals("/")) return false;
-                if (path.startsWith(rule)) return false;
+            String decoded = decode(target);
+            Rule best = null;
+            for (Rule rule : rules) {
+                if (!rule.pattern().matcher(target).lookingAt()
+                        && !rule.pattern().matcher(decoded).lookingAt()) continue;
+                if (best == null
+                        || rule.path().length() > best.path().length()
+                        || (rule.path().length() == best.path().length() && rule.allow() && !best.allow())) {
+                    best = rule;
+                }
             }
-            return true;
+            return best == null || best.allow();
+        }
+
+        // A rule written unencoded ("/Getting Started") matches the encoded URL too.
+        private static String decode(String target) {
+            try {
+                return java.net.URLDecoder.decode(target.replace("+", "%2B"), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return target;
+            }
         }
     }
 }

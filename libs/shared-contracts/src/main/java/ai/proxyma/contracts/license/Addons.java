@@ -14,9 +14,10 @@ import java.util.TreeSet;
  * <ul>
  *   <li>an ADD-ON license, for Proxyma Desktop and Home Server: tier COMMUNITY, its {@code addons}
  *       claim naming what it unlocks - one key per add-on, activated per device, or its trial;</li>
- *   <li>an ENTERPRISE license, which lists every add-on today. One with no claim at all - every
- *       Enterprise license issued before the claim existed - is read as listing all of them, so
- *       selling an add-on apart from Enterprise later is a change of what is issued, not of code.</li>
+ *   <li>an ENTERPRISE license, which grants EVERY add-on, whatever its claim lists (2026-11-12, the
+ *       maintainer: the Terms and the EULA say an Enterprise license includes every add-on). The claim
+ *       is written at issue, so a license issued between 2026-10-30 and 2026-11-07 listed Constellations
+ *       alone and did not open the YouTube assistant, and none would have opened a later add-on.</li>
  * </ul>
  *
  * <p>Names are strings on the wire, never an enum: a name a build does not know is ignored, so the
@@ -29,8 +30,8 @@ public final class Addons {
 
     /**
      * The YouTube assistant (2026-11-07): the YouTube channel team alone - the projects made from the YouTube
-     * templates - for a creator who wants their comments answered, not a canvas of agents. Constellations covers
-     * those projects too.
+     * templates - for a creator who wants their comments answered, not a canvas of agents. Constellations does not
+     * cover those projects (CxLicense, since 2026-11-10).
      */
     public static final String YOUTUBE_ASSISTANT = "youtube-assistant";
 
@@ -73,11 +74,11 @@ public final class Addons {
     }
 
     /**
-     * What a license's claims grant: the {@code addons} claim when present, else every add-on for
-     * an ENTERPRISE license and none for any other.
+     * What a license's claims grant: every add-on for an ENTERPRISE license, whatever its claim; the
+     * {@code addons} claim for any other, and none without one.
      */
     public static Set<String> granted(LicenseTier tier, Collection<String> claim) {
-        if (claim != null) return known(claim);
-        return tier == LicenseTier.ENTERPRISE ? new TreeSet<>(ALL) : new TreeSet<>();
+        if (tier == LicenseTier.ENTERPRISE) return new TreeSet<>(ALL);
+        return claim == null ? new TreeSet<>() : known(claim);
     }
 }

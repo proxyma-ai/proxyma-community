@@ -65,10 +65,14 @@ public final class Features {
         return tier == LicenseTier.ENTERPRISE ? ENTERPRISE : COMMUNITY;
     }
 
-    /** What a tier allows with exactly these add-ons in force. Unknown names are dropped. */
+    /**
+     * What a tier allows with these add-ons in force: every add-on for ENTERPRISE whatever is passed
+     * (Addons.granted - an Enterprise license includes every add-on), exactly these for any other
+     * tier. Unknown names are dropped.
+     */
     public static Features of(LicenseTier tier, Collection<String> addons) {
-        Set<String> known = Addons.known(addons);
         boolean enterprise = tier == LicenseTier.ENTERPRISE;
+        Set<String> known = enterprise ? Set.copyOf(Addons.ALL) : Addons.known(addons);
         return new Features(enterprise, enterprise, enterprise, known, !enterprise);
     }
 

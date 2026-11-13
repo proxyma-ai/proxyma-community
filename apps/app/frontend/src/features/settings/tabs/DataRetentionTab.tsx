@@ -79,7 +79,7 @@ export function DataRetentionTab(_props: TabProps) {
   }
   const hint = (field: string) => {
     switch (field) {
-      case 'conversation-days': return t('Idle conversations; pinned ones are kept.')
+      case 'conversation-days': return t("Idle conversations; pinned ones and a project's or channel team's are kept.")
       case 'evaluation-days': return t('Per-turn and per-search records.')
       case 'usage-days': return t('Every model call and its cost.')
       case 'audit-days': return t('Tool calls, guardrail checks and activity.')

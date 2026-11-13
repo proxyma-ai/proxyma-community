@@ -1,6 +1,8 @@
 package ai.proxyma.core.chat.service;
 
+import ai.proxyma.core.chat.agents.AgentTree;
 import ai.proxyma.core.chat.model.Conversation;
+import ai.proxyma.core.chat.module.ChatModule;
 import ai.proxyma.core.settings.dto.RetentionSettings;
 import ai.proxyma.core.settings.service.SettingsService;
 import ai.proxyma.core.chat.repository.ConversationRepository;
@@ -34,13 +36,45 @@ class ConversationRetentionSweep {
     private final SettingsService settingsService;
     private final ChatService chatService;
     private final SmartChatMemory chatMemory;
+    // Who keeps a conversation past its idle time (ChatModule.keepsConversation), and where a deployed
+    // agent's tree starts. Providers, so a test or an edition without them still builds the sweep.
+    private final org.springframework.beans.factory.ObjectProvider<ChatModule> modules;
+    private final org.springframework.beans.factory.ObjectProvider<AgentTree> agentTree;
 
     ConversationRetentionSweep(ConversationRepository conversationRepository, ChatService chatService,
-                              SettingsService settingsService, SmartChatMemory chatMemory) {
+                              SettingsService settingsService, SmartChatMemory chatMemory,
+                              org.springframework.beans.factory.ObjectProvider<ChatModule> modules,
+                              org.springframework.beans.factory.ObjectProvider<AgentTree> agentTree) {
         this.conversationRepository = conversationRepository;
         this.settingsService = settingsService;
         this.chatService = chatService;
         this.chatMemory = chatMemory;
+        this.modules = modules;
+        this.agentTree = agentTree;
+    }
+
+    /**
+     * A conversation a module keeps - a saved agent's in a Constellations project - or an agent deployed
+     * under one, is not the chat's to expire: it goes with what holds it (the maintainer, 2026-11-12; a
+     * channel team quiet for a week lost its conversations). A module that fails to answer keeps it - a
+     * conversation wrongly kept costs disk, one wrongly deleted is gone.
+     */
+    boolean kept(String conversationId) {
+        java.util.List<ChatModule> all = modules.orderedStream().toList();
+        if (all.isEmpty()) return false;
+        AgentTree tree = agentTree.getIfAvailable();
+        String root = tree == null ? conversationId : tree.rootOf(conversationId);
+        for (ChatModule m : all) {
+            try {
+                if (m.keepsConversation(conversationId)) return true;
+                if (root != null && !root.equals(conversationId) && m.keepsConversation(root)) return true;
+            } catch (Exception e) {
+                log.warn("[ConversationRetentionSweep] {} could not say whether it keeps conversation {} - kept",
+                        m.getClass().getSimpleName(), conversationId, e);
+                return true;
+            }
+        }
+        return false;
     }
 
     // Files no conversation owns: uploads to a conversation whose first message never came, and
@@ -62,7 +96,8 @@ class ConversationRetentionSweep {
                 .getConversationDays();
         if (retentionDays <= 0) return;   // 0 = keep forever
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
-        var expired = conversationRepository.findAllByUpdatedAtBeforeAndPinnedFalse(cutoff);
+        var expired = conversationRepository.findAllByUpdatedAtBeforeAndPinnedFalse(cutoff).stream()
+                .filter(c -> !kept(c.getId())).toList();
         for (Conversation c : expired) {
             try {
                 chatService.deleteConversation(c.getId());

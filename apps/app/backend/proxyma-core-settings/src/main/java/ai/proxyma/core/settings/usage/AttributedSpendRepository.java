@@ -2,6 +2,8 @@ package ai.proxyma.core.settings.usage;
 
 import ai.proxyma.core.common.spend.SpendSubject;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -70,4 +72,19 @@ public interface AttributedSpendRepository extends JpaRepository<AttributedSpend
             where a.yearMonth = :month and a.subjectKind = ai.proxyma.core.common.spend.SpendSubject$Kind.ANONYMOUS
             """)
     double anonymousCost(@Param("month") String month);
+
+    /**
+     * Months older than the usage retention (PlatformSpendRetentionSweep): until 2026-11-12 nothing deleted these
+     * per-person monthly totals, while every other usage table aged out. "yyyy-MM" sorts as text.
+     */
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("delete from AttributedSpendMonth a where a.yearMonth < :month")
+    int deleteMonthsBefore(@Param("month") String month);
+
+    /** One person's months, when their account is deleted (AccountDeletionService). */
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("delete from AttributedSpendMonth a where a.subjectKind = :kind and a.subjectId = :subjectId")
+    int deleteForSubject(@Param("kind") SpendSubject.Kind kind, @Param("subjectId") String subjectId);
 }

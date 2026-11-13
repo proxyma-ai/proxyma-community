@@ -35,6 +35,10 @@ import java.util.regex.Pattern;
  * Spring Security builds the OIDC redirect_uri from them.
  *
  * <p>{@code X-Forwarded-Prefix} is not supported; no deployment of this app is mounted under a path.
+ *
+ * <p>NETTY ONLY - AND THE SERVER IS TOMCAT. Both exec jars bundle Tomcat and Spring Boot prefers it, so this
+ * customizer has never run; it stays for a build that serves on Netty. What runs is
+ * {@link TrustedForwardedHeadersTomcat}, which holds Tomcat's RemoteIpValve to the same proxy peers (2026-11-12).
  */
 @Configuration
 @ConditionalOnProperty(name = "server.forward-headers-strategy", havingValue = "native")

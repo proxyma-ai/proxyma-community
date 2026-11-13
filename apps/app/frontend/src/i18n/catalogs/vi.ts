@@ -2185,8 +2185,8 @@ export const vi: Record<string, string> = {
   'How long each kind of data is kept, swept daily.': 'Mỗi loại dữ liệu được giữ trong bao lâu, được dọn dẹp hàng ngày.',
   '0 keeps it forever': '0 nghĩa là giữ mãi mãi',
   'Conversations (days)': 'Cuộc trò chuyện (ngày)',
-  'Idle conversations; pinned ones are kept.':
-    'Các cuộc trò chuyện không hoạt động; những cuộc đã ghim được giữ lại.',
+  "Idle conversations; pinned ones and a project's or channel team's are kept.":
+    'Các cuộc trò chuyện không hoạt động; những cuộc đã ghim và của một dự án hoặc nhóm của kênh được giữ lại.',
   'Evaluation data (days)': 'Dữ liệu đánh giá (ngày)',
   'Per-turn and per-search records.': 'Bản ghi theo từng lượt và theo từng lần tìm kiếm.',
   'Usage records (days)': 'Bản ghi sử dụng (ngày)',
@@ -2609,7 +2609,8 @@ export const vi: Record<string, string> = {
   'Sees every screen, changes nothing': 'Xem mọi màn hình, không thay đổi được gì',
   'Manages users and guardrails': 'Quản lý người dùng và rào chắn',
   'Chats, uploads and adds sources': 'Trò chuyện, tải tệp lên và thêm nguồn',
-  'Password for all three: {password}. Or create your own account.': 'Mật khẩu chung cho cả ba: {password}. Hoặc tạo tài khoản riêng của bạn.',
+  'Password for all three: {password}.': 'Mật khẩu chung cho cả ba: {password}.',
+  'You must be 16 or older to use the sandbox.': 'Bạn phải từ 16 tuổi trở lên để dùng bản demo.',
 
   // -- Administration > Overview: the Feature / Tool Usage ranking ------------------
   'Search': 'Tìm kiếm',

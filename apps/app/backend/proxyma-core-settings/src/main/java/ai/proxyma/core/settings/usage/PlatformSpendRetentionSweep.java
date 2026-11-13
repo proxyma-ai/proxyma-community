@@ -30,6 +30,13 @@ public class PlatformSpendRetentionSweep {
     private final LlmCallRepository callRepository;
     private final SettingsService settingsService;
     private final GlobalQuotaService globalQuota;
+    // Optional, so a test or an edition without the per-person rollup still builds the sweep.
+    private AttributedSpendRepository attributed;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAttributed(AttributedSpendRepository attributed) {
+        this.attributed = attributed;
+    }
 
     public PlatformSpendRetentionSweep(PlatformSpendRepository repository,
                                        LlmCallRepository callRepository,
@@ -73,6 +80,14 @@ public class PlatformSpendRetentionSweep {
             Instant callCutoff = cutoff.isBefore(windowStart) ? cutoff : windowStart;
             int calls = callRepository.deleteRecordedBefore(callCutoff);
             log.info("[Retention] LLM calls older than {} day(s): {} row(s) deleted", days, calls);
+
+            // The per-person monthly totals, by the same cutoff and never inside the quota month: a month
+            // goes once the whole of it is older than the retention (2026-11-12 legal review).
+            if (attributed != null) {
+                String month = java.time.YearMonth.from(callCutoff.atZone(java.time.ZoneId.systemDefault())).toString();
+                int months = attributed.deleteMonthsBefore(month);
+                log.info("[Retention] per-person monthly spend before {}: {} row(s) deleted", month, months);
+            }
         } catch (Exception e) {
             // Stack included: the previous message-only form reported "Null return value from
             // advice does not match primitive return type" for months with nothing to locate it by.
