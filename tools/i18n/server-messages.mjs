@@ -67,6 +67,8 @@ const ANCHORS = [
   /\bmarkFailed\s*\(\s*[A-Za-z_][\w.()]*\s*,/g,
   // notice("...") marks a sentence that reaches the page by none of these - the license re-check's.
   /\b(?:failure|refusal|errorResult|toolError|notice)\s*\(/g,
+  // A ProblemDetail's own sentence - the catch-all "Something went wrong in Proxyma (error ...)." among them.
+  /\bsetDetail\s*\(/g,
   // Returned, not thrown: a probe's verdict, a connection Test's, an older tester's, a failed listing.
   /\b(?:AccessCheck|ConnectionTestResult|Result|Listings)\s*\.\s*(?:failed|ok)\s*\(/g,
 ]

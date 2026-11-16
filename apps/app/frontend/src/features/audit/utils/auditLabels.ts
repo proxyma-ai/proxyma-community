@@ -15,11 +15,14 @@ export type OutcomeTone = 'success' | 'danger' | 'warning' | 'neutral'
 
 /** The Activity tab's categories, in the order its filter lists them. */
 export const ACTIVITY_CATEGORIES = [
-  'SIGN_IN', 'USERS', 'CONFIG', 'DATA', 'SOURCES', 'ACCESS', 'LIMITS', 'UPDATES', 'SYSTEM',
+  'SIGN_IN', 'USERS', 'CONFIG', 'DATA', 'SOURCES', 'ACCESS', 'LIMITS', 'UPDATES', 'SYSTEM', 'LEGAL',
 ] as const
 
 /** Categories only Enterprise Server records - left out of the filter elsewhere. */
 export const SERVER_ONLY_CATEGORIES = new Set(['SIGN_IN', 'USERS', 'SYSTEM'])
+
+/** Categories only Desktop and Home Server record - left out of Enterprise Server's filter. */
+export const LOCAL_ONLY_CATEGORIES = new Set(['LEGAL'])
 
 export function categoryLabel(category: string, t: Translate): string {
   switch (category) {
@@ -35,6 +38,7 @@ export function categoryLabel(category: string, t: Translate): string {
     case 'LIMITS': return t('Limits')
     case 'UPDATES': return t('Updates')
     case 'SYSTEM': return t('System')
+    case 'LEGAL': return t('Terms accepted')
     default: return readable(category)
   }
 }
@@ -96,6 +100,7 @@ export function actionLabel(action: string, t: Translate): string {
     case 'guardrail-window.reset': return t('Guardrail window reset')
     case 'conversation.deleted': return t('Conversation deleted')
     case 'memory.deleted': return t('Memory deleted')
+    case 'legal.accepted': return t('Terms, Privacy Policy and EULA accepted')
     // Access
     case 'conversation.shared': return t('Conversation shared')
     // Limits
@@ -388,6 +393,7 @@ export function settingFieldLabel(key: string, t: Translate): string | null {
     case 'svn.indexed-extensions': return t('Indexed file extensions')
     case 'network-share.allowed-hosts': return t('Allowed file servers')
     case 'connector-tools.connector-management': return t('Add and remove sources')
+    case 'connector-tools.assistant-writes': return t('Let assistants make changes')
     // Network
     case 'proxy.mode': return t('Proxy mode')
     case 'proxy.http-proxy': return t('HTTP proxy')

@@ -158,7 +158,8 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception (error {})", errorId, ex);
         ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         detail.setTitle("Internal error");
-        detail.setDetail("Something went wrong on the server (error " + errorId + ").");
+        // "In Proxyma", not "on the server": Desktop is one program on the person's own computer (2026-11-14).
+        detail.setDetail("Something went wrong in Proxyma (error " + errorId + ").");
         detail.setProperty("errorId", errorId);
         return answer(exchange, detail);
     }

@@ -9,7 +9,7 @@ function server(overrides: Partial<StartupInput> = {}): StartupInput {
 }
 
 test('an account that has agreed to the current terms gets the walkthrough and nothing else', () => {
-  assert.deepEqual(startupDialogs(server()), { deletionGate: false, reConsent: false, whatsNew: false, tour: true })
+  assert.deepEqual(startupDialogs(server()), { legalGate: false, deletionGate: false, reConsent: false, whatsNew: false, tour: true })
 })
 
 test('an account that must accept the terms gets the consent gate and NOT the walkthrough', () => {
@@ -37,10 +37,10 @@ test('nobody signed in, or the account still loading, gets no walkthrough on a s
 test('the deletion gate comes before the consent gate, and a pending deletion gets neither later', () => {
   const pending = { accountStatus: 'PENDING_DELETION', consentStale: true }
   assert.deepEqual(startupDialogs(server({ user: pending })),
-    { deletionGate: true, reConsent: false, whatsNew: false, tour: false })
+    { legalGate: false, deletionGate: true, reConsent: false, whatsNew: false, tour: false })
   // "Keep waiting" closes the gate, but the account still cannot record consent or settings.
   assert.deepEqual(startupDialogs(server({ user: pending, deletionGateDismissed: true })),
-    { deletionGate: false, reConsent: false, whatsNew: false, tour: false })
+    { legalGate: false, deletionGate: false, reConsent: false, whatsNew: false, tour: false })
 })
 
 test('"What\'s new" waits for the gates, and the walkthrough waits for "What\'s new"', () => {
@@ -52,12 +52,30 @@ test('"What\'s new" waits for the gates, and the walkthrough waits for "What\'s 
   assert.deepEqual([closed.whatsNew, closed.tour], [false, true])
 })
 
-test('Desktop and Home Server have no accounts: no gate ever, the walkthrough as before', () => {
-  const local = { accounts: false, user: null, deletionGateDismissed: false, whatsNewPending: false }
-  assert.deepEqual(startupDialogs(local), { deletionGate: false, reConsent: false, whatsNew: false, tour: true })
+test('Desktop and Home Server have no accounts: no account gate, the walkthrough as before once the terms are accepted', () => {
+  const local = { accounts: false, user: null, deletionGateDismissed: false, whatsNewPending: false, legalAccepted: true }
+  assert.deepEqual(startupDialogs(local), { legalGate: false, deletionGate: false, reConsent: false, whatsNew: false, tour: true })
   // Whatever a stray user object would say, a build without accounts has no gate to raise.
   assert.deepEqual(startupDialogs({ ...local, user: { accountStatus: 'PENDING_DELETION', consentStale: true } }),
-    { deletionGate: false, reConsent: false, whatsNew: false, tour: true })
+    { legalGate: false, deletionGate: false, reConsent: false, whatsNew: false, tour: true })
   assert.deepEqual(startupDialogs({ ...local, whatsNewPending: true }),
-    { deletionGate: false, reConsent: false, whatsNew: true, tour: false })
+    { legalGate: false, deletionGate: false, reConsent: false, whatsNew: true, tour: false })
+})
+
+test('Desktop and Home Server: the legal gate first, and nothing else until the terms are accepted', () => {
+  const local = { accounts: false, user: null, deletionGateDismissed: false, whatsNewPending: true }
+  assert.deepEqual(startupDialogs({ ...local, legalAccepted: false }),
+    { legalGate: true, deletionGate: false, reConsent: false, whatsNew: false, tour: false })
+  // Still asking: no gate yet, and neither "What's new" nor the walkthrough starts under it.
+  for (const unknown of [undefined, null]) {
+    assert.deepEqual(startupDialogs({ ...local, legalAccepted: unknown }),
+      { legalGate: false, deletionGate: false, reConsent: false, whatsNew: false, tour: false })
+  }
+  assert.deepEqual(startupDialogs({ ...local, legalAccepted: true }),
+    { legalGate: false, deletionGate: false, reConsent: false, whatsNew: true, tour: false })
+})
+
+test('Enterprise Server has no legal gate of the install: its accounts accept the terms', () => {
+  assert.equal(startupDialogs(server({ legalAccepted: false })).legalGate, false)
+  assert.equal(startupDialogs(server({ legalAccepted: undefined })).tour, true)
 })

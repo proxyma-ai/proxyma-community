@@ -1,8 +1,6 @@
 import { Suspense, useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
-  Button, Divider, DropOverlay, EmptyState, FadeSwap, FilterBar, FilterChips, ListGroupHeading,
-  MetaList, Page, PageHeader, Presence, Readout, SearchInput, Skeleton, SOURCE_LIST_BOX, SourceListHeader,
-  SwitchRow, Tooltip, useFileDrop, usePageFor,
+  Button, ChoiceFilter, Divider, DropOverlay, EmptyState, FadeSwap, FilterBar, FilterRow, ListGroupHeading, MetaList, Page, PageHeader, Presence, Readout, SearchInput, Skeleton, SOURCE_LIST_BOX, SourceListHeader, SwitchRow, Tooltip, useFileDrop, usePageFor,
 } from '@/components/ui/kit'
 import { ConnectMenu } from '../components/ConnectMenu'
 import { FilterChipsSkeleton, SourceListSkeleton } from '@/components/ui/Skeleton'
@@ -29,7 +27,7 @@ import type { ConnectorConfig, ConnectorType } from '@/features/indexing/types/i
 import type { CatalogType } from '@/features/indexing/services/catalogApi'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
 import { typeRank } from '@/features/indexing/utils/fieldForm'
-import { Plus, ChevronRight } from 'lucide-react'
+import { ChevronRight, Plus, Shapes } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useTranslation } from '@/i18n'
 
@@ -407,19 +405,29 @@ export function SourcesPage() {
           actions={connect}
         />
 
-        {/* THE FILTERS ARE QUIET TEXT CHIPS, since 2026-09-30 (the UI review): sentence case, no
-            icons, no pill borders, the count a plain caption - the kit's FilterChips since the
-            2026-10 rebuild. While the summary loads the row keeps its height, so the list under it
-            does not jump. Search and the shared toggle share a row from `sm`; on a phone they
+        {/* THE TYPE IS A CHIP ON THE KIT'S FILTER ROW, since 2026-11-16 (the maintainer: every list's filters on one
+            line, More for the rest from `sm`); it was a row of quiet text chips (FilterChips) from 2026-09-30. While the
+            summary loads the row keeps its height, so the list under it does not jump. Search and the shared toggle share a row from `sm`; on a phone they
             stack, because side by side the toggle's label ran off the edge of the screen. */}
         <FilterBar
           filters={summaryLoading ? <FilterChipsSkeleton /> : filterChips.length > 0 ? (
-            <FilterChips<FilterKey>
-              ariaLabel={t('Filter sources by type')}
-              options={filterChips}
-              active={filterType ?? 'all'}
-              onChange={key => setFilterType(key === 'all' ? undefined : key)}
-            />
+            // The type is a chip on the kit's filter row (2026-11-16: every list's filters on one line, More for the rest).
+            <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filters')} items={[{
+              key: 'type',
+              active: !!filterType,
+              node: (
+                <ChoiceFilter<FilterKey>
+                  ariaLabel={t('Filter sources by type')}
+                  icon={<Shapes size={14} aria-hidden="true" />}
+                  name={t('Type')}
+                  defaultKey="all"
+                  options={filterChips}
+                  value={filterType ?? 'all'}
+                  active={!!filterType}
+                  onChange={key => setFilterType(key === 'all' ? undefined : key)}
+                />
+              ),
+            }]} />
           ) : undefined}
           search={(
             <SearchInput

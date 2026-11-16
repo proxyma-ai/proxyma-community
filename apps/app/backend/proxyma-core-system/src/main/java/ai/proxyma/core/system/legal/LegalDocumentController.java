@@ -35,9 +35,9 @@ public class LegalDocumentController {
     // Where each document is published. Absolute now that they are not this app's own routes, and
     // hardcoded rather than configurable because they are the addresses named inside the documents
     // themselves and recorded against every consent - not a per-deployment detail.
-    private static final String TERMS_URL = "https://proxyma.ai/terms";
-    private static final String PRIVACY_URL = "https://proxyma.ai/privacy";
-    private static final String EULA_URL = "https://proxyma.ai/eula";
+    private static final String TERMS_URL = LegalDocuments.TERMS_URL;
+    private static final String PRIVACY_URL = LegalDocuments.PRIVACY_URL;
+    private static final String EULA_URL = LegalDocuments.EULA_URL;
 
     private final String dataProcessingAgreement = read("legal/data-processing-agreement.md");
     // The DPA's own date, from its "Last updated" line - not the consent version, which follows the Terms, Privacy

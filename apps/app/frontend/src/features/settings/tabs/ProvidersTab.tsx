@@ -4,7 +4,7 @@ import { Trash2, Plus, Pencil, PlugZap } from 'lucide-react'
 import {
   BrandMark, Button, Callout, Caption, Checkbox, RuleChecklist, Combobox, DialogBody, DialogFooter,
   DialogHeader, Disclosure, EmptyState, Field, FormColumns, FormStack, InlineNotice, Input, List, ListRow,
-  MetaList, Presence, Readout, RowActions, SecretInput, Select, SettingsSections, FadeSwap,
+  MetaList, Presence, Readout, RowActions, SecretInput, Select, SettingsSections, FadeSwap, ActionMenu, usePhone,
   IconButton, StaticValue, Tooltip,
 } from '@/components/ui/kit'
 import { EditableText } from '@/components/ui/EditableText'
@@ -466,6 +466,7 @@ function ProviderInstanceRow({ instance, onEdit }: {
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const phone = usePhone()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const addToast = useToastStore(s => s.addToast)
   const test = useMutation({ mutationFn: () => providerModelsApi.listModels(instance.id) })
@@ -487,7 +488,8 @@ function ProviderInstanceRow({ instance, onEdit }: {
       <ListRow
         // Stacked below lg: the three buttons took the width of a phone, and beside the rail at
         // 768 they left the facts 130px, where the address broke inside its port.
-        className="flex-col items-stretch lg:flex-row lg:items-start"
+        // On a phone its one "More" button stays beside the name (the mobile audit, 2026-11-16).
+        className={phone ? 'flex-nowrap' : 'flex-col items-stretch lg:flex-row lg:items-start'}
         leading={<BrandMark id={providerMarkId(instance.protocol)} size={16} className="text-brand-legible" />}
         title={instance.name}
         meta={<Caption as="span">{instance.protocolLabel}</Caption>}
@@ -514,7 +516,16 @@ function ProviderInstanceRow({ instance, onEdit }: {
             <InlineNotice tone="danger" className="mt-1">{connectionErrorText(test.error, instance.apiKeyConfigured, t)}</InlineNotice>
           </Presence>
         </>}
-        action={
+        action={phone ? (
+          // On a phone a "More" menu of named rows, as a connection's (the mobile audit, 2026-11-16).
+          <ActionMenu label={t('More')} groups={[
+            [
+              { label: test.isPending ? t('Testing...') : t('Test'), icon: <PlugZap size={16} />, onSelect: () => test.mutate(), disabled: test.isPending },
+              { label: t('Edit'), icon: <Pencil size={16} />, onSelect: onEdit },
+            ],
+            [{ label: t('Delete'), icon: <Trash2 size={16} />, danger: true, onSelect: () => setConfirmDelete(true) }],
+          ]} />
+        ) : (
           // ONE LINE OF ICON BUTTONS, as a connection's (the maintainer, 2026-11-03: "Use icon similar to
           // the connectors"): Test, Edit, then Delete in danger ink, set apart - each named by its tooltip.
           <RowActions destructive={
@@ -524,7 +535,7 @@ function ProviderInstanceRow({ instance, onEdit }: {
               onClick={() => test.mutate()} />
             <IconButton icon={Pencil} label={t('Edit')} onClick={onEdit} />
           </RowActions>
-        }
+        )}
       />
       {confirmDelete && (
         <RemoveConfirm
@@ -605,7 +616,7 @@ function ProviderNextSteps({ instances, onOpenTab, onOpenRates, pending }: {
               pass: s.done,
               label: s.done
                 ? s.label
-                : <Button variant="hyperlink" className="text-xs text-left" onClick={s.open}>{s.label}</Button>,
+                : <Button variant="hyperlink" className="text-xs text-left whitespace-normal" onClick={s.open}>{s.label}</Button>,
             }))}
           />
         </Callout>

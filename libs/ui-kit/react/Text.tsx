@@ -34,8 +34,11 @@ export function PageTitle({ children, actions, meta, as: As = 'h1', level = 'pag
   /** A slot the caller fills by portal (Settings' `TitleAction`). Rendered even when empty. */
   actionsRef?: (el: HTMLDivElement | null) => void
 }) {
+  // A PAGE'S ACTIONS GO UNDER ITS TITLE ON A PHONE (2026-11-16, the mobile pass): beside it they left the title and
+  // its caption half the width of a 375px screen. From `sm` they sit at the right as before. A tab's title (Settings)
+  // keeps its actions beside it: they are one small control filled in by portal.
   return (
-    <div className={cn('flex items-start justify-between gap-3', className)}>
+    <div className={cn('flex gap-3', level === 'page' ? 'flex-col sm:flex-row sm:items-start sm:justify-between' : 'items-start justify-between', className)}>
       <div className="min-w-0">
         <As className={level === 'page' ? TEXT.pageTitle : TEXT.title}>{children}</As>
         {meta && <div className={cn(TEXT.caption, 'mt-1')}>{meta}</div>}
@@ -66,8 +69,9 @@ export function SectionHeading({ children, caption, action, tone = 'default', fl
   className?: string
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', !flush && 'mb-4', className)}>
-      <div className="flex-1 min-w-0">
+    // The action under the heading, at the left, when it does not fit beside 12rem of it (2026-11-16, the mobile pass).
+    <div className={cn('flex flex-wrap items-start justify-between gap-3', !flush && 'mb-4', className)}>
+      <div className="flex-1 min-w-[min(12rem,100%)]">
         <As className={cn(TEXT.section, tone === 'danger' && 'text-danger')}>{children}</As>
         {caption && <div className={cn(TEXT.caption, 'mt-1 max-w-[60ch]')}>{caption}</div>}
       </div>

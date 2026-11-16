@@ -219,6 +219,16 @@ public class DefaultLlmGateway implements LlmGateway {
     }
 
     @Override
+    public int contextWindow(ModelOverride override) {
+        if (override == null) return contextWindow(LlmRole.CHAT);
+        ChatSettings chat = settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class);
+        String providerId = override.providerId() == null ? chat.getProvider() : override.providerId();
+        String model = override.model() == null ? chat.getModel() : override.model();
+        Integer stated = providerId == null || model == null ? null : providerFactory.modelLimits(providerId, model).contextWindow();
+        return stated != null && stated > 0 ? stated : ChatSettings.FALLBACK_CONTEXT_WINDOW;
+    }
+
+    @Override
     public int contextWindow(LlmRole role) {
         ChatSettings chat = settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class);
         int set = role == LlmRole.SUB_AGENT

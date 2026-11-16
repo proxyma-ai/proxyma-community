@@ -13,6 +13,7 @@ export function SpendSection({ onOpenTab }: { onOpenTab: OpenTab }) {
   const { t } = useTranslation()
   return (
     <SignpostSection
+      navigates
       title={t('Spending')}
       caption={t('Spending details are in Logs.')}
       action={<AuditLogsLink log="llm" onOpenTab={onOpenTab}>{t('Open Logs')}</AuditLogsLink>}

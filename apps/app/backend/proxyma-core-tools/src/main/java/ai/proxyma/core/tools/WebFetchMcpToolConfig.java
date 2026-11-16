@@ -2,6 +2,7 @@ package ai.proxyma.core.tools;
 
 import ai.proxyma.core.common.concurrent.BlockingWork;
 import ai.proxyma.core.search.domain.SearchContext;
+import ai.proxyma.core.settings.service.WriteToolRegistry;
 import ai.proxyma.core.settings.dto.ChatSettings;
 import ai.proxyma.core.settings.service.SettingsService;
 import ai.proxyma.core.system.activity.ActivityCounterStore;
@@ -86,7 +87,7 @@ public class WebFetchMcpToolConfig {
                 // Identical to the stock converter for a tool with no fixed response mime: text-only.
                 spec = McpToolUtils.toSyncToolSpecification(cb);
             }
-            specs.add(bounded(spec, timeoutFor(name, settingsService)));
+            specs.add(bounded(gated(spec, name, settingsService::isUserAssistantWritesAllowed), timeoutFor(name, settingsService)));
         }
         log.info("[WebFetchMcpToolConfig] registered {} MCP sync tool spec(s); webFetch/renderWebFetch are image-aware", specs.size());
         return specs;
@@ -212,6 +213,42 @@ public class WebFetchMcpToolConfig {
             }
         };
         return McpServerFeatures.SyncToolSpecification.builder().tool(spec.tool()).callHandler(handler).build();
+    }
+
+    /** What an assistant's model reads when a write is refused because the person has not allowed assistant writes. */
+    static final String WRITES_OFF = "Proxyma does not let AI assistants make changes, so nothing was changed. The person "
+            + "can allow it in Proxyma: Settings > AI Assistants, \"Let assistants make changes\".";
+
+    /**
+     * A WRITE OVER MCP ONLY WHERE THE PERSON ALLOWED IT (2026-11-14 - the open risk "over MCP, connector writes run with no
+     * approval pause and no permission mode"; a YouTube reply was posted the moment an assistant's model asked). A call
+     * the chat would treat as a write (WriteToolRegistry.isWriteCall - by name, and by its arguments for a tool with a read
+     * form) is refused unless the caller has turned on "Let assistants make changes"; anything else runs. Inside
+     * {@link #bounded}, so the caller's identity is set when it is asked.
+     */
+    static McpServerFeatures.SyncToolSpecification gated(McpServerFeatures.SyncToolSpecification spec, String toolName,
+                                                         java.util.function.Predicate<String> writesAllowed) {
+        BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> inner = spec.callHandler();
+        if (inner == null || !WriteToolRegistry.NAMES.contains(toolName)) return spec;
+        BiFunction<McpSyncServerExchange, CallToolRequest, CallToolResult> handler = (exchange, request) -> {
+            if (WriteToolRegistry.isWriteCall(toolName, request.arguments()) && !allowed(writesAllowed)) {
+                log.info("[MCP] write tool {} refused: assistant writes are off for this person", toolName);
+                return CallToolResult.builder()
+                        .addTextContent("{\"success\":false,\"error\":\"" + WRITES_OFF.replace("\"", "\\\"") + "\"}")
+                        .isError(true).build();
+            }
+            return inner.apply(exchange, request);
+        };
+        return McpServerFeatures.SyncToolSpecification.builder().tool(spec.tool()).callHandler(handler).build();
+    }
+
+    // The caller's setting; a read that fails refuses - the stricter answer when this cannot tell.
+    private static boolean allowed(java.util.function.Predicate<String> writesAllowed) {
+        try {
+            return writesAllowed.test(SearchContext.getUserId());
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private static String toJson(ObjectMapper mapper, Map<String, Object> map) {

@@ -32,11 +32,12 @@
  *   input's height, and 8px would make it 38px; the padding is only a textarea's line inset.
  */
 export const FIELD_BASE =
-  // 16px ON GLASS (touch:text-xl - the 16px step since the 2026-10-31 scale made `base` 13) for every
+  // 16px ON GLASS, BY VALUE (touch:text-[16px]; it was touch:text-xl, the 16px step, until the touch scale of
+  // 2026-11-16 made that step 18px on glass - Safari's floor is a number, not a step of the scale) for every
   // field, the Select's button trigger included: the primitives' touch rule reaches input, textarea
   // and select only, so a Select read smaller beside a Combobox's 16px in one form on a phone (the UI
   // review, 2026-10-28). Under 16px, Safari zooms the page on focus and never zooms back.
-  'block w-full min-h-9 touch:min-h-tap py-1.5 rounded-md border text-sm touch:text-xl font-ui text-ink-primary bg-field ' +
+  'block w-full min-h-9 touch:min-h-tap py-1.5 rounded-md border text-sm touch:text-[16px] touch:leading-[22px] font-ui text-ink-primary bg-field ' +
   'placeholder:text-ink-disabled outline-none transition-all duration-fast focus-border ' +
   'disabled:opacity-40 disabled:cursor-not-allowed ' +
   // Fades in where it mounts: most fields arrive in place of a FieldSkeleton when their value

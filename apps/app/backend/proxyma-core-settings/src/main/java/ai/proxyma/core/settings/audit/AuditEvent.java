@@ -33,6 +33,14 @@ import java.util.UUID;
 })
 public class AuditEvent {
 
+    /**
+     * THE LEGAL DOCUMENTS ACCEPTED AT THE START (Desktop and Home Server, 2026-11-14, the maintainer: "log the
+     * agreement, non-deletable"). A row with this action is the record of which version was accepted and when: neither
+     * a tab's Clear nor retention deletes it (AuditEventRepository), and nothing else deletes audit rows there.
+     */
+    public static final String LEGAL_ACCEPTED = "legal.accepted";
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

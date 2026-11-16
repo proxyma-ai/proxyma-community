@@ -37,6 +37,14 @@ export function place(anchor: DOMRect, panel: { width: number; height: number },
   if (placement === 'right-start' || placement === 'left-start') {
     const roomRight = vw - anchor.right - EDGE
     const roomLeft = anchor.left - EDGE
+    // NEITHER SIDE HOLDS IT - a phone, whose menu is most of the screen's width (2026-11-16, the maintainer: "pop-ups must
+    // be viewport awareness"; the composer's MCP servers list opened half off the screen): it opens UNDER its row,
+    // over the menu it came from, inside the window - as the kit's SubmenuRow does.
+    if (roomRight < panel.width + 4 && roomLeft < panel.width + 4) {
+      const left = Math.min(Math.max(EDGE, anchor.right - panel.width), Math.max(EDGE, vw - panel.width - EDGE))
+      const top = Math.max(EDGE, Math.min(anchor.bottom + 4, vh - panel.height - EDGE))
+      return { top, left, '--float-room': `${Math.max(0, vh - 2 * EDGE)}px` }
+    }
     const right = placement === 'right-start'
       ? !(roomRight < panel.width + 4 && roomLeft > roomRight)
       : (roomLeft < panel.width + 4 && roomRight > roomLeft)

@@ -277,6 +277,8 @@ export function Select<T extends string = string>({
         // worse than no menu.
         <div
           ref={panelRef}
+          // A floating panel, as Popover's are: a Popover this list opened from does not take a press in it for outside.
+          data-floating-panel=""
           style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom }}
           {...exitingProps(exiting)}
           data-side={pos.bottom !== undefined ? 'top' : 'bottom'}

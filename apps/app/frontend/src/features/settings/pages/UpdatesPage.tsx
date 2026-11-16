@@ -291,6 +291,7 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
           log this installation keeps. A section that silently vanished would read as a regression,
           so its heading stays as the way there. */}
       <SignpostSection
+        navigates
         title={t('History')}
         caption={t('Every update is recorded in Logs.')}
         action={(

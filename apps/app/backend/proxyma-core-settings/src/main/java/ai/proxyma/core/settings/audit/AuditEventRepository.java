@@ -112,12 +112,18 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID> {
      */
     @Modifying(clearAutomatically = true)
     @Transactional
-    @Query("delete from AuditEvent e where e.occurredAt < :cutoff")
+    @Query("delete from AuditEvent e where e.occurredAt < :cutoff and e.action <> '" + AuditEvent.LEGAL_ACCEPTED + "'")
     int deleteRecordedBefore(@Param("cutoff") Instant cutoff);
 
-    /** A tab's Clear, on Desktop and Home Server. */
+    /** A tab's Clear, on Desktop and Home Server - never an acceptance of the legal documents (AuditEvent.LEGAL_ACCEPTED). */
     @Modifying(clearAutomatically = true)
     @Transactional
-    @Query("delete from AuditEvent e where e.category in :categories")
+    @Query("delete from AuditEvent e where e.category in :categories and e.action <> '" + AuditEvent.LEGAL_ACCEPTED + "'")
     int deleteByCategories(@Param("categories") Collection<String> categories);
+
+    /** Whether this action was recorded for this target - the legal gate's "this version was accepted". */
+    boolean existsByActionAndTarget(String action, String target);
+
+    /** The newest row of this action - when the legal documents were last accepted. */
+    java.util.Optional<AuditEvent> findFirstByActionOrderByOccurredAtDesc(String action);
 }

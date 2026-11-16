@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import {
   Bot, Brain, Database, FileSearch, FileText, Folder, Globe, KeyRound, MessageCircleQuestion, PenLine, Plus, RefreshCw, Search, Settings,
-  ShieldAlert, ShieldCheck, Tags, Trash2, Upload, Users, Workflow, ThumbsUp, Pin,
+  ShieldAlert, ShieldCheck, Tags, Trash2, Upload, Users, Workflow, ThumbsUp, Pin, LayoutDashboard, Network, Inbox, MoreHorizontal,
 } from 'lucide-react'
 import {
-  ActionMenu, ActivityFeed, ActivityLine, AppHeader, AppearanceIcon, AppearanceMenu, AppearanceMenuRow, AudioPlayer, AuthLayout, AutoHideHeader,
+  ActionMenu, ActivityFeed, ActivityLine, AppHeader, AppearanceIcon, AppearanceMenu, AppearanceMenuRow, AudioPlayer, AuthLayout, AutoHideHeader, ShowMore, ChoiceFilter, DockButton, DockTabs, FilterRow,
   Avatar, AvatarStack, BackLink, Badge, Banner, BarList, BootScreen, BrandMark, BulkActionBar, Button, ButtonLink, Callout, Caption, Card,
   CardBody, CardHeader, ChartCard, ChatMessage, ChatMessageSkeleton, ChatStartHero, ChatStartLinks, ChatStartStage, Checkbox, Chip, ChoiceMark, ChoiceRow, CitationList,
   CitationRow, CitationsFold, CodeBlock, Collapse, ColumnChart, Combobox, CompareTable, ComposerShell, ConfirmDialog, CopyButton, CopyField,
@@ -158,6 +158,50 @@ function SegDemo() {
       <SegmentedControl ariaLabel="Period" value={seg} onChange={setSeg} options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]} />
       <SegmentedControl ariaLabel="Period" variant="text" value={seg} onChange={setSeg} options={[{ value: 'day', label: '24h' }, { value: 'week', label: '7d' }, { value: 'month', label: '30d' }]} />
       <SegmentedControl ariaLabel="On conflict" value="month" onChange={noop} options={[{ value: 'day', label: 'Skip' }, { value: 'month', label: 'Overwrite', tone: 'warning' }]} />
+    </div>
+  )
+}
+
+function DockSpecimen() {
+  const [tab, setTab] = useState<'overview' | 'team' | 'inbox' | 'questions' | 'settings'>('inbox')
+  return (
+    <div className="w-[375px] max-w-full border border-line rounded-lg overflow-hidden">
+      <DockTabs ariaLabel="Project" value={tab} onChange={setTab} tabs={[
+        { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { value: 'team', label: 'Team', icon: Network },
+        { value: 'inbox', label: 'Approvals', icon: Inbox, count: 22 },
+        { value: 'questions', label: 'Questions', icon: MessageCircleQuestion, count: 17 },
+        { value: 'settings', label: 'Settings', icon: Settings },
+      ]} />
+    </div>
+  )
+}
+
+type StatusKey = 'open' | 'answered' | 'dismissed'
+const STATUS_OPTIONS = [
+  { key: 'open' as const, label: 'Open', count: 17 },
+  { key: 'answered' as const, label: 'Answered', count: 2 },
+  { key: 'dismissed' as const, label: 'Dismissed', count: 0 },
+]
+
+function ChoiceFilterDemo() {
+  const [status, setStatus] = useState<StatusKey>('open')
+  return <ChoiceFilter ariaLabel="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} active={status !== 'open'} />
+}
+
+function FilterRowDemo() {
+  const [status, setStatus] = useState<StatusKey>('open')
+  const facet = (name: string) => (
+    <Select look="chip" ariaLabel={name} chipLabel={name} value="" onChange={noop} options={[{ value: '', label: `All ${name.toLowerCase()}s` }]} />
+  )
+  return (
+    <div className="w-[375px] max-w-full space-y-3">
+      <FilterRow label="Filter" moreLabel="More" ariaLabel="Filters" items={[
+        { key: 'status', node: <ChoiceFilter ariaLabel="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} active={status !== 'open'} />, active: status !== 'open' },
+        { key: 'tag', node: facet('Tag') },
+        { key: 'viewer', node: facet('Viewer') },
+        { key: 'video', node: facet('Video') },
+      ]} />
     </div>
   )
 }
@@ -834,6 +878,9 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   LinkRow: [{ title: 'A document out', render: () => <LinkRow icon={FileText} title="Server manual" description="Install, upgrade, back up." href="https://proxyma.ai/docs/server/" /> }],
   BulkActionBar: [{ title: 'While rows are selected', wide: true, render: () => <BulkActionBar className="w-full" countText="3 selected"><Button variant="quiet">Clear</Button><Button variant="danger-quiet">Delete</Button></BulkActionBar> }],
   FilterChips: [{ title: 'One filter at a time', wide: true, render: () => <FilterDemo /> }],
+  ShowMore: [{ title: 'Six lines and Show more', render: () => <div className="w-72"><ShowMore always lines={3} more="Show more" less="Show less"><p className="text-sm">A long comment from a viewer, who wrote several lines about the lesson and asked two questions at the end of it, so the card would otherwise grow very tall.</p></ShowMore></div> }],
+  FilterRow: [{ title: 'Status and three facets, More on a narrow line', wide: true, render: () => <FilterRowDemo /> }],
+  ChoiceFilter: [{ title: 'Open, Answered, Dismissed', render: () => <ChoiceFilterDemo /> }],
   ChoiceChips: [{ title: 'A sort, after a filter chip', wide: true, render: () => <SortChipsDemo /> }],
   FilterBar: [{ title: 'Filters, search, toggles', wide: true, render: () => <FilterDemo /> }],
   Toolbar: [{ title: 'Controls over a page', wide: true, render: () => <Toolbar className="w-full" label="Report options" start={<><SegmentedControl ariaLabel="Period" value="7d" onChange={noop} options={[{ value: '24h', label: '24h' }, { value: '7d', label: '7d' }, { value: '30d', label: '30d' }]} /></>} end={<><Button variant="secondary">Export</Button><IconButton icon={RefreshCw} label="Refresh" /></>} /> }],
@@ -984,6 +1031,8 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
     </div>
   ) }],
   AutoHideHeader: [{ title: 'Steps aside on a phone', wide: true, render: () => <div className={box}><AutoHideHeader resetKey="kit"><AppHeader brand={<Logo subtitle="Telemetry" />} /></AutoHideHeader><Caption className="p-3">Below lg, a swipe up the page pulls the bar away.</Caption></div> }],
+  DockTabs: [{ title: 'A project on a phone', render: () => <DockSpecimen /> }],
+  DockButton: [{ title: 'More, opening a menu', render: () => <div className="flex w-[375px] max-w-full border border-line rounded-lg overflow-hidden"><DockButton icon={MoreHorizontal} label="More" onClick={noop} menu={{ open: false }} /><DockButton icon={Settings} label="Settings" on working onClick={noop} /></div> }],
   LanguageMenu: [{ title: 'An icon menu of languages', render: () => (
     <LanguageMenu label="Language" locales={['en', 'vi'] as const} current="en" nameOf={l => (l === 'en' ? 'English' : 'Tiếng Việt')}
       renderRow={({ locale, className, children, close }) => <button type="button" lang={locale} className={className} onClick={close}>{children}</button>} />

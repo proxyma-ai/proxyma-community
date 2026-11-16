@@ -1,8 +1,8 @@
-import { Trash2, Pencil } from 'lucide-react'
+import { Pencil, Shapes, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  applyClick, Badge, BulkActionBar, Button, ConfirmDialog, DialogBody, DialogHeader, EmptyState, FadeSwap, Field, FilterBar, FilterChips, FormStack, headerState, List, ListRow, Presence, RadioGroup, Readout, RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, toggleAllOnPage, usePagedList, IconButton,
+  applyClick, Badge, BulkActionBar, Button, ChoiceFilter, ConfirmDialog, DialogBody, DialogHeader, EmptyState, FadeSwap, Field, FilterBar, FilterRow, FormStack, headerState, IconButton, List, ListRow, toggleAllOnPage, Presence, RadioGroup, Readout, RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, usePagedList,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
 import { ModalShell } from '@/components/ui/ModalShell'
@@ -118,16 +118,26 @@ export function MemoryTab() {
         <div className="space-y-4">
           <FilterBar
             filters={(
-              <FilterChips<Filter>
-                ariaLabel={t('Memory categories')}
-                active={filter}
-                onChange={setFilter}
-                options={[
-                  { key: 'all', label: t('All'), count: entries.length },
-                  { key: 'USER', label: categoryLabel('USER'), count: count('USER') },
-                  { key: 'KNOWLEDGE', label: categoryLabel('KNOWLEDGE'), count: count('KNOWLEDGE') },
-                ]}
-              />
+              <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filters')} items={[{
+                key: 'category',
+                active: filter !== 'all',
+                node: (
+                  <ChoiceFilter<Filter>
+                    ariaLabel={t('Memory categories')}
+                    icon={<Shapes size={14} aria-hidden="true" />}
+                    name={t('Category')}
+                    defaultKey="all"
+                    value={filter}
+                    active={filter !== 'all'}
+                    onChange={setFilter}
+                    options={[
+                      { key: 'all', label: t('All'), count: entries.length },
+                      { key: 'USER', label: categoryLabel('USER'), count: count('USER') },
+                      { key: 'KNOWLEDGE', label: categoryLabel('KNOWLEDGE'), count: count('KNOWLEDGE') },
+                    ]}
+                  />
+                ),
+              }]} />
             )}
             search={<SearchInput value={query} onChange={setQuery} placeholder={t('Filter entries')} clearLabel={t('Clear search')} />}
           />

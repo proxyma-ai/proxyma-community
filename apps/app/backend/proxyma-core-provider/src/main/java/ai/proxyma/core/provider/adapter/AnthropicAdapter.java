@@ -113,14 +113,15 @@ public class AnthropicAdapter implements LlmProviderAdapter {
         if (!provider.headers().isEmpty()) {
             log.debug("[Proxy] Custom headers applied for '{}': {}", provider.name(), provider.headers().keySet());
         }
-        return AnthropicChatModel.builder()
+        // Every call cached: a request with no cache strategy of its own is one-shot (AnthropicOneShotCache).
+        return new AnthropicOneShotCache(AnthropicChatModel.builder()
                 .anthropicApi(apiBuilder.build())
                 .retryTemplate(ProviderRetryTemplates.CHAT)
                 .defaultOptions(AnthropicChatOptions.builder()
                         .model(model)
                         .maxTokens(required(maxTokens))
                         .build())
-                .build();
+                .build());
     }
 
     // Anthropic refuses a request with no max_tokens, so "leave it to the provider" is not
@@ -199,6 +200,8 @@ public class AnthropicAdapter implements LlmProviderAdapter {
      * - Auto reaching here unresolved included - is five minutes.
      */
     static AnthropicCacheOptions cacheOptions(PromptCache cache) {
+        // No lifetime asked - a one-shot call through a tuned session (the YouTube team's): its system prompt alone.
+        if (cache == null) return AnthropicOneShotCache.ONE_SHOT;
         AnthropicCacheOptions.Builder builder = AnthropicCacheOptions.builder()
                 .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY);
         if (cache == PromptCache.ONE_HOUR) {

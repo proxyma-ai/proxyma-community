@@ -34,8 +34,14 @@ const PHASES: Phase[] = ['save', 'check', 'models']
  *
  * The free tier's terms are said in one plain sentence: Google may use what is sent to improve its
  * products. Nothing here claims more privacy than that.
+ *
+ * `paidKey` (2026-11-16, the maintainer: a YouTube channel's team runs on Gemini only with billing on): the same steps
+ * with one more - turn on billing for the key's project - and the reason in one line, since Google's terms for the free
+ * tier say people may read what is sent and not to send personal information, and a channel's team sends viewers'
+ * comments. A free key cannot be told from a paid one, so this is said, not checked. Connected, it closes at once and
+ * hands back to the dialog that opened it, which reads the chat model it now has.
  */
-export function GeminiQuickStart({ onClose }: { onClose: () => void }) {
+export function GeminiQuickStart({ onClose, paidKey = false }: { onClose: () => void; paidKey?: boolean }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -72,7 +78,8 @@ export function GeminiQuickStart({ onClose }: { onClose: () => void }) {
     },
     onSuccess: result => {
       setPhase(null)
-      setDone(result)
+      if (paidKey) onClose()
+      else setDone(result)
     },
     onError: (e: unknown) => {
       setPhase(null)
@@ -106,11 +113,13 @@ export function GeminiQuickStart({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell onClose={onClose} closable={!connect.isPending} dirty={dirty && !done} size="md"
-      initialFocus="first-field" ariaLabel={t('Get a free Gemini key')}>
+      initialFocus="first-field" ariaLabel={paidKey ? t('Connect Gemini') : t('Get a free Gemini key')}>
       {requestClose => (<>
         <DialogHeader
-          title={done ? t('Proxyma is ready') : t('Get a free Gemini key')}
-          subtitle={done ? undefined : t('Proxyma needs an AI model. Gemini has a free tier with just a Google account.')}
+          title={done ? t('Proxyma is ready') : paidKey ? t('Connect Gemini') : t('Get a free Gemini key')}
+          subtitle={done ? undefined : paidKey
+            ? t("Your channel's team needs an AI model. Use a Gemini key with billing turned on.")
+            : t('Proxyma needs an AI model. Gemini has a free tier with just a Google account.')}
         />
         <DialogBody>
           {/* The form and the result swap in place, fading; the footer swaps with them and fades in
@@ -130,6 +139,7 @@ export function GeminiQuickStart({ onClose }: { onClose: () => void }) {
                     <ButtonLink variant="secondary" size="sm" href={GEMINI_KEY_URL} external>{t('Open Google AI Studio')}</ButtonLink>
                   </StepItem>
                   <StepItem text={t('Choose Create API key, then copy the key.')} />
+                  {paidKey && <StepItem text={t("Turn on billing for the key's project in Google AI Studio.")} />}
                   <StepItem text={t('Paste it below and choose Connect.')} />
                 </StepList>
                 <Field label={t('Gemini API key')}>
@@ -149,7 +159,9 @@ export function GeminiQuickStart({ onClose }: { onClose: () => void }) {
                   <InlineNotice tone="danger">{error}</InlineNotice>
                 </Presence>
                 <Caption>
-                  {t('On the free tier, Google may use what you send. For private documents, use a paid key.')}
+                  {paidKey
+                    ? t("Turn on billing for this key: on the free tier, Google may read and use what is sent, and your channel's team sends your viewers' comments.")
+                    : t('On the free tier, Google may use what you send. For private documents, use a paid key.')}
                 </Caption>
               </FormStack>
             )}

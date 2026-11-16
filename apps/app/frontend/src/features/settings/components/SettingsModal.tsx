@@ -295,6 +295,8 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
     // save in flight finishes (and reports a failure in a toast) after it has.
     <SettingsWindow
       onClose={onClose}
+      // Opened to a given tab ("Open Logs"), a phone shows that page, not the list of sections.
+      startOnPage={!!initialTab}
       discardLabels={discardLabels}
       ariaLabel={t('Settings')}
       groups={railGroups}
@@ -340,7 +342,7 @@ export function SettingsModal({ onClose, initialTab, initialFocus }: {
             <Suspense fallback={<TabFieldsSkeleton />}><WorkflowsTab /></Suspense>
           )}
           {tab === 'API Tokens'           && <ApiTokensTab />}
-          {tab === 'AI Assistants'        && <AssistantsTab onOpenTab={setTab} />}
+          {tab === 'AI Assistants'        && <AssistantsTab onOpenTab={setTab} trackChange={trackChange} pending={pending} />}
           {tab === 'AI Providers'         && <ProvidersTab trackChange={trackChange} pending={pending} onOpenTab={setTab} canEdit={canEditSystemConfig} />}
           {tab === 'Agents'               && <ChatTab trackChange={trackChange} pending={pending} />}
           {tab === 'Guardrails'           && <GuardrailsTab trackChange={trackChange} pending={pending} onOpenTab={openTab} />}

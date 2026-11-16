@@ -408,9 +408,17 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
      * person's own client, a deployment's, a service that meters nothing - is never counted.
      */
     ApiResponse refuseBeforeSending(UUID connectionId, HttpMethod method, URI uri) {
-        if (multiUser || quota == null || builtIn == null) return null;
+        if (multiUser || quota == null) return null;
         ConnectorConnection c = repository.findById(connectionId).orElse(null);
-        if (c == null || c.getProtocol() == null || ownClient(c).isPresent()) return null;
+        if (c == null || c.getProtocol() == null) return null;
+        Optional<Client> own = ownClient(c);
+        if (own.isPresent()) {
+            // The person's own client: counted for the figure they read, never refused (BuiltInQuota.countOwn).
+            quota.countOwn(c.getProtocol(), own.get().id(),
+                    catalog.connectionPlugin(c.getProtocol()).map(p -> p.requestUnits(method, uri)).orElse(0));
+            return null;
+        }
+        if (builtIn == null) return null;
         if (builtIn.of(c.getProtocol()).isEmpty()) {
             // SIGNED IN THROUGH THE BUILT-IN CLIENT, WHICH IS NOT OFFERED NOW - its add-on lapsed (2026-11-11 review: the
             // token in hand kept working, unmetered, until it expired). Nothing is sent; the person is told why.
@@ -431,6 +439,48 @@ public class OAuth2ConnectionService implements ConnectionTokenProvider {
         headers.setContentType(MediaType.APPLICATION_JSON);
         return new ApiResponse(uri, 403, headers, BuiltInQuota.SPENT_BODY.getBytes(StandardCharsets.UTF_8));
     }
+
+    /**
+     * Whether a connection signs in with a built-in client whose daily share is metered - Proxyma's own Google project,
+     * shared by every install - rather than a client of the person's own (2026-11-13, the maintainer: limit the YouTube
+     * calls "only ... if the user don't bring their own key").
+     */
+    public boolean usesBuiltIn(UUID connectionId) {
+        if (multiUser || quota == null || builtIn == null || connectionId == null) return false;
+        ConnectorConnection c = repository.findById(connectionId).orElse(null);
+        return c != null && c.getProtocol() != null && ownClient(c).isEmpty() && builtIn.of(c.getProtocol()).isPresent();
+    }
+
+    /**
+     * TODAY'S QUOTA, AS PROXYMA COUNTED IT (2026-11-13): for a connection whose service meters requests, what was sent
+     * today - per Pacific day, when YouTube's quota resets - against what it has. Through Proxyma's built-in client,
+     * this install's share of the shared project ({@code shared}); through the person's own client, the service's
+     * default daily quota for one project (ConnectionPlugin.dailyUnits), since the service states none left to an app
+     * and the person may have been granted more. Empty for a service that meters nothing, and on Enterprise Server.
+     */
+    public java.util.Optional<Usage> usageToday(UUID connectionId) {
+        if (multiUser || quota == null || connectionId == null) return java.util.Optional.empty();
+        ConnectorConnection c = repository.findById(connectionId).orElse(null);
+        if (c == null || c.getProtocol() == null) return java.util.Optional.empty();
+        long serviceDaily = catalog.connectionPlugin(c.getProtocol()).map(ConnectionPlugin::dailyUnits).orElse(0L);
+        if (serviceDaily <= 0) return java.util.Optional.empty();
+        java.time.Instant resets = quota.resetsAt().toInstant();
+        Optional<Client> own = ownClient(c);
+        if (own.isPresent()) {
+            return java.util.Optional.of(new Usage(quota.ownToday(c.getProtocol(), own.get().id()), serviceDaily, false, resets));
+        }
+        if (builtIn == null || builtIn.of(c.getProtocol()).isEmpty()) return java.util.Optional.empty();
+        long budget = quota.budget(c.getProtocol());
+        return budget <= 0 ? java.util.Optional.empty()
+                : java.util.Optional.of(new Usage(Math.min(quota.spentToday(c.getProtocol()), budget), budget, true, resets));
+    }
+
+    /**
+     * Units sent today and the day's limit they count against; {@code shared} when that limit is this install's share of
+     * Proxyma's built-in client, else the service's default quota for the person's own project. {@code resetsAt}: the
+     * next midnight, Pacific time.
+     */
+    public record Usage(long used, long limit, boolean shared, java.time.Instant resetsAt) {}
 
     /**
      * When a connection that signs in with the built-in client may send again, while the install's daily share for its

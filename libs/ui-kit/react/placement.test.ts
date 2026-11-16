@@ -34,3 +34,15 @@ test('the room is never negative', () => {
   const p = place(rect(-50, 310), { width: 200, height: 100 }, 'bottom-start')
   assert.equal(p['--float-room'], '0px')
 })
+
+test('a side panel neither side can hold opens under its row, inside the window (a phone)', () => {
+  // A 375px window: a row from x 16 to 300 leaves 67px right and 8px left for a 256px panel.
+  at(375, 812)
+  const p = place(rect(400, 440, 16, 300), { width: 256, height: 120 }, 'right-start')
+  assert.equal(p.left, 44)
+  assert.ok((p.left ?? 0) + 256 <= 375 - EDGE)
+  assert.equal(p.top, 444)
+  assert.equal(p.right, undefined)
+  // Near the window's foot it moves up to stay inside it.
+  assert.equal(place(rect(700, 740, 16, 300), { width: 256, height: 120 }, 'right-start').top, 812 - 120 - EDGE)
+})

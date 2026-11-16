@@ -15,6 +15,8 @@ export interface SegmentedOption<T extends string> {
   disabled?: boolean
   /** Accessible name when `label` is not text. */
   ariaLabel?: string
+  /** A walkthrough's handle on the option (`data-tour-id`). */
+  tourId?: string
 }
 
 interface Props<T extends string> {
@@ -36,6 +38,11 @@ interface Props<T extends string> {
    * the chosen option the neutral selected fill a menu's chosen row wears.
    */
   surface?: 'well' | 'float'
+  /**
+   * The track as wide as its container, each option an equal share of it (2026-11-16, the mobile pass): a
+   * project's sections on a phone, a row of icons across the screen rather than a cluster at its left.
+   */
+  fill?: boolean
   disabled?: boolean
   className?: string
 }
@@ -56,7 +63,7 @@ interface Props<T extends string> {
  * border, no brand ink - and `md` is the default. `sm` (24px) is kept for a caller that asks for it.
  */
 export function SegmentedControl<T extends string>({
-  options, value, onChange, ariaLabel, size = 'md', variant = 'boxed', surface = 'well', disabled, className,
+  options, value, onChange, ariaLabel, size = 'md', variant = 'boxed', surface = 'well', fill = false, disabled, className,
 }: Props<T>) {
   const float = surface === 'float'
   const chosenFill = float ? 'bg-brand-pale' : 'bg-lift shadow-card'
@@ -112,7 +119,7 @@ export function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
       className={cn(
-        'inline-flex items-center',
+        fill ? 'flex w-full items-center' : 'inline-flex items-center',
         variant === 'boxed' && cn('relative rounded-lg p-1 gap-0.5', float ? 'surface-float border shadow-float' : 'bg-surface-alt shadow-well'),
         variant === 'text' && 'gap-3',
         disabled && 'opacity-40 pointer-events-none',
@@ -142,6 +149,7 @@ export function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={on}
             aria-label={o.ariaLabel}
+            data-tour-id={o.tourId}
             disabled={o.disabled}
             tabIndex={i === tabStop ? 0 : -1}
             onClick={() => onChange(o.value)}
@@ -151,6 +159,7 @@ export function SegmentedControl<T extends string>({
             }}
             className={cn(
               'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-ring tap-area',
+              fill && 'flex-1 min-w-0',
               'disabled:opacity-40 disabled:cursor-not-allowed',
               variant === 'boxed' && cn(
                 // Above the sliding fill; the chosen one's fill IS that fill, so only its ink is here.

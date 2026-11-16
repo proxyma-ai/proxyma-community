@@ -180,4 +180,14 @@ class AuditControllerTest {
         assertEquals(100L, l.get("max"));
         assertEquals(Map.of("samples", 0), AuditController.latency(List.of()));
     }
+
+    @Test
+    @DisplayName("the acceptances of the legal documents are read whole, whatever the period; nothing else is")
+    void legalAcceptancesIgnoreThePeriod() {
+        AuditController.Window legal = AuditController.window(7, List.of(AuditCategory.LEGAL));
+        assertEquals(java.time.Instant.EPOCH, legal.from());
+        assertEquals(7, legal.days());
+        AuditController.Window activity = AuditController.window(7, AuditController.TABS.get("ACTIVITY"));
+        assertEquals(true, activity.from().isAfter(java.time.Instant.now().minus(java.time.Duration.ofDays(8))));
+    }
 }

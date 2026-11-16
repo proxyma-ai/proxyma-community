@@ -65,6 +65,7 @@ export function UsageCostTab({ trackChange, pending, onOpenTab }: TabProps & { o
       {/* A signpost, not a second editor. Rates used to live here and someone looking for them
           will look here first - a tab that silently lost a section reads as a regression. */}
       <SignpostSection
+        navigates
         title={t('Model pricing')}
         caption={t('Set per provider. A model with no rate uses its list price or $0.')}
         action={

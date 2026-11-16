@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, LogIn, LogOut, Pencil, PlugZap, Plus, Trash2 } from 'lucide-react'
 import {
   Badge, FadeSwap, Button, Caption, Card, EmptyState, ExternalLink, InlineNotice, ListRow, MetaList, Presence,
-  SettingsSection, SettingsSections, SwitchRow, IconButton, cn, safeExternalHref,
+  SettingsSection, SettingsSections, SwitchRow, IconButton, ActionMenu, cn, safeExternalHref, usePhone,
 } from '@/components/ui/kit'
 import { ProtocolMark } from '@/features/indexing/utils/sourceMarks'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
@@ -62,6 +62,7 @@ function ConnectionRow({ connection, onEdit }: {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const addToast = useToastStore(s => s.addToast)
+  const phone = usePhone()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const oauth = connection.authKind === 'OAUTH'
   // The deployment not set up for the service (Enterprise Server's Microsoft 365 app registration).
@@ -178,7 +179,8 @@ function ConnectionRow({ connection, onEdit }: {
     // container, not the window) the buttons go under the details, starting where their text starts.
     <Card role="listitem" padding="none" className="p-4">
       <ListRow
-        className={cn('flex-col items-stretch py-0', SIDE_ROW)}
+        // On a phone its one "More" button stays beside the name, where the five icons could not.
+        className={phone ? 'py-0 flex-nowrap' : cn('flex-col items-stretch py-0', SIDE_ROW)}
         // The service's mark leads the row, as a source's does on its card - the same mark, in the
         // same brand ink, at the row size. The service is still named in words beside the name.
         leading={<ProtocolMark protocol={connection.protocol} size={16} className="text-brand-legible" />}
@@ -265,7 +267,22 @@ function ConnectionRow({ connection, onEdit }: {
             <InlineNotice tone="danger" className="mt-1">{connectionError(test.error) ?? t('Could not test this connection.')}</InlineNotice>
           </Presence>
         </>}
-        action={
+        action={phone ? (
+          // ON A PHONE ONE "MORE" MENU OF NAMED ROWS (the mobile audit, 2026-11-16): five icons named only by a tooltip
+          // that glass never shows could not be told apart.
+          <ActionMenu label={t('More')} groups={[
+            [
+              oauth && !notSetUp && { label: signedIn ? t('Sign in again') : t('Sign in'), icon: <LogIn size={16} />, onSelect: () => { void startSignIn(connection) } },
+              oauth && signedIn && { label: t('Sign out'), icon: <LogOut size={16} />, onSelect: () => signOut.mutate(), disabled: signOut.isPending },
+              mcpOAuth && { label: mcp?.signedIn ? t('Sign in again') : t('Sign in'), icon: <LogIn size={16} />, onSelect: () => startMcpSignIn.mutate(), disabled: startMcpSignIn.isPending },
+            ],
+            [
+              { label: test.isPending ? t('Testing...') : t('Test'), icon: <PlugZap size={16} />, onSelect: () => test.mutate(), disabled: test.isPending },
+              { label: t('Edit'), icon: <Pencil size={16} />, onSelect: onEdit },
+            ],
+            [{ label: t('Delete'), icon: <Trash2 size={16} />, danger: true, onSelect: () => setConfirmDelete(true), disabled: remove.isPending }],
+          ]} />
+        ) : (
           // ONE LINE OF ICON BUTTONS (the maintainer, 2026-11-03: "Use icon buttons only, one line"),
           // each named by its tooltip: the sign-in actions this connection has, Test, Edit, then Delete
           // in danger ink, set apart. Under the details while the list is narrow, starting where their
@@ -295,7 +312,7 @@ function ConnectionRow({ connection, onEdit }: {
                 onClick={() => setConfirmDelete(true)} disabled={remove.isPending} />
             </span>
           </div>
-        }
+        )}
       />
       {confirmDelete && (
         <RemoveConfirm

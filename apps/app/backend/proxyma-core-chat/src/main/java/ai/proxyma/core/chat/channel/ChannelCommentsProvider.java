@@ -29,6 +29,19 @@ public interface ChannelCommentsProvider {
      */
     Pass sync(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck);
 
+    /**
+     * A BATCH (2026-11-13, the maintainer's flow: comments are fetched "batch by batch", "latest comments must always be
+     * fetched first", and "comments that already fetched should not be re-fetched"): like {@link #sync}, but reading new
+     * comments only until about {@code want} that the caller does not hold yet ({@code held}, by comment id) are found -
+     * the newest first, then on into the older ones where the last batch stopped. A listing page read only in part is
+     * not stepped past, so the next batch starts there and passes over what it took. {@code want} 0 reads no new
+     * comment: only where {@code recheck} stands. A provider that cannot count answers as {@link #sync}.
+     */
+    default Pass batch(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck, int want,
+                       java.util.function.Predicate<String> held) {
+        return sync(ownerUserId, connectionId, cursor, recheck);
+    }
+
     /** The channel's numbers for a dashboard, for the 28 days ending {@code end} and the 28 before. */
     Numbers numbers(String ownerUserId, UUID connectionId, LocalDate end);
 
@@ -59,6 +72,19 @@ public interface ChannelCommentsProvider {
 
     /** A viewer's channel as the service states it; {@code avatar} a {@code data:image/...} address or null. */
     record Viewer(String name, String handle, String avatar) {}
+
+    /**
+     * WHAT THE CHANNEL'S VOICE IS LEARNED FROM (2026-11-13: the Learner's tool loop on a small model read all of it and
+     * then never saved the voice, so the team wrote nothing): the channel's overview with its description, its newest
+     * uploads with their descriptions, and the channel's own replies, each paired with what it answered - read by code,
+     * through the owner's own connection, for one model call to learn from. Each part is the map its tool returns, null
+     * when it could not be read; {@code error} when none could. Never thrown from.
+     */
+    default VoiceMaterial voiceMaterial(String ownerUserId, UUID connectionId) {
+        return new VoiceMaterial(null, null, null, "This service cannot be read for a voice.");
+    }
+
+    record VoiceMaterial(Map<String, Object> channel, Map<String, Object> videos, Map<String, Object> replies, String error) {}
 
     record Cursor(String backlogToken, Instant backlogBefore, boolean backlogDone, Instant newSince) {
 

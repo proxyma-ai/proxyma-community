@@ -91,7 +91,9 @@ export function RadioGroup<T extends string>({ value, onChange, options, horizon
       // On glass every option is a 44px target already, so the rows touch rather than adding 8px
       // over that, and a one-line option's words sit in the middle of its target - top-aligned they
       // left 32px of air under every row of a wrapped group (the UI review's phone pass, 2026-10-28).
-      className={cn(horizontal ? 'flex flex-wrap gap-x-4 gap-y-2 touch:gap-y-0' : 'space-y-2 touch:space-y-0', 'animate-fade-in', disabled && 'opacity-50')}
+      // A ROW FROM `sm`, A LIST ON A PHONE (the mobile audit, 2026-11-16): six options in a row wrapped into a ragged
+      // two-row grid ("Model default (64k) 8k 16k / 32k 64k 128k"); a phone's choice is one option a row.
+      className={cn(horizontal ? 'flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-4 gap-y-2 touch:gap-y-0' : 'space-y-2 touch:space-y-0', 'animate-fade-in', disabled && 'opacity-50')}
     >
       {options.map(o => {
         const off = disabled || o.disabled

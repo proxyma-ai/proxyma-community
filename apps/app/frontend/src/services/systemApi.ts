@@ -1,5 +1,15 @@
 import { http } from './httpClient'
 
+export interface LegalStatus {
+  version: string
+  accepted: boolean
+  acceptedVersion: string | null
+  acceptedAt: string | null
+  termsUrl: string
+  privacyUrl: string
+  eulaUrl: string
+}
+
 export const systemApi = {
   restart: () => http.post('/api/v1/system/restart').then(r => r.data),
 
@@ -19,6 +29,13 @@ export const systemApi = {
   // construction rather than by a frontend check. Returns 202 and the process exits a moment
   // later, so this resolving means "the request was accepted", not "the app has stopped".
   quit: () => http.post('/api/v1/desktop/quit').then(r => r.data),
+
+  // Desktop and Home Server only, as quit: whether the legal documents in force were accepted at the
+  // start (LegalAcceptances), and the acceptance - the version echoed back, refused with a 409 if the
+  // documents changed while the page was open.
+  legalStatus: () => http.get<LegalStatus>('/api/v1/desktop/legal').then(r => r.data),
+  acceptLegal: (version: string) =>
+    http.post<LegalStatus>('/api/v1/desktop/legal/accept', { version }).then(r => r.data),
 
   // Resolves once the backend STOPS answering. For a restart whose request returns before the old
   // process is gone (applying an update): without it, waitForRestart can be answered by the process

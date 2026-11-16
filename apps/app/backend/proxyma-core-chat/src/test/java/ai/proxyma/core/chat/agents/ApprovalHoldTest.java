@@ -55,7 +55,7 @@ class ApprovalHoldTest {
 
     static final String REPLY = "replyToYouTubeComment";
     static final String QUOTA = "{\"success\":false,\"error\":\"YouTube's daily quota for the connection's Google Cloud "
-            + "project is spent. Nothing was posted; try again tomorrow.\"}";
+            + "project is spent. Nothing was posted; try again tomorrow.\",\"refusedBy\":\"YouTube\"}";
     static final String POSTED = "{\"success\":true,\"replyId\":\"r1\",\"link\":\"https://www.youtube.com/watch?v=v&lc=r1\"}";
     static final String ANSWERED = "Already answered on YouTube.";
     static final ObjectMapper JSON = new ObjectMapper();
@@ -275,6 +275,9 @@ class ApprovalHoldTest {
         assertThat(ApprovalContexts.errorOf(r.getResult())).hasValueSatisfying(e ->
                 assertThat(e).contains("daily quota", "Still refused after 2 tries over 48 hours"));
         assertThat(decided).last().satisfies(e -> assertThat(e.succeeded()).isFalse());
+        // YouTube refused every try, and its last result still says so (ApprovalContexts.REFUSED_BY, 2026-11-14).
+        assertThat(ApprovalContexts.refusedBy(r.getResult())).hasValue("YouTube");
+        assertThat(ApprovalContexts.refusedBy(decided.get(decided.size() - 1).result())).hasValue("YouTube");
 
         at(now.get().plus(Duration.ofDays(2)));
         approvals.retryHeld();
@@ -340,10 +343,15 @@ class ApprovalHoldTest {
     @Test
     @DisplayName("a refusal that waiting does not cure fails at once, as before")
     void otherFailuresFail() {
-        answers.add("{\"success\":false,\"error\":\"YouTube refused the reply: comments are turned off on that video.\"}");
+        answers.add("{\"success\":false,\"error\":\"YouTube refused the reply: comments are turned off on that video.\","
+                + "\"refusedBy\":\"YouTube\"}");
         String a = approve("c1");
         assertThat(row(a).getRunOutcome()).isEqualTo(ToolApprovalRequest.RAN_FAILED);
         assertThat(row(a).getRetryAt()).isNull();
-        assertThat(decided).singleElement().satisfies(e -> assertThat(e.held()).isFalse());
+        // The result travels with the event, so a module can tell YouTube's refusal from one Proxyma made (2026-11-14).
+        assertThat(decided).singleElement().satisfies(e -> {
+            assertThat(e.held()).isFalse();
+            assertThat(ApprovalContexts.refusedBy(e.result())).hasValue("YouTube");
+        });
     }
 }

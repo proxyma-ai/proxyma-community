@@ -105,7 +105,7 @@ public class AuditController {
             // Whatever is still queued is written first, so an entry made a moment ago - the
             // setting just saved, the tool call just finished - is on the page that is asked next.
             writer.flush();
-            Window w = window(days);
+            Window w = window(days, categories);
             Page<AuditEvent> found = repository.search(w.from(), w.to(), categories,
                     blankToNull(action), blankToNull(outcome), blankToNull(target), blankToNull(actor),
                     blankToNull(conversation), likePattern(q),
@@ -174,7 +174,7 @@ public class AuditController {
         return allowed().flatMap(ok -> !ok ? Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).<byte[]>build())
                 : seesToolDetail().flatMap(full -> currentUser().flatMap(who -> Mono.fromCallable(() -> {
             writer.flush();
-            Window w = window(days);
+            Window w = window(days, categories);
             List<AuditEvent> rows = new ArrayList<>();
             boolean truncated = false;
             for (int page = 0; ; page++) {
@@ -236,7 +236,7 @@ public class AuditController {
         if (categories == null) return Mono.just(badTab());
         return allowed().flatMap(ok -> !ok ? Mono.just(forbidden()) : Mono.fromCallable(() -> {
             writer.flush();
-            Window w = window(days);
+            Window w = window(days, categories);
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("windowDays", w.days());
             out.put("multiUser", multiUser);
@@ -331,6 +331,18 @@ public class AuditController {
         int d = Math.max(1, Math.min(365, days));
         return new Window(d, Instant.now().minus(Duration.ofDays(d)), Instant.now().plus(Duration.ofMinutes(1)));
     }
+
+    /**
+     * The window for these categories. The acceptances of the legal documents alone (Activity filtered to "Terms
+     * accepted") are read whole, whatever the period: the Privacy Policy says each one is shown in Settings - Logs and
+     * that nothing deletes it, and the longest period, twelve months, would hide an older one (LegalAcceptances).
+     */
+    static Window window(int days, List<String> categories) {
+        Window w = window(days);
+        return LEGAL_ONLY.equals(categories) ? new Window(w.days(), Instant.EPOCH, w.to()) : w;
+    }
+
+    private static final List<String> LEGAL_ONLY = List.of(AuditCategory.LEGAL);
 
     static Sort order(String sort, String dir) {
         String property = sort == null ? null : SORTABLE.get(sort);

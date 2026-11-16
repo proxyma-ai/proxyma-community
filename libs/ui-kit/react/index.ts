@@ -145,7 +145,7 @@ export { List, ListRow, SwitchRow, RowActions, HoverActions, InlineConfirm, Link
 export { ChoiceChips, FilterChips, FilterBar, Toolbar, type ChoiceChip, type FilterOption } from './FilterBar'
 export { PickBox, SelectableListHeader, ListEditor, StepList, StepItem, StepCard } from './Collections'
 export {
-  TABLE_CLASS, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter,
+  TABLE_CLASS, TABLE_BRIEF, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter,
   IdentityCell, type SortDir, type SortState, type SkeletonColumn,
 } from './DataTable'
 export { useFileDrop, useFilePicker, DropArea, DropOverlay, FilePickerButton, type FileDropHandlers } from './DropArea'
@@ -176,6 +176,13 @@ export { SOURCE_LIST_COLUMNS, SOURCE_LIST_BOX, SourceListHeader, ListGroupHeadin
 export { AppHeader, BRAND_LINK, headerNavLink } from './AppHeader'
 export type { AppHeaderProps } from './AppHeader'
 export { AutoHideHeader } from './AutoHideHeader'
+export { DockButton, DockTabs } from './DockTabs'
+export { PHONE_QUERY, usePhone } from './usePhone'
+export { ShowMore } from './ShowMore'
+export { ChoiceFilter, FilterRow } from './FilterRow'
+export type { ChoiceFilterOption, FilterRowItem } from './FilterRow'
+export { fitCount } from './filterFit'
+export type { DockTab } from './DockTabs'
 export type { AutoHideHeaderProps } from './AutoHideHeader'
 export { LanguageMenu } from './LanguageMenu'
 export type { LanguageMenuProps } from './LanguageMenu'

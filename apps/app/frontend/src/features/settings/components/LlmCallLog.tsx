@@ -1,3 +1,4 @@
+import { Cpu, MessageSquare, Shapes } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -8,11 +9,7 @@ import { conversationOptions, triggerLabel } from '../utils/callConversation'
 import { keys } from '@/services/queryKeys'
 import { formatUsd, formatCompactCount } from '@/utils/formatters'
 import {
-  BarList, Button, Caption, cn, EmptyState, ColumnChart, ConfirmDialog, FieldLabel, FilterBar, HScroll,
-  InlineNotice, LIST_PAGE_SIZE, List, ListRow, MetaList, Presence, Readout, RowActions, SearchInput,
-  SectionHeading, Select, Skeleton, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH,
-  TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
-  type SortState,
+  BarList, Button, Caption, cn, ColumnChart, ConfirmDialog, EmptyState, FieldLabel, FilterBar, FilterRow, HScroll, InlineNotice, List, LIST_PAGE_SIZE, ListRow, MetaList, Presence, Readout, RowActions, SearchInput, SectionHeading, Select, Skeleton, type SortState, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH, TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
 } from '@/components/ui/kit'
 import { cacheOutcome, cacheVerdict, costOrigin, isAvoidableMiss, noCache } from '../utils/callCost'
 import { ListPager } from '@/components/ui/ListPager'
@@ -101,10 +98,14 @@ export function LlmUsage({ showSubjects = false, intro }: {
 
             <CostColumns series={d.series} unit={d.seriesUnit} />
 
-            <div className="grid gap-6 md:grid-cols-3">
-              <Breakdown title={t('By provider')} rows={d.byProvider} />
-              <Breakdown title={t('By model')} rows={d.byModel} />
-              <Breakdown title={t('By service')} rows={d.byService} label={k => serviceLabel(k, t)} />
+            {/* Three abreast once THEIR column has room (a container query): in the Settings window on a tablet the
+                window's width said three, and the names were cut to "Ope...". */}
+            <div className="[container-type:inline-size]">
+              <div className="grid gap-6 [@container(min-width:44rem)]:grid-cols-3">
+                <Breakdown title={t('By provider')} rows={d.byProvider} />
+                <Breakdown title={t('By model')} rows={d.byModel} />
+                <Breakdown title={t('By service')} rows={d.byService} label={k => serviceLabel(k, t)} />
+              </div>
             </div>
 
             <Presence show={showSubjects && !!d.bySubject && d.bySubject.length > 0}>
@@ -203,8 +204,79 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
   )
   return (
     <>
+      {/* Service, model and conversation are chips on the kit's filter row, over the search (2026-11-16). */}
       <FilterBar
         className="mb-3"
+        filters={(
+          <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filters')} items={[
+            {
+              key: 'service',
+              active: !!filters.service,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.service}
+                  chipIcon={<Shapes size={14} aria-hidden="true" />}
+                  value={filters.service}
+                  onChange={service => onFilters({ ...filters, service })}
+                  ariaLabel={t('Service')}
+                  options={[
+                    { value: '', label: t('All services') },
+                    ...(summary?.byService ?? []).map(g => ({ value: g.key, label: serviceLabel(g.key, t) })),
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'model',
+              active: !!filters.model,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.model}
+                  chipIcon={<Cpu size={14} aria-hidden="true" />}
+                  value={filters.model}
+                  onChange={model => onFilters({ ...filters, model })}
+                  ariaLabel={t('Model')}
+                  searchable
+                  searchPlaceholder={t('Search...')}
+                  emptyLabel={t('No matches')}
+                  options={[
+                    { value: '', label: t('All models') },
+                    ...(summary?.byModel ?? [])
+                      .filter(g => g.provider != null && g.model != null)
+                      .map(g => ({ value: modelFilterValue(g.provider!, g.model!), label: g.key })),
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'conversation',
+              active: !!filters.conversation,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.conversation}
+                  chipIcon={<MessageSquare size={14} aria-hidden="true" />}
+                  value={filters.conversation}
+                  onChange={conversation => onFilters({ ...filters, conversation, conversationLabel: undefined })}
+                  ariaLabel={t('Conversation')}
+                  searchable
+                  searchPlaceholder={t('Search...')}
+                  emptyLabel={t('No matches')}
+                  options={[
+                    { value: '', label: t('All conversations') },
+                    ...conversationOptions(summary?.byConversation ?? [], filters.conversation, filters.conversationLabel)
+                      .map(o => ({ value: o.value, label: o.label ?? t('Conversation {id}', { id: o.shortId }) })),
+                  ]}
+                />
+              ),
+            },
+          ]} />
+        )}
         search={(
           <SearchInput
             value={filters.text}
@@ -214,47 +286,7 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
             clearLabel={t('Clear search')}
           />
         )}
-      >
-        <Select
-          className="flex-1 min-w-0 sm:flex-none sm:w-40"
-          value={filters.service}
-          onChange={service => onFilters({ ...filters, service })}
-          ariaLabel={t('Service')}
-          options={[
-            { value: '', label: t('All services') },
-            ...(summary?.byService ?? []).map(g => ({ value: g.key, label: serviceLabel(g.key, t) })),
-          ]}
-        />
-        <Select
-          className="flex-1 min-w-0 sm:flex-none sm:w-56"
-          value={filters.model}
-          onChange={model => onFilters({ ...filters, model })}
-          ariaLabel={t('Model')}
-          searchable
-          searchPlaceholder={t('Search...')}
-          emptyLabel={t('No matches')}
-          options={[
-            { value: '', label: t('All models') },
-            ...(summary?.byModel ?? [])
-              .filter(g => g.provider != null && g.model != null)
-              .map(g => ({ value: modelFilterValue(g.provider!, g.model!), label: g.key })),
-          ]}
-        />
-        <Select
-          className="flex-1 min-w-0 sm:flex-none sm:w-56"
-          value={filters.conversation}
-          onChange={conversation => onFilters({ ...filters, conversation, conversationLabel: undefined })}
-          ariaLabel={t('Conversation')}
-          searchable
-          searchPlaceholder={t('Search...')}
-          emptyLabel={t('No matches')}
-          options={[
-            { value: '', label: t('All conversations') },
-            ...conversationOptions(summary?.byConversation ?? [], filters.conversation, filters.conversationLabel)
-              .map(o => ({ value: o.value, label: o.label ?? t('Conversation {id}', { id: o.shortId }) })),
-          ]}
-        />
-      </FilterBar>
+      />
       {/* On a phone the table stacks and its headings are not drawn, so the sort the headings
           offer is a menu there instead. */}
       <Select

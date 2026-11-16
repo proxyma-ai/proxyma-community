@@ -65,6 +65,15 @@ public interface LlmGateway {
     int contextWindow(LlmRole role);
 
     /**
+     * How much a named model reads at once, as its provider states it (for Ollama its own figure, from /api/show), else
+     * {@link ChatSettings#FALLBACK_CONTEXT_WINDOW}; the chat's own model where the override names none. Always positive.
+     * For a caller that fits what it sends to the model it sends it to (the YouTube team's voice call).
+     */
+    default int contextWindow(ModelOverride override) {
+        return contextWindow(LlmRole.CHAT);
+    }
+
+    /**
      * A model resolved once, to be called repeatedly - see {@link LlmSession}. For an agent loop,
      * where resolving per iteration would rebuild an uncached model every time round.
      */

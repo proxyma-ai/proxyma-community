@@ -31,4 +31,15 @@ public class ConnectorToolSettings {
 
     public boolean isConnectorManagement() { return connectorManagement; }
     public void setConnectorManagement(boolean v) { this.connectorManagement = v; }
+
+    // WHAT AN AI ASSISTANT MAY CHANGE OVER MCP (2026-11-14): Claude Desktop, Claude Code, Codex and the rest call
+    // Proxyma's tools through /mcp, where no approval pause and no permission mode apply - the chat's loop is not in
+    // the way - so a write such as a YouTube reply was posted the moment the assistant's model asked. Off: every write
+    // over MCP is refused, with where to allow it (WebFetchMcpToolConfig.gated). On: writes run as before, behind the
+    // connection's own Write switch and the assistant app's own confirmation. The person's own, like the switch above.
+    @JsonProperty("assistant-writes")
+    private boolean assistantWrites = false;
+
+    public boolean isAssistantWrites() { return assistantWrites; }
+    public void setAssistantWrites(boolean v) { this.assistantWrites = v; }
 }

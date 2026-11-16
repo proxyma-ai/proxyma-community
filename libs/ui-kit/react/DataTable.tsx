@@ -24,11 +24,19 @@ import { Tooltip } from './Tooltip'
 export const TABLE_CLASS = 'table-stack w-full text-sm'
 
 /**
+ * A TABLE WHOSE ROWS OPEN THEIR DETAIL, BRIEF ON A PHONE (2026-11-16, the mobile audit: a key account's row stacked into
+ * eight label/value lines, so five accounts were four screens): there each row is its name and its first two facts,
+ * the rest a tap away in the detail it opens. With TABLE_CLASS: `cn(TABLE_CLASS, TABLE_BRIEF)`.
+ */
+export const TABLE_BRIEF = 'table-stack-brief'
+
+/**
  * A table WITHOUT a card around it, on the text column: from `sm` the first column has no left
  * padding and the last no right padding, so the words in the cells line up with the heading and
  * the paragraph above. It was typed out by hand at four call sites.
  */
-export const TABLE_FLUSH = 'sm:[&_th:first-child]:pl-0 sm:[&_td:first-child]:pl-0 sm:[&_th:last-child]:pr-0 sm:[&_td:last-child]:pr-0'
+// `table-flush` is a marker the stacked table's CSS reads (proxyma-primitives.css): on a phone its rows add no side padding.
+export const TABLE_FLUSH = 'table-flush sm:[&_th:first-child]:pl-0 sm:[&_td:first-child]:pl-0 sm:[&_th:last-child]:pr-0 sm:[&_td:last-child]:pr-0'
 
 /**
  * THE TABLE'S CARD: `Card padding="none"`, clipped, the table in an `HScroll` (so a wide one

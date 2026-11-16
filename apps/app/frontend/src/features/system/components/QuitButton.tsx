@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useEffect } from 'react'
 import { Power } from 'lucide-react'
 import { ENV } from '@/config/env'
 import { ConfirmDialog, FadeSwap, menuRow } from '@/components/ui/kit'
@@ -119,7 +120,13 @@ export function QuitDialogs() {
     stopped()
   }
 
-  if (phase === 'idle') return null
+  // A quit asked for with no question (LegalGate's Quit): straight to "Quitting Proxyma".
+  useEffect(() => {
+    if (phase === 'now') void quit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
+  if (phase === 'idle' || phase === 'now') return null
   return (
     <>
       {/* The kit's confirmation - the same centred glyph, title, sentence and toned Confirm as every

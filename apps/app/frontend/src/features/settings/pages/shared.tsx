@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { FieldSkeleton, List, ListRowSkeleton, SectionHeading } from '@/components/ui/kit'
+import { ChevronRight } from 'lucide-react'
+import { FieldSkeleton, List, ListRowSkeleton, SectionHeading, usePhone } from '@/components/ui/kit'
 import { useSettings } from '../hooks/useSettings'
 import { pendingValue, type SettingChange } from '../utils/settingsSave'
 
@@ -84,12 +85,29 @@ export function TitleAction({ children }: { children: ReactNode }) {
  * its heading's bottom margin when it has no children, which left these with a gap under nothing;
  * this is the heading `flush`, in a section of its own so `.settings-sections` rules it off like
  * every other.
+ *
+ * `navigates`: the action is a link to another place ("Open Logs"). ON A PHONE it is then a row of its own under the
+ * caption, with a chevron at its end (the mobile audit, 2026-11-16: a lone brand-ink link beside buttons read as one
+ * more control, not as the way somewhere).
  */
-export function SignpostSection({ title, caption, action }: {
+export function SignpostSection({ title, caption, action, navigates = false }: {
   title: ReactNode
   caption: ReactNode
   action: ReactNode
+  navigates?: boolean
 }) {
+  const phone = usePhone()
+  if (phone && navigates) {
+    return (
+      <section>
+        <SectionHeading flush caption={caption}>{title}</SectionHeading>
+        <div className="mt-2 flex items-center justify-between gap-3 min-h-tap border-t border-line/60">
+          {action}
+          <ChevronRight size={16} className="shrink-0 text-ink-caption" aria-hidden="true" />
+        </div>
+      </section>
+    )
+  }
   return (
     <section>
       <SectionHeading flush caption={caption} action={action}>{title}</SectionHeading>

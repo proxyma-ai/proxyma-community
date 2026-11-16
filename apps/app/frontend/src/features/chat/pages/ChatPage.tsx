@@ -21,7 +21,7 @@ import { useQuotaMilestoneFeedback } from '../hooks/useQuotaMilestoneFeedback'
 import type { SpaceFact } from '../services/spaceFactApi'
 import type { ChatAttachment } from '../types/chat.types'
 import { useTourStore } from '@/store/tourStore'
-import { Caption, ChatStartHero, DropOverlay, ExternalLink, FadeSwap, PROSE_CHAT, THREAD_COLUMN, cn, useFileDrop } from '@/components/ui/kit'
+import { Caption, ChatStartHero, DropOverlay, ExternalLink, FadeSwap, PROSE_CHAT, THREAD_COLUMN, cn, useFileDrop, usePhone } from '@/components/ui/kit'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
@@ -173,6 +173,8 @@ const NO_ATTACHMENTS: ChatAttachment[] = []
 export function ChatPage() {
   usePageTitle('Chat')
   const { t } = useTranslation()
+  // A phone-length placeholder: the long one is cut on a phone (the mobile audit, 2026-11-16).
+  const phone = usePhone()
   const spaceFactQuery = useSpaceFact()
   const { user } = useAuth()
   const greetingName = FEATURES.auth && user?.displayName ? user.displayName : null
@@ -431,7 +433,7 @@ export function ChatPage() {
               attachedToolCallCount={attachedToolCallCount}
               workflowRuns={workflowRuns}
             />
-            <div className="flex-shrink-0 px-3 sm:px-6 py-2 sm:py-4 short:py-1">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-2 sm:py-4 short:py-1">
               {/* THE TOAST DOCK: in a conversation a toast sits here, in the flow above the
                   composer, rather than on the layer under the header - which lies over the thread
                   and the pinned question (the UI review, 2026-10-28). */}
@@ -448,7 +450,7 @@ export function ChatPage() {
                   onSend={handleConvSend}
                   onStop={stop}
                   streaming={streaming}
-                  placeholder={t('Type @ to mention a source or / to use a skill')}
+                  placeholder={(phone ? t('Ask anything') : t('Type @ to mention a source or / to use a skill'))}
                   autoFocus
                   mentions={convMentions}
                   onMentionsChange={setConvMentions}
@@ -493,7 +495,7 @@ export function ChatPage() {
                 // the hero pushed it under the browser's toolbar. Neither holds now - the shell is
                 // one box pinned to the visible viewport (data-app-shell) and the composer is a
                 // footer outside the scroller, exactly as it is in a conversation.
-                'flex-1 min-h-0 flex flex-col px-3 sm:px-6 pb-2 sm:py-6 short:py-2',
+                'flex-1 min-h-0 flex flex-col px-4 sm:px-6 pb-2 sm:py-6 short:py-2',
                 'sm:items-center sm:justify-center sm:overflow-y-auto',
               )}
           >
@@ -505,7 +507,7 @@ export function ChatPage() {
                   1280x720 and 1440x900 (2026-10-15): at 40px the wordmark's descenders sat within
                   reach of the composer's light; at 64px the logo began to read apart from it. */}
               <div className={cn(
-                'flex-1 min-h-0 overflow-y-auto flex flex-col justify-center py-4 short:py-2 sm:block sm:overflow-visible sm:py-0 short:mb-3',
+                'flex-1 min-h-0 overflow-y-auto flex flex-col pt-4 pb-2 short:py-2 sm:block sm:overflow-visible sm:py-0 short:mb-3',
                 FEATURES.auth ? 'sm:mb-10' : 'sm:mb-12',
               )}>
                 {/* The kit's ChatStartHero. On Desktop and Home Server (Community) the Proxyma logo
@@ -516,6 +518,8 @@ export function ChatPage() {
                     half hour, or the Proxima Centauri default where the deployment has none - and
                     only for a viewer who turned it on (useSpaceFactPreference, off by default since
                     2026-09-30). */}
+                {/* On a phone the hero is centered in the room the links leave above the composer. */}
+                <div className="flex-1 flex flex-col justify-center sm:block">
                 <ChatStartHero
                   className="px-2 sm:px-0"
                   greeting={FEATURES.auth ? (
@@ -528,10 +532,13 @@ export function ChatPage() {
                     <FadeSwap swapKey={spaceFact.text}><SpaceFactLine fact={spaceFact} /></FadeSwap>
                   ) : undefined}
                 />
-                {/* The links under the fact on a phone, in the same scroller - the docked
-                    composer is the only thing below them. From `sm` up they are under the composer
-                    (the copy after it), so each layout reads, and tabs, in its own order. */}
-                <div className="sm:hidden mt-6 short:mt-3 px-2">
+                </div>
+                {/* ON A PHONE THE LINKS SIT ON THE COMPOSER, left-aligned (2026-11-16, the maintainer: "Those shortcuts
+                    could be left aligned, above the chat input") - the shortcuts beside what they start, not under a
+                    logo half a screen away. Still in the scroller, the docked composer the only thing below them. From
+                    `sm` up they are under the composer (the copy after it), so each layout reads, and tabs, in its own
+                    order. */}
+                <div className="sm:hidden shrink-0 mt-6 short:mt-3 px-2 text-left">
                   <ChatStartLinks />
                 </div>
               </div>
@@ -541,7 +548,7 @@ export function ChatPage() {
                   value={inputValue}
                   onChange={setInputValue}
                   onSend={handleHeroSend}
-                  placeholder={t('Type @ to mention a source or / to use a skill')}
+                  placeholder={(phone ? t('Ask anything') : t('Type @ to mention a source or / to use a skill'))}
                   autoFocus
                   mentions={heroMentions}
                   onMentionsChange={setHeroMentions}

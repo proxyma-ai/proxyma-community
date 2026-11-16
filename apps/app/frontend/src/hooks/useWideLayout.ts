@@ -38,3 +38,11 @@ export function useWideLayout(): boolean {
 export function useFramedLayout(): boolean {
   return useMedia(FRAMED)
 }
+
+/** Tailwind's `sm`: below it the window is a phone's. */
+const PHONE = '(max-width: 639.98px)'
+
+/** Whether the window is a phone's (below `sm`) - for a part whose phone layout is another element, not a class. */
+export function usePhoneLayout(): boolean {
+  return useMedia(PHONE)
+}

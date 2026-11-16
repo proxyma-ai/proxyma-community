@@ -22,11 +22,12 @@
  * <p>`PAGE_GUTTER` is the inset inside the column. The header writes its own right side, since it
  * reserves room for the preference cluster there (see AppHeader), but its LEFT side is this.
  *
- * <p>12px on a phone since 2026-10-02 (it was 16px): a 390px screen has no width to give to
- * margins, and the maintainer asked for the room to go to the content.
+ * <p>16px on a phone again since 2026-11-16 (the mobile audit, "fix all": Material's and iOS's margin, and one keyline -
+ * a page's title, a settings section and a field now start on the same edge). It was 12px from 2026-10-02, when a
+ * card's own padding stood its text 28px in.
  */
 export const PAGE_COLUMN = 'max-w-5xl 2xl:max-w-7xl mx-auto'
-export const PAGE_GUTTER = 'px-3 sm:px-6'
+export const PAGE_GUTTER = 'px-4 sm:px-6'
 
 /**
  * THE MEASURE for running prose that spans a page or section: it ends on the grid's eight-column

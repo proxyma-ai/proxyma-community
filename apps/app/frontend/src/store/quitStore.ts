@@ -6,12 +6,14 @@ import { create } from 'zustand'
 // Both Quit triggers are rows inside a menu, and the menu closes as the confirmation opens. When
 // QuitButton held this state itself, closing the menu unmounted it together with the dialog it had
 // just opened - so Quit Proxyma did nothing at all, and no quit request ever reached the backend.
-// 'stopping' until the backend stops answering, then 'stopped' - see QuitDialogs.
-type QuitPhase = 'idle' | 'confirming' | 'stopping' | 'stopped'
+// 'stopping' until the backend stops answering, then 'stopped' - see QuitDialogs. 'now' is a quit
+// with no question, from the start's legal gate, where Quit IS the answer (LegalGate).
+type QuitPhase = 'idle' | 'confirming' | 'now' | 'stopping' | 'stopped'
 
 interface QuitState {
   phase: QuitPhase
   ask: () => void
+  now: () => void
   cancel: () => void
   stopping: () => void
   stopped: () => void
@@ -20,6 +22,7 @@ interface QuitState {
 export const useQuitStore = create<QuitState>(set => ({
   phase: 'idle',
   ask: () => set({ phase: 'confirming' }),
+  now: () => set({ phase: 'now' }),
   cancel: () => set({ phase: 'idle' }),
   stopping: () => set({ phase: 'stopping' }),
   stopped: () => set({ phase: 'stopped' }),

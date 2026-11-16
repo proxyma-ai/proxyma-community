@@ -206,6 +206,18 @@ class ModelLimitsTest {
     }
 
     @Test
+    @DisplayName("a named model's window is what its provider states, else the fallback - Settings' window is the agent's, not every model's (2026-11-14)")
+    void aNamedModelsWindow() {
+        Deployment d = new Deployment();
+        d.chat.setMemoryMaxTokens(500000);
+        when(d.factory.modelLimits("ollama", "qwen3:14b")).thenReturn(new ModelLimits(40960, null));
+        assertThat(d.gateway.contextWindow(new ai.proxyma.core.provider.gateway.LlmGateway.ModelOverride("ollama", "qwen3:14b")))
+                .isEqualTo(40960);
+        assertThat(d.gateway.contextWindow(new ai.proxyma.core.provider.gateway.LlmGateway.ModelOverride("ollama", "unknown")))
+                .isEqualTo(ChatSettings.FALLBACK_CONTEXT_WINDOW);
+    }
+
+    @Test
     @DisplayName("a sub-agent is measured against the agent's model - it has none of its own - unless a window was set")
     void aSubAgentsWindow() {
         Deployment d = new Deployment();

@@ -40,7 +40,9 @@ export function KeyValueList({ children, layout = 'stacked', columns = 2, classN
     <dl className={cn(
       layout === 'stacked'
         ? cn('grid grid-cols-2 gap-x-4 gap-y-4', columns === 3 && 'sm:grid-cols-3')
-        : 'grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-2',
+        // `rows` ON A PHONE IS EACH LABEL OVER ITS VALUE (2026-11-16, the mobile pass: top-aligned labels, the mobile
+        // form's rule) - beside it, a long label left the value a strip a few words wide. Side by side from `sm`.
+        : 'grid grid-cols-1 sm:grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-0 sm:gap-y-2 [&>div:last-child>dd]:mb-0',
       className,
     )}>
       {children}
@@ -71,7 +73,7 @@ export function KeyValue({ label, children, wide, figures, block, clamp, layout 
     return (
       <div className="contents">
         <dt className="text-xs text-ink-caption whitespace-nowrap">{label}</dt>
-        <dd className={cn('text-xs text-ink-primary break-words min-w-0', figures && 'data-readout', block && 'whitespace-pre-wrap', clamp && 'line-clamp-3')}>{children}</dd>
+        <dd className={cn('text-xs text-ink-primary break-words min-w-0 mb-2 sm:mb-0', figures && 'data-readout', block && 'whitespace-pre-wrap', clamp && 'line-clamp-3')}>{children}</dd>
       </div>
     )
   }

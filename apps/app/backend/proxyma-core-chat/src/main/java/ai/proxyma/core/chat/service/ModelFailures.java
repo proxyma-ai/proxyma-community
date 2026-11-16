@@ -43,6 +43,24 @@ public final class ModelFailures {
         return false;
     }
 
+    /**
+     * THE PROVIDER'S SERVER COULD NOT BE REACHED (2026-11-13: Ollama on the same PC was stopped, every call failed with
+     * "Connection refused", and each counted as a failed attempt of whatever it was for - the YouTube team's voice
+     * learning spent its tries on it and wrote nothing until the next day). No answer came at all, so nothing about
+     * the request is known to be wrong: work waits for the server, and nothing it was working on is blamed.
+     */
+    public static boolean unreachable(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof java.net.ConnectException || t instanceof java.net.NoRouteToHostException
+                    || t instanceof java.net.UnknownHostException || t instanceof java.net.SocketTimeoutException
+                    || t instanceof org.springframework.web.client.ResourceAccessException
+                    || t instanceof org.springframework.web.reactive.function.client.WebClientRequestException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** How long the provider asked to wait (Retry-After), when it said. */
     public static Optional<Duration> retryAfter(Throwable e) {
         return e == null ? Optional.empty() : ModelCall.retryAfter(e, Instant.now());

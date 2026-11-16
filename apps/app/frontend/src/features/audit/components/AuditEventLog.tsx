@@ -1,9 +1,8 @@
+import { Activity, CircleDot, Shapes, User, Wrench } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  cn, FilterBar, FilterChips, HScroll, InlineNotice, LIST_PAGE_SIZE, Presence, Readout, SearchInput,
-  Select, SortTh, TABLE_CLASS, TABLE_FLUSH, TableEmptyRow, TableSkeletonRows, TD_COMPACT, Th,
-  THEAD_TR, TR, TR_INTERACTIVE, usePageFor, type SortState,
+  ChoiceFilter, cn, FilterBar, FilterRow, HScroll, InlineNotice, LIST_PAGE_SIZE, Presence, Readout, SearchInput, Select, type SortState, SortTh, TABLE_CLASS, TABLE_FLUSH, TableEmptyRow, TableSkeletonRows, TD_COMPACT, Th, THEAD_TR, TR, TR_INTERACTIVE, usePageFor,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
 import { keys } from '@/services/queryKeys'
@@ -16,7 +15,7 @@ import {
 } from '../services/auditApi'
 import {
   ACTIVITY_CATEGORIES, actionLabel, actorText, categoryLabel, durationText, outcomeLabel, outcomeTone,
-  SERVER_ONLY_CATEGORIES, guardrailCategoryLabel, summaryText,
+  LOCAL_ONLY_CATEGORIES, SERVER_ONLY_CATEGORIES, guardrailCategoryLabel, summaryText,
 } from '../utils/auditLabels'
 import { argumentLabel, argumentRows } from '@/features/chat/utils/argumentRows'
 import { AuditEventDialog } from './AuditEventDialog'
@@ -62,25 +61,118 @@ export function AuditEventLog({ tab, summary, multiUser, filters, setFilters, lo
   const columns = COLUMNS[tab].filter(c => c !== 'who' || multiUser)
   const actionOptions = (summary?.byAction ?? [])
     .filter(a => !filters.category || a.category === filters.category)
-  const categories = ACTIVITY_CATEGORIES.filter(c => multiUser || !SERVER_ONLY_CATEGORIES.has(c))
+  const categories = ACTIVITY_CATEGORIES.filter(c => multiUser ? !LOCAL_ONLY_CATEGORIES.has(c) : !SERVER_ONLY_CATEGORIES.has(c))
 
   return (
     <>
-      {tab === 'ACTIVITY' && (
-        <FilterChips
-          className="mb-3"
-          wrap
-          ariaLabel={t('Category')}
-          active={filters.category || 'ALL'}
-          onChange={key => setFilters({ ...filters, category: key === 'ALL' ? '' : key, action: '' })}
-          options={[
-            { key: 'ALL', label: t('All') },
-            ...categories.map(c => ({ key: c, label: categoryLabel(c, t) })),
-          ]}
-        />
-      )}
+      {/* EVERY FILTER ON ONE LINE, AND MORE FOR WHAT DOES NOT FIT (2026-11-16, the maintainer): the category, the event
+          or the tool, the outcome and who - chips on the kit's filter row, over the search. */}
       <FilterBar
         className="mb-3"
+        filters={(
+          <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filters')} items={[
+            ...(tab === 'ACTIVITY' ? [{
+              key: 'category',
+              active: !!filters.category,
+              node: (
+                <ChoiceFilter
+                  ariaLabel={t('Category')}
+                  icon={<Shapes size={14} aria-hidden="true" />}
+                  name={t('Category')}
+                  defaultKey="ALL"
+                  value={filters.category || 'ALL'}
+                  active={!!filters.category}
+                  onChange={key => setFilters({ ...filters, category: key === 'ALL' ? '' : key, action: '' })}
+                  options={[
+                    { key: 'ALL', label: t('All') },
+                    ...categories.map(c => ({ key: c, label: categoryLabel(c, t) })),
+                  ]}
+                />
+              ),
+            }] : []),
+            tab === 'TOOL' ? {
+              key: 'tool',
+              active: !!filters.target,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.target}
+                  chipIcon={<Wrench size={14} aria-hidden="true" />}
+                  value={filters.target}
+                  onChange={target => setFilters({ ...filters, target })}
+                  ariaLabel={t('Tool')}
+                  searchable
+                  searchPlaceholder={t('Search...')}
+                  emptyLabel={t('No matches')}
+                  options={[
+                    { value: '', label: t('All tools') },
+                    ...(summary?.byTarget ?? []).map(g => ({ value: g.target, label: toolDisplayName(g.target, t) })),
+                  ]}
+                />
+              ),
+            } : {
+              key: 'event',
+              active: !!filters.action,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.action}
+                  chipIcon={<Activity size={14} aria-hidden="true" />}
+                  value={filters.action}
+                  onChange={action => setFilters({ ...filters, action })}
+                  ariaLabel={t('Event')}
+                  options={[
+                    { value: '', label: t('All events') },
+                    ...actionOptions.map(a => ({ value: a.action, label: actionLabel(a.action, t) })),
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'outcome',
+              active: !!filters.outcome,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.outcome}
+                  chipIcon={<CircleDot size={14} aria-hidden="true" />}
+                  value={filters.outcome}
+                  onChange={outcome => setFilters({ ...filters, outcome })}
+                  ariaLabel={t('Outcome')}
+                  options={[
+                    { value: '', label: t('All outcomes') },
+                    ...Object.keys(summary?.byOutcome ?? {}).map(o => ({ value: o, label: outcomeLabel(o, t) })),
+                  ]}
+                />
+              ),
+            },
+            ...(multiUser ? [{
+              key: 'who',
+              active: !!filters.actor,
+              node: (
+                <Select
+                  look="chip"
+                  className="max-w-[20rem]"
+                  active={!!filters.actor}
+                  chipIcon={<User size={14} aria-hidden="true" />}
+                  value={filters.actor}
+                  onChange={actor => setFilters({ ...filters, actor })}
+                  ariaLabel={t('Who')}
+                  searchable
+                  searchPlaceholder={t('Search...')}
+                  emptyLabel={t('No matches')}
+                  options={[
+                    { value: '', label: t('Everyone') },
+                    ...(summary?.byActor ?? []).map(a => ({ value: a.actorId, label: actorText(a.actorKind, a.actorId, a.actorName, t) })),
+                  ]}
+                />
+              ),
+            }] : []),
+          ]} />
+        )}
         search={(
           <SearchInput
             value={filters.text}
@@ -90,59 +182,7 @@ export function AuditEventLog({ tab, summary, multiUser, filters, setFilters, lo
             clearLabel={t('Clear search')}
           />
         )}
-      >
-        {tab === 'TOOL' ? (
-          <Select
-            className="flex-1 min-w-0 sm:flex-none sm:w-52"
-            value={filters.target}
-            onChange={target => setFilters({ ...filters, target })}
-            ariaLabel={t('Tool')}
-            searchable
-            searchPlaceholder={t('Search...')}
-            emptyLabel={t('No matches')}
-            options={[
-              { value: '', label: t('All tools') },
-              ...(summary?.byTarget ?? []).map(g => ({ value: g.target, label: toolDisplayName(g.target, t) })),
-            ]}
-          />
-        ) : (
-          <Select
-            className="flex-1 min-w-0 sm:flex-none sm:w-52"
-            value={filters.action}
-            onChange={action => setFilters({ ...filters, action })}
-            ariaLabel={t('Event')}
-            options={[
-              { value: '', label: t('All events') },
-              ...actionOptions.map(a => ({ value: a.action, label: actionLabel(a.action, t) })),
-            ]}
-          />
-        )}
-        <Select
-          className="flex-1 min-w-0 sm:flex-none sm:w-40"
-          value={filters.outcome}
-          onChange={outcome => setFilters({ ...filters, outcome })}
-          ariaLabel={t('Outcome')}
-          options={[
-            { value: '', label: t('All outcomes') },
-            ...Object.keys(summary?.byOutcome ?? {}).map(o => ({ value: o, label: outcomeLabel(o, t) })),
-          ]}
-        />
-        {multiUser && (
-          <Select
-            className="flex-1 min-w-0 sm:flex-none sm:w-48"
-            value={filters.actor}
-            onChange={actor => setFilters({ ...filters, actor })}
-            ariaLabel={t('Who')}
-            searchable
-            searchPlaceholder={t('Search...')}
-            emptyLabel={t('No matches')}
-            options={[
-              { value: '', label: t('Everyone') },
-              ...(summary?.byActor ?? []).map(a => ({ value: a.actorId, label: actorText(a.actorKind, a.actorId, a.actorName, t) })),
-            ]}
-          />
-        )}
-      </FilterBar>
+      />
 
       <HScroll>
         <table className={cn(TABLE_CLASS, TABLE_FLUSH)}>

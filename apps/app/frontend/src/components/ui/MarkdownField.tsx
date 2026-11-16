@@ -3,8 +3,11 @@ import { cn } from '@/components/ui/kit/cn'
 import { FIELD_BASE, fieldBorder, fieldWords } from '@/components/ui/kit/field'
 import { FIELD_BODY, FIELD_HEAD, FIELD_STACK, FieldHint, FieldNote } from '@/components/ui/kit/Input'
 import { TEXT } from '@/components/ui/kit/typeScale'
+import { usePhoneLayout } from '@/hooks/useWideLayout'
 
 const MarkdownEditor = lazy(() => import('./MarkdownEditor').then(m => ({ default: m.MarkdownEditor })))
+// The chat's renderer, for READ-ONLY text on a phone (below): loaded only when such a field is shown there.
+const MarkdownRenderer = lazy(() => import('@/features/chat/components/MarkdownRenderer').then(m => ({ default: m.MarkdownRenderer })))
 
 /**
  * The least height of the box by the number of lines it should show at rest - written out, since a
@@ -67,6 +70,12 @@ export function MarkdownField({
   const labelId = `${fieldId}-label`
   const words = fieldWords(fieldId, { labelled: !!label, hint: !!hint, error: !!error })
   const focus = useRef<(() => void) | null>(null)
+  // READ-ONLY TEXT ON A PHONE IS READ, NOT EDITED (2026-11-16, the maintainer: "On mobile, you may change the rule"):
+  // rendered as the chat renders markdown - a source's hard line breaks and indented continuation lines flowed into
+  // paragraphs and lists, at full contrast - where the editor showed the text exactly as typed, dimmed to 40%, its
+  // wrapped lines leaving gaps ("a new one -   Jira refuses"). Wider, and wherever it can be edited, the editor as before.
+  const phone = usePhoneLayout()
+  const reading = disabled && phone
 
   const attributes: Record<string, string> = { id: fieldId }
   if (label) attributes['aria-labelledby'] = labelId
@@ -109,13 +118,18 @@ export function MarkdownField({
             'py-0 cursor-text overflow-hidden',
             MIN_ROWS[rows] ?? MIN_ROWS[4],
             fill ? 'flex-1 min-h-0' : '[&_.cm-scroller]:max-h-[412px]',
-            disabled && 'opacity-40 cursor-not-allowed',
+            disabled && !reading && 'opacity-40 cursor-not-allowed',
+            // Read on a phone: the text's own box, scrolling inside a fill as the editor does.
+            reading && 'py-2 cursor-default overflow-y-auto',
             shake && 'animate-shake',
             fieldBorder(error),
             className,
           )}
         >
           <Suspense fallback={<div className="px-3 py-1.5 whitespace-pre-wrap break-words">{value || ' '}</div>}>
+            {reading ? (
+              <div {...attributes} role="document" className="px-3"><MarkdownRenderer content={value} /></div>
+            ) : (
             <MarkdownEditor
               value={value}
               onChange={onChange}
@@ -126,6 +140,7 @@ export function MarkdownField({
               contentAttributes={attributes}
               focusRef={focus}
             />
+            )}
           </Suspense>
         </div>
         <FieldNote id={words.noteId} error={error} hint={words.hintAbove ? undefined : hint} />

@@ -9,10 +9,13 @@
  * ===================================================================================== */
 
 import type { ComponentType, ReactNode } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { Button } from './Button'
 import { cn } from './cn'
-import { DialogShell, type DiscardLabels } from './Dialog'
+import { DialogShell, useDialogPage, type DiscardLabels } from './Dialog'
+import { iconButton } from './iconButton'
+import { usePhone } from './usePhone'
 import { Presence } from './Presence'
 import { PageTitle, SectionHeading } from './Text'
 import { TEXT } from './typeScale'
@@ -297,9 +300,68 @@ export function SettingsSection({ title, caption, action, toggle, locked, childr
  * A single section hides the rail and its name becomes the title. The discard words come in
  * translated, as everywhere.
  */
+/**
+ * The phone's bar over the Settings window (registered with the dialog's page, so the shell draws none): on the list,
+ * the dialog's own back arrow - which closes - and the window's name; on a section's page, an arrow and the window's
+ * name that go back to the list, as a phone's back button names where it goes.
+ */
+function SettingsPhoneBar({ name, onBack, backLabel }: { name: string; onBack: (() => void) | null; backLabel: string }) {
+  const page = useDialogPage()
+  const register = page?.register
+  useLayoutEffect(() => {
+    if (!register) return
+    register(true)
+    return () => register(false)
+  }, [register])
+  return (
+    <div data-dialog-head="" className="sm:hidden flex items-center gap-2 px-2 py-2 border-b border-line/45 shrink-0">
+      {onBack ? (
+        <button type="button" onClick={onBack} aria-label={backLabel}
+          className={cn(iconButton('md'), 'w-auto touch:w-auto px-2 gap-2 text-ink-primary')}>
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span className={TEXT.title}>{name}</span>
+        </button>
+      ) : (
+        <>
+          {page?.back}
+          <span className={cn(TEXT.title, 'truncate')}>{name}</span>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** The window's sections as a phone's grouped list: a row each - its glyph, its name and a chevron - that opens it. */
+function SettingsPhoneList<K extends string>({ groups, onChoose }: { groups: RailGroup<K>[]; onChoose: (key: K) => void }) {
+  return (
+    <div data-dialog-body="" className="flex-1 min-h-0 overflow-y-auto bg-canvas/60 px-4 pb-8 animate-fade-in">
+      {groups.map((g, gi) => (
+        <div key={g.label ?? gi} className="pt-6">
+          {g.label && <p className="mb-1 text-xs font-semibold text-ink-caption">{g.label}</p>}
+          <ul className="divide-y divide-line/60">
+            {g.items.map(item => {
+              const Icon = item.icon
+              return (
+                <li key={item.key}>
+                  <button type="button" onClick={() => onChoose(item.key)}
+                    className={cn(TEXT.label, 'w-full min-h-tap flex items-center gap-3 py-2 text-left focus-ring rounded-sm')}>
+                    {Icon && <Icon size={18} className="shrink-0 text-ink-caption" />}
+                    <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                    <ChevronRight size={16} className="shrink-0 text-ink-caption" aria-hidden="true" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function SettingsWindow<K extends string>({
   onClose, dirty, discardLabels, ariaLabel, groups, active, onChange, title, footer, children,
-  rail, banner, notice, titleActions, titleActionsRef, closable,
+  rail, banner, notice, titleActions, titleActionsRef, closable, startOnPage = false,
 }: {
   onClose: () => void
   dirty?: boolean
@@ -322,8 +384,21 @@ export function SettingsWindow<K extends string>({
   titleActionsRef?: (el: HTMLDivElement | null) => void
   /** False while a close must be refused - a save in flight. */
   closable?: boolean
+  /**
+   * On a phone, open on the section (`active`) rather than on the list of sections - for a window opened to a given
+   * tab ("Open Logs").
+   */
+  startOnPage?: boolean
 }) {
   const single = groups.reduce((n, g) => n + g.items.length, 0) <= 1
+  // ON A PHONE SETTINGS IS A LIST THAT OPENS PAGES (the mobile audit, 2026-11-16: a back bar, an 18-tab strip cut at the
+  // edge and the tab's title again - three titles and a hidden list of places - where every phone's Settings is a
+  // grouped list): the sections as rows, each opening its page under a bar that goes back to them. A window with one
+  // section, or a rail of the caller's own, is its page as before.
+  const phone = usePhone()
+  const drill = phone && !single && !rail
+  const [view, setView] = useState<'list' | 'page'>(startOnPage ? 'page' : 'list')
+  const listing = drill && view === 'list'
   return (
     <DialogShell
       onClose={onClose}
@@ -332,10 +407,15 @@ export function SettingsWindow<K extends string>({
       discardLabels={discardLabels}
       overlayClassName={SETTINGS_OVERLAY}
       panelClassName={SETTINGS_PANEL}
+      phonePage
       ariaLabel={ariaLabel}
     >
+      {drill && <SettingsPhoneBar name={ariaLabel} backLabel={discardLabels.back ?? 'Back'} onBack={listing ? null : () => setView('list')} />}
+      {listing ? (
+        <SettingsPhoneList groups={groups} onChoose={key => { onChange(key); setView('page') }} />
+      ) : (
       <SettingsLayout
-        hideRail={single && !rail}
+        hideRail={(single && !rail) || drill}
         rail={rail ?? <SettingsRail groups={groups} active={active} onChange={onChange} ariaLabel={ariaLabel} />}
         title={title}
         titleActions={titleActions}
@@ -347,6 +427,7 @@ export function SettingsWindow<K extends string>({
       >
         {children}
       </SettingsLayout>
+      )}
     </DialogShell>
   )
 }

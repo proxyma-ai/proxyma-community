@@ -40,6 +40,8 @@ class PendingResetTest {
         file(data, "license.dat");
         file(data, ".secret");
         file(data, "access-code");
+        // The acceptance of the legal documents (LegalAcceptances) - never deleted by the app.
+        file(data, "legal-acceptances.log");
         file(data.resolve("parts"), "active.txt");
         file(data.resolve("runtime"), "python.exe");
 
@@ -52,7 +54,8 @@ class PendingResetTest {
         assertThat(data.resolve("local_folders.lock.db")).doesNotExist();
         assertThat(conversations).as("conversations live in ~/.proxyma, which the reset used to miss").doesNotExist();
         assertThat(skills).doesNotExist();
-        for (String kept : List.of("license.dat", ".secret", "access-code", "parts/active.txt", "runtime/python.exe")) {
+        for (String kept : List.of("license.dat", ".secret", "access-code", "legal-acceptances.log",
+                "parts/active.txt", "runtime/python.exe")) {
             assertThat(data.resolve(kept)).as(kept).exists();
         }
         assertThat(data.resolve(PendingReset.MARKER)).doesNotExist();

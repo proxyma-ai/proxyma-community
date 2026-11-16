@@ -125,10 +125,21 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
 
     @Override
     public Pass sync(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck) {
+        return batch(ownerUserId, connectionId, cursor, recheck, UNCOUNTED, null);
+    }
+
+    /** No count asked for: the newest pages and one step into the older ones, as a pass always read. */
+    static final int UNCOUNTED = -1;
+    /** How many pages of older comments one batch reads at most to find what it wants. */
+    static final int BATCH_PAGES = 10;
+
+    @Override
+    public Pass batch(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck, int want,
+                      java.util.function.Predicate<String> held) {
         List<JsonNode> seen = new ArrayList<>();
         passThreads.set(seen);
         try {
-            return pass(ownerUserId, connectionId, cursor, recheck);
+            return pass(ownerUserId, connectionId, cursor, recheck, want, held == null ? id -> false : held);
         } finally {
             passThreads.remove();
             // What the pass read is what a draft's card would ask YouTube for again (2026-11-11: one call a draft).
@@ -137,7 +148,8 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
         }
     }
 
-    private Pass pass(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck) {
+    private Pass pass(String ownerUserId, UUID connectionId, Cursor cursor, Collection<String> recheck, int want,
+                      java.util.function.Predicate<String> held) {
         Cursor from = cursor == null ? Cursor.START : cursor;
         Instant began = clock.instant();
         ApiClient api;
@@ -168,42 +180,66 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
         Map<String, Settled> settled = new LinkedHashMap<>();
         int[] deep = {DEEP_PER_PASS};
 
-        // The newest pages.
-        YouTubeThreadScan scan = YouTubeThreadScan.channel(api, channel, NEW_PAGES);
-        try {
-            List<JsonNode> threads;
-            while ((threads = scan.next()) != null) {
-                boolean newer = false;
-                for (JsonNode thread : threads) {
-                    if (touches(thread, from.newSince())) newer = true;
-                    read(api, thread, channelId, deep, calls, pending, settled);
-                }
-                if (from.newSince() != null && !newer) scan.olderSeen();
-            }
-        } catch (RuntimeException e) {
-            calls[0] += scan.calls();
-            return new Pass(channelId, channelTitle, List.of(), Map.of(), from, calls[0], Failures.describe(e));
-        }
-        calls[0] += scan.calls();
-
-        // A step into the older ones.
+        boolean counted = want >= 0;
+        // How many comments needing a decision this pass found that the caller does not hold yet.
+        java.util.function.IntSupplier fresh = () -> (int) pending.keySet().stream().filter(id -> !held.test(id)).count();
         String backlogToken = from.backlogToken();
         boolean backlogDone = from.backlogDone();
-        if (scan.perVideo()) {
-            backlogDone = true;
-            backlogToken = null;
-        } else if (!backlogDone) {
-            YouTubeThreadScan older = YouTubeThreadScan.channel(api, channel, BACKLOG_PAGES).startAt(backlogToken);
+        Instant newSince = began;
+
+        // The newest pages - none when only a recheck is asked (want 0). A batch that fills before the comments newer
+        // than the last pass end keeps that point, so the next batch reads them from the top again.
+        if (want != 0) {
+            YouTubeThreadScan scan = YouTubeThreadScan.channel(api, channel, NEW_PAGES);
             try {
-                List<JsonNode> threads = older.next();
-                boolean whole = true;
-                if (threads != null) {
-                    for (JsonNode thread : threads) whole &= read(api, thread, channelId, deep, calls, pending, settled);
+                List<JsonNode> threads;
+                pages:
+                while ((threads = scan.next()) != null) {
+                    boolean newer = false;
+                    for (JsonNode thread : threads) {
+                        if (touches(thread, from.newSince())) newer = true;
+                        read(api, thread, channelId, deep, calls, pending, settled);
+                        if (counted && fresh.getAsInt() >= want) {
+                            newSince = from.newSince();
+                            break pages;
+                        }
+                    }
+                    if (from.newSince() != null && !newer) scan.olderSeen();
                 }
-                // A page whose long threads could not all be read is read again next pass.
-                if (whole) {
+            } catch (RuntimeException e) {
+                calls[0] += scan.calls();
+                return new Pass(channelId, channelTitle, List.of(), Map.of(), from, calls[0], Failures.describe(e));
+            }
+            calls[0] += scan.calls();
+            if (scan.perVideo()) {
+                backlogDone = true;
+                backlogToken = null;
+            }
+        }
+
+        // Into the older ones: one step a pass uncounted, else page after page until the batch is full.
+        boolean wantsOlder = want < 0 || (want > 0 && fresh.getAsInt() < want);
+        if (wantsOlder && !backlogDone) {
+            YouTubeThreadScan older = YouTubeThreadScan.channel(api, channel, counted ? BATCH_PAGES : BACKLOG_PAGES)
+                    .startAt(backlogToken);
+            try {
+                List<JsonNode> threads;
+                while ((threads = older.next()) != null) {
+                    boolean whole = true;
+                    boolean full = false;
+                    for (JsonNode thread : threads) {
+                        whole &= read(api, thread, channelId, deep, calls, pending, settled);
+                        if (counted && fresh.getAsInt() >= want) {
+                            full = true;
+                            break;
+                        }
+                    }
+                    // A page read only in part - full before its end, or a long thread not read whole - is read again
+                    // next time, from where it began; what this batch took from it is passed over then.
+                    if (!whole || full) break;
                     backlogToken = older.nextToken();
                     backlogDone = backlogToken == null;
+                    if (!counted || backlogDone) break;
                 }
             } catch (RuntimeException e) {
                 // YouTube no longer takes the token (or failed): the walk starts again from the top next pass.
@@ -231,7 +267,7 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
 
         List<Comment> out = new ArrayList<>();
         for (YouTubeConversation.Pending p : pending.values()) out.add(comment(p, titleOf.get(p.videoId())));
-        Cursor next = new Cursor(backlogToken, from.backlogBefore(), backlogDone, began);
+        Cursor next = new Cursor(backlogToken, from.backlogBefore(), backlogDone, newSince);
         return new Pass(channelId, channelTitle, out, settled, next, calls[0], null,
                 newUploads(api, channel, connectionId, began, calls));
     }
@@ -466,6 +502,27 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
         String error = channel == null && videos == null && current == null ? "YouTube could not be read." : null;
         return new Numbers(channel, current, previous, videos, reach, start, end, error);
     }
+
+    /** The voice material: the channel, 20 uploads with descriptions and up to 100 of the channel's replies. */
+    @Override
+    public VoiceMaterial voiceMaterial(String ownerUserId, UUID connectionId) {
+        ResolvedCredentials credentials;
+        try {
+            credentials = credentials(ownerUserId, connectionId);
+        } catch (RuntimeException e) {
+            return new VoiceMaterial(null, null, null, Failures.describe(e));
+        }
+        if (credentials == null) return new VoiceMaterial(null, null, null, "No YouTube connection to read.");
+        ApiClient data = YouTubeCalls.client(http, credentials, YouTubeCalls.Api.DATA);
+        Map<String, Object> channel = quietly(() -> tools.channelStats(data));
+        Map<String, Object> videos = quietly(() -> tools.videos(data, VOICE_VIDEOS, null, true));
+        Map<String, Object> replies = quietly(() -> tools.channelReplies(data, VOICE_REPLIES, null));
+        String error = channel == null && videos == null && replies == null ? "YouTube could not be read." : null;
+        return new VoiceMaterial(channel, videos, replies, error);
+    }
+
+    static final int VOICE_VIDEOS = 20;
+    static final int VOICE_REPLIES = 100;
 
     // A report, or null when it failed or said it failed.
     private static Map<String, Object> quietly(java.util.function.Supplier<Map<String, Object>> read) {

@@ -34,8 +34,17 @@ const MORE = 20
 /** Whether the sidebar is folded to its icons, kept in this browser. */
 const FOLD_KEY = 'proxyma-sidebar-folded'
 
+/**
+ * The reader's own choice, else FOLDED BELOW `xl` (2026-11-16, the tablet pass): an iPad on its side is 1024px, and the
+ * open sidebar, a channel's own panel and its page side by side left the page about 470px - its figures cut to
+ * "Engaged vi" and "Subscrib...". From 1280px it opens out unless the reader folded it.
+ */
 function readFolded(): boolean {
-  try { return localStorage.getItem(FOLD_KEY) === '1' } catch { return false }
+  try {
+    const stored = localStorage.getItem(FOLD_KEY)
+    if (stored === '1' || stored === '0') return stored === '1'
+  } catch { /* storage blocked: the default */ }
+  return typeof window.matchMedia === 'function' && !window.matchMedia('(min-width: 1280px)').matches
 }
 
 /**

@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react'
 import { cn } from './cn'
 import { HScroll } from './HScroll'
+import { Select } from './Select'
+import { usePhone } from './usePhone'
 
 export interface FilterOption<K extends string> {
   key: K
@@ -80,6 +82,24 @@ export function ChoiceChips<K extends string>({ options, active, onChange, ariaL
   ariaLabel: string
   className?: string
 }) {
+  // ON A PHONE ONE CHIP (the mobile audit, 2026-11-16: a sort of four ways was two rows of chips over the list): the
+  // chosen way, with its glyph, opening the others - as a filter's chip does. Words only: a label that is not text
+  // keeps the row.
+  const phone = usePhone()
+  const chosen = options.find(o => o.key === active)
+  if (phone && options.every(o => typeof o.label === 'string')) {
+    return (
+      <Select<K>
+        look="chip"
+        className={cn('max-w-full', className)}
+        ariaLabel={ariaLabel}
+        chipIcon={chosen?.icon}
+        value={active}
+        onChange={onChange}
+        options={options.map(o => ({ value: o.key, label: o.label as string }))}
+      />
+    )
+  }
   return (
     <div role="group" aria-label={ariaLabel} className={cn('flex flex-wrap items-center gap-2', className)}>
       {options.map(o => {

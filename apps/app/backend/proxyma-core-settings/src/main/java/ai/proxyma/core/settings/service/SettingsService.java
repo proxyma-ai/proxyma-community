@@ -495,6 +495,11 @@ public class SettingsService {
     // Registering and removing sources of any type. The per-service Read and Write switches that
     // used to sit beside it moved onto each connection (ConnectorConnection) - see McpGuardService.
 
+    /** Whether an AI assistant may make changes over MCP for this person (ConnectorToolSettings.assistantWrites). */
+    public boolean isUserAssistantWritesAllowed(String userId) {
+        return getSettingsForUser(ConnectorToolSettings.PREFIX, ConnectorToolSettings.class, userId).isAssistantWrites();
+    }
+
     public boolean isUserConnectorManagementAllowed(String userId) {
         return getSettingsForUser(ConnectorToolSettings.PREFIX, ConnectorToolSettings.class, userId)
                 .isConnectorManagement();

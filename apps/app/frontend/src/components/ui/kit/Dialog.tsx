@@ -9,13 +9,14 @@
  * ===================================================================================== */
 
 import type { ComponentType, HTMLAttributes, ReactNode } from 'react'
-import { useCallback, useId, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Trash2 } from 'lucide-react'
 import { Button } from './Button'
 import { cn } from './cn'
 import { Input } from './Input'
 import { TEXT } from './typeScale'
+import { iconButton } from './iconButton'
 import { useExitGhost } from './motion'
 import { Presence } from './Presence'
 import { useModalLayer } from './useModalLayer'
@@ -112,6 +113,8 @@ export interface DiscardLabels {
   body: string
   keep: string
   discard: string
+  /** The phone page's back button (`phonePage`), translated. "Back" when omitted. */
+  back?: string
 }
 
 const ENGLISH_DISCARD: DiscardLabels = {
@@ -150,6 +153,13 @@ export interface DialogShellProps {
   cap?: boolean
   /** A bottom sheet below `sm`, a centred dialog from it (`DIALOG_SHEET_OVERLAY`). */
   sheet?: boolean
+  /**
+   * A PAGE ON A PHONE (2026-11-16, the maintainer: "Everything on mobile should be pages, not modals"): below `sm` the
+   * panel is the whole screen, its header with a back arrow before the title and pinned while the page scrolls, its
+   * footer pinned at the foot. By default every dialog with a standard size but `sm` - a small confirmation stays a
+   * small alert, as a phone's own are - and never a sheet or an alertdialog. True for a panel of its own (Settings).
+   */
+  phonePage?: boolean
   overlayClassName?: string
   /** The scrim. `null` for a dialog whose container carries its own backdrop. */
   scrimClassName?: string | null
@@ -181,13 +191,16 @@ export interface DialogShellProps {
  */
 export function DialogShell({
   onClose, closable = true, dirty = false, discardLabels = ENGLISH_DISCARD, onSubmit, initialFocus, level = 0,
-  size, fill, cap, sheet, overlayClassName, scrimClassName = MODAL_SCRIM, closeOnBackdrop = true,
+  size, fill, cap, sheet, phonePage, overlayClassName, scrimClassName = MODAL_SCRIM, closeOnBackdrop = true,
   panelClassName, panelProps, role = 'dialog', ariaLabel, ariaLabelledBy, children,
 }: DialogShellProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const [confirming, setConfirming] = useState(false)
+  // Whether a DialogHeader drew the page's back arrow; else the shell draws a bar of its own for it.
+  const [hasHeader, setHasHeader] = useState(false)
   useExitGhost(overlayRef)
+  const page = phonePage ?? (!!size && size !== 'sm' && !sheet && role !== 'alertdialog')
 
   const canClose = closable && !!onClose
   const requestClose = useCallback(() => {
@@ -201,8 +214,16 @@ export function DialogShell({
   const stopDrag = (handler?: (e: React.DragEvent<HTMLDivElement>) => void) =>
     (e: React.DragEvent<HTMLDivElement>) => { handler?.(e); e.stopPropagation() }
 
+  const backLabel = discardLabels.back ?? 'Back'
+  const back = canClose ? (
+    <button type="button" onClick={requestClose} aria-label={backLabel} className={cn(iconButton('md'), 'sm:hidden -ml-2 shrink-0')}>
+      <ArrowLeft size={18} aria-hidden="true" />
+    </button>
+  ) : null
+
   return createPortal(
-    <div ref={overlayRef} className={overlayClassName ?? (sheet ? DIALOG_SHEET_OVERLAY : DIALOG_OVERLAY)}>
+    <div ref={overlayRef} data-dialog-page-overlay={page ? '' : undefined}
+      className={overlayClassName ?? (sheet ? DIALOG_SHEET_OVERLAY : DIALOG_OVERLAY)}>
       {scrimClassName !== null && <div data-scrim="" className={scrimClassName} onClick={closeOnBackdrop ? requestClose : undefined} />}
       <div
         {...panelProps}
@@ -213,6 +234,9 @@ export function DialogShell({
         ref={panelRef}
         // The hook for the common minimum size in proxyma-primitives.css.
         data-dialog-panel=""
+        // A page on a phone (proxyma-primitives.css): the whole screen, header and footer pinned.
+        data-dialog-page={page ? '' : undefined}
+        data-dialog-fixed={page && (fill || cap) ? '' : undefined}
         data-motion-panel=""
         tabIndex={-1}
         role={role}
@@ -221,7 +245,17 @@ export function DialogShell({
         aria-labelledby={ariaLabelledBy}
         className={cn('my-auto outline-none', size && dialogPanel(size, { fill, cap }), sheet && DIALOG_SHEET_PANEL, panelClassName)}
       >
-        {typeof children === 'function' ? children(requestClose) : children}
+        <DialogPageContext.Provider value={page ? { back, register: setHasHeader } : null}>
+          {/* A page with no DialogHeader of its own (Settings, a panel of the caller's) gets a bar for its back arrow,
+              named by the dialog's label. */}
+          {page && !hasHeader && back && (
+            <div data-dialog-head="" className="sm:hidden flex items-center gap-2 px-2 py-2 border-b border-line/45 shrink-0">
+              {back}
+              {ariaLabel && <span className={cn(TEXT.title, 'truncate')}>{ariaLabel}</span>}
+            </div>
+          )}
+          {typeof children === 'function' ? children(requestClose) : children}
+        </DialogPageContext.Provider>
       </div>
       {confirming && (
         <DialogShell
@@ -246,6 +280,17 @@ export function DialogShell({
     </div>,
     document.body,
   )
+}
+
+/** What a phone page's header needs from its shell: the back arrow, and a way to say it drew it. */
+const DialogPageContext = createContext<{ back: ReactNode; register: (has: boolean) => void } | null>(null)
+
+/**
+ * The phone page a part is drawn in, or null: its back arrow (the guarded close) and `register`, which a part drawing a
+ * bar of its own calls so the shell draws none (SettingsWindow).
+ */
+export function useDialogPage(): { back: ReactNode; register: (has: boolean) => void } | null {
+  return useContext(DialogPageContext)
 }
 
 /** A dialog's name - the type scale's title, 16/24 600. One size for every dialog in four apps. */
@@ -276,8 +321,17 @@ export function DialogHeader({ title, icon, subtitle, actions, titleId, wrapTitl
   wrapTitle?: boolean
   className?: string
 }) {
+  // On a phone page the back arrow leads the header (DialogShell's `phonePage`).
+  const page = useContext(DialogPageContext)
+  const register = page?.register
+  useLayoutEffect(() => {
+    if (!register) return
+    register(true)
+    return () => register(false)
+  }, [register])
   return (
-    <div className={cn('flex items-start gap-3 px-4 sm:px-6 py-4 short:py-2 border-b border-line/45 shrink-0', className)}>
+    <div data-dialog-head="" className={cn('flex items-start gap-3 px-4 sm:px-6 py-4 short:py-2 border-b border-line/45 shrink-0', className)}>
+      {page?.back && <div className="sm:hidden -my-3 shrink-0 flex items-center">{page.back}</div>}
       {icon && <div className="shrink-0 h-7 flex items-center [&>svg]:w-5 [&>svg]:h-5">{icon}</div>}
       <div className="flex-1 min-w-0">
         <DialogTitle id={titleId} className={wrapTitle ? 'break-words' : 'truncate'}>{title}</DialogTitle>
@@ -324,7 +378,7 @@ export function DialogBody({ children, scroll, centered, flush, className }: {
 export function DialogFooter({ children, start, wrap, className }: { children: ReactNode; start?: ReactNode; wrap?: boolean; className?: string }) {
   return (
     // Fades in: a dialog that moves through steps swaps its footer, and the new one should arrive.
-    <div className={cn('flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2 border-t border-line/45 shrink-0 animate-fade-in', wrap && 'flex-wrap gap-y-2', className)}>
+    <div data-dialog-foot="" className={cn('flex items-center justify-end gap-3 px-4 sm:px-6 py-4 short:py-2 border-t border-line/45 shrink-0 animate-fade-in', wrap && 'flex-wrap gap-y-2', className)}>
       {/* A status line comes and goes by fading (Presence), keeping its place at the left. */}
       <Presence show={!!start} collapse={false} className="mr-auto min-w-0">
         <div className="min-w-0 flex items-center gap-3 text-xs">{start}</div>

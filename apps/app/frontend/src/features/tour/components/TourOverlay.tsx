@@ -509,9 +509,10 @@ export function TourOverlay() {
 
   if (acting) {
     // A STEP THE READER DOES is no modal: the highlighted control - a button, a dialog the page opened - keeps its clicks
-    // and its keys, and the rest of the screen is dimmed and does not take a click.
+    // and its keys, and the rest of the screen is dimmed and does not take a click. On the kit's `z-guide` layer, under
+    // `z-float`: a list or menu the control opens is drawn above the dimming, clickable where it spills past the control.
     return createPortal(
-      <div className="fixed inset-0 z-tour pointer-events-none">
+      <div className="fixed inset-0 z-guide pointer-events-none">
         {rect && (
           <>
             <div aria-hidden="true" data-scrim=""

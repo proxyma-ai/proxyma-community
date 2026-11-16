@@ -93,14 +93,16 @@ export function InlineNotice({ tone = 'neutral', children, action, size = 'sm', 
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('flex items-start gap-2 animate-fade-in', size === 'md' ? 'text-sm' : 'text-xs', ink, className)}
+      // The action goes under the words, at the left, when 12rem of them does not fit beside it (as ListRow's), so a
+      // sentence is never squeezed into a narrow column beside its button on a phone (the full test, 2026-11-16).
+      className={cn('flex flex-wrap items-start gap-2 animate-fade-in', size === 'md' ? 'text-sm' : 'text-xs', ink, className)}
     >
       {tone === 'progress'
         ? <Spinner size={glyph} className="mt-0.5" />
         : tone === 'done' && !Icon
           ? <Check size={glyph} className="shrink-0 mt-0.5 text-brand-legible" aria-hidden="true" />
           : Icon && <Icon size={glyph} className={cn('shrink-0 mt-0.5', tone === 'done' && 'text-brand-legible')} aria-hidden="true" />}
-      <span className="min-w-0 flex-1">{children}</span>
+      <span className={cn('flex-1', action ? 'min-w-[min(12rem,100%)]' : 'min-w-0')}>{children}</span>
       {action && <span className="shrink-0">{action}</span>}
     </div>
   )

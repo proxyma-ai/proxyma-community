@@ -365,11 +365,15 @@ export function PromptCard({ icon: Icon, tone = 'brand', eyebrow, title, onTitle
           {caption && <p className="text-xs text-ink-caption mt-1 break-words">{caption}</p>}
         </div>
       </div>
-      {children && <div className="pl-7">{children}</div>}
+      {children && <div className="sm:pl-7">{children}</div>}
       {(actions || status) && (
-        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          {status && <span className="mr-auto flex items-center gap-2 text-xs text-ink-caption">{status}</span>}
-          {actions}
+        // ON A PHONE ONE BUTTON A ROW, the card's width (2026-11-16, the mobile pass): three buttons wrapped onto
+        // two right-aligned lines, Deny alone on the second. The time left above them; from `sm` the row as before.
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-2">
+          {status && <span className="sm:mr-auto flex items-center gap-2 text-xs text-ink-caption">{status}</span>}
+          {actions && (
+            <div className="flex flex-col gap-2 [&>*]:w-full [@media(max-width:639px)]:[&>*]:!ml-0 sm:contents sm:[&>*]:w-auto">{actions}</div>
+          )}
         </div>
       )}
     </div>
@@ -415,7 +419,8 @@ export function ChoiceRow({ checked, multi, label, description, disabled, onTogg
 }) {
   const box = cn(
     // Chosen: the brand's border and mark on the neutral selected fill - never a teal fill.
-    'w-full flex items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors',
+    // 44px on glass (touch:min-h-tap, 2026-11-16 - a row was 36px, the only answer control under the touch size).
+    'w-full flex items-start gap-3 rounded-md border px-3 py-2 touch:min-h-tap touch:items-center text-left transition-colors',
     checked ? 'border-brand-solid bg-surface-alt' : 'border-line/60 mouse:hover:border-line',
     disabled && 'opacity-60 cursor-default',
   )
@@ -690,6 +695,9 @@ export function ChatStartLinks({ primary, links, onStage = false }: {
   const quiet = cn(textLink('quiet'), size, tap)
   const P = primary?.icon
   return (
+    // ONE LINE THAT WRAPS, from the left edge on a phone (2026-11-16, the maintainer: "place the 'Add a source',
+    // 'Skills', ... in one line, and let them auto wrap"; a link a row had been tried the same day). From `sm` centered
+    // under the composer, as before.
     <div className={cn(
       'flex flex-wrap items-center gap-y-2 touch:gap-y-0 justify-start',
       onStage ? 'gap-x-6' : 'gap-x-4 sm:justify-center',

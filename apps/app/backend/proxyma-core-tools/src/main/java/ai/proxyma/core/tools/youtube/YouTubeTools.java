@@ -378,9 +378,28 @@ public class YouTubeTools {
                 return failure(e.getMessage() + " It is not known whether the reply was posted - check the comment with "
                         + "listYouTubeComments before trying again.");
             }
-            return failure(describe(e));
+            return refusedByYouTube(describe(e));
+        } catch (YouTubeRefusalException e) {
+            return refusedByYouTube(e.getMessage());
         } catch (Exception e) {
             return failure(describe(e));
+        }
+    }
+
+    /**
+     * A reply YouTube itself refused - it answered, with an error - marked so (ApprovalContexts.REFUSED_BY): only such a
+     * failure counts toward giving a comment up (CommentQueue.postFailed), never one Proxyma made before sending anything.
+     */
+    static Map<String, Object> refusedByYouTube(String message) {
+        Map<String, Object> out = new LinkedHashMap<>(failure(message));
+        out.put(ai.proxyma.core.chat.approval.ApprovalContexts.REFUSED_BY, "YouTube");
+        return out;
+    }
+
+    /** YouTube answered a reply with a refusal it gave a reason for. */
+    static final class YouTubeRefusalException extends IllegalStateException {
+        YouTubeRefusalException(String message) {
+            super(message);
         }
     }
 
@@ -1349,7 +1368,7 @@ public class YouTubeTools {
     // What the model is told when YouTube refuses a reply - by the reason YouTube gives.
     private static RuntimeException replyRefused(ApiClient api, ApiResponse answer) {
         if (YouTubeCalls.reasons(answer).contains(YouTubeCalls.SHARED_QUOTA)) {
-            return new IllegalStateException(YouTubeCalls.SHARED_QUOTA_SPENT + " Nothing was posted; try again after "
+            return new YouTubeRefusalException(YouTubeCalls.SHARED_QUOTA_SPENT + " Nothing was posted; try again after "
                     + "midnight Pacific time, when it resets.");
         }
         String reason = reason(answer);
@@ -1366,7 +1385,7 @@ public class YouTubeTools {
                             + "try again tomorrow.";
             default -> null;
         };
-        return sentence != null ? new IllegalStateException(sentence) : api.failure(answer);
+        return sentence != null ? new YouTubeRefusalException(sentence) : api.failure(answer);
     }
 
     private static String reason(ApiResponse response) {

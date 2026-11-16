@@ -158,6 +158,51 @@ class YouTubeCommentSyncTest {
     }
 
     @Test
+    @DisplayName("a batch (2026-11-13): new comments newest first until the batch is full, the ones already fetched passed over; the next batch goes on from there; a recheck alone reads no listing")
+    void batchStopsAtItsSize() {
+        api.on("GET", "/youtube/v3/commentThreads").json("{'nextPageToken':'p2','items':["
+                + thread("t1", comment("t1", "Lan", "UCa", "Newest", "2026-11-05T07:00:00Z"))
+                + "," + thread("t2", comment("t2", "Minh", "UCb", "Second", "2026-11-05T06:00:00Z"))
+                + "," + thread("t3", comment("t3", "Hoa", "UCc", "Third", "2026-11-05T05:00:00Z")) + "]}");
+        api.on("GET", "/youtube/v3/commentThreads").query("pageToken", "p2").json("{'items':["
+                + thread("t4", comment("t4", "Tu", "UCd", "Fourth", "2026-11-04T05:00:00Z"))
+                + "," + thread("t5", comment("t5", "Nam", "UCe", "Fifth", "2026-11-04T04:00:00Z")) + "]}");
+
+        // t1 is already in the queue: the batch of two is t2 and t3, and the page after is not asked.
+        ChannelCommentsProvider.Pass first = sync.batch("owner", connectionId, ChannelCommentsProvider.Cursor.START, List.of(), 2,
+                id -> id.equals("t1"));
+        assertThat(first.pending()).extracting(ChannelCommentsProvider.Comment::commentId).contains("t2", "t3").doesNotContain("t4");
+        assertThat(api.requests("/youtube/v3/commentThreads")).extracting(r -> r.param("pageToken")).containsExactly((String) null);
+        assertThat(first.next().newSince()).as("full before the new ones ended: the next batch reads them again").isNull();
+
+        // The next batch passes over all three and takes the next two.
+        api.reset();
+        api.on("GET", "/youtube/v3/channels").json("{'items':[{'id':'" + CHANNEL + "','snippet':{'title':'Cam Am Tieu Dao'},"
+                + "'contentDetails':{'relatedPlaylists':{'uploads':'UUowner'}}}]}");
+        api.on("GET", "/youtube/v3/videos").json("{'items':[]}");
+        api.on("GET", "/youtube/v3/commentThreads").json("{'nextPageToken':'p2','items':["
+                + thread("t1", comment("t1", "Lan", "UCa", "Newest", "2026-11-05T07:00:00Z"))
+                + "," + thread("t2", comment("t2", "Minh", "UCb", "Second", "2026-11-05T06:00:00Z"))
+                + "," + thread("t3", comment("t3", "Hoa", "UCc", "Third", "2026-11-05T05:00:00Z")) + "]}");
+        api.on("GET", "/youtube/v3/commentThreads").query("pageToken", "p2").json("{'items':["
+                + thread("t4", comment("t4", "Tu", "UCd", "Fourth", "2026-11-04T05:00:00Z"))
+                + "," + thread("t5", comment("t5", "Nam", "UCe", "Fifth", "2026-11-04T04:00:00Z")) + "]}");
+        java.util.Set<String> held = java.util.Set.of("t1", "t2", "t3");
+        ChannelCommentsProvider.Pass second = sync.batch("owner", connectionId, first.next(), List.of(), 2, held::contains);
+        assertThat(second.pending()).extracting(ChannelCommentsProvider.Comment::commentId).filteredOn(id -> !held.contains(id))
+                .containsExactly("t4", "t5");
+
+        // A recheck alone: the threads asked for, and no listing of new comments.
+        api.reset();
+        api.on("GET", "/youtube/v3/channels").json("{'items':[{'id':'" + CHANNEL + "','snippet':{'title':'Cam Am Tieu Dao'},"
+                + "'contentDetails':{'relatedPlaylists':{'uploads':'UUowner'}}}]}");
+        api.on("GET", "/youtube/v3/commentThreads").json("{'items':[]}");
+        ChannelCommentsProvider.Pass recheck = sync.batch("owner", connectionId, second.next(), List.of("t2"), 0, held::contains);
+        assertThat(recheck.failed()).isFalse();
+        assertThat(api.requests("/youtube/v3/commentThreads")).as("only the recheck").allSatisfy(r -> assertThat(r.param("id")).isNotNull());
+    }
+
+    @Test
     @DisplayName("the comments still held open are asked by their threads, fifty a call: one answered since, one whose thread is gone, one still waiting")
     void recheck() {
         api.on("GET", "/youtube/v3/commentThreads").json("{'items':[]}");

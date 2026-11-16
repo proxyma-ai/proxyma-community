@@ -65,6 +65,15 @@ public interface ConnectionPlugin {
     }
 
     /**
+     * The service's daily quota for one cloud project, in the units {@link #requestUnits} counts - its default, as the
+     * service documents it; 0 for a service that meters none. What a person's own client is shown against
+     * (OAuth2ConnectionService.usageToday): the service states no quota left to an app, so Proxyma counts what it spent.
+     */
+    default long dailyUnits() {
+        return 0;
+    }
+
+    /**
      * Whether a request only asks whose account the connection signs in as - YouTube's {@code channels.list mine}. A
      * page's such request goes through a small daily reserve once the built-in client's share is spent
      * (BuiltInQuota.spendReserve), so a channel connected then is still named after itself (2026-11-11).

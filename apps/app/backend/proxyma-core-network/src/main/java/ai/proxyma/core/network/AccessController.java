@@ -24,6 +24,7 @@ import java.util.Map;
  *       {@code access_required} before this runs unless the caller is already in.</li>
  *   <li>{@code GET /api/v1/access/token} - the install's {@code pxm_} token, for the MCP client
  *       snippets in Settings > AI Assistants. Only somebody already in can read it.</li>
+ *   <li>{@code GET /api/v1/access/claude-extension} - the same, packed as a Claude Desktop extension.</li>
  * </ul>
  */
 @RestController
@@ -58,5 +59,19 @@ public class AccessController {
     @GetMapping("/token")
     public Map<String, String> token() {
         return Map.of("token", gate.bearerToken());
+    }
+
+    /**
+     * Proxyma as a Claude Desktop extension (ClaudeExtension): a {@code .mcpb} file carrying this install's {@code /mcp}
+     * address - as the page reached it - and its token. Only somebody already in can download it, as the token above.
+     */
+    @GetMapping("/claude-extension")
+    public ResponseEntity<byte[]> claudeExtension(ServerWebExchange exchange) throws java.io.IOException {
+        java.net.URI uri = exchange.getRequest().getURI();
+        String origin = uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Proxyma.mcpb\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType("application/zip"))
+                .body(ClaudeExtension.pack(origin + "/mcp", gate.bearerToken()));
     }
 }

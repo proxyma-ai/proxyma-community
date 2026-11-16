@@ -93,6 +93,9 @@ export function Popover({
     const onPointerDown = (e: PointerEvent) => {
       const t = e.target as Node
       if (anchorRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      // A press in ANOTHER floating panel - a Select's list opened from inside this one (FilterRow's More) - is a
+      // press in this panel's own work, as the scroll rule below says of a scroll there.
+      if (t instanceof Element && t.closest('[data-floating-panel]')) return
       setOpen(false)
     }
     const onKeyDown = (e: KeyboardEvent) => {

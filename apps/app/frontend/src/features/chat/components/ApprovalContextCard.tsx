@@ -1,6 +1,6 @@
 import { CornerLeftUp } from 'lucide-react'
 import { Fragment, createContext, useContext, type ReactNode } from 'react'
-import { ExternalLink, MetaList, Readout, TEXT, Tooltip, cn } from '@/components/ui/kit'
+import { ExternalLink, MetaList, Readout, ShowMore, TEXT, Tooltip, cn } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 import {
   approvalContextRows, commentCard, foldCommentAge, foldContextLinks,
@@ -183,8 +183,13 @@ export function ThreadLine({ card, className }: { card: CommentCard; className?:
 export function CommentTitle({ card, className }: { card: CommentCard; className?: string }) {
   const { t } = useTranslation()
   const words = <span className="whitespace-pre-line [overflow-wrap:anywhere]">{card.comment.text}</span>
-  if (!card.comment.href) return <p className={cn(TEXT.label, 'min-w-0', className)}>{words}</p>
+  // ON A PHONE SIX LINES AND "SHOW MORE" (the kit's ShowMore; the mobile audit, 2026-11-16): a long comment made its
+  // card several screens tall. Whole from `sm`, as before.
+  if (!card.comment.href) {
+    return <ShowMore more={t('Show more')} less={t('Show less')}><p className={cn(TEXT.label, 'min-w-0', className)}>{words}</p></ShowMore>
+  }
   return (
+    <ShowMore more={t('Show more')} less={t('Show less')}>
     <p className={cn(TEXT.label, 'min-w-0', className)}>
       <Tooltip label={t('View comment')} className="inline">
         {/* `inline`, not the link's own inline-flex, and its glyph inline too (the preflight makes an svg a
@@ -194,6 +199,7 @@ export function CommentTitle({ card, className }: { card: CommentCard; className
         </ExternalLink>
       </Tooltip>
     </p>
+    </ShowMore>
   )
 }
 

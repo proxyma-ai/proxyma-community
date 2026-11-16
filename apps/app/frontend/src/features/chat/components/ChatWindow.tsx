@@ -100,7 +100,7 @@ export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], l
   const messages = useMemo(() => personOnly ? personView(allMessages) : allMessages, [personOnly, allMessages])
   // The thread's side gutter: the page's own (PAGE_GUTTER) on the chat page - 12px on a phone, 24px
   // from `sm` - so the thread lines up with the header (the UI review, 2026-10-28); 12px in a panel.
-  const gutter = compact ? 'px-3' : 'px-3 sm:px-6'
+  const gutter = compact ? 'px-3' : 'px-4 sm:px-6'
   const askedQuestions = useChatStore(s => s.pendingQuestions)
   const pendingQuestions = can.questions ? askedQuestions : NO_QUESTIONS
   // NOT WHILE CONDENSING, nor on the render that ends it. A condensation adds nothing to read, and

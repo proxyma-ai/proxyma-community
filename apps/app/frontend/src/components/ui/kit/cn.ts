@@ -23,7 +23,7 @@ const twMerge = extendTailwindMerge({
     classGroups: {
       // `text-code` is a SIZE (13/20, the code face's own); unregistered, twMerge took it for a
       // color and dropped it beside any `text-ink-*`.
-      'font-size': [{ text: ['code'] }],
+      'font-size': [{ text: ['code', 'page', 'section'] }],
       duration: [{ duration: ['fast', 'base', 'slow'] }],
       shadow: [{ shadow: ['card', 'float', 'well'] }],
       z: [{ z: ['raised', 'sticky', 'header', 'dropzone', 'dialog', 'toast', 'float', 'tooltip', 'alert', 'tour', 'status'] }],

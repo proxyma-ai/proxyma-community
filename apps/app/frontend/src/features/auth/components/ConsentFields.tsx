@@ -57,7 +57,7 @@ export function ConsentFields({
           {/* ONE KEY with the three documents as slots (Rich), so a translation can order the
               sentence its own way - it was three fragments around the links. */}
           <Rich
-            text={t('I have read and accept the {terms}, {privacy} and {eula}.')}
+            text={t('I have read, understood and accept the {terms}, {privacy} and {eula}.')}
             parts={{
               terms: <ExternalLink href={termsUrl}>{t('Terms of Service')}</ExternalLink>,
               privacy: <ExternalLink href={privacyUrl}>{t('Privacy Policy')}</ExternalLink>,

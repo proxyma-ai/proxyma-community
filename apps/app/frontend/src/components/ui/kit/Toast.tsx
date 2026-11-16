@@ -44,14 +44,16 @@ export function Toast({ tone, children, actions, onDismiss, dismissLabel, leavin
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('pointer-events-auto w-full sm:w-96 rounded-lg border surface-float shadow-float px-4 py-4 flex items-start gap-3', leaving ? 'animate-slide-out-right' : 'animate-slide-in-right', className)}
+      className={cn('relative pointer-events-auto w-full sm:w-96 rounded-lg border surface-float shadow-float pl-4 pr-12 py-4 flex items-start gap-3', leaving ? 'animate-slide-out-right' : 'animate-slide-in-right', className)}
     >
       <span className="mt-px">{ICON[tone]}</span>
       <div className="flex-1 min-w-0 text-sm text-ink-primary">
         <div>{children}</div>
         {actions && <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">{actions}</div>}
       </div>
-      <button type="button" onClick={onDismiss} aria-label={dismissLabel} className={cn(iconButton('sm'), '-mr-1')}>
+      {/* THE CLOSE X IS IN THE TOP RIGHT CORNER, always (2026-11-16, the maintainer): in the row, a 44px target on glass
+          set its glyph beside a wrapped message's second line. Pinned to the corner, level with the first line. */}
+      <button type="button" onClick={onDismiss} aria-label={dismissLabel} className={cn(iconButton('sm'), 'absolute top-3 right-3 touch:top-1 touch:right-1')}>
         <X size={16} aria-hidden="true" />
       </button>
     </div>

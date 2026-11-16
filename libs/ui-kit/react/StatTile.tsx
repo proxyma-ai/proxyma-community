@@ -35,7 +35,7 @@ export function StatTile({ label, value, sub, icon: Icon, loading, selected, onS
     <>
       <span className="flex items-center gap-2 mb-1 min-w-0">
         {Icon && <Icon size={14} className="shrink-0 text-ink-caption" aria-hidden="true" />}
-        <span className={cn('truncate', size === 'display' ? 'text-sm text-ink-caption' : 'text-xs text-ink-caption')}>{label}</span>
+        <span className={cn('min-w-0', size === 'display' ? 'text-sm text-ink-caption' : 'text-xs text-ink-caption')}>{label}</span>
       </span>
       {loading ? (
         <Skeleton className="h-7 w-16" />
@@ -57,18 +57,26 @@ export function StatTile({ label, value, sub, icon: Icon, loading, selected, onS
     : <div className={cls}>{body}</div>
 }
 
-/** A row of tiles: two across on a phone, four from `sm`, `gap-3` - the spacing table's grid. */
+/**
+ * A row of tiles, ITS COLUMNS FROM ITS OWN WIDTH (2026-11-16, the tablet pass): a container query, not the window's
+ * width - on an iPad on its side a channel's page column is 470px of a 1024px window, and four tiles to a row cut their
+ * labels to "Engaged vi". One column under 18rem, two from there (a phone's 351px column - a label wraps rather than
+ * being cut short, so two fit), the asked number once each tile has about
+ * 9rem; `gap-3` - the spacing table's grid. A label wraps rather than being cut short.
+ */
 export function StatGrid({ children, columns = 4, className }: { children: ReactNode; columns?: 2 | 3 | 4 | 5 | 6; className?: string }) {
   return (
-    <div className={cn(
-      'grid grid-cols-2 gap-3',
-      columns === 3 && 'sm:grid-cols-3',
-      columns === 4 && 'sm:grid-cols-4',
-      columns === 5 && 'sm:grid-cols-3 lg:grid-cols-5',
-      columns === 6 && 'sm:grid-cols-3 lg:grid-cols-6',
-      className,
-    )}>
-      {children}
+    <div className="[container-type:inline-size]">
+      <div className={cn(
+        'grid grid-cols-1 [@container(min-width:18rem)]:grid-cols-2 gap-3',
+        columns === 3 && '[@container(min-width:30rem)]:grid-cols-3',
+        columns === 4 && '[@container(min-width:40rem)]:grid-cols-4',
+        columns === 5 && '[@container(min-width:30rem)]:grid-cols-3 [@container(min-width:52rem)]:grid-cols-5',
+        columns === 6 && '[@container(min-width:30rem)]:grid-cols-3 [@container(min-width:60rem)]:grid-cols-6',
+        className,
+      )}>
+        {children}
+      </div>
     </div>
   )
 }

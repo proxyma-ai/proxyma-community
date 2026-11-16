@@ -147,6 +147,21 @@ public final class ProxymaApp implements AutoCloseable {
         }
     }
 
+    /**
+     * Accepts the legal documents in force, as a person does at the start's gate (LegalAcceptances) - otherwise every
+     * page a browser test opens is under that gate. Once per data directory: a restart reads the acceptance back.
+     */
+    private static void acceptLegalDocuments(Http client) {
+        Http.Response status = client.get("/api/v1/desktop/legal");
+        if (status.status() != 200) throw new AssertionError("the legal status was refused: " + status.status());
+        if (status.at("/accepted").asBoolean()) return;
+        Http.Response accepted = client.post("/api/v1/desktop/legal/accept",
+                Map.of("version", status.at("/version").asText()));
+        if (accepted.status() != 200) {
+            throw new AssertionError("the legal documents were not accepted: " + accepted.status() + " " + accepted.body());
+        }
+    }
+
     // -- Shared instances ------------------------------------------------------
 
     private static final Map<Mode, ProxymaApp> SHARED = new ConcurrentHashMap<>();
@@ -278,6 +293,7 @@ public final class ProxymaApp implements AutoCloseable {
         ProxymaApp app = boot(mode, jar, data, env, properties);
         app.accessCode = accessCode;
         enter(app.api, accessCode);
+        acceptLegalDocuments(app.api);
         app.vectorStore = withChroma;
         return app;
     }

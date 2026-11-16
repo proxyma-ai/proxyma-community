@@ -221,6 +221,7 @@ export const LAYERS: { cls: string; value: number; use: string }[] = [
   { cls: 'z-dropzone', value: 9000, use: 'The full-window drop layer.' },
   { cls: 'z-dialog', value: 9999, use: 'Every dialog, the Settings window, the lightbox.' },
   { cls: 'z-toast', value: 10010, use: 'The toast stack.' },
+  { cls: 'z-guide', value: 10020, use: 'A walkthrough step the reader does: the dimming around its control, under what that control opens.' },
   { cls: 'z-float', value: 10030, use: 'Menus, popovers, Select and Combobox lists, the date picker, submenus.' },
   { cls: 'z-tooltip', value: 10035, use: 'A tooltip.' },
   { cls: 'z-alert', value: 10040, use: '"Discard unsaved changes?" over its dialog.' },
@@ -244,7 +245,7 @@ export const BREAKPOINTS: { cls: string; query: string; use: string }[] = [
 /** The layout constants (layout.ts and friends). */
 export const LAYOUT: { name: string; value: string; use: string }[] = [
   { name: 'PAGE_COLUMN', value: 'max-w-5xl 2xl:max-w-7xl mx-auto', use: 'The header\'s width - every page.' },
-  { name: 'PAGE_GUTTER', value: 'px-3 sm:px-6', use: '12px on a phone, 24px from sm.' },
+  { name: 'PAGE_GUTTER', value: 'px-4 sm:px-6', use: '12px on a phone, 24px from sm.' },
   { name: 'PROSE_MEASURE', value: 'max-w-[70ch] lg:max-w-[min(70ch,calc(66.6667%-1rem))]', use: 'Marketing prose - at most about 70 characters a line.' },
   { name: 'THREAD_COLUMN', value: 'max-w-3xl 2xl:max-w-4xl mx-auto w-full', use: 'The chat thread.' },
   { name: 'LIST_PAGE_SIZE', value: '20', use: 'Every list of records pages at twenty (ListPager).' },

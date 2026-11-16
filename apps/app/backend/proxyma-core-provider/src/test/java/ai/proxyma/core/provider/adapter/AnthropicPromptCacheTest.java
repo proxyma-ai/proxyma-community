@@ -37,11 +37,13 @@ class AnthropicPromptCacheTest {
     }
 
     @Test
-    @DisplayName("no choice at all is five minutes")
+    @DisplayName("no lifetime asked is a one-shot call's: its system prompt alone, for five minutes (2026-11-14)")
     void nullIsTheDefault() {
+        // A turn always asks for a lifetime (ChatService); a session naming none is a one-shot call - the YouTube team's -
+        // whose message would be written to a cache nothing reads (AnthropicOneShotCache).
         AnthropicCacheOptions options = AnthropicAdapter.cacheOptions(null);
 
-        assertEquals(AnthropicCacheStrategy.CONVERSATION_HISTORY, options.getStrategy());
+        assertEquals(AnthropicCacheStrategy.SYSTEM_ONLY, options.getStrategy());
         assertEquals(AnthropicCacheTtl.FIVE_MINUTES, ttlOf(options, MessageType.SYSTEM));
     }
 

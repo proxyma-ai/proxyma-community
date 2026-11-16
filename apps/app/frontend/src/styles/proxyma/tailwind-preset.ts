@@ -198,6 +198,11 @@ export default {
        *   dropzone  9000   the full-window file drop layer
        *   dialog    9999   every dialog's overlay, the Settings window, the lightbox
        *   toast     10010  the toast stack - above dialogs, so a save inside one is acknowledged
+       *   guide     10020  a walkthrough step the reader DOES: the screen dimmed around the control it
+       *                    points at, and its card - under `float`, so a list or menu that control opens
+       *                    is drawn above the dimming and can be picked where it spills past the
+       *                    control (2026-11-16: a model list in the Add a channel dialog was dimmed and
+       *                    could not be clicked below the dialog's edge)
        *   float     10030  everything anchored to a control: menus, popovers, a Select's list, a
        *                    Combobox's list, the date picker, submenus - above dialogs, since a
        *                    dialog is where most of them open
@@ -213,6 +218,7 @@ export default {
         dropzone: '9000',
         dialog: '9999',
         toast: '10010',
+        guide: '10020',
         float: '10030',
         tooltip: '10035',
         alert: '10040',
@@ -237,12 +243,20 @@ export default {
       // NOTHING A PERSON READS IS UNDER 12px. A text field on a touch screen is 16px whatever this says
       // (proxyma-primitives.css), or Safari zooms in and stays zoomed.
       fontSize: {
-        xs:     ['12px', { lineHeight: '16px' }],
-        sm:     ['13px', { lineHeight: '18px' }],
-        base:   ['13px', { lineHeight: '20px' }],
-        lg:     ['14px', { lineHeight: '20px' }],
-        xl:     ['16px', { lineHeight: '22px' }],
-        code:   ['12px', { lineHeight: '18px' }],
+        // VARIABLES WITH THE DESKTOP SIZE AS THEIR DEFAULT (2026-11-16): an app shell on a touch screen raises each a
+        // step (proxyma-tokens.css, "THE TYPE SCALE ON GLASS"), where every text field is 16px for Safari and the
+        // 13px labels beside it read as a size apart. The landing site sets none and keeps these.
+        xs:     ['var(--text-xs, 12px)', { lineHeight: 'var(--leading-xs, 16px)' }],
+        sm:     ['var(--text-sm, 13px)', { lineHeight: 'var(--leading-sm, 18px)' }],
+        base:   ['var(--text-base, 13px)', { lineHeight: 'var(--leading-base, 20px)' }],
+        lg:     ['var(--text-lg, 14px)', { lineHeight: 'var(--leading-lg, 20px)' }],
+        xl:     ['var(--text-xl, 16px)', { lineHeight: 'var(--leading-xl, 22px)' }],
+        code:   ['var(--text-code, 12px)', { lineHeight: 'var(--leading-code, 18px)' }],
+        // TWO ROLES WITH SIZES OF THEIR OWN (2026-11-16, the mobile audit: four roles within 3px on a phone): a page's
+        // title and a section's heading. The desktop sizes of xl and sm; on glass a large title and a heading a step
+        // over the text (proxyma-tokens.css), so a phone's screen has three levels that read apart.
+        page:    ['var(--text-page, 16px)', { lineHeight: 'var(--leading-page, 22px)' }],
+        section: ['var(--text-section, 13px)', { lineHeight: 'var(--leading-section, 18px)' }],
         '3xl':  ['30px', { lineHeight: '38px', letterSpacing: '-0.02em' }],
         '4xl':  ['36px', { lineHeight: '44px', letterSpacing: '-0.02em' }],
         '5xl':  ['48px', { lineHeight: '56px', letterSpacing: '-0.02em' }],

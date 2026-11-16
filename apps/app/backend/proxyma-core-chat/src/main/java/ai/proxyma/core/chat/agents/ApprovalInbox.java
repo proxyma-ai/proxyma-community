@@ -1561,6 +1561,7 @@ public class ApprovalInbox {
                     edited == null ? r.getContext() : edited.context(), note, false, true);
             return;
         }
+        r.setResult(clipped);
         requests.findById(r.getId()).ifPresent(row -> {
             row.setResult(clipped);
             if (succeeded) row.setContext(linked(row.getContext(), clipped));
@@ -1731,6 +1732,7 @@ public class ApprovalInbox {
             // Past its tries or its window: a failure, with the reason it kept being refused.
             outcome = "{\"success\":false,\"error\":" + quote(ApprovalContexts.errorOf(result).orElse("Refused for a limit.")
                     + " Still refused after " + attempts + " tries over " + RETRY_WINDOW.toHours() + " hours, so it was not made.")
+                    + ApprovalContexts.refusedBy(result).map(by -> ",\"" + ApprovalContexts.REFUSED_BY + "\":" + quote(by)).orElse("")
                     + "}";
         }
         String clipped = AgentInbox.clip(outcome, ToolApprovalRequest.RESULT_MAX);
@@ -1821,7 +1823,7 @@ public class ApprovalInbox {
         try {
             events.publishEvent(new ApprovalDecidedEvent(r.getId().toString(), r.getConversationId(),
                     r.getRootConversationId(), r.getUserId(), r.getToolName(), outcome, draftArguments, arguments, context,
-                    note, succeeded, held, automatic));
+                    note, succeeded, held, automatic, ToolApprovalRequest.APPROVED.equals(outcome) ? r.getResult() : null));
         } catch (RuntimeException e) {
             log.warn("[Approvals] what request {} taught could not be kept: {}", r.getId(), e.getMessage());
         }
@@ -2194,6 +2196,35 @@ public class ApprovalInbox {
      * Of these subjects, those with an APPROVED write of this person whose call went {@code outcome} (DONE, FAILED) - an
      * approved one still being made is in neither (2026-11-11 review). Empty on a failure.
      */
+    /**
+     * Of these subjects, those whose approved write of this person failed when it ran, each with the newest such call's
+     * result - which says whether the service itself refused it (ApprovalContexts.refusedBy). Empty on a failure.
+     */
+    public Map<String, String> failedRuns(String userId, java.util.Collection<String> subjects) {
+        if (subjects == null || subjects.isEmpty()) return Map.of();
+        try {
+            String user = blankToNull(userId);
+            List<String> outcomes = List.of(ToolApprovalRequest.RAN_FAILED);
+            List<ToolApprovalRequest> rows = user == null
+                    ? requests.findBySubjectInAndUserIdIsNullAndStatusAndRunOutcomeIn(subjects, ToolApprovalRequest.APPROVED, outcomes)
+                    : requests.findBySubjectInAndUserIdAndStatusAndRunOutcomeIn(subjects, user, ToolApprovalRequest.APPROVED, outcomes);
+            Map<String, ToolApprovalRequest> newest = new LinkedHashMap<>();
+            for (ToolApprovalRequest r : rows == null ? List.<ToolApprovalRequest>of() : rows) {
+                newest.merge(r.getSubject(), r, (a, b) -> ranAt(b).isAfter(ranAt(a)) ? b : a);
+            }
+            Map<String, String> out = new LinkedHashMap<>();
+            newest.forEach((subject, r) -> out.put(subject, r.getResult() == null ? "" : r.getResult()));
+            return out;
+        } catch (RuntimeException e) {
+            log.warn("[Approvals] could not read which subjects failed: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private static Instant ranAt(ToolApprovalRequest r) {
+        return r.getRanAt() == null ? Instant.EPOCH : r.getRanAt();
+    }
+
     public java.util.Set<String> subjectsRan(String userId, java.util.Collection<String> subjects, String outcome) {
         if (subjects == null || subjects.isEmpty() || outcome == null) return java.util.Set.of();
         try {

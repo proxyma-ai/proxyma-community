@@ -398,6 +398,7 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
       {/* What the checks have been doing moved to Logs on 2026-10-12 - every check, over any
           period, rather than the last 200 since the app started. The heading stays as the way there. */}
       <SignpostSection
+        navigates
         title={t('Logs')}
         caption={t('Every check is recorded in Logs.')}
         action={<edition.AuditLogsLink log="guardrails" onOpenTab={onOpenTab}>{t('Open Logs')}</edition.AuditLogsLink>}

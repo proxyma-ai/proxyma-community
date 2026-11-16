@@ -362,6 +362,15 @@ html[data-app-shell] #root {
     backdrop-filter: blur(var(--blur-float));
   }
 
+  /* A PANEL HANGING FROM THE HEADER BAR - the phone menu, the account menu - is OPAQUE (2026-11-16, the mobile pass):
+     the bar's own backdrop-filter makes it the panel's backdrop root, so the panel's blur saw nothing and the page
+     read through the menu's rows as sharp text. Its float color, solid; what floats anywhere else stays glass. */
+  :where(html[data-app-shell]) .header-bar .surface-float {
+    background-color: rgb(var(--float));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   /* A fixed page HEADER: solid outside an app shell (the landing site's bar, content scrolling
      under it hidden); a glass bar in one. */
   .header-bar {
@@ -811,12 +820,22 @@ html:not([data-motion-ready]) *::after {
   padding-top: 2rem;
   border-top: 1px solid rgb(var(--line) / 0.45);
 }
+/* ON A PHONE A SECTION IS NO CARD (the mobile audit, 2026-11-16: grey page, glass card, bordered field and rules - four
+   grouping devices at once - and a card's text 16px in from the page's title): its heading and its content sit on the
+   page, on the page's own edge, and a hairline with 1.5rem either side sets it off from the next. One device. */
 @media (max-width: 639.98px) {
-  .settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)) {
-    padding: 1rem;
+  .settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)),
+  :where(html[data-app-shell]) .settings-sections > :not([hidden]):not(:is(p, a):first-child):not(:has(.kit-card)) {
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
   .settings-sections > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgb(var(--line) / 0.6);
   }
   :not([hidden]) ~ .settings-subsection:not([hidden]) {
     margin-top: 1.25rem;
@@ -1133,6 +1152,62 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 [data-dialog-panel].surface-float:not(:has(> [data-dialog-body])):has(> :last-child:is([class*="border-t"], [class*="justify-end"])) > :last-child { flex-grow: 0; }
 [data-dialog-panel].surface-float:not(:has(> [data-dialog-body])):has(> :last-child:is([class*="border-t"], [class*="justify-end"])) > :nth-last-child(2) { flex-grow: 1; }
 
+/* ON A PHONE A SIGN-IN FORM IS THE PAGE (AuthLayout; the mobile audit, 2026-11-16): the card's fill, edge, shadow,
+   blur and padding go, so the form sits on the page at the page's gutter rather than floating on it in a box. */
+@media (max-width: 639.98px) {
+  [data-auth-card].surface-float {
+    background-color: transparent !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+}
+
+/* A DIALOG IS A PAGE ON A PHONE (DialogShell `phonePage`; 2026-11-16, the maintainer: "Everything on mobile should be
+   pages, not modals"): the overlay is the VISIBLE screen (the app viewport, so the on-screen keyboard does not cover the
+   foot), the panel fills it - no margin, corner, edge or shadow, solid rather than glass - and its header and footer are
+   pinned while the page scrolls under them. A panel with a fixed height (`fill`, `cap`, the Settings window) is the
+   screen's height and scrolls inside, as it does as a dialog. The back arrow in the header is the way out
+   (DialogHeader), where the backdrop round a floating dialog was. */
+@media (max-width: 639.98px) {
+  [data-dialog-page-overlay] {
+    padding: 0 !important;
+    top: var(--app-top, 0px) !important;
+    bottom: auto !important;
+    height: var(--app-height, 100dvh) !important;
+  }
+  [data-dialog-page].surface-float {
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 100% !important;
+    border-radius: 0 !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    background-color: rgb(var(--surface-float)) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  [data-dialog-page][data-dialog-fixed].surface-float,
+  [data-dialog-page][class*="h-["].surface-float {
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+  [data-dialog-page] [data-dialog-head],
+  [data-dialog-page] [data-dialog-foot] {
+    position: sticky;
+    z-index: 1;
+    background-color: rgb(var(--surface-float));
+  }
+  [data-dialog-page] [data-dialog-head] { top: 0; }
+  [data-dialog-page] [data-dialog-foot] { bottom: 0; }
+}
+
 /* A DATA TABLE STACKS ON A PHONE (TABLE_CLASS): below `sm` each row is a block and each cell a
    line labelled by its `data-label`; a cell without one is the row's name, full width on top. Plain
    CSS: it re-types table display and reads the label with attr(), which no class can say. */
@@ -1150,16 +1225,19 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
     overflow-wrap: anywhere;
     text-align: left;
   }
+  /* LABEL AND VALUE SIDE BY SIDE, BOTH ON THE LEFT (2026-11-16, the mobile pass): the label in a column of its own,
+     the value starting where that column ends - one x down the whole row. Until then the value sat at the right edge,
+     a screen's width from its label. */
   table.table-stack > tbody > tr > td[data-label] {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 1rem;
-    text-align: right;
+    text-align: left;
   }
   table.table-stack > tbody > tr > td[data-label]::before {
     content: attr(data-label);
-    flex-shrink: 0;
+    flex: 0 0 min(40%, 8rem);
     text-align: left;
     font-family: var(--font-ui, inherit);
     font-size: 0.75rem;   /* the caption step, 12/16 */
@@ -1167,6 +1245,17 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
     color: rgb(var(--ink-caption));
   }
   table.table-stack > tbody > tr > td:not([data-label]):first-child { padding-bottom: 0.375rem; }
+  /* A brief table (TABLE_BRIEF): its name and its first two facts; the rest are in the detail its row opens. */
+  table.table-stack.table-stack-brief > tbody > tr > td[data-label] ~ td[data-label] ~ td[data-label] { display: none; }
+  /* A table whose values are SENTENCES (`table-stack-over`) puts each label over its value (2026-11-16, the mobile
+     pass: the site's connectors - "What is indexed" in a 8rem column left "Folders on a Windows file server" three
+     words a line). A table of figures keeps them side by side, a short value a line. */
+  table.table-stack.table-stack-over > tbody > tr > td[data-label] { display: block; }
+  table.table-stack.table-stack-over > tbody > tr > td[data-label]::before { display: block; margin-bottom: 0.125rem; }
+  /* A flush table (TABLE_FLUSH, on the table or on TableCard's card) is on the card's text edge: the card pads it, so a row
+     adds no side padding of its own - it stood 16px in from the heading above it. */
+  .table-flush table.table-stack > tbody > tr,
+  table.table-stack.table-flush > tbody > tr { padding-left: 0; padding-right: 0; }
   /* A cell with nothing in it is no line at all - a label over a blank read as a value missing
      (the UI review's phone pass, 2026-10-28). */
   table.table-stack > tbody > tr > td:empty { display: none; }

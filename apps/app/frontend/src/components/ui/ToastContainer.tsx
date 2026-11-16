@@ -59,9 +59,12 @@ function useLeaving<T extends { id: string }>(items: T[]): Array<{ item: T; leav
  * WHERE A NOTICE THAT CAN WAIT GOES (`placement: 'bottom'`; the self-review of 2026-11-11: the one-time "use Proxyma from
  * your IDE" tip, persistent, sat over the Approvals page's filters): not under the header, where every page keeps its
  * controls, but at the window's foot on the right - and in a conversation in the chat page's own dock above the
- * composer, so it never lies over the send button. Urgent toasts keep the top.
+ * composer, so it never lies over the send button. Urgent toasts keep the top. ON A PHONE it is at the top too
+ * (2026-11-16, the mobile pass): the screen's foot is the new chat's composer and every list's last row, and the toast
+ * took the whole width of both.
  */
-const BOTTOM_LAYER = 'fixed bottom-4 right-3 left-3 sm:left-auto sm:right-6 lg:right-8 z-toast pointer-events-none'
+// On a phone it is UNDER every dialog (z-header): a dialog there is a page, and the tip covered its title.
+const BOTTOM_LAYER = 'fixed top-16 sm:top-auto sm:bottom-4 right-3 left-3 sm:left-auto sm:right-6 lg:right-8 z-header sm:z-toast pointer-events-none'
 
 export function ToastContainer() {
   const { t } = useTranslation()

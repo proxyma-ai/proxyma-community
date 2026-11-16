@@ -585,3 +585,26 @@
   :root[data-app-shell][data-backdrop='gradient']:not([data-mode="dark"]) { --card-alpha: 0.62; --card-edge: rgba(255,255,255,0.7); }
   :root[data-app-shell][data-backdrop='gradient'][data-mode="dark"] { --card: 44 44 44; --card-alpha: 0.5; --card-edge: rgba(255,255,255,0.09); }
 }
+
+/* THE TYPE SCALE ON GLASS (2026-11-16, the maintainer on a phone: "font size doesn't seem right. Check all and every
+   pages"). Every text field on a touch screen is 16px - Safari zooms into a smaller one and never zooms back
+   (proxyma-primitives.css) - and beside it the desktop's 13px labels and 12px captions read as two sizes of type and
+   half a step too small for a hand-held screen. In an app shell on a touch screen each step of the scale moves up one:
+   captions 13, text and labels 15, titles 16, a page's title 18 - a phone's own body and footnote sizes - so a field's
+   16px is the next size up from its label, not a jump. The landing site, which is not an app shell, keeps the desktop
+   scale; its slides and documents set their own. */
+@media (pointer: coarse) {
+  :root[data-app-shell] {
+    --text-xs: 13px;   --leading-xs: 18px;
+    --text-sm: 15px;   --leading-sm: 20px;
+    --text-base: 15px; --leading-base: 22px;
+    --text-lg: 16px;   --leading-lg: 22px;
+    --text-xl: 18px;   --leading-xl: 24px;
+    --text-code: 13px; --leading-code: 20px;
+    /* The large title and the section heading (the mobile audit, 2026-11-16): three levels that read apart -
+       a page 26, a section 17, its text 15. */
+    --text-page: 26px; --leading-page: 32px;
+    --text-section: 17px; --leading-section: 22px;
+  }
+}
+

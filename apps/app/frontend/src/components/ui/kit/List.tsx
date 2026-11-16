@@ -80,7 +80,10 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
   ariaLabel?: string
 }) {
   const text = (
-    <div className="flex-1 min-w-0 flex items-start gap-3">
+    // At least 12rem for the words: a row whose action does not fit beside them puts it UNDER them, at the left (2026-11-16,
+    // the mobile pass - "Reset everything" beside its sentence left the sentence three words a line on a phone). Icon
+    // actions are narrow and stay beside.
+    <div className="flex-1 min-w-[min(12rem,100%)] flex items-start gap-3">
       {leading && <div className="shrink-0 min-h-5 flex items-center">{leading}</div>}
       <div className="flex-1 min-w-0">
         {(title || meta) && (
@@ -100,7 +103,7 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
       {chevron && <ChevronRight size={16} className="text-ink-caption" aria-hidden="true" />}
     </div>
   )
-  const base = cn('flex items-start justify-between gap-3 py-3', className)
+  const base = cn('flex flex-wrap items-start justify-between gap-3 py-3', className)
 
   if (onClick && action) {
     return (

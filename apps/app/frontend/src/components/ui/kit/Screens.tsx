@@ -100,14 +100,17 @@ export function AuthLayout({ logo, title, subtitle, description, back, children,
   return (
     <div className="relative h-full overflow-y-auto">
       {background}
-      <div className="relative z-10 min-h-full flex items-center justify-center px-3 sm:px-4 py-6">
+      {/* ON A PHONE THE FORM IS THE PAGE (the mobile audit, 2026-11-16): no card floating on the page - its fill,
+          edge and shadow go (`[data-auth-card]` in proxyma-primitives.css) - from the top, left-aligned, the title a
+          page's large title. From `sm` the card, centred, as before. */}
+      <div className="relative z-10 min-h-full flex items-start sm:items-center justify-center px-4 py-8 sm:py-6">
         <div className="w-full max-w-[420px]">
-          <div className="surface-float border rounded-lg shadow-float p-6 sm:p-8">
+          <div data-auth-card="" className="surface-float border rounded-lg shadow-float p-6 sm:p-8">
             {back && <div className="mb-4">{back}</div>}
             <div className="flex items-center gap-2 mb-6">{logo}</div>
-            <h1 className={cn(TEXT.title, 'text-center')}>{title}</h1>
-            {subtitle && <p className="mt-1 text-sm text-ink-caption text-center">{subtitle}</p>}
-            {description && <p className="mt-2 text-xs text-ink-caption text-center">{description}</p>}
+            <h1 className={cn(TEXT.pageTitle, 'sm:text-lg text-left sm:text-center')}>{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-ink-caption text-left sm:text-center">{subtitle}</p>}
+            {description && <p className="mt-2 text-xs text-ink-caption text-left sm:text-center">{description}</p>}
             <div className="mt-6">{children}</div>
             {footer && <div className="mt-6 text-left sm:text-center text-sm text-ink-caption">{footer}</div>}
           </div>

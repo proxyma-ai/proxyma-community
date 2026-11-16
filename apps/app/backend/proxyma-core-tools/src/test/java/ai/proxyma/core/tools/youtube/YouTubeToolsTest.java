@@ -365,7 +365,7 @@ class YouTubeToolsTest {
 
         Map<String, Object> out = tools(true).replyToYouTubeComment("c3", "Thanks!");
 
-        assertThat(out).containsEntry("success", false);
+        assertThat(out).containsEntry("success", false).as("Proxyma refused, not YouTube").doesNotContainKey("refusedBy");
         assertThat((String) out.get("error")).startsWith("Not posted: That comment is under a video of another YouTube channel, "
                 + "not \"Cam Am Tieu Dao\"");
         assertThat(api.requests("/youtube/v3/comments")).as("nothing posted").isEmpty();
@@ -386,7 +386,7 @@ class YouTubeToolsTest {
         api.on("POST", "/youtube/v3/comments").status(503).json("{'error':{'code':503}}").then()
                 .json("{'id':'second','snippet':{'videoId':'v2'}}");
         Map<String, Object> out = tools(true).replyToYouTubeComment("c3", "Thanks!");
-        assertThat(out).containsEntry("success", false);
+        assertThat(out).containsEntry("success", false).containsEntry("refusedBy", "YouTube");
         assertThat(api.requests("/youtube/v3/comments")).hasSize(1);
     }
 
@@ -394,7 +394,8 @@ class YouTubeToolsTest {
     @DisplayName("an empty, too long or nameless reply, or a connection whose Write is off, sends nothing")
     void refusedBeforeSending() {
         YouTubeTools tools = tools(true);
-        assertThat(tools.replyToYouTubeComment("c3", "   ")).containsEntry("success", false);
+        // Nothing reached YouTube, so nothing says YouTube refused (ApprovalContexts.REFUSED_BY, 2026-11-14).
+        assertThat(tools.replyToYouTubeComment("c3", "   ")).containsEntry("success", false).doesNotContainKey("refusedBy");
         assertThat(tools.replyToYouTubeComment("c3", "x".repeat(YouTubeTools.MAX_REPLY_CHARS + 1)))
                 .extractingByKey("error").asString().contains("at most 10000 characters");
         assertThat(tools.replyToYouTubeComment(" ", "Hi")).containsEntry("success", false);
@@ -402,8 +403,8 @@ class YouTubeToolsTest {
         verify(resolver, never()).resolve(any(), any(), any(), eq(Access.WRITE));
 
         YouTubeTools readOnly = tools(false);
-        assertThat(readOnly.replyToYouTubeComment("c3", "Hi")).extractingByKey("error").asString()
-                .contains("write is turned off");
+        assertThat(readOnly.replyToYouTubeComment("c3", "Hi")).doesNotContainKey("refusedBy")
+                .extractingByKey("error").asString().contains("write is turned off");
         assertThat(api.requests("/youtube/v3/comments")).isEmpty();
     }
 
@@ -420,7 +421,7 @@ class YouTubeToolsTest {
         api.on("POST", "/youtube/v3/comments").status(403)
                 .json("{'error':{'code':403,'errors':[{'reason':'commentsDisabled'}]}}");
         assertThat(tools(true).replyToYouTubeComment("c3", "Hi")).containsEntry("error",
-                "YouTube refused the reply: comments are turned off on that video.");
+                "YouTube refused the reply: comments are turned off on that video.").containsEntry("refusedBy", "YouTube");
     }
 
     @Test

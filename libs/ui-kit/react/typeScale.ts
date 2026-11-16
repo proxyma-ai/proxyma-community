@@ -27,9 +27,9 @@
  * imports, so `node --test` and any app can read it.
  */
 export const TEXT = {
-  pageTitle: 'text-xl font-semibold text-ink-primary',
+  pageTitle: 'text-page font-semibold text-ink-primary',
   title: 'text-lg font-semibold text-ink-primary',
-  section: 'text-sm font-semibold text-ink-primary',
+  section: 'text-section font-semibold text-ink-primary',
   body: 'text-base text-ink-secondary',
   lead: 'text-lg text-ink-secondary',
   label: 'text-sm font-medium text-ink-primary',

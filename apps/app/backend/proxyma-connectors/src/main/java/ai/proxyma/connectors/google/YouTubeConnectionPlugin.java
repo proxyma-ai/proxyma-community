@@ -182,6 +182,14 @@ public class YouTubeConnectionPlugin implements ConnectionPlugin {
      * update, delete and moderation 50, captions dearer; anything not under {@code /youtube/v3/} - the
      * Analytics and Reporting APIs, metered apart - 0.
      */
+    /** The YouTube Data API's default daily quota for a Google Cloud project: 10,000 units. */
+    public static final long DEFAULT_DAILY_UNITS = 10_000;
+
+    @Override
+    public long dailyUnits() {
+        return DEFAULT_DAILY_UNITS;
+    }
+
     @Override
     public int requestUnits(HttpMethod method, URI uri) {
         String path = uri == null || uri.getRawPath() == null ? "" : uri.getRawPath();

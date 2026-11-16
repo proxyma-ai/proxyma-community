@@ -408,6 +408,26 @@ public class ApprovalContexts {
     }
 
     /** The "error" a call's JSON result states, or empty. */
+    /**
+     * The result field a tool sets on a failure the SERVICE itself answered with - "YouTube" when YouTube refused a reply -
+     * as opposed to one Proxyma made before sending anything (a tool not given to the agent, a check that failed, no
+     * connection). A caller deciding whether trying again is worth it reads it through {@link #refusedBy}.
+     */
+    public static final String REFUSED_BY = "refusedBy";
+
+    /** The service that refused this call, as its result says ({@link #REFUSED_BY}); empty for any other result. */
+    public static Optional<String> refusedBy(String result) {
+        if (result == null || result.isBlank()) return Optional.empty();
+        try {
+            com.fasterxml.jackson.databind.JsonNode n = JSON.readTree(result);
+            if (n == null || !n.isObject()) return Optional.empty();
+            String by = n.path(REFUSED_BY).asText("");
+            return by.isBlank() ? Optional.empty() : Optional.of(by.strip());
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
     public static Optional<String> errorOf(String result) {
         if (result == null || result.isBlank()) return Optional.empty();
         try {

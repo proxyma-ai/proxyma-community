@@ -36,7 +36,9 @@ export const CHART_SERIES_OTHER = 'rgb(var(--chart-series-other))'
 
 /** The axis's labels: 12px in caption ink, the UI face - the type scale's floor (`text-xs`); 11px until
  * the 2026-10-15 readability pass. */
-export const CHART_TICK = { fontSize: 12, fill: CHART_INK.tick } as const
+// The axis's size is the type scale's caption step through its variable (an inline style: an SVG attribute cannot
+// read a variable), so on a touch screen it is 13px as every caption is; `fontSize` stays for recharts' measuring.
+export const CHART_TICK = { fontSize: 12, fill: CHART_INK.tick, style: { fontSize: 'var(--text-xs, 12px)' } } as const
 
 /** The plot's margin inside its box; the card's own padding is the space around it. */
 export const CHART_MARGIN = { top: 4, right: 4, bottom: 0, left: 0 } as const

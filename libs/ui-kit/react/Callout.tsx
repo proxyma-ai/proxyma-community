@@ -73,7 +73,7 @@ export function Banner({ tone = 'info', title, children, action, onDismiss, dism
   const t = TONE[tone]
   const Icon = icon === null ? null : (icon ?? t.icon)
   return (
-    <div role="status" className={cn('relative w-full border-b px-3 sm:px-6 py-2 text-xs animate-fade-in', t.box, 'border-x-0 border-t-0', className)}>
+    <div role="status" className={cn('relative w-full border-b px-4 sm:px-6 py-2 text-xs animate-fade-in', t.box, 'border-x-0 border-t-0', className)}>
       <div className={cn('flex flex-col sm:flex-row sm:items-center sm:justify-center gap-x-3 gap-y-1', onDismiss && 'pr-8')}>
         <span className="flex items-start gap-2 text-ink-secondary">
           {Icon && <Icon size={14} className={cn('shrink-0 mt-0.5', t.ink)} aria-hidden="true" />}

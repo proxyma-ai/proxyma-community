@@ -170,8 +170,10 @@ export function SceneFrame({ chrome, header, children, scale = 'md', height, bod
           ref={el => { el?.setAttribute('inert', '') }}
           className={cn(
             'overflow-hidden select-none',
-            scale === 'sm' && '[zoom:0.75]',
-            scale === 'md' && '[zoom:0.75] sm:[zoom:0.85]',
+            // AT FULL SIZE ON A PHONE (the mobile audit, 2026-11-16): scaled to 0.75 a picture's 13px text was 10px,
+            // decoration rather than something to read. Its parts lay out to the phone's width as the app's do.
+            scale === 'sm' && 'sm:[zoom:0.75]',
+            scale === 'md' && 'sm:[zoom:0.85]',
             height,
             bodyClassName,
           )}

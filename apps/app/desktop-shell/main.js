@@ -194,6 +194,17 @@ function createWindow() {
       spellcheck: process.platform !== 'linux',
     },
   })
+  // PROXYMA FOR CLAUDE, OPENED AS IT ARRIVES (2026-11-14): Settings > AI Assistants offers Proxyma as a Claude Desktop
+  // extension (a .mcpb file). Kept in the temporary folder and opened at once, so Claude shows its Install prompt - no
+  // Save dialog, and no file to find. Any other download keeps Electron's own Save dialog.
+  win.webContents.session.on('will-download', (event, item) => {
+    if (!item.getFilename().toLowerCase().endsWith('.mcpb')) return
+    const saved = path.join(app.getPath('temp'), item.getFilename())
+    item.setSavePath(saved)
+    item.once('done', (e, outcome) => {
+      if (outcome === 'completed') shell.openPath(saved)
+    })
+  })
   // Maximized when it is SHOWN, not before: maximize() on a window that is still hidden is what let
   // the normal size above decay, and it did not reliably come up maximized either.
   //

@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, Suspense, lazy } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Topbar } from './Topbar'
+import { AppDock } from './AppDock'
+import { INSIDE_PAGE } from './navItems'
 import { Sidebar } from './Sidebar'
-import { AutoHideHeader, GlassFrame, ProxymaBackground, WindowControls } from '@/components/ui/kit'
+import { AutoHideHeader, GlassFrame, PHONE_QUERY, ProxymaBackground, WindowControls } from '@/components/ui/kit'
 import { useFramedLayout, useWideLayout } from '@/hooks/useWideLayout'
 import { useDesktopWindow } from '@/hooks/useDesktopWindow'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -34,6 +36,8 @@ import { useConnectorListSync } from '@/hooks/useConnectorListSync'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
 import { withReason } from '@/services/apiError'
 import { startupDialogs } from './startupDialogs'
+import { LegalGate, LEGAL_STATUS_KEY } from '@/features/system/components/LegalGate'
+import { systemApi } from '@/services/systemApi'
 import { SignInDisclosureDialog } from '@/features/settings/components/SignInDisclosureDialog'
 
 // Lazy so Settings' own bundle (dozens of tab components) only downloads the first time it's
@@ -98,12 +102,29 @@ export function AppShell() {
   // ever mounts once setup is confirmed complete, so it must not run its own setup check (competing
   // setup redirects are what caused the earlier / <-> /setup loop).
 
+  // Desktop and Home Server: the legal documents are accepted before anything else (LegalGate).
+  // Retried until it answers - while it has not, nothing that waits for the gate starts.
+  const { data: legal } = useQuery({
+    queryKey: LEGAL_STATUS_KEY,
+    queryFn: systemApi.legalStatus,
+    enabled: !FEATURES.auth,
+    retry: true,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  })
+  const legalDone = FEATURES.auth || legal?.accepted === true
+
   // Periodic, non-intrusive nudge toward MCP/API - never shown more than once a day, and never
   // again once the user says so ("Don't show again", since 2026-10-02 - until then the only way
   // to stop it at once was to follow its link) or has clicked through. See mcpAdStore.ts.
   useEffect(() => {
     if (!ready) return
+    // Not beside the start's legal gate: a tip waits until the documents are accepted.
+    if (!legalDone) return
     if (!shouldShowMcpAd()) return
+    // NOT ON A PHONE (the mobile audit, 2026-11-16): an IDE or a script is a computer's, and the tip covered a page's top.
+    if (typeof window.matchMedia === 'function' && window.matchMedia(PHONE_QUERY).matches) return
     markMcpAdShownToday()
     addToast(
       // `{product}` rather than a template literal: a translatable string has to be one quoted
@@ -121,9 +142,9 @@ export function AppShell() {
       },
     )
     // Intentionally runs once per app mount only - re-rolling on every productName/addToast
-    // identity change would re-roll the daily chance far more often than intended. `ready` is
-    // the one dependency, and it goes false -> true exactly once.
-  }, [ready])
+    // identity change would re-roll the daily chance far more often than intended. `ready` and
+    // `legalDone` are the dependencies, and each goes false -> true at most once.
+  }, [ready, legalDone])
 
   // Nothing verified a provider was actually reachable until a chat turn failed: the boot-time
   // model construction in LlmProviderFactory makes no network call, so a dead Ollama still left
@@ -216,6 +237,7 @@ export function AppShell() {
     user,
     deletionGateDismissed: dismissedGate,
     whatsNewPending: whatsNewOpen && !!whatsNew,
+    legalAccepted: legal?.accepted,
   })
   const showGate = dialogs.deletionGate
   const showReConsent = dialogs.reConsent
@@ -296,11 +318,17 @@ export function AppShell() {
         <div className="relative z-raised flex flex-col h-full overflow-hidden">
           {/* On a phone the bar steps aside while the reader swipes on down a page, and comes back
               when they turn round - see the kit's AutoHideHeader. Every page starts with it. */}
-          <AutoHideHeader resetKey={location.pathname}>
-            <Topbar />
-          </AutoHideHeader>
+          {/* Not on a page inside another (INSIDE_PAGE): its own header - the way back, its name, one action - is the
+              one bar on a phone (the mobile audit, 2026-11-16: three bars stacked took a quarter of the screen). */}
+          {!INSIDE_PAGE.test(location.pathname) && (
+            <AutoHideHeader resetKey={location.pathname}>
+              <Topbar />
+            </AutoHideHeader>
+          )}
           {/* The page is the same glass sheet as in the frame, full bleed (the kit's .app-sheet). */}
           <div className="app-sheet flex-1 min-h-0 flex flex-col">{page}</div>
+          {/* THE PAGES AT THE FOOT, in place of the hamburger (2026-11-16, the maintainer): AppDock. */}
+          <AppDock />
         </div>
       )}
       {showGate && (
@@ -314,6 +342,7 @@ export function AppShell() {
         />
       )}
       {showReConsent && <ReConsentModal user={user!} />}
+      {dialogs.legalGate && legal && <LegalGate status={legal} />}
       <FeedbackButton />
       {/* What a YouTube sign-in is told before Google's page opens - every sign-in button goes through it. */}
       <SignInDisclosureDialog />

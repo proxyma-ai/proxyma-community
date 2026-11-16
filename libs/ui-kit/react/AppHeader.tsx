@@ -122,7 +122,7 @@ export function AppHeader({ brand, children, edge, edgeFrom = 'always', classNam
           column,
           'h-full flex items-center justify-between gap-3',
           // PAGE_GUTTER's left half - the two have to change together.
-          'pl-3 sm:pl-6',
+          'pl-4 sm:pl-6',
           reserve,
         )}
       >

@@ -35,6 +35,12 @@ export interface AxisOptions {
   /** The least space between two labels. */
   gap?: number
   steps?: number[]
+  /**
+   * The most labels the row may carry, whatever fits (the mobile audit, 2026-11-16: a phone's 30-day axis read
+   * "17 19 21 23 25 ..." at every other day, a row of numbers rather than a scale). ColumnChart gives a narrow plot
+   * six; unset, as many as fit.
+   */
+  maxLabels?: number
 }
 
 const DEFAULTS = { charWidth: 6, gap: 6 }
@@ -65,9 +71,11 @@ export function axisTicks(labels: string[], plotWidth: number, opts: AxisOptions
   const charWidth = opts.charWidth ?? DEFAULTS.charWidth
   const gap = opts.gap ?? DEFAULTS.gap
   const steps = opts.steps ?? AXIS_STEPS
+  const maxLabels = opts.maxLabels ?? Infinity
   const columnWidth = plotWidth / count
   const place = (i: number): AxisLabel => ({ index: i, label: labels[i], left: extent(i, labels[i], columnWidth, plotWidth, charWidth)[0] })
   for (const step of steps) {
+    if (Math.ceil(count / step) > maxLabels) continue
     const shown: number[] = []
     for (let i = 0; i < count; i += step) shown.push(i)
     let fits = true

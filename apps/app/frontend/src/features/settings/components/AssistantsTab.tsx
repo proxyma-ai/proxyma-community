@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { KeyRound } from 'lucide-react'
 import {
-  Button, Callout, Caption, CodeBlock as KitCodeBlock, CopyField, ExternalLink, FadeSwap, Presence, SettingsSections,
-  StepItem, StepList, SubNavTabs, markIcon,
+  Button, ButtonLink, Callout, Caption, CodeBlock as KitCodeBlock, CopyField, ExternalLink, FadeSwap, Presence, SettingsSection,
+  SettingsSections, StepItem, StepList, SubNavTabs, SwitchRow, markIcon,
 } from '@/components/ui/kit'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
 import { accessApi } from '@/services/accessApi'
 import type { TabKey } from './SettingsModal'
+import { useResolved, type TabProps } from '../pages/shared'
 
 // "Use the assistant you already pay for." Claude, ChatGPT and Gemini subscriptions come with no
 // API key a third-party app may use, so a subscriber has nothing to paste into the AI Providers -
@@ -34,8 +35,12 @@ type Client = 'claude-code' | 'claude-desktop' | 'chatgpt' | 'gemini' | 'copilot
 const TOKEN = '<your-access-token>'
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 
-export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void }) {
+export function AssistantsTab({ onOpenTab, trackChange, pending }: { onOpenTab: (tab: TabKey) => void } & TabProps) {
   const { t } = useTranslation()
+  // WHAT AN ASSISTANT MAY CHANGE (2026-11-14): over MCP no approval pause applies, so a write ran the moment the
+  // assistant's model asked. Off by default: assistants read; a write is refused and says to come here
+  // (WebFetchMcpToolConfig.gated). The person's own, saved as any setting is.
+  const writes = useResolved('connector-tools', 'assistant-writes', pending, 'false') === 'true'
   const [client, setClient] = useState<Client>('claude-code')
   const url = `${window.location.origin}/mcp`
   const { data: installToken } = useQuery({
@@ -99,6 +104,16 @@ export function AssistantsTab({ onOpenTab }: { onOpenTab: (tab: TabKey) => void 
       </Presence>
       </div>
 
+      <SettingsSection title={t('Changes')} gap="list">
+        <SwitchRow
+          className="py-0"
+          title={t('Let assistants make changes')}
+          caption={t('Off, assistants change nothing in your connected systems. On, they can also post replies, create issues and change sources; most assistant apps ask you before each one.')}
+          checked={writes}
+          onChange={v => trackChange('connector-tools', 'assistant-writes', v ? 'true' : 'false')}
+        />
+      </SettingsSection>
+
       <div className="space-y-4">
         <SubNavTabs tabs={tabs} active={client} onChange={setClient} />
         <FadeSwap swapKey={client}>
@@ -141,6 +156,22 @@ function ClaudeDesktop({ url, needsToken, token }: ClientProps) {
   const server: Record<string, unknown> = { command: 'npx', args }
   if (needsToken) server.env = { AUTH_HEADER: `Bearer ${token}` }
   const config = JSON.stringify({ mcpServers: { proxyma: server } }, null, 2)
+  // ONE FILE, OPENED (2026-11-14): Proxyma packs itself as a Claude Desktop extension with this install's address and
+  // token (AccessController.claudeExtension) - no Node.js to install and no config to edit. Desktop and the Home Server
+  // only: Enterprise Server's tokens are each person's own, made under API Tokens.
+  if (!FEATURES.auth) {
+    return (
+      <StepList intro={t('The Claude desktop app.')}>
+        <StepItem text={t('Download Proxyma for Claude:')}>
+          <ButtonLink variant="secondary" href="/api/v1/access/claude-extension" download="Proxyma.mcpb">
+            {t('Download for Claude')}
+          </ButtonLink>
+        </StepItem>
+        <StepItem text={t('Claude opens it: choose Install. From a browser, open the downloaded file first.')} />
+        <StepItem text={t('Ask Claude about your documents, or to work on your YouTube comments.')} />
+      </StepList>
+    )
+  }
   return (
     <StepList intro={t('The Claude desktop app. Needs Node.js 18 or later.')}>
       <StepItem text={t('Install Node.js from nodejs.org if you do not have it.')} />

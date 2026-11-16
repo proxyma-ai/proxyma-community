@@ -619,6 +619,7 @@ class OAuth2ConnectionServiceTest {
                 return shortfall.apply(granted, write);
             }
             @Override public int requestUnits(org.springframework.http.HttpMethod method, URI uri) { return units; }
+            @Override public long dailyUnits() { return units > 0 ? 10_000 : 0; }
             @Override public boolean identityRequest(org.springframework.http.HttpMethod method, URI uri) {
                 return uri.getRawPath().endsWith("/channels");
             }
@@ -726,7 +727,7 @@ class OAuth2ConnectionServiceTest {
     }
 
     @Test
-    @DisplayName("the built-in client's daily share: its requests are counted and one past the budget is answered as a spent quota, unsent; a person's own client is never counted")
+    @DisplayName("the built-in client's daily share: its requests are counted and one past the budget is answered as a spent quota, unsent; a person's own client is counted for its figure and never refused")
     void builtInDailyShare() {
         useYouTubeLike(youTubeSpec(), (g, w) -> Optional.empty(), 50);
         org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
@@ -753,6 +754,19 @@ class OAuth2ConnectionServiceTest {
             assertThat(service.tokensFor(own.getId()).refuseBeforeSending(post, reply))
                     .as("the person's own project, their own quota").isNull();
         }
+        // TODAY'S FIGURES (2026-11-13): the share as this install spent it; the person's own client against the
+        // service's default daily quota, counted apart from the share.
+        assertThat(service.usageToday(builtIn.getId())).hasValueSatisfying(u -> {
+            assertThat(u.used()).as("a refusal marks the share spent").isEqualTo(120);
+            assertThat(u.limit()).isEqualTo(120);
+            assertThat(u.shared()).isTrue();
+        });
+        assertThat(service.usageToday(own.getId())).hasValueSatisfying(u -> {
+            assertThat(u.used()).isEqualTo(250);
+            assertThat(u.limit()).isEqualTo(10_000);
+            assertThat(u.shared()).isFalse();
+            assertThat(u.resetsAt()).isAfter(now);
+        });
         // On a server with accounts there is no built-in client, so nothing is counted either.
         OAuth2ConnectionService server = service(true);
         server.setBuiltInQuota(new BuiltInQuota(env, null, Clock.fixed(now, ZoneOffset.UTC)));

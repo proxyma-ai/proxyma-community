@@ -70,3 +70,12 @@ describe('the month row', () => {
     assert.equal(last.left, 60 - 4 * 6)
   })
 })
+
+describe('a narrow plot', () => {
+  test('carries at most the labels it is allowed, at the smallest step that keeps to them', () => {
+    const days = Array.from({ length: 30 }, (_, i) => String(i + 1))
+    // At 340px every other day fits; six labels at most takes every 7th.
+    assert.equal(axisTicks(days, 340).length > 6, true)
+    assert.deepEqual(axisTicks(days, 340, { maxLabels: 6 }).map(t => t.label), ['1', '8', '15', '22', '29'])
+  })
+})

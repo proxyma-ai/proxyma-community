@@ -39,14 +39,16 @@ public final class AuditCategory {
     public static final String UPDATES = "UPDATES";
     /** Backups, restores and maintenance - Enterprise Server only. */
     public static final String SYSTEM = "SYSTEM";
+    /** The legal documents accepted at the start - Desktop and Home Server. Never cleared. */
+    public static final String LEGAL = "LEGAL";
 
     /** Every category, in the order the Activity filter lists them. */
     public static final List<String> ALL = List.of(TOOL, GUARDRAIL, DIAGNOSTICS, SIGN_IN, USERS,
-            CONFIG, DATA, SOURCES, ACCESS, LIMITS, UPDATES, SYSTEM);
+            CONFIG, DATA, SOURCES, ACCESS, LIMITS, UPDATES, SYSTEM, LEGAL);
 
     /** The categories the Activity tab shows together; the first three have tabs of their own. */
     public static final List<String> ACTIVITY = List.of(SIGN_IN, USERS, CONFIG, DATA, SOURCES,
-            ACCESS, LIMITS, UPDATES, SYSTEM);
+            ACCESS, LIMITS, UPDATES, SYSTEM, LEGAL);
 
     private AuditCategory() {}
 }

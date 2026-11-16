@@ -9,6 +9,10 @@ const ASSUMED_WIDTH = 640
 /** A character at the axis's 12px (`text-xs`, the floor since 2026-10-15 - it was 10px). */
 const AXIS_CHAR_WIDTH = 7
 
+/** Below this plot width the axis carries at most `NARROW_LABELS` labels (chartAxis's `maxLabels`). */
+const NARROW_PLOT = 480
+const NARROW_LABELS = 6
+
 /**
  * A COLUMN PER PERIOD - cost per day or per month. One bar per value on a baseline, the hovered
  * column in the legible brand ink, and the readout line ABOVE the chart, which the caller writes
@@ -80,7 +84,8 @@ export function ColumnChart({ values, active, onActive, readout, labels, groups,
   }, [])
 
   const plotWidth = width || ASSUMED_WIDTH
-  const ticks = labels && labels.length === values.length ? axisTicks(labels, plotWidth, { charWidth: AXIS_CHAR_WIDTH }) : []
+  // A narrow plot (a phone, a card in a column) carries a scale of a few labels, not every label that fits.
+  const ticks = labels && labels.length === values.length ? axisTicks(labels, plotWidth, { charWidth: AXIS_CHAR_WIDTH, maxLabels: plotWidth < NARROW_PLOT ? NARROW_LABELS : undefined }) : []
   const groupLabels = groups && groups.length === values.length ? axisGroups(groups, plotWidth, { charWidth: AXIS_CHAR_WIDTH }) : []
 
   return (

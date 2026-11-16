@@ -27,6 +27,7 @@ export function useDiscardLabels(): DiscardLabels {
     body: t('Your changes have not been saved.'),
     keep: t('Keep editing'),
     discard: t('Discard'),
+    back: t('Back'),
   }
 }
 

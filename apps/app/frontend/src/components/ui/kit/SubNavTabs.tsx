@@ -14,6 +14,8 @@ import { cn } from './cn'
 import { moveIndex, type NavKey } from './listNav'
 import { HScroll } from './HScroll'
 import { Tooltip } from './Tooltip'
+import { Select } from './Select'
+import { usePhone } from './usePhone'
 
 export interface SubNavTab<T extends string> {
   key: T
@@ -44,6 +46,9 @@ interface Props<T extends string> {
   density?: 'regular' | 'compact'
 }
 
+/** How many tabs a phone keeps as a strip; more are a Select. */
+const PHONE_TAB_LIMIT = 3
+
 // Shared sub-page tab bar (Settings / Admin / Sources and both consoles use it, so the interaction
 // cannot drift between them).
 //
@@ -68,6 +73,9 @@ interface Props<T extends string> {
 // rather than as a border with a -1px margin, because a scrolling region clips anything that
 // hangs past its edge.
 export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel, density = 'regular' }: Props<T>) {
+  // ON A PHONE MORE THAN THREE TABS ARE ONE SELECT, the page's width (the mobile audit, 2026-11-16): a strip of six cut
+  // its last words at the screen's edge with nothing but a fade to say there was more. Three fit and stay a strip.
+  const phone = usePhone()
   // ONE TAB STOP FOR THE ROW, and the arrows walk it (since 2026-10-14; WAI-ARIA tabs, manual
   // activation): Left/Right move between the tabs, Home/End go to the ends, Enter or Space opens
   // the one focused. Opening on every arrow would load a page per keypress.
@@ -81,6 +89,21 @@ export function SubNavTabs<T extends string>({ tabs, active, onChange, ariaLabel
     if (next < 0) return
     e.preventDefault()
     buttons[next].focus()
+  }
+  if (phone && tabs.length > PHONE_TAB_LIMIT) {
+    return (
+      <Select<T>
+        value={active}
+        onChange={onChange}
+        ariaLabel={ariaLabel}
+        className="w-full"
+        options={tabs.map(t => ({
+          value: t.key,
+          label: t.count ? `${t.label} (${t.count})` : t.label,
+          icon: t.icon ? <t.icon size={14} aria-hidden="true" /> : undefined,
+        }))}
+      />
+    )
   }
   return (
     <HScroll focusable={false}>

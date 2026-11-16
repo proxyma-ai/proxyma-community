@@ -13,7 +13,7 @@ import type { ChatAttachment } from '../types/chat.types'
 import type { ConversationListSource } from '../services/chatApi'
 import { useDraftState } from '@/store/composerDraftStore'
 import { useToastStore } from '@/store/toastStore'
-import { Caption, DropOverlay, FadeSwap, List, ListRow, Title, cn, useFileDrop } from '@/components/ui/kit'
+import { Caption, DropOverlay, FadeSwap, List, ListRow, Title, cn, useFileDrop, usePhone } from '@/components/ui/kit'
 import { useTranslation } from '@/i18n'
 
 export interface ChatPanelProps {
@@ -134,6 +134,8 @@ function ChatPanelBody({
   mailText = false, personOnly = false, refresh = null, agentWorking,
 }: ChatPanelProps) {
   const { t } = useTranslation()
+  // A phone-length placeholder: the long one is cut on a phone (the mobile audit, 2026-11-16).
+  const phone = usePhone()
   const [historyOpen, setHistoryOpen] = useState(false)
   // A deployed agent's transcript, read-only in a dialog - from its panel in the thread or the agents map.
   const transcript = useAgentTranscript()
@@ -321,7 +323,7 @@ function ChatPanelBody({
           onSend={handleSend}
           onStop={stop}
           streaming={streaming}
-          placeholder={placeholder ?? t('Type @ to mention a source or / to use a skill')}
+          placeholder={placeholder ?? (phone ? t('Ask anything') : t('Type @ to mention a source or / to use a skill'))}
           mentions={mentions}
           onMentionsChange={setMentions}
           attachments={attachments}

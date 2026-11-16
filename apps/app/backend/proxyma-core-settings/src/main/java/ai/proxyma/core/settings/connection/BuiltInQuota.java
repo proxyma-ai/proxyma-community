@@ -172,6 +172,39 @@ public class BuiltInQuota {
         return true;
     }
 
+    /**
+     * A PERSON'S OWN CLIENT, COUNTED AND NEVER LIMITED (2026-11-13, the maintainer: "for bring your own key, is it
+     * possible to track how many request the user have left?"). The service tells an app nothing of its quota left, so
+     * what Proxyma sent with that client - in the same units, per the same Pacific day - is the figure, kept across
+     * restarts under {@link #KEY_PREFIX} by {@link #OWN_PREFIX}, the client id hashed. Nothing is ever refused for it:
+     * the person's project, the person's quota. Another app using the same Google project is not counted.
+     */
+    public synchronized void countOwn(ConnectionProtocol protocol, String clientId, int units) {
+        if (units <= 0 || protocol == null || clientId == null || clientId.isBlank()) return;
+        String key = ownKey(protocol, clientId);
+        Day day = today(key);
+        remember(key, new Day(day.date(), day.units() + units));
+    }
+
+    /** Today's units sent with a person's own client, for a service. */
+    public synchronized long ownToday(ConnectionProtocol protocol, String clientId) {
+        if (protocol == null || clientId == null || clientId.isBlank()) return 0;
+        return today(ownKey(protocol, clientId)).units();
+    }
+
+    /** The counter of a person's own client: its service and a digest of its id, never the id. */
+    static final String OWN_PREFIX = "own.";
+
+    private static String ownKey(ConnectionProtocol protocol, String clientId) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(clientId.strip().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return OWN_PREFIX + service(protocol) + "." + java.util.HexFormat.of().formatHex(d, 0, 8);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     /** Today's units spent so far, for a service. */
     public synchronized long spentToday(ConnectionProtocol protocol) {
         return today(service(protocol)).units();

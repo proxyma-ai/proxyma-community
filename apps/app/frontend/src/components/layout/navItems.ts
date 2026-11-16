@@ -19,16 +19,25 @@ type NavMinRole = false | 'viewer' | 'admin'
 // while the license status says `keyAccountsAllowed`. Constellations is gated the same way, on
 // `constellationsAllowed`. Every gate here is a convenience - the route and every endpoint refuse
 // without it.
-const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; icon: LucideIcon; auth: NavMinRole; licensed?: 'keyAccounts' | 'constellations' | 'youtubeAssistant' }> = [
+// `short`: the name under the icon on the phone's dock (AppDock), where five share 375px - the page's own name stays
+// everywhere else.
+const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; short?: string; icon: LucideIcon; auth: NavMinRole; licensed?: 'keyAccounts' | 'constellations' | 'youtubeAssistant' }> = [
   { to: '/',               label: 'Chat',           icon: MessageSquare, auth: false    },
   { to: '/sources',        label: 'Sources',        icon: Database,      auth: 'viewer' },
   { to: '/key-accounts',   label: 'Key accounts',   icon: BarChart3,     auth: 'viewer', licensed: 'keyAccounts' },
-  { to: '/youtube',        label: 'YouTube assistant', icon: CirclePlay, auth: 'viewer', licensed: 'youtubeAssistant' },
+  { to: '/youtube',        label: 'YouTube assistant', short: 'YouTube', icon: CirclePlay, auth: 'viewer', licensed: 'youtubeAssistant' },
   { to: '/constellations', label: 'Constellations', icon: Orbit,         auth: 'viewer', licensed: 'constellations' },
   { to: '/admin',          label: 'Administration', icon: ShieldCheck,   auth: 'admin'  },
 ]
 
-export interface NavItem { to: string; label: string; icon: LucideIcon; isActive: boolean }
+/**
+ * A PAGE INSIDE ANOTHER - a channel, a Constellations project, a key account - has a way back and sections of its own,
+ * so on a phone the app's own header and dock give way there (AppShell, AppDock): ONE bar, as a phone app's page has
+ * (the mobile audit, 2026-11-16).
+ */
+export const INSIDE_PAGE = /^\/(youtube|constellations|key-accounts)\/[^/]+/
+
+export interface NavItem { to: string; label: string; short: string; icon: LucideIcon; isActive: boolean }
 
 /**
  * The app's pages this reader may open, in order, each translated and marked when it is the page
@@ -57,6 +66,8 @@ export function useNavItems(): NavItem[] {
     to: item.to,
     icon: item.icon,
     label: t(item.label),
+    // One literal a call, so the catalog check reads both (a variable reaching t() is invisible to it).
+    short: item.short === 'YouTube' ? t('YouTube') : t(item.label),
     isActive: item.to === '/'
       ? location.pathname === '/' || location.pathname.startsWith('/chat')
       : location.pathname.startsWith(item.to),

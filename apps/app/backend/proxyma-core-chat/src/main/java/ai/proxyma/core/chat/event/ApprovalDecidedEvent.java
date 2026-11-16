@@ -20,10 +20,21 @@ package ai.proxyma.core.chat.event;
  * @param automatic       approved by the SERVER, not a person (ApprovalInbox.approveAutomatically: the project
  *                        approves its agents' writes, or the agent's runs are set to Auto) - nobody reviewed it,
  *                        so it says nothing about what the person would have written or refused
+ * @param result          what the approved call returned (clipped), or null - for a failure, whether the service itself
+ *                        refused it ({@link ai.proxyma.core.chat.approval.ApprovalContexts#refusedBy}) or Proxyma did
+ *                        before sending anything
  */
 public record ApprovalDecidedEvent(String requestId, String conversationId, String rootConversationId, String userId,
                                    String toolName, String outcome, String draftArguments, String arguments,
-                                   String context, String note, boolean succeeded, boolean held, boolean automatic) {
+                                   String context, String note, boolean succeeded, boolean held, boolean automatic,
+                                   String result) {
+
+    public ApprovalDecidedEvent(String requestId, String conversationId, String rootConversationId, String userId,
+                                String toolName, String outcome, String draftArguments, String arguments,
+                                String context, String note, boolean succeeded, boolean held, boolean automatic) {
+        this(requestId, conversationId, rootConversationId, userId, toolName, outcome, draftArguments, arguments, context,
+                note, succeeded, held, automatic, null);
+    }
 
     public ApprovalDecidedEvent(String requestId, String conversationId, String rootConversationId, String userId,
                                 String toolName, String outcome, String draftArguments, String arguments,

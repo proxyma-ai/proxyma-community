@@ -507,10 +507,12 @@ function SkillForm({ skill, onClose, onSaved }: {
                   id={id}
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder={t('e.g. Jira Workflow')}
+                  placeholder={readOnly ? undefined : t('e.g. Jira Workflow')}
                   error={nameError}
                   shake={nameShake.shaking}
-                  disabled={readOnly}
+                  // READ-ONLY, NOT DISABLED (2026-11-16): a skill nobody may change is still read - disabled drew its
+                  // name at 40%, faint as a placeholder. Its example words go too, so an empty field is not read as one.
+                  readOnly={readOnly}
                 />
               )}
             </Field>
@@ -520,9 +522,9 @@ function SkillForm({ skill, onClose, onSaved }: {
                   id={id}
                   value={shortDescription}
                   onChange={e => setShortDescription(e.target.value)}
-                  placeholder={t('Shown to the agent in every system prompt')}
+                  placeholder={readOnly ? undefined : t('Shown to the agent in every system prompt')}
                   rows={2}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                   error={shortDescriptionError || undefined}
                   shake={shortDescriptionShake.shaking}
                 />
@@ -534,8 +536,8 @@ function SkillForm({ skill, onClose, onSaved }: {
                   id={id}
                   value={tagsInput}
                   onChange={e => setTagsInput(e.target.value)}
-                  placeholder="jira, reporting"
-                  disabled={readOnly}
+                  placeholder={readOnly ? undefined : 'jira, reporting'}
+                  readOnly={readOnly}
                 />
               )}
             </Field>

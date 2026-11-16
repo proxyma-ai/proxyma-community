@@ -1,8 +1,8 @@
 # Proxyma Data Processing Agreement
 
-**Document version:** 2026-11-12
+**Document version:** 2026-11-14
 **Effective date:** 2026-08-04
-**Last updated:** 2026-11-12
+**Last updated:** 2026-11-14
 
 ---
 
@@ -175,7 +175,8 @@ values in section 13. For UK transfers, the UK Addendum applies.
 Personal data in the deployment does not leave Vietnam by being hosted; it leaves only when a
 cloud AI provider you configure is engaged; when the assistant searches the web (with
 DuckDuckGo by default, or Google if a search key is configured) or opens a web page; when it
-reaches a service or MCP server your users connect; when the deployment sends an account email
+reaches a service or MCP server your users connect; when an AI assistant your users connect to
+the deployment over MCP reads it; when the deployment sends an account email
 through the mail server the operator configures; or in transit through Cloudflare's edge. Where
 Vietnamese law governs a transfer of Vietnamese data subjects' personal data out of Vietnam, the
 transferring party is responsible for its own transfer impact assessment dossier obligations

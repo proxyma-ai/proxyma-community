@@ -15,7 +15,10 @@
 //   3. "What's new";
 //   4. the walkthrough, which needs the whole page to itself.
 //
-// Desktop and Home Server have no accounts, so steps 1 and 2 never apply there.
+// Desktop and Home Server have no accounts, so steps 1 and 2 never apply there. They have the LEGAL
+// GATE instead (2026-11-14, the maintainer: force the agreement at the start, quit if declined):
+// first of all, until the legal documents in force were accepted on this install - and while that is
+// not yet known, "What's new" and the walkthrough wait rather than start under it.
 
 export interface StartupUser {
   accountStatus?: string | null
@@ -31,9 +34,16 @@ export interface StartupInput {
   deletionGateDismissed: boolean
   /** This browser has not yet seen the running version's "What's new". */
   whatsNewPending: boolean
+  /**
+   * Desktop and Home Server: whether the legal documents in force were accepted (LegalGate);
+   * undefined or null while that is still being asked. Ignored where there are accounts.
+   */
+  legalAccepted?: boolean | null
 }
 
 export interface StartupDialogs {
+  /** Desktop and Home Server: the legal documents must be accepted, or Proxyma quits. */
+  legalGate: boolean
   deletionGate: boolean
   reConsent: boolean
   whatsNew: boolean
@@ -41,17 +51,21 @@ export interface StartupDialogs {
   tour: boolean
 }
 
-export function startupDialogs({ accounts, user, deletionGateDismissed, whatsNewPending }: StartupInput): StartupDialogs {
+export function startupDialogs({
+  accounts, user, deletionGateDismissed, whatsNewPending, legalAccepted,
+}: StartupInput): StartupDialogs {
+  const legalGate = !accounts && legalAccepted === false
+  const legalDone = accounts || legalAccepted === true
   const pendingDeletion = accounts && user?.accountStatus === 'PENDING_DELETION'
   const deletionGate = pendingDeletion && !deletionGateDismissed
   // Not merely "behind the deletion gate": a pending-deletion account cannot record consent at all
   // (the lockout filter refuses POST /me/consent), so a dismissed deletion gate does not let it up.
   const reConsent = accounts && !pendingDeletion && user?.consentStale === true
-  const whatsNew = whatsNewPending && !deletionGate && !reConsent
+  const whatsNew = whatsNewPending && legalDone && !deletionGate && !reConsent
   // With accounts, only for somebody signed in, whose account is in use and who has agreed to the
   // current terms. A pending-deletion account is left out even with its gate dismissed: its
   // onboarding settings are refused like everything else.
   const accountReady = !accounts || (!!user && !pendingDeletion && user.consentStale !== true)
-  const tour = accountReady && !whatsNew
-  return { deletionGate, reConsent, whatsNew, tour }
+  const tour = legalDone && accountReady && !whatsNew
+  return { legalGate, deletionGate, reConsent, whatsNew, tour }
 }
