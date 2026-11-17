@@ -1812,6 +1812,7 @@ export const vi: Record<string, string> = {
   'Please review our terms': 'Vui lòng xem lại điều khoản của chúng tôi',
   'Accept and continue': 'Chấp nhận và tiếp tục',
   'You last accepted version {version} on {date}.': 'Lần cuối bạn chấp nhận phiên bản {version} vào {date}.',
+  'Proxyma Home Server stays closed until the documents are accepted.': 'Proxyma Home Server vẫn đóng cho đến khi các văn bản này được chấp nhận.',
   "What's new in {version}": 'Có gì mới trong {version}',
   'Sign-in': 'Đăng nhập',
 

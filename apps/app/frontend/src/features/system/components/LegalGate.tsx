@@ -4,6 +4,7 @@ import { FileText } from 'lucide-react'
 import { Button, Caption, DialogBody, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/kit'
 import { ModalShell } from '@/components/ui/ModalShell'
 import { ConsentFields } from '@/features/auth/components/ConsentFields'
+import { useAppConfig } from '@/hooks/useAppConfig'
 import { useDates } from '@/hooks/useDates'
 import { useTranslation } from '@/i18n'
 import { apiErrorText } from '@/services/apiError'
@@ -26,10 +27,17 @@ export const LEGAL_STATUS_KEY = ['desktop-legal'] as const
 // the person connects, by their API or to an assistant app over MCP - and that what those keep or
 // train on is the person's setting with them. The server keeps the acceptance where nothing in the
 // app deletes it (LegalAcceptances), and shows it on the Logs page.
+//
+// NO QUIT ON HOME SERVER (the 2026-11-16 release review): its compose file restarts the container
+// whatever it exits with (`restart: unless-stopped`), so Quit stopped Proxyma only for Docker to start
+// it again while the page said it had stopped. There the gate stays until the documents are accepted,
+// and says so (Privacy 3.6); whoever runs the server stops it with Docker.
 export function LegalGate({ status }: { status: LegalStatus }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const dates = useDates()
+  const { data: config } = useAppConfig()
+  const homeServer = config?.homeServer === true
   const quitNow = useQuitStore(s => s.now)
   const quitting = useQuitStore(s => s.phase !== 'idle')
   const [accepted, setAccepted] = useState(false)
@@ -74,6 +82,12 @@ export function LegalGate({ status }: { status: LegalStatus }) {
           />
         </div>
 
+        {homeServer && (
+          <Caption className="mt-4 self-stretch text-justify">
+            {t('Proxyma Home Server stays closed until the documents are accepted.')}
+          </Caption>
+        )}
+
         {changed && status.acceptedAt && (
           <Caption className="mt-4 self-stretch text-justify">
             {t('You last accepted version {version} on {date}.', {
@@ -85,9 +99,11 @@ export function LegalGate({ status }: { status: LegalStatus }) {
       </DialogBody>
       {/* Quitting is the alternative to accepting, so it sits where Cancel would. */}
       <DialogFooter>
-        <Button variant="secondary" onClick={quitNow} disabled={busy}>
-          {t('Quit Proxyma')}
-        </Button>
+        {!homeServer && (
+          <Button variant="secondary" onClick={quitNow} disabled={busy}>
+            {t('Quit Proxyma')}
+          </Button>
+        )}
         <Button
           variant="primary"
           onClick={() => {

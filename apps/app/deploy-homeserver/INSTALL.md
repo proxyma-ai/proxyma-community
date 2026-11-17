@@ -14,7 +14,7 @@ access code is the way in.
 
 | Component | Requirement |
 |---|---|
-| Docker Engine | 24 or newer, with the `docker compose` plugin |
+| Docker Engine | with the `docker compose` plugin |
 | Memory | 4 GB for the container |
 | Disk | 20 GB plus whatever your indexed documents need |
 | CPU | 2 cores minimum |
