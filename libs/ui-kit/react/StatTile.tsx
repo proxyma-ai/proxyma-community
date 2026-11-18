@@ -49,7 +49,7 @@ export function StatTile({ label, value, sub, icon: Icon, loading, selected, onS
     'block min-w-0 text-left',
     // The kit card (cardClass) at the tile's padding; a chosen tile is its highlighted border.
     size === 'md' && cardClass({ padding: 'none', highlighted: !!selected, className: 'px-4 py-3' }),
-    onSelect && 'focus-border cursor-pointer transition-colors w-full',
+    onSelect && 'focus-border cursor-pointer transition-colors w-full flex flex-col justify-start',
     className,
   )
   return onSelect

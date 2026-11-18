@@ -479,6 +479,18 @@ const DYNAMIC = [
     file: 'apps/landing/src/lib/data/faq.ts',
     pattern: prop('q', 'a', 'label'),
   },
+  // The add-ons (lib/data/addons.ts): each card's name, line, buttons and list, and its own page's words and lists.
+  // Not `word` (a slide's background word, English everywhere), `path`, `name` or `subject` (an email's subject).
+  {
+    app: 'apps/landing',
+    file: 'apps/landing/src/lib/data/addons.ts',
+    pattern: prop('title', 'tagline', 'description', 'buy', 'write', 'heroTitle', 'heroLine', 'line'),
+  },
+  {
+    app: 'apps/landing',
+    file: 'apps/landing/src/lib/data/addons.ts',
+    pattern: ARRAY_ELEMENT,
+  },
   // The /docs index. NOT `slug` or `file`: a route segment and a filename, English always. The
   // DOCUMENTS behind these entries are translated files, not catalog entries.
   {

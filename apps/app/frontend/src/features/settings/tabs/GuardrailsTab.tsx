@@ -166,9 +166,10 @@ export function GuardrailsTab({ trackChange, pending, onOpenTab }: TabProps & { 
       {/* Mode first, because it governs everything below it. An operator arriving to turn
           guardrails on for the first time should see that there is a way to watch before
           enforcing, rather than discovering it after the first refused message. */}
-      <SettingsSection title={t('Mode')}>
+      {/* The note under the section's name, before its choices: a field with no label keeps its hint under the control,
+          where it read as a note after the options (2026-11-18). */}
+      <SettingsSection title={t('Mode')} caption={t('Monitor checks but blocks nothing. Results are in Logs.')}>
         <ChoiceField
-          hint={t('Monitor checks but blocks nothing. Results are in Logs.')}
           value={mode}
           onChange={v => trackChange('guardrail', 'mode', v)}
           options={GUARDRAIL_MODES}

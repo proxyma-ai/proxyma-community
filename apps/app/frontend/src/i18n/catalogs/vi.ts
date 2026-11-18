@@ -100,6 +100,7 @@ export const vi: Record<string, string> = {
   'Each step is one you do yourself.': 'Mỗi bước là một việc bạn tự làm.',
   'Your turn': 'Đến lượt bạn',
   'AI Assistants': 'Trợ lý AI',
+  'Connect an assistant': 'Kết nối một trợ lý',
   'Add this to .vscode/mcp.json:': 'Thêm đoạn này vào .vscode/mcp.json:',
   "Anthropic's coding assistant for the terminal and VS Code.": 'Trợ lý lập trình của Anthropic cho terminal và VS Code.',
   'Web versions of ChatGPT and Gemini cannot connect. Use the apps above.': 'Bản web của ChatGPT và Gemini không kết nối được. Hãy dùng các ứng dụng ở trên.',
@@ -1036,6 +1037,9 @@ export const vi: Record<string, string> = {
   'Add an SVN repository': 'Thêm kho mã SVN',
   'Error message copied': 'Đã sao chép thông báo lỗi',
   'Filter sources by type': 'Lọc nguồn dữ liệu theo loại',
+  // The Sources page's shared-sources chip on a phone.
+  'With shared sources': 'Gồm nguồn được chia sẻ',
+  'Only mine': 'Chỉ của tôi',
   'Indexed and in the knowledge graph': 'Đã lập chỉ mục và có trong đồ thị tri thức',
   'Items': 'Mục',
   'Last sync': 'Đồng bộ cuối',

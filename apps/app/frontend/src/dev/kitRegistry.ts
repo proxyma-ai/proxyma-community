@@ -805,6 +805,29 @@ export const KIT_REGISTRY: KitEntry[] = [
     specimens: ['Checkbox, RadioGroup, SelectBox'],
   },
   {
+    name: 'CheckAll',
+    file: 'Checkbox.tsx',
+    level: 'L1',
+    atomic: 'atom',
+    group: 'controls',
+    purpose: '"All" over a checklist as a checkbox: checked while every item is, a dash while some are; ticking it chooses every item, clearing it none.',
+    use: [
+      'A list of checkboxes or filter chips someone may want all of - an export\'s contents, a group of file types.',
+    ],
+    avoid: [
+      "A table's header box over its rows - use SelectBox, which a list's selection drives.",
+      'Two "All" and "None" links - this one box does both.',
+    ],
+    props: [
+      { name: 'items', type: 'readonly K[]', required: true, note: 'Every item it stands for.' },
+      { name: 'chosen', type: 'readonly K[]', required: true, note: 'The ones chosen now; it reads its state from them.' },
+      { name: 'onChange', type: '(next: K[]) => void', required: true, note: 'Every item, or none.' },
+      { name: 'label', type: 'ReactNode', required: true, note: '"All", or a group\'s name.' },
+      { name: 'disabled', type: 'boolean', note: 'Dimmed and not clickable.' },
+    ],
+    specimens: ['All over a checklist'],
+  },
+  {
     name: 'SelectBox',
     file: 'SelectBox.tsx',
     level: 'L1',

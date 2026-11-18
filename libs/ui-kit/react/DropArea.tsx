@@ -171,7 +171,7 @@ export function useFilePicker({ onFiles, accept, multiple, directory }: {
  * `<input type="file">` is hidden behind the kit `Button` (its own control cannot be styled and
  * names nothing), and is emptied after each pick so the same file can be chosen twice.
  */
-export function FilePickerButton({ onFiles, accept, multiple, directory, children, variant = 'secondary', size = 'sm', disabled, loading, className }: {
+export function FilePickerButton({ onFiles, accept, multiple, directory, children, variant = 'secondary', size = 'md', disabled, loading, className }: {
   onFiles: (files: File[]) => void
   /** The input's `accept` - ".json,application/json". */
   accept?: string

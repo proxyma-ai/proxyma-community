@@ -569,6 +569,7 @@ export function ConnectorDetailModal({ connector, onClose }: Props) {
   const subtitle = (
     <>
       <MetaList
+        stackOnPhone
         className="flex flex-wrap items-center gap-y-0.5 min-w-0"
         items={[
           <span>

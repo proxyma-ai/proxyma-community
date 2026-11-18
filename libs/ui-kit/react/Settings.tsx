@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { Button } from './Button'
 import { cn } from './cn'
 import { DialogShell, useDialogPage, type DiscardLabels } from './Dialog'
-import { iconButton } from './iconButton'
+import { BACK_BUTTON, BACK_ICON_SIZE } from './iconButton'
 import { usePhone } from './usePhone'
 import { Presence } from './Presence'
 import { PageTitle, SectionHeading } from './Text'
@@ -116,7 +116,7 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
           : cn(
             // ROOMIER WHERE THERE IS HEIGHT (the maintainer, 2026-10-30: "too tight?"): from a 900px
             // tall window, 14px rows on 6px - the 720px fit is kept below that.
-            'flex items-center gap-2 rounded-md text-xs whitespace-nowrap transition-colors focus-ring w-full px-3 py-1 touch:py-2 text-left',
+            'flex items-center gap-2 rounded-md text-xs whitespace-nowrap transition-colors focus-ring w-full px-3 py-1 touch:py-2 touch:min-h-tap text-left',
             '[@media(min-height:900px)]:text-sm [@media(min-height:900px)]:py-1.5',
             on ? 'bg-lift shadow-card text-ink-primary font-medium' : 'text-ink-caption mouse:hover:bg-lift/60 mouse:hover:text-ink-secondary',
           )}
@@ -133,7 +133,7 @@ export function SettingsRail<K extends string>({ groups, active, onChange, ariaL
       aria-label={ariaLabel}
       className={cn(
         // 16rem from a 900px tall window, where its rows are 14px: a name never wraps (2026-10-30).
-        'shrink-0 md:w-56 [@media(min-height:900px)]:md:w-64 short:w-auto min-h-0 border-b md:border-b-0 md:border-r short:border-r-0 short:border-b border-line/60',
+        'shrink-0 md:w-56 [@media(min-height:900px)]:md:w-64 touch:md:w-48 [@media(min-height:900px)]:touch:md:w-48 short:w-auto min-h-0 border-b md:border-b-0 md:border-r short:border-r-0 short:border-b border-line/60',
         // THE COLUMN IS A WELL from `md` (since 2026-10-29): the sunken plane, the current entry lifted
         // out of it. The row (a phone, a short window) is underlined words on the window's own plane.
         'md:bg-surface-alt md:shadow-well short:bg-transparent short:shadow-none',
@@ -191,7 +191,7 @@ export function SettingsLayout({ rail, title, titleActions, titleActionsRef, not
         {/* The window's PAGE: a shade of the canvas over the window's glass, so its cards stand on
             something (since 2026-10-29) - the canvas itself until then. */}
         <div key={contentKey} className="flex-1 min-w-0 min-h-0 overflow-y-auto bg-canvas/60 px-4 sm:px-6 pt-6 sm:pt-8 pb-8 short:pt-3 short:pb-4 animate-fade-in">
-          <PageTitle as="h2" level="tab" actions={titleActions} actionsRef={titleActionsRef} className="mb-6 short:mb-3">{title}</PageTitle>
+          <PageTitle as="h2" level="tab" actions={titleActions} actionsRef={titleActionsRef} className="mb-2 sm:mb-6 short:mb-3">{title}</PageTitle>
           <Presence show={!!notice}><div className="mb-6">{notice}</div></Presence>
           {children}
         </div>
@@ -272,9 +272,11 @@ export function SettingsSection({ title, caption, action, toggle, locked, childr
     : action
   return (
     <section className={className}>
-      <SectionHeading caption={caption} action={right} tone={tone}>{title}</SectionHeading>
+      {/* The heading's 16px is the body's own top margin, and a body with nothing in it is not drawn: a section whose
+          fields wait behind its switch (a Presence, empty while off) stood 16px taller below than above (2026-11-18). */}
+      <SectionHeading caption={caption} action={right} tone={tone} flush>{title}</SectionHeading>
       {locked}
-      {children && <div className={cn(gap === 'fields' ? 'space-y-6' : '')}>{children}</div>}
+      {children && <div className={cn('mt-4 empty:hidden', gap === 'fields' ? 'space-y-6' : '')}>{children}</div>}
     </section>
   )
 }
@@ -306,13 +308,15 @@ function SettingsPhoneBar({ name, onBack, backLabel }: { name: string; onBack: (
     return () => register(false)
   }, [register])
   return (
-    <div data-dialog-head="" className="sm:hidden flex items-center gap-2 px-2 py-2 border-b border-line/45 shrink-0">
+    // On the page's 16px edge, the way back's glyph on it (BACK_BUTTON) - as a dialog's page draws it.
+    <div data-dialog-head="" className="sm:hidden flex items-center gap-3 px-4 py-2 border-b border-line/45 shrink-0">
       {onBack ? (
-        <button type="button" onClick={onBack} aria-label={backLabel}
-          className={cn(iconButton('md'), 'w-auto touch:w-auto px-2 gap-2 text-ink-primary')}>
-          <ArrowLeft size={18} aria-hidden="true" />
-          <span className={TEXT.title}>{name}</span>
-        </button>
+        <>
+          <button type="button" onClick={onBack} aria-label={backLabel} className={BACK_BUTTON}>
+            <ArrowLeft size={BACK_ICON_SIZE} aria-hidden="true" />
+          </button>
+          <span className={cn(TEXT.title, 'truncate')}>{name}</span>
+        </>
       ) : (
         <>
           {page?.back}

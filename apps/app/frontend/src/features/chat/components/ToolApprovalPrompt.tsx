@@ -5,7 +5,7 @@ import { useToastStore } from '@/store/toastStore'
 import { chatApi } from '../services/chatApi'
 import { useApprovalCountdown } from '../hooks/useApprovalCountdown'
 import { formatElapsed } from '../utils/formatElapsed'
-import { toolActivity } from '../utils/toolActivity'
+import { isIdArgument, toolActivity } from '../utils/toolActivity'
 import { argumentRows } from '../utils/argumentRows'
 import { ToolArguments } from './ToolArguments'
 import { ApprovalContextCard } from './ApprovalContextCard'
@@ -104,8 +104,9 @@ export function ToolApprovalPrompt({ approval, conversationId, onOpenDetail, fro
   const isSubmitting = decision !== null
   // What will change, and where - the call's own running phrase: "Commenting on PROJ-341".
   const action = toolActivity({ callId: approval.callId, toolName: approval.toolName, arguments: approval.arguments, done: false }, t)
-  // The arguments that say HOW, minus any the sentence already names (the issue key, usually).
-  const rows = (argumentRows(approval.arguments) ?? []).filter(r => !(r.value.length <= 42 && action.includes(r.value)))
+  // The arguments that say HOW, minus any the sentence already names (the issue key, usually) and any bare id.
+  const rows = (argumentRows(approval.arguments) ?? [])
+    .filter(r => !(r.value.length <= 42 && action.includes(r.value)) && !isIdArgument(r.key, r.value))
 
   return (
     // The kit's PromptCard: the actions RIGHT-aligned, secondary then primary as every dialog

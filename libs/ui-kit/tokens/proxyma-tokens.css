@@ -158,12 +158,13 @@
   /* SOLID STATUS FILLS - the background of a status badge and of a destructive button, with
      --on-status text on top. Not --success/--danger/--warning: those are tuned as TEXT on the
      page, and white on the dark mode's red-400 clears only 2.4:1 as a fill. These are
-     MODE-INVARIANT, as a printed sign is: green-600, red-600 and amber-600 carry white at 3.3:1,
-     4.8:1 and 3.2:1 - which is why a status badge's text is semibold and upper case (large-text
-     rules), and why the destructive button (normal-weight words) is the red one. */
-  --success-solid: 22 163 74;
+     MODE-INVARIANT, as a printed sign is: green-700, red-600 and amber-700 carry white at 5.0:1,
+     4.8:1 and 5.0:1 - AA for a badge's 12px words. Green and amber were the 600 step (3.3:1 and 3.2:1)
+     while a badge's words were upper case and counted as large; they are in their own case since
+     2026-10-28, so the fills went a step darker on 2026-11-18. */
+  --success-solid: 21 128 61;
   --danger-solid:  220 38 38;
-  --warning-solid: 217 119 6;
+  --warning-solid: 180 83 9;
   --on-status:     255 255 255;
 
   /* The knob of a switch: white in every appearance, on the brand fill or on the line. */

@@ -92,6 +92,9 @@ export function AppDock() {
         <Popover
           placement="top-end"
           widthClass="w-64"
+          // AS TALL AS ITS ROWS, up to all the room above the dock (2026-11-17, the maintainer: "The More menu I have to scroll
+          // it a little bit"): the popover's 24rem cap left its last row under the fold with half the screen free above.
+          panelClassName="max-h-[var(--float-room,32rem)]"
           ariaLabel={t('More')}
           trigger={({ open, toggle, ref }) => (
             <DockButton ref={ref} icon={MoreHorizontal} label={t('More')} on={value === MORE || open} menu={{ open }}

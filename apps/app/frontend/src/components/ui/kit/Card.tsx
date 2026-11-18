@@ -113,8 +113,8 @@ export function CardHeader({ title, readout, actions, caption, divided, classNam
   className?: string
 }) {
   const row = (
-    <div className={cn('flex items-center justify-between gap-3 min-h-5', !caption && (divided ? 'px-4 sm:px-6 py-3 border-b border-line/40' : 'mb-3'), !caption && className)}>
-      <p className={cn(divided ? TEXT.label : TEXT.eyebrow, 'min-w-0 truncate')}>{title}</p>
+    <div className={cn('flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-1 min-h-5', !caption && (divided ? 'px-4 sm:px-6 py-3 border-b border-line/40' : 'mb-3'), !caption && className)}>
+      <p className={cn(divided ? TEXT.label : TEXT.eyebrow, 'min-w-0 sm:truncate')}>{title}</p>
       {(readout || actions) && (
         <div className="shrink-0 flex items-center gap-3">
           {readout && <span className="text-xs text-ink-caption data-readout">{readout}</span>}

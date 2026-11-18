@@ -42,13 +42,12 @@ export function List({ children, className, as: As = 'div', ariaLabel }: {
  * still takes the hover fill, so it reads as one row.
  */
 /**
- * A SELECTED ROW: the neutral selected fill (surface-alt) and a 2px bar of the brand at its left
- * edge - the brand marks the choice, it does not fill it. For a row of any list that is not a
- * `ListRow` (a table row, a picker's line); the element must not be `static`-only - this sets
- * `relative` for the bar.
+ * A SELECTED ROW: the neutral selected fill (surface-alt) and the primary ink at medium weight. For a row of any list
+ * that is not a `ListRow` (a table row, a picker's line). NO BAR ON AN EDGE (the maintainer's standing rule: never a
+ * colored strip down one side of a row to mark it - a fill, a weight or an ink instead); it had a 2px brand bar at its
+ * left edge until 2026-11-18.
  */
-export const SELECTED_ROW =
-  'relative bg-surface-alt before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-brand-solid'
+export const SELECTED_ROW = 'bg-surface-alt text-ink-primary font-medium'
 
 export function ListRow({ title, caption, meta, leading, action, trailing, onClick, selected, chevron, disabled, titleClamp, inset, className, ariaLabel }: {
   title?: ReactNode
@@ -76,7 +75,9 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
     // the mobile pass - "Reset everything" beside its sentence left the sentence three words a line on a phone). Icon
     // actions are narrow and stay beside.
     <div className="flex-1 min-w-[min(12rem,100%)] flex items-start gap-3">
-      {leading && <div className="shrink-0 min-h-5 flex items-center">{leading}</div>}
+      {/* CENTERED ON THE WORDS BESIDE IT, the title and the line under it together (the maintainer's rule for a row's
+          picture; 2026-11-17, the Share dialog's avatars stood on the name's line). */}
+      {leading && <div className="shrink-0 min-h-5 self-center flex items-center">{leading}</div>}
       <div className="flex-1 min-w-0">
         {(title || meta) && (
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
@@ -84,12 +85,18 @@ export function ListRow({ title, caption, meta, leading, action, trailing, onCli
             {meta}
           </div>
         )}
-        {caption && <div className={cn(TEXT.caption, title && 'mt-0.5')}>{caption}</div>}
+        {/* 4px under the title, the kit's description rule - 2px left a badge's foot on the line under it (the License row). */}
+        {caption && <div className={cn(TEXT.caption, title && 'mt-1')}>{caption}</div>}
       </div>
     </div>
   )
+  // ON A PHONE A WORDED ACTION GOES UNDER THE WORDS (the maintainer, 2026-11-17, the License tab: "Make vertical layout") -
+  // "Change license key", "Release": a button or link with words of its own, at the left, under the words' own edge. An
+  // icon action (named by its aria-label) and a chevron stay beside, as the Skills list draws them.
   const right = (trailing || action || chevron) && (
-    <div className="shrink-0 min-h-5 flex items-center gap-2">
+    <div className={cn('shrink-0 min-h-5 flex items-center gap-2',
+      '[@media(max-width:639px)]:[&:has(:is(button,a):not([aria-label]))]:basis-full',
+      leading && '[@media(max-width:639px)]:[&:has(:is(button,a):not([aria-label]))]:pl-7')}>
       {trailing}
       {action}
       {chevron && <ChevronRight size={16} className="text-ink-caption" aria-hidden="true" />}
@@ -198,9 +205,22 @@ export function SwitchRow({ title, caption, checked, onChange, disabled, footnot
  * target is taller than the row's 20px title line, so the icons sit ON that line rather than
  * pushing the row taller under it.
  */
-export function RowActions({ children, destructive, icons, className }: { children?: ReactNode; destructive?: ReactNode; icons?: boolean; className?: string }) {
+const PAIR_ON_PHONE = '[@media(max-width:639px)]:grid [@media(max-width:639px)]:grid-cols-2 [@media(max-width:639px)]:w-full [@media(max-width:639px)]:gap-2 [@media(max-width:639px)]:[&>*]:w-full [@media(max-width:639px)]:[&>*]:!ml-0 [@media(max-width:639px)]:[&_button]:w-full [@media(max-width:639px)]:[&_button]:min-h-tap [@media(max-width:639px)]:[&_button]:justify-center [@media(max-width:639px)]:[&_button]:border [@media(max-width:639px)]:[&_button.border-none]:[border-style:solid] [@media(max-width:639px)]:[&_button.border-none]:border-line [@media(max-width:639px)]:[&_button]:rounded-md'
+
+export function RowActions({ children, destructive, icons, pairOnPhone, className }: {
+  children?: ReactNode
+  destructive?: ReactNode
+  icons?: boolean
+  /**
+   * A DECISION PAIR (Approve and Deny) on a phone: two equal halves of the row, 44px tall, the destructive one a box
+   * the same size as its partner with its danger words (the maintainer, 2026-11-17: "Deny button should have the same
+   * size as the Approve button"). Wider, the row as always - Deny a quiet word set apart.
+   */
+  pairOnPhone?: boolean
+  className?: string
+}) {
   return (
-    <div className={cn('flex items-center', icons ? 'gap-1 -my-0.5 touch:-my-3' : 'gap-2', className)}>
+    <div className={cn('flex items-center', icons ? 'gap-1 -my-0.5 touch:-my-3' : 'gap-2', pairOnPhone && PAIR_ON_PHONE, className)}>
       {children}
       {destructive && <span className={cn('inline-flex', !icons && 'ml-2')}>{destructive}</span>}
     </div>
@@ -253,8 +273,8 @@ export function LinkRow({ icon: Icon, title, description, href }: {
   href: string
 }) {
   return (
-    <div className="flex items-start gap-3 py-3">
-      {Icon && <Icon size={16} className="shrink-0 mt-0.5 text-ink-caption" aria-hidden="true" />}
+    <div className="flex items-center gap-3 py-3">
+      {Icon && <Icon size={16} className="shrink-0 text-ink-caption" aria-hidden="true" />}
       <div className="min-w-0">
         {/* The kit's one link out (ExternalLink): its glyph, its rel, its URL guard. */}
         <ExternalLink href={href} className={cn(TEXT.label, 'mouse:hover:text-brand-legible')}>{title}</ExternalLink>

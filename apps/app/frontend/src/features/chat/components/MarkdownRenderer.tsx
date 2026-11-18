@@ -229,7 +229,8 @@ function renderInline(text: string): (string | JSX.Element)[] {
       // both without this component knowing which is active.
       // Recurse into the captured span so nested markdown (e.g. a **[link](url)** citation)
       // still gets parsed instead of showing up as literal bracket/paren text inside the <strong>.
-      result.push(<strong key={key++} className="font-bold text-ink-primary">{renderInline(first.match[1])}</strong>)
+      // Semibold, as every bold in the app: no weight 700 outside the wordmark (frontend.md).
+      result.push(<strong key={key++} className="font-semibold text-ink-primary">{renderInline(first.match[1])}</strong>)
     } else if (first.type === 'italic') {
       // Same problem, worse: a slant at 13px is nearly invisible against body color, so italic
       // takes the ink-primary lift too (without the weight, which is what still distinguishes it

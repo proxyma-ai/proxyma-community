@@ -44,3 +44,14 @@ export const ICON_BUTTON_BASE =
 export function iconButton(size: IconButtonSize = 'md', tone: IconButtonTone | null = 'default'): string {
   return [ICON_BUTTON_BASE, SIZE[size], tone ? TONE[tone] : ''].filter(Boolean).join(' ')
 }
+
+/**
+ * THE WAY BACK BESIDE A TITLE - a dialog shown as a page, Settings on a phone, a project's or a channel's header: an 18px
+ * left arrow (`BACK_ICON_SIZE`) whose GLYPH stands on the column's left edge, the button's padding hanging outside it
+ * (the maintainer, 2026-11-17: "incorrect and inconsistent alignment across pages" - four headers drew it four ways, its
+ * glyph at 8, 16 or 30px). Its box hangs past the glyph on BOTH sides by the glyph's inset - (36 - 18) / 2 under a mouse,
+ * (44 - 18) / 2 on glass - so what follows it (`gap-3`) stands 12px after the arrow, as after any icon (2026-11-17: "Incorrect
+ * alignment" - an icon after the arrow stood twice as far from it as the title from the icon).
+ */
+export const BACK_BUTTON = `${iconButton('md')} -mx-[9px] touch:-mx-[13px] shrink-0`
+export const BACK_ICON_SIZE = 18

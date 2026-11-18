@@ -155,7 +155,7 @@ export function ConnectMenu({ types, categories, open, onOpenChange, onPick, fil
       // columns as the window widens - each about an ordinary menu's width, and at 1280x720 the whole
       // catalog fits under the button without scrolling.
       widthClass={searchable ? PANEL_WIDTH[columnCount] : 'w-60'}
-      panelClassName={searchable ? 'max-h-[min(38rem,var(--float-room,38rem))]' : undefined}
+      panelClassName={searchable ? 'max-h-[min(38rem,var(--float-room,38rem))] tall:max-h-[var(--float-room,38rem)]' : undefined}
       ariaLabel={t('Connect')}
       trigger={({ open: isOpen, toggle, ref }) => (
         <Button ref={ref} data-tour-id="tour-add-source" onClick={toggle} aria-haspopup="menu" aria-expanded={isOpen}>

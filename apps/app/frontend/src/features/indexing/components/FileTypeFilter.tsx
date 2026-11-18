@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Caption, Chip, Field, FieldLabel, FieldSkeleton, Input, Presence, Skeleton } from '@/components/ui/kit'
+import { Button, Caption, CheckAll, Chip, Field, FieldLabel, FieldSkeleton, Input, Presence, Skeleton } from '@/components/ui/kit'
 import { EditableText } from '@/components/ui/EditableText'
 import { keys } from '@/services/queryKeys'
 import { indexingApi } from '../services/indexingApi'
@@ -53,11 +53,6 @@ export function FileTypeFilter({ value, onChange, disabled, saved }: Props) {
     onChange(value.includes(ext) ? value.filter(v => v !== ext) : [...value, ext])
   }
 
-  const toggleGroup = (exts: string[]) => {
-    const allOn = exts.every(e => value.includes(e))
-    onChange(allOn ? value.filter(v => !exts.includes(v)) : [...new Set([...value, ...exts])])
-  }
-
   // The custom field owns only the extensions no group offers; the checkbox selections are
   // preserved around it rather than replaced, so typing here can never silently clear them.
   const setCustom = (raw: string) => {
@@ -94,15 +89,17 @@ export function FileTypeFilter({ value, onChange, disabled, saved }: Props) {
 
       <div className="space-y-2 min-w-0">
         {groups.map(([key, exts]) => {
-          const allOn = exts.every(e => value.includes(e))
           return (
             <div key={key}>
-              <div className="flex items-baseline gap-2">
-                <Caption as="span" className="font-medium text-ink-secondary">{t(GROUP_LABELS[key] ?? key)}</Caption>
-                <Button variant="quiet" onClick={() => toggleGroup(exts)} disabled={disabled}>
-                  {allOn ? t('None') : t('All')}
-                </Button>
-              </div>
+              {/* THE GROUP'S NAME IS ITS "ALL" (the kit's CheckAll, 2026-11-17: an "All" / "None" link beside it): checked while
+                  every type in it is chosen, a dash while some are; ticking it chooses them all, clearing it none. */}
+              <CheckAll
+                items={exts}
+                chosen={value}
+                onChange={next => onChange([...value.filter(v => !exts.includes(v)), ...next])}
+                label={t(GROUP_LABELS[key] ?? key)}
+                disabled={disabled}
+              />
               {/* Selection is carried by the chip's pressed fill alone: a check mark inside the
                   chip made the row reflow as chips were toggled, and the pressed state already
                   says "on" unambiguously. */}

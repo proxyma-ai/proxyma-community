@@ -2,6 +2,7 @@ import { SquareArrowOutUpRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from './cn'
 import { safeExternalHref } from './safeUrl'
+import { Tooltip } from './Tooltip'
 
 // The one way to link OUT of Proxyma.
 //
@@ -53,12 +54,12 @@ export function ExternalLink({
   // The label alone, with no glyph and nothing to follow. The caller's classes stay, so the layout
   // around it (a truncating row, a sentence) does not move.
   if (!safeHref) return <span title={title} className={className}><span className={labelClassName}>{children}</span></span>
-  return (
+  // `title` is the kit Tooltip on the link, never the browser's own (frontend.md).
+  const link = (
     <a
       href={safeHref}
       target="_blank"
       rel="noopener noreferrer"
-      title={title}
       onClick={e => {
         if (stopPropagation) e.stopPropagation()
         onClick?.()
@@ -82,4 +83,5 @@ export function ExternalLink({
       />
     </a>
   )
+  return title ? <Tooltip label={title} className="contents">{link}</Tooltip> : link
 }

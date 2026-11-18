@@ -1,6 +1,6 @@
 import { Suspense, useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
-  Button, ChoiceFilter, Divider, DropOverlay, EmptyState, FadeSwap, FilterBar, FilterRow, ListGroupHeading, MetaList, Page, PageHeader, Presence, Readout, SearchInput, Skeleton, SOURCE_LIST_BOX, SourceListHeader, SwitchRow, Tooltip, useFileDrop, usePageFor,
+  Button, ChoiceFilter, choiceChipClass, Divider, DropOverlay, EmptyState, FadeSwap, FilterBar, FilterRow, ListGroupHeading, MetaList, Page, PageHeader, Presence, Readout, SearchInput, Skeleton, SOURCE_LIST_BOX, SourceListHeader, SwitchRow, Tooltip, useFileDrop, usePageFor, usePhone,
 } from '@/components/ui/kit'
 import { ConnectMenu } from '../components/ConnectMenu'
 import { FilterChipsSkeleton, SourceListSkeleton } from '@/components/ui/Skeleton'
@@ -27,7 +27,7 @@ import type { ConnectorConfig, ConnectorType } from '@/features/indexing/types/i
 import type { CatalogType } from '@/features/indexing/services/catalogApi'
 import { useConnectorCatalog } from '@/features/indexing/hooks/useConnectorCatalog'
 import { typeRank } from '@/features/indexing/utils/fieldForm'
-import { ChevronRight, Plus, Shapes } from 'lucide-react'
+import { ChevronRight, Plus, Users } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useTranslation } from '@/i18n'
 
@@ -124,6 +124,7 @@ export function SourcesPage() {
   // here". The toggle stays, so anyone who wants only their own connectors can still say so. Server
   // mode only; desktop has no auth/other-users concept, and passes false regardless below.
   const [includeShared, setIncludeShared] = useState(true)
+  const phone = usePhone()
   const { data: summary, isLoading: summaryLoading } = useConnectorSummary(isServer && includeShared)
   // Search box filters by connector title - when a query is present, byType fetches title matches
   // (scoped to filterType, or across every type when filterType is undefined) instead of the
@@ -412,22 +413,37 @@ export function SourcesPage() {
         <FilterBar
           filters={summaryLoading ? <FilterChipsSkeleton /> : filterChips.length > 0 ? (
             // The type is a chip on the kit's filter row (2026-11-16: every list's filters on one line, More for the rest).
-            <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filters')} items={[{
-              key: 'type',
-              active: !!filterType,
-              node: (
-                <ChoiceFilter<FilterKey>
-                  ariaLabel={t('Filter sources by type')}
-                  icon={<Shapes size={14} aria-hidden="true" />}
-                  name={t('Type')}
-                  defaultKey="all"
-                  options={filterChips}
-                  value={filterType ?? 'all'}
-                  active={!!filterType}
-                  onChange={key => setFilterType(key === 'all' ? undefined : key)}
-                />
-              ),
-            }]} />
+            // EACH TYPE A CHIP, the first that fit on the line and More for the rest (the maintainer, 2026-11-17: "similar
+            // to sort cards in Youtube assistant, with 'Files', 'Confluence' and 'More'"), the chosen one in the brand's
+            // border; pressing it again shows every type. It was one "Type" chip opening a list.
+            <FilterRow label={t('Filter')} moreLabel={t('More')} ariaLabel={t('Filter sources by type')} items={[
+              ...filterChips.filter(o => o.key !== 'all').map(o => ({
+                key: o.key,
+                active: filterType === o.key,
+                node: (
+                  <button type="button" aria-pressed={filterType === o.key} className={choiceChipClass(filterType === o.key)}
+                    onClick={() => setFilterType(filterType === o.key ? undefined : (o.key as FilterKey))}>
+                    <span>{o.label}</span>
+                    <span className="text-xs text-ink-caption data-readout">{o.count}</span>
+                  </button>
+                ),
+              })),
+              // The shared sources, last: on a phone a chip on this line (2026-11-17), wider the switch by the search.
+              ...(isServer && phone ? [{
+                key: 'shared',
+                active: !includeShared,
+                node: (
+                  <ChoiceFilter<'with' | 'mine'>
+                    ariaLabel={t('Show shared sources from other users')}
+                    icon={<Users size={14} aria-hidden="true" />}
+                    options={[{ key: 'with', label: t('With shared sources') }, { key: 'mine', label: t('Only mine') }]}
+                    value={includeShared ? 'with' : 'mine'}
+                    active={!includeShared}
+                    onChange={key => setIncludeShared(key === 'with')}
+                  />
+                ),
+              }] : []),
+            ]} />
           ) : undefined}
           search={(
             <SearchInput
@@ -439,7 +455,7 @@ export function SourcesPage() {
             />
           )}
         >
-          {isServer && (
+          {isServer && !phone && (
             <SwitchRow
               size="sm"
               title={t('Show shared sources from other users')}

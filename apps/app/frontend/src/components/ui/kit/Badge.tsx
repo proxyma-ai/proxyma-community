@@ -93,7 +93,11 @@ const TIER_VARIANT: Record<string, 'neutral' | 'brand'> = {
  */
 export function TierBadge({ tier, className }: { tier?: string | null; className?: string }) {
   if (!tier) return <EmptyValue />
-  return <Badge label={tier} variant={TIER_VARIANT[tier.toUpperCase()] ?? 'outline'} className={className} />
+  // A tier is a product's NAME - "Enterprise", "Community" - never the server's enum: the license console's list read
+  // "ENTERPRISE" beside sentence-case badges (2026-11-17; every badge is in its label's own case). A name already
+  // written as one is left as it is.
+  const name = tier === tier.toUpperCase() ? tier.charAt(0) + tier.slice(1).toLowerCase() : tier
+  return <Badge label={name} variant={TIER_VARIANT[tier.toUpperCase()] ?? 'outline'} className={className} />
 }
 
 /**

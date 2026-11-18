@@ -44,7 +44,9 @@ export function Callout({ tone = 'neutral', title, children, actions, icon, clas
       <div className="flex-1 min-w-0">
         {title && <p className={TEXT.label}>{title}</p>}
         {children && <div className={cn('text-sm text-ink-secondary', title && 'mt-1')}>{children}</div>}
-        {actions && <div className="mt-3 flex flex-wrap items-center gap-3">{actions}</div>}
+        {/* ON A PHONE ONE BUTTON A ROW, EACH THE FULL WIDTH (2026-11-17, the maintainer: "Unbalanced layout" - two buttons of two
+            widths, the second wrapped under the first). Wider, a row. */}
+        {actions && <div className="mt-3 flex flex-wrap items-center gap-3 [@media(max-width:639px)]:flex-col [@media(max-width:639px)]:items-stretch [@media(max-width:639px)]:gap-2 [@media(max-width:639px)]:[&>*]:w-full [@media(max-width:639px)]:[&_button]:w-full [@media(max-width:639px)]:[&_a]:w-full">{actions}</div>}
       </div>
     </div>
   )
@@ -89,7 +91,7 @@ export function Banner({ tone = 'info', title, children, action, onDismiss, dism
           type="button"
           onClick={onDismiss}
           aria-label={dismissLabel}
-          className={cn(iconButton('sm'), 'absolute right-2 top-1/2 -translate-y-1/2')}
+          className={cn(iconButton('sm'), 'absolute right-2 top-2 sm:top-1/2 sm:-translate-y-1/2')}
         >
           <X size={14} aria-hidden="true" />
         </button>

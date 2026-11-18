@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { Settings } from 'lucide-react'
-import { AppHeader, BRAND_LINK, Tooltip, iconButton } from '@/components/ui/kit'
+import { AppHeader, BRAND_LINK, Tooltip, cn, iconButton } from '@/components/ui/kit'
 import { Logo } from '@/components/ui/Logo'
 import { FEATURES } from '@/config/features'
 import { useTranslation } from '@/i18n'
@@ -26,14 +26,15 @@ export function Topbar() {
   const canOpen = !FEATURES.auth || !!user
   return (
     <AppHeader
-      // No rule under it: with the page's large title right below, bar and title read as one header, as a phone's
-      // large-title bar does (the mobile audit, 2026-11-16).
-      className="border-b-0"
+      // AS THE SITE'S HEADER (the maintainer, 2026-11-17: "The design of the app on mobile seems different from the landing
+      // site" - the app follows the site): no plane and no rule of its own - it stands on the page's sheet (AppShell draws
+      // it inside), so header and page are one surface - and the whole lockup, the mark beside the wordmark in the site's
+      // proportions (29px beside 20px, `.site-lockup` at its 36px row). It was the mark alone on the bar's darker glass.
+      className="border-b-0 !bg-transparent ![backdrop-filter:none] ![-webkit-backdrop-filter:none]"
       brand={(
-        <NavLink to="/" className={BRAND_LINK} aria-label={t('Home')}>
-          {/* THE MARK ALONE (the mobile audit): the page's own large title names the page; the brand is the chat home's
-              to show, once. Its mark turns as every mark does: the kit's `.mark-turn`, which Logo applies. */}
-          <Logo markOnly />
+        <NavLink to="/" className={cn(BRAND_LINK, '[&_.font-brand]:text-[20px] [&_.font-brand]:leading-[1.4]')} aria-label={t('Home')}>
+          {/* Its mark turns as every mark does: the kit's `.mark-turn`, which Logo applies. */}
+          <Logo size={29} />
         </NavLink>
       )}
     >

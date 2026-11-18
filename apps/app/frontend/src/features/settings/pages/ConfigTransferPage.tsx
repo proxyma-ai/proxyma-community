@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Download, RotateCw, Upload } from 'lucide-react'
 import {
-  Button, Caption, Card, CardBody, CardHeader, Checkbox, cn, FadeSwap, Field, FieldLabel, FilePickerButton,
+  Button, Caption, Card, CardBody, CardHeader, CheckAll, Checkbox, cn, FadeSwap, Field, FieldLabel, FilePickerButton,
   FormStack, HScroll, InlineCode, InlineNotice, PasswordInput, Presence, SettingsSection, SettingsSections,
   TABLE_CLASS, TD_COMPACT, Th, THEAD_TR, Tooltip, TR,
 } from '@/components/ui/kit'
@@ -471,22 +471,23 @@ function GroupPicker({ available, value, onChange }: {
   const toggle = (id: TransferGroup, on: boolean) =>
     onChange(on ? available.filter(g => g === id || value.includes(g)) : value.filter(g => g !== id))
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <FieldLabel as="span" className="mb-0">{t('What to include')}</FieldLabel>
-        <div className="flex items-center gap-3">
-          <Button variant="hyperlink" onClick={() => onChange(available)}>{t('All')}</Button>
-          <Button variant="hyperlink" onClick={() => onChange([])}>{t('None')}</Button>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+    // A group of the Export section, not a card of its own (2026-11-18): a card inside it made the section give up its
+    // own card - half the tab carded - and on a phone it stood 17px in from the checkbox under it. Its columns follow
+    // its own width (an iPad's Settings column put three in 364px: "Usage & / Cost").
+    <div className="[container-type:inline-size]">
+      {/* The label, then "All" as the list's first box (the kit's CheckAll, 2026-11-17: it was "All" and "None" links), then
+          one choice a line on a phone, three columns from `sm`. */}
+      <FieldLabel as="span" className="block mb-3">{t('What to include')}</FieldLabel>
+      <CheckAll items={groups.map(g => g.id)} chosen={value} onChange={onChange} label={t('All')}
+        className="mb-2 pb-2 w-full border-b border-line/45" />
+      <div className="grid grid-cols-1 [@container(min-width:30rem)]:grid-cols-3 gap-x-4 gap-y-2">
         {groups.map(g => (
           <Checkbox key={g.id} checked={value.includes(g.id)} onChange={on => toggle(g.id, on)}>
             {t(g.label)}
           </Checkbox>
         ))}
       </div>
-    </Card>
+    </div>
   )
 }
 

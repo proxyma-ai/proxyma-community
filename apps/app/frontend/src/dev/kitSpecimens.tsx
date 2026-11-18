@@ -6,7 +6,7 @@ import {
 import {
   ActionMenu, ActivityFeed, ActivityLine, AppHeader, AppearanceIcon, AppearanceMenu, AppearanceMenuRow, AudioPlayer, AuthLayout, AutoHideHeader, ShowMore, ChoiceFilter, DockButton, DockTabs, FilterRow,
   Avatar, AvatarStack, BackLink, Badge, Banner, BarList, BootScreen, BrandMark, BulkActionBar, Button, ButtonLink, Callout, Caption, Card,
-  CardBody, CardHeader, ChartCard, ChatMessage, ChatMessageSkeleton, ChatStartHero, ChatStartLinks, ChatStartStage, Checkbox, Chip, ChoiceMark, ChoiceRow, CitationList,
+  CardBody, CardHeader, ChartCard, CheckAll, ChatMessage, ChatMessageSkeleton, ChatStartHero, ChatStartLinks, ChatStartStage, Checkbox, Chip, ChoiceMark, ChoiceRow, CitationList,
   CitationRow, CitationsFold, CodeBlock, Collapse, ColumnChart, Combobox, CompareTable, ComposerShell, ConfirmDialog, CopyButton, CopyField,
   DateTimePicker, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogNotice, DialogShell, DialogTitle, Disclosure,
   DisclosureButton, DisclosureChevron, DisplayHeading, Divider, DownloadRow, DropArea, DropOverlay, Elapsed, EmptyState, EmptyValue,
@@ -134,6 +134,19 @@ function DateDemo() {
     <div className="w-72 space-y-4">
       <Field label="Maintenance starts">{id => <DateTimePicker id={id} value={v} onChange={setV} labels={DATE_LABELS} locale="en-US" />}</Field>
       <Field label="Renewal date">{id => <DateTimePicker id={id} dateOnly value={d} onChange={setD} labels={{ ...DATE_LABELS, placeholder: 'Select a date' }} locale="en-US" />}</Field>
+    </div>
+  )
+}
+
+function CheckAllDemo() {
+  const items = ['Connections', 'Skills', 'Agents']
+  const [chosen, setChosen] = useState<string[]>(['Connections'])
+  return (
+    <div className="space-y-2">
+      <CheckAll items={items} chosen={chosen} onChange={setChosen} label="All" />
+      {items.map(i => (
+        <Checkbox key={i} checked={chosen.includes(i)} onChange={on => setChosen(c => (on ? [...c, i] : c.filter(x => x !== i)))}>{i}</Checkbox>
+      ))}
     </div>
   )
 }
@@ -737,6 +750,7 @@ export const SPECIMENS: Record<string, KitSpecimen[]> = {
   Combobox: [{ title: 'Typed or picked', render: () => <ComboboxDemo /> }],
   DateTimePicker: [{ title: 'Date and time, date only', render: () => <DateDemo /> }],
   Checkbox: [{ title: 'Checkbox, RadioGroup, SelectBox', render: () => <CheckDemo /> }],
+  CheckAll: [{ title: 'All over a checklist', render: () => <CheckAllDemo /> }],
   SelectBox: [{ title: 'A row box and an indeterminate header', render: () => <div className="flex gap-3"><SelectBox checked label="Select row" onToggle={noop} /><SelectBox checked={false} indeterminate label="Select all" onToggle={noop} /><SelectBox checked={false} disabled label="Disabled" onToggle={noop} /></div> }],
   RadioGroup: [{ title: 'Vertical and horizontal', render: () => <div className="space-y-3"><RadioGroup ariaLabel="Context" value="32k" onChange={noop} figures horizontal options={[{ value: '8k', label: '8k' }, { value: '32k', label: '32k' }, { value: '128k', label: '128k' }]} /><RadioGroup ariaLabel="Mode" value="a" onChange={noop} options={[{ value: 'a', label: 'Ask first' }, { value: 'b', label: 'Allow', hint: 'Every change still shows.' }]} /></div> }],
   ChoiceMark: [{ title: 'Ring, square, indeterminate', render: () => <div className="flex gap-3"><ChoiceMark checked /><ChoiceMark checked={false} /><ChoiceMark multi checked /><ChoiceMark multi checked={false} /><ChoiceMark multi checked={false} indeterminate /></div> }],

@@ -8,9 +8,10 @@
  * a change that only one surface wants does not belong in the shared kit at all.
  * ===================================================================================== */
 
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from './cn'
+import { Tooltip } from './Tooltip'
 
 export type ChipVariant = 'outline' | 'file' | 'solid' | 'filter'
 
@@ -85,18 +86,20 @@ export function Chip({ label, variant = 'outline', icon, fillClass, pressed, cou
     </>
   )
   const cls = cn(chipClass(variant, { pressed, interactive: (!!onClick || !!href) && !disabled, fillClass }), disabled && 'opacity-40 cursor-not-allowed', className)
+  // `title` is the kit Tooltip, never the browser's own (frontend.md: every control's tooltip shows above the pointer).
+  const tip = (node: ReactElement) => (title ? <Tooltip label={title} className="contents">{node}</Tooltip> : node)
 
   if (href && !disabled) {
-    return (
-      <a href={href} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined} title={title} className={cn(cls, 'no-underline')}>
+    return tip(
+      <a href={href} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined} className={cn(cls, 'no-underline')}>
         {body}
       </a>
     )
   }
 
   if (onClick && !onRemove) {
-    return (
-      <button type="button" onClick={onClick} disabled={disabled} title={title} aria-pressed={variant === 'filter' ? !!pressed : undefined} className={cls}>
+    return tip(
+      <button type="button" onClick={onClick} disabled={disabled} aria-pressed={variant === 'filter' ? !!pressed : undefined} className={cls}>
         {body}
       </button>
     )

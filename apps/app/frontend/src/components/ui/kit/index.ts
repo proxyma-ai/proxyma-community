@@ -27,7 +27,7 @@ export { cn } from './cn'
 export { TEXT, TEXT_LINK_BASE, textLink, type TextRole, type TextLinkTone } from './typeScale'
 export { PAGE_COLUMN, PAGE_GUTTER, PAGE_INSET_LEFT, PAGE_INSET_RIGHT, PROSE_MEASURE } from './layout'
 export { pageTitle, TITLE_SEPARATOR } from './pageTitle'
-export { iconButton, ICON_BUTTON_BASE, type IconButtonSize, type IconButtonTone } from './iconButton'
+export { iconButton, ICON_BUTTON_BASE, BACK_BUTTON, BACK_ICON_SIZE, type IconButtonSize, type IconButtonTone } from './iconButton'
 export { TAP_TEXT, TAP_TEXT_FROM_SM } from './tap'
 export { FIELD_BASE, FIELD_NO_NATIVE_PASSWORD_UI, fieldBorder, fieldWords, type FieldWords } from './field'
 export { useModalLayer } from './useModalLayer'
@@ -96,7 +96,7 @@ export { Select, type SelectOption } from './Select'
 export { Combobox, type ComboboxStatus, type ComboboxLabels } from './Combobox'
 export { DateTimePicker } from './DateTimePicker'
 export type { DateTimePickerProps, DateTimePickerLabels } from './DateTimePicker'
-export { Checkbox } from './Checkbox'
+export { Checkbox, CheckAll } from './Checkbox'
 export { SelectBox } from './SelectBox'
 export { RadioGroup, ChoiceMark, type RadioOption } from './RadioGroup'
 export { SegmentedControl, type SegmentedOption } from './SegmentedControl'
@@ -152,10 +152,10 @@ export { Toast, TOAST_DOCK, TOAST_LAYER, TOAST_STACK, type ToastTone } from './T
 // -- L2 composites: forms, lists, tables --------------------------------------------------------
 export { Field, FormColumns, FormStack, StaticValue, type FieldAria } from './FormField'
 export { List, ListRow, SwitchRow, RowActions, HoverActions, InlineConfirm, LinkRow, BulkActionBar, SELECTED_ROW } from './List'
-export { ChoiceChips, FilterChips, FilterBar, Toolbar, type ChoiceChip, type FilterOption } from './FilterBar'
+export { ChoiceChips, FilterChips, FilterBar, Toolbar, choiceChipClass, type ChoiceChip, type FilterOption } from './FilterBar'
 export { PickBox, SelectableListHeader, ListEditor, StepList, StepItem, StepCard } from './Collections'
 export {
-  TABLE_CLASS, TABLE_BRIEF, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter,
+  TABLE_CLASS, TABLE_BRIEF, TABLE_PAIRS, TABLE_FLUSH, TableCard, TR, TR_INTERACTIVE, THEAD_TR, TD, TD_COMPACT, Th, SortTh, TableSkeletonRows, TableEmptyRow, TableErrorRow, RowOpenButton, TableFooter,
   IdentityCell, type SortDir, type SortState, type SkeletonColumn,
 } from './DataTable'
 export { useFileDrop, useFilePicker, DropArea, DropOverlay, FilePickerButton, type FileDropHandlers } from './DropArea'

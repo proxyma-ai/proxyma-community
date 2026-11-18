@@ -30,7 +30,7 @@ import { useModalLayer } from './useModalLayer'
  */
 export function Page({ children, className, as: As = 'div' }: { children: ReactNode; className?: string; as?: 'div' | 'main' }) {
   return (
-    <As className={cn(PAGE_COLUMN, PAGE_GUTTER, 'py-6 sm:py-8 short:py-3 space-y-6 short:space-y-3', className)}>
+    <As className={cn(PAGE_COLUMN, PAGE_GUTTER, 'py-6 sm:py-8 short:py-3 space-y-6 short:space-y-3 [@media(max-width:639px)]:[&>:nth-child(2)]:!mt-4', className)}>
       {children}
     </As>
   )
@@ -107,7 +107,7 @@ export function AuthLayout({ logo, title, subtitle, description, back, children,
         <div className="w-full max-w-[420px]">
           <div data-auth-card="" className="surface-float border rounded-lg shadow-float p-6 sm:p-8">
             {back && <div className="mb-4">{back}</div>}
-            <div className="flex items-center gap-2 mb-6">{logo}</div>
+            <div className="hidden sm:flex items-center gap-2 mb-6">{logo}</div>
             <h1 className={cn(TEXT.pageTitle, 'sm:text-lg text-left sm:text-center')}>{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-ink-caption text-left sm:text-center">{subtitle}</p>}
             {description && <p className="mt-2 text-xs text-ink-caption text-left sm:text-center">{description}</p>}

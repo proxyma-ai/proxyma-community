@@ -2,7 +2,7 @@ import { Pencil, Shapes, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  applyClick, Badge, BulkActionBar, Button, ChoiceFilter, ConfirmDialog, DialogBody, DialogHeader, EmptyState, FadeSwap, Field, FilterBar, FilterRow, FormStack, headerState, IconButton, List, ListRow, toggleAllOnPage, Presence, RadioGroup, Readout, RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, usePagedList,
+  ActionMenu, applyClick, Badge, BulkActionBar, Button, ChoiceFilter, ConfirmDialog, DialogBody, DialogHeader, EmptyState, FadeSwap, Field, FilterBar, FilterRow, FormStack, headerState, IconButton, List, ListRow, toggleAllOnPage, Presence, RadioGroup, Readout, RowActions, SearchInput, SelectableListHeader, SelectBox, SettingsSections, usePagedList, usePhone,
 } from '@/components/ui/kit'
 import { ListPager } from '@/components/ui/ListPager'
 import { ModalShell } from '@/components/ui/ModalShell'
@@ -38,6 +38,7 @@ function useCategoryLabel() {
 
 export function MemoryTab() {
   const { t } = useTranslation()
+  const phone = usePhone()
   const addToast = useToastStore(s => s.addToast)
   const { data: entries = [], isLoading } = useQuery({ queryKey: keys.agentMemory(), queryFn: memoryApi.list })
   const [filter, setFilter] = useState<Filter>('all')
@@ -198,13 +199,21 @@ export function MemoryTab() {
                     // The entry is what the agent remembers, in its own words - read at the option
                     // weight, up to four lines.
                     title={<span className="block font-normal whitespace-pre-wrap break-words line-clamp-4">{entry.text}</span>}
+                    // ON A PHONE ONE "MORE" BESIDE THE ENTRY (the mobile audit's rule for a row's several icon actions):
+                    // the two icons wrapped onto a line of their own under the date, and every entry was three lines.
+                    action={phone ? (
+                      <ActionMenu label={t('More')} groups={[
+                        [{ label: t('Edit'), icon: <Pencil size={16} />, onSelect: () => setEditing(entry), disabled: busy }],
+                        [{ label: t('Delete'), icon: <Trash2 size={16} />, danger: true, onSelect: () => setDeleting([entry.id]), disabled: busy }],
+                      ]} />
+                    ) : undefined}
                     // The actions end the metadata line, in the row's bottom right corner (0.27.0
                     // feedback) - so the entry's text has the full width above them.
                     caption={(
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
                         {entry.category && <Badge variant="outline" size="sm" label={categoryLabel(entry.category)} />}
                         {entry.savedAt && <Readout>{dates.dateTime(entry.savedAt)}</Readout>}
-                        <RowActions
+                        {!phone && <RowActions
                           className="ml-auto"
                           destructive={(
                             <IconButton icon={Trash2} tone="danger" label={t('Delete')} disabled={busy}
@@ -213,7 +222,7 @@ export function MemoryTab() {
                         >
                           {/* Row actions are icons in every Settings list (2026-11-10). */}
                           <IconButton icon={Pencil} label={t('Edit')} disabled={busy} onClick={() => setEditing(entry)} />
-                        </RowActions>
+                        </RowActions>}
                       </div>
                     )}
                   />

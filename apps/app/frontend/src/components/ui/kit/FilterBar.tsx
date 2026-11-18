@@ -118,12 +118,7 @@ export function ChoiceChips<K extends string>({ options, active, onChange, ariaL
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.key)}
-            className={cn(
-              'inline-flex items-center gap-1.5 h-9 touch:h-tap px-3 rounded-md border bg-field text-sm font-ui whitespace-nowrap focus-ring',
-              'transition-colors duration-fast ease-out',
-              on ? 'border-brand-solid/60 text-brand-legible font-medium'
-                : 'border-line text-ink-secondary mouse:hover:border-ink-disabled mouse:hover:text-ink-primary',
-            )}
+            className={choiceChipClass(on)}
           >
             {o.icon}
             <span>{o.label}</span>
@@ -131,6 +126,20 @@ export function ChoiceChips<K extends string>({ options, active, onChange, ariaL
         )
       })}
     </div>
+  )
+}
+
+/**
+ * ONE CHOICE AS A CHIP - the sort's ways (ChoiceChips), a list's kinds on a filter row (the Sources page's types, 2026-11-17:
+ * "similar to sort cards in Youtube assistant, with 'Files', 'Confluence' and 'More'"): the field's plane and a line edge,
+ * the chosen one in the brand's border and ink. A `FilterRow` item fits it to the line and puts the rest under More.
+ */
+export function choiceChipClass(on: boolean): string {
+  return cn(
+    'inline-flex items-center gap-1.5 h-9 touch:h-tap px-3 rounded-md border bg-field text-sm font-ui whitespace-nowrap focus-ring',
+    'transition-colors duration-fast ease-out',
+    on ? 'border-brand-solid/60 text-brand-legible font-medium'
+      : 'border-line text-ink-secondary mouse:hover:border-ink-disabled mouse:hover:text-ink-primary',
   )
 }
 
@@ -145,9 +154,13 @@ export function FilterBar({ filters, search, children, className }: {
   children?: ReactNode
   className?: string
 }) {
+  // ON A PHONE THE FILTERS AND THE SEARCH SHARE A ROW while they fit (2026-11-17: a Type chip on a line of its own, at
+  // its label's width, over a search field): the chips at their own width, the search taking the rest and at least
+  // 12rem - more chips than fit leave the search a line of its own under them. From `sm` the filters over the search.
   return (
-    <div className={cn('space-y-3', className)}>
-      {filters}
+    // 16px between its lines on a phone, the page header's own rhythm there (2026-11-17: "Unbalance line spacing").
+    <div className={cn('flex flex-wrap items-center gap-4 sm:block sm:space-y-3', className)}>
+      {filters && <div className="min-w-0 max-w-full">{filters}</div>}
       {/* The row WRAPS rather than overflow (the maintainer, 2026-11-05: the call log's search shrank to
           nothing and its Download ran off the edge in a narrow Settings window). The search keeps a
           usable width and the controls move under it when both do not fit; the controls wrap among
@@ -155,7 +168,9 @@ export function FilterBar({ filters, search, children, className }: {
           right (the maintainer, 2026-11-10, the call log: the controls under the search sat at the right edge,
           lined up with nothing): on one line the controls end at the right; wrapped, they start under the search. */}
       {(search || children) && (
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
+        // With controls beside the search (a toggle), they take the whole row under the chips on a phone: beside a chip the
+        // search shrank and the toggle's words wrapped three to a line (Enterprise's Sources, 2026-11-17).
+        <div className={cn('flex-1 min-w-0 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 sm:gap-3', children ? 'basis-full' : 'basis-48')}>
           {search && <div className="flex-1 min-w-0 sm:min-w-[16rem] sm:max-w-sm">{search}</div>}
           {children && <div className="flex flex-wrap items-center gap-3 min-w-0">{children}</div>}
         </div>

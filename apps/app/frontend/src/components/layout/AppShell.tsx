@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Topbar } from './Topbar'
 import { AppDock } from './AppDock'
-import { INSIDE_PAGE } from './navItems'
 import { Sidebar } from './Sidebar'
 import { AutoHideHeader, GlassFrame, PHONE_QUERY, ProxymaBackground, WindowControls } from '@/components/ui/kit'
 import { useFramedLayout, useWideLayout } from '@/hooks/useWideLayout'
@@ -318,15 +317,18 @@ export function AppShell() {
         <div className="relative z-raised flex flex-col h-full overflow-hidden">
           {/* On a phone the bar steps aside while the reader swipes on down a page, and comes back
               when they turn round - see the kit's AutoHideHeader. Every page starts with it. */}
-          {/* Not on a page inside another (INSIDE_PAGE): its own header - the way back, its name, one action - is the
-              one bar on a phone (the mobile audit, 2026-11-16: three bars stacked took a quarter of the screen). */}
-          {!INSIDE_PAGE.test(location.pathname) && (
+          {/* ON EVERY PAGE, a page inside another included (the maintainer, 2026-11-17: "scroll down should also show the header
+              so the user could go back to the home page") - the logo is the way home now that a page's own back arrow is
+              not drawn on a phone. It leaves as the page scrolls down and returns as it scrolls up. (From 2026-11-16 to
+              then a page inside another had only its own header.) */}
+          {/* The page is the same glass sheet as in the frame, full bleed (the kit's .app-sheet) - the header ON it, as the
+              site's header stands on its page (2026-11-17): one surface, no band above the page. */}
+          <div className="app-sheet flex-1 min-h-0 flex flex-col">
             <AutoHideHeader resetKey={location.pathname}>
               <Topbar />
             </AutoHideHeader>
-          )}
-          {/* The page is the same glass sheet as in the frame, full bleed (the kit's .app-sheet). */}
-          <div className="app-sheet flex-1 min-h-0 flex flex-col">{page}</div>
+            <div className="flex-1 min-h-0 flex flex-col">{page}</div>
+          </div>
           {/* THE PAGES AT THE FOOT, in place of the hamburger (2026-11-16, the maintainer): AppDock. */}
           <AppDock />
         </div>

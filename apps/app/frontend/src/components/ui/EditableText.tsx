@@ -271,7 +271,9 @@ export function EditableText({
                 aria-label={t('{label}: {value}. Click to change it.', { label, value: shown || placeholder || '' })}
                 onClick={e => open(offsetUnder(e, shown))}
                 onKeyDown={onRestKey}
-                className={cn(BOX, className, 'border-transparent cursor-text', flow,
+                // Empty on a touch screen it keeps a field's outline: its placeholder alone read as a hint, not something
+                // to tap (Administration's maintenance Reason, 2026-11-18) - a mouse finds it by hovering.
+                className={cn(BOX, className, 'border-transparent cursor-text', flow, empty && 'touch:border-line',
                   'transition-[border-color,opacity] duration-base focus-ring mouse:hover:border-line',
                   pending !== null && 'opacity-60')}
               >

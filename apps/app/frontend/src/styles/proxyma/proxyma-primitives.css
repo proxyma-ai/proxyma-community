@@ -832,11 +832,16 @@ html:not([data-motion-ready]) *::after {
     border-radius: 0;
     box-shadow: none;
   }
-  .settings-sections > :not([hidden]) ~ :not([hidden]) {
+  /* Ranked above the reset before it (whose :not() chain is 0,4,1 - at 0,3,0 this rule lost to it and no section on a
+     phone had its rule): the repeated :not([hidden]) only raises the rank. */
+  .settings-sections > :not([hidden]) ~ :not([hidden]):not([hidden]):not([hidden]) {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid rgb(var(--line) / 0.6);
   }
+  /* The tab's title stands 8px over its description on a phone (SettingsLayout); a tab that opens on a section keeps
+     24px over it. */
+  .settings-sections > :not([hidden]):not(:is(p, a)):first-child { margin-top: 1rem; }
   :not([hidden]) ~ .settings-subsection:not([hidden]) {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
@@ -1184,6 +1189,10 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
     max-width: none !important;
     min-width: 0 !important;
     min-height: 100% !important;
+    /* AS TALL AS ITS CONTENT, at least the screen: in the overlay's flex row it was stretched to exactly the screen's
+       height, and a form longer than that ran on past its own background, over the page behind - a dark, blurred band
+       across its last fields (2026-11-17, Add connection and a source's settings). */
+    align-self: flex-start !important;
     border-radius: 0 !important;
     border-width: 0 !important;
     box-shadow: none !important;
@@ -1197,6 +1206,10 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
   [data-dialog-page][class*="h-["].surface-float {
     height: 100% !important;
     max-height: 100% !important;
+    /* WHAT IS LONGER THAN THE SCREEN SCROLLS IN THE PAGE, never past its end (2026-11-17: a connection's form and a
+       source's settings ran on below the panel, over the page behind it, dimmed and blurred by the scrim - a dark
+       band across their last fields). Its header and footer stay pinned (sticky, below). */
+    overflow-y: auto !important;
   }
   [data-dialog-page] [data-dialog-head],
   [data-dialog-page] [data-dialog-foot] {
@@ -1206,6 +1219,9 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
   }
   [data-dialog-page] [data-dialog-head] { top: 0; }
   [data-dialog-page] [data-dialog-foot] { bottom: 0; }
+  /* Its buttons share the row in equal parts, as a phone's paired actions do (2026-11-18: Cancel and Create stood
+     at their words' width at the right). */
+  [data-dialog-page] [data-dialog-foot] > :is(button, a) { flex: 1 1 0; justify-content: center; }
 }
 
 /* A DATA TABLE STACKS ON A PHONE (TABLE_CLASS): below `sm` each row is a block and each cell a
@@ -1225,37 +1241,84 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
     overflow-wrap: anywhere;
     text-align: left;
   }
-  /* LABEL AND VALUE SIDE BY SIDE, BOTH ON THE LEFT (2026-11-16, the mobile pass): the label in a column of its own,
-     the value starting where that column ends - one x down the whole row. Until then the value sat at the right edge,
-     a screen's width from its label. */
+  /* ONE COLUMN: EACH LABEL OVER ITS VALUE (the maintainer, 2026-11-17, of a call log on a phone: "Should be one column,
+     title could have smaller and dimmer text, the value is bigger and brighter text"). The label is the caption step in
+     the caption ink; the value under it a step larger (14/20), and in the primary ink where its cell was a quiet one -
+     a value in a tone of its own (a refusal in red, a nearly full quota in amber) keeps its tone. It replaced the label
+     and the value side by side (2026-11-16), whose 8rem label column halved every value's width. */
   table.table-stack > tbody > tr > td[data-label] {
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-start;
-    gap: 1rem;
+    display: block;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
     text-align: left;
   }
+  table.table-stack > tbody > tr > td[data-label]:is(.text-ink-secondary, .text-ink-caption) { color: rgb(var(--ink-primary)); }
   table.table-stack > tbody > tr > td[data-label]::before {
     content: attr(data-label);
-    flex: 0 0 min(40%, 8rem);
-    text-align: left;
+    display: block;
+    margin-bottom: 0.125rem;
     font-family: var(--font-ui, inherit);
     font-size: 0.75rem;   /* the caption step, 12/16 */
+    font-weight: 400;
     line-height: 1rem;
     color: rgb(var(--ink-caption));
   }
   table.table-stack > tbody > tr > td:not([data-label]):first-child { padding-bottom: 0.375rem; }
   /* A brief table (TABLE_BRIEF): its name and its first two facts; the rest are in the detail its row opens. */
   table.table-stack.table-stack-brief > tbody > tr > td[data-label] ~ td[data-label] ~ td[data-label] { display: none; }
-  /* A table whose values are SENTENCES (`table-stack-over`) puts each label over its value (2026-11-16, the mobile
-     pass: the site's connectors - "What is indexed" in a 8rem column left "Folders on a Windows file server" three
-     words a line). A table of figures keeps them side by side, a short value a line. */
-  table.table-stack.table-stack-over > tbody > tr > td[data-label] { display: block; }
-  table.table-stack.table-stack-over > tbody > tr > td[data-label]::before { display: block; margin-bottom: 0.125rem; }
+  /* A LOG'S ROW IN TWO COLUMNS (TABLE_PAIRS, 2026-11-18): a row that opens no detail keeps every fact, two to a line -
+     a model call was twelve lines one under another. Its name (the cell with no label) spans the row. */
+  table.table-stack.table-stack-pairs > tbody > tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1rem; }
+  table.table-stack.table-stack-pairs > tbody > tr > td:not([data-label]) { grid-column: 1 / -1; }
+  /* `table-stack-over` (a table of sentences) is the same since every stacked table is one column (2026-11-17); the
+     class stays so the tables that carry it need no change. */
   /* A flush table (TABLE_FLUSH, on the table or on TableCard's card) is on the card's text edge: the card pads it, so a row
      adds no side padding of its own - it stood 16px in from the heading above it. */
   .table-flush table.table-stack > tbody > tr,
   table.table-stack.table-flush > tbody > tr { padding-left: 0; padding-right: 0; }
+  /* ITS FILL REACHES PAST THE TEXT, as a source row's does (2026-11-17, a key account's tapped row: "Incorrect padding" - the
+     fill hugged the words): the row hangs 12px past the column on each side and pads itself back, its text on the column. */
+  .table-flush table.table-stack > tbody > tr,
+  table.table-stack.table-flush > tbody > tr,
+  .kit-list-card table.table-stack > tbody > tr { margin-inline: -0.75rem; padding-inline: 0.75rem; border-radius: 0.5rem; width: auto; }
+  /* A LIST ON A PHONE IS ROWS ON THE PAGE (the maintainer, 2026-11-17: "On mobile, lists should refer to this [the Skills
+     list], instead of putting items into a rounded corners table"): a table's card and the Sources list's box lose
+     their fill, edge, corners, shadow and side padding there - the rows and the rules between them stand on the page,
+     their text on its 16px edge. From `sm`, the card. */
+  /* A stacked table never scrolls sideways, so the sideways scroller round it (HScroll) shows what passes its edges - it
+     clipped a row's fill at the text, the 12px each side cut away (2026-11-17: "Still incorrect background padding"). */
+  .kit-list-card :is(.overflow-x-auto, .hscroll-fade):has(> table.table-stack) {
+    overflow: visible !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  /* ANY CARD THAT HOLDS A LIST IS ITS ROWS ON THE PAGE TOO (2026-11-17, a key account's Activity: "still rounded corners
+     table in mobile"): a card whose content is a list (an `ol`, a `ul`, a kit List) loses its fill, edge, corners and
+     shadow on a phone and runs to the screen's edges, so its rows' text - 16px in, a phone card's padding - stands on the
+     page's 16px edge and its rules and a row's fill cross the screen. */
+  /* The apps' rule only (an app shell): the site's glass cards - a plan's list, a diagram's box - stay cards. */
+  :root[data-app-shell] .kit-card:not(.kit-list-card):has(> :is(ol, ul, .divide-y)) {
+    background: transparent !important;
+    border-width: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    margin-inline: -1rem !important;
+  }
+  .kit-list-card {
+    background: transparent !important;
+    border-width: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+  }
   /* A cell with nothing in it is no line at all - a label over a blank read as a value missing
      (the UI review's phone pass, 2026-10-28). */
   table.table-stack > tbody > tr > td:empty { display: none; }
@@ -1352,4 +1415,11 @@ svg.lucide[stroke-width="2"] { stroke-width: 1.75; }
 .prose-doc-sm :is(p, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, div, span, a, strong, em, table, th, td) {
   font-size: 0.75rem;
   line-height: 1rem;
+}
+
+/* A chart's hover readout (CHART_TOOLTIP) is solid: the float's color, not its glass - it covers the line it reads. */
+.surface-float.chart-readout {
+  background-color: rgb(var(--surface-float)) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }

@@ -65,7 +65,8 @@ export function KeyValue({ label, children, wide, figures, block, clamp, layout 
     return (
       <div className="contents">
         <dt className="text-xs text-ink-caption whitespace-nowrap">{label}</dt>
-        <dd className={cn('text-xs text-ink-primary break-words min-w-0 mb-2 sm:mb-0', figures && 'data-readout', block && 'whitespace-pre-wrap', clamp && 'line-clamp-3')}>{children}</dd>
+        {/* On a phone a label stands right over its value and the pairs 12px apart (2026-11-17: "Incorrect line spacing"). */}
+        <dd className={cn('text-xs text-ink-primary break-words min-w-0 mt-0.5 mb-3 sm:mt-0 sm:mb-0', figures && 'data-readout', block && 'whitespace-pre-wrap', clamp && 'line-clamp-3')}>{children}</dd>
       </div>
     )
   }

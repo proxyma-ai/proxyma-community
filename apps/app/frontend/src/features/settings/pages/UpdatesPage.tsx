@@ -192,7 +192,9 @@ export function UpdatesPage({ trackChange, pending, onOpenTab }: ExtraPageProps)
           </Presence>
           {statusLine(status.status, status.availableVersion, status.canApplyInPlace, t)}
         </div>
+        {/* One fact a line on a phone: the dot between them was left at the end of the first line. */}
         <MetaList
+          stackOnPhone
           className={cn(TEXT.caption, 'mt-1')}
           items={[
             <>{t('You are running')}&nbsp;<Readout tone="default">{status.currentVersion}</Readout></>,

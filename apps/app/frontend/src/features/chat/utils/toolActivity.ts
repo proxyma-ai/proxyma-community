@@ -275,9 +275,11 @@ const CONJUGATIONS: Record<string, Phrase> = {
 // Argument names worth quoting after the phrase, most identifying first. The point is the ONE
 // thing that tells two otherwise identical calls apart - which issue, which query, which URL -
 // so this is a priority order, not a set.
+// A page's TITLE before its id (2026-11-17): a Confluence write that names its page read "Updating a Confluence
+// page - 524301"; a read that has only the id still shows it.
 const DETAIL_KEYS = [
-  'issueKey', 'pageId', 'prId', 'commitId', 'query', 'jql', 'cql', 'pattern',
-  'url', 'fact', 'summary', 'title', 'name', 'skillName', 'task', 'targetStatus',
+  'issueKey', 'title', 'pageId', 'prId', 'commitId', 'query', 'jql', 'cql', 'pattern',
+  'url', 'fact', 'summary', 'name', 'skillName', 'task', 'targetStatus',
   'repoSlug', 'projectKey', 'spaceKey', 'branch', 'tag', 'fileName', 'server', 'product',
 ]
 
@@ -394,6 +396,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // Jira-style key (PROJ-318) is a person's way of naming a thing, and stays.
 const TOKEN = /^[A-Za-z0-9_-]{10,}$/
 const ISSUE_KEY = /^[A-Z][A-Z0-9_]*-\d+$/
+
+/**
+ * Whether an argument is an id - named one (pageId, prId, channelId) and holding a number or a machine's token. The
+ * approval card leaves such a row out (2026-11-17): the action above it already names the thing, by its title where the
+ * call has one, and an id says nothing to the person deciding. The call's detail dialog still lists every argument.
+ */
+export function isIdArgument(key: string, value: string): boolean {
+  return ID_KEY.test(key) && (/^\d+$/.test(value.trim()) || isOpaqueId(value.trim()))
+}
 
 /** Whether a value is an id no reader would recognize. Exported for the tests. */
 export function isOpaqueId(value: string): boolean {

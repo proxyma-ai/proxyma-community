@@ -56,7 +56,8 @@ export function CodeBlock({ children, text, copyLabel, copiedLabel, wrap, maxHei
       // Code is the code face's own 13/20 at either size; `size` sizes a `ui` block (a transcript).
       font === 'mono' ? 'text-code' : size === 'xs' ? 'text-xs' : 'text-sm',
       wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre w-max min-w-full',
-      copyLabel && 'pr-10',
+      copyLabel && wrap && 'pr-10 touch:pr-12',
+      copyLabel && 'touch:min-h-11 touch:flex touch:items-center',
     )}>
       {body}
     </pre>
@@ -64,10 +65,11 @@ export function CodeBlock({ children, text, copyLabel, copiedLabel, wrap, maxHei
   return (
     <div className={cn('relative', FRAME_CLASS, fill && 'flex-1 min-h-0 flex flex-col', className)}>
       <div className={cn(maxHeight && cn(maxHeight, 'overflow-y-auto'), fill && 'flex-1 min-h-0 overflow-y-auto')}>
-        {wrap ? pre : <HScroll>{pre}</HScroll>}
+        {/* A line that scrolls stops before the copy button, its fade too (it ran on under the button). */}
+        {wrap ? pre : <div className={cn(copyLabel && 'mr-10 touch:mr-12')}><HScroll>{pre}</HScroll></div>}
       </div>
       {copyLabel && text !== undefined && (
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1 touch:top-0 touch:right-0 rounded-md bg-surface-alt">
           <CopyButton getText={() => text} label={copyLabel} copiedLabel={copiedLabel ?? copyLabel} size="md" />
         </div>
       )}

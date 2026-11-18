@@ -36,7 +36,10 @@ export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize
     // up with the 36px field beside it: `md` (the default) 36px, `sm` 32px, `lg` 44px - and the
     // touch target grows on glass (`touch:`), the label does not.
     'inline-flex items-center justify-center font-semibold font-ui rounded-md no-underline',
-    'transition-all duration-fast cursor-pointer whitespace-nowrap leading-none',
+    // NEVER NARROWER THAN ITS LABEL (`shrink-0`, 2026-11-17): the label does not wrap, so a flex row that squeezed
+    // the button cut its words at both edges ("onfirm and continu" beside a hint in a key account's narrow column).
+    // A caller's `flex-1` still shares a row out - `cn` lets it replace this.
+    'transition-all duration-fast cursor-pointer whitespace-nowrap leading-none shrink-0',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-solid focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
     'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
     'aria-disabled:opacity-40 aria-disabled:cursor-not-allowed',

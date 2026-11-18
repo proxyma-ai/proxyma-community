@@ -495,7 +495,8 @@ export function ChatPage() {
                 // the hero pushed it under the browser's toolbar. Neither holds now - the shell is
                 // one box pinned to the visible viewport (data-app-shell) and the composer is a
                 // footer outside the scroller, exactly as it is in a conversation.
-                'flex-1 min-h-0 flex flex-col px-4 sm:px-6 pb-2 sm:py-6 short:py-2',
+                // 16px under the docked composer, as at its sides (2026-11-17: it was 8px above the dock).
+                'flex-1 min-h-0 flex flex-col px-4 sm:px-6 pb-4 sm:py-6 short:py-2',
                 'sm:items-center sm:justify-center sm:overflow-y-auto',
               )}
           >
@@ -538,7 +539,8 @@ export function ChatPage() {
                     logo half a screen away. Still in the scroller, the docked composer the only thing below them. From
                     `sm` up they are under the composer (the copy after it), so each layout reads, and tabs, in its own
                     order. */}
-                <div className="sm:hidden shrink-0 mt-6 short:mt-3 px-2 text-left">
+                {/* On the composer's own edge, the page's 16px (2026-11-17: "inconsistent padding" - they stood 8px in). */}
+                <div className="sm:hidden shrink-0 mt-6 short:mt-3 text-left">
                   <ChatStartLinks />
                 </div>
               </div>

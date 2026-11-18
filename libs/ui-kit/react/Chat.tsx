@@ -344,7 +344,10 @@ export function PromptCard({ icon: Icon, tone = 'brand', eyebrow, title, onTitle
   ariaLabel: string
 }) {
   return (
-    <div role="group" aria-label={ariaLabel} aria-busy={busy || undefined} className={cardClass({ padding: 'none', className: 'px-4 py-3 space-y-3' })}>
+    // THE CARD'S OWN WIDTH DECIDES ITS ACTIONS' LAYOUT (a container, 2026-11-17): on an iPad the row of three wrapped Deny onto
+    // a line of its own (the maintainer: "This should be the same as mobile"), so under 44rem - a phone, a tablet, a
+    // narrow panel - the actions are the phone's stack, and the row only where they all fit.
+    <div role="group" aria-label={ariaLabel} aria-busy={busy || undefined} className={cardClass({ padding: 'none', className: 'px-4 py-3 space-y-3 [container-type:inline-size]' })}>
       <div className="flex items-start gap-3">
         <Icon size={16} className={cn('shrink-0 mt-0.5', tone === 'warning' ? 'text-warning' : 'text-brand-legible')} aria-hidden="true" />
         <div className="min-w-0 flex-1">
@@ -357,14 +360,17 @@ export function PromptCard({ icon: Icon, tone = 'brand', eyebrow, title, onTitle
           {caption && <p className="text-xs text-ink-caption mt-1 break-words">{caption}</p>}
         </div>
       </div>
-      {children && <div className="sm:pl-7">{children}</div>}
+      {children && <div className="[@container(min-width:44rem)]:pl-7">{children}</div>}
       {(actions || status) && (
-        // ON A PHONE ONE BUTTON A ROW, the card's width (2026-11-16, the mobile pass): three buttons wrapped onto
-        // two right-aligned lines, Deny alone on the second. The time left above them; from `sm` the row as before.
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-2">
-          {status && <span className="sm:mr-auto flex items-center gap-2 text-xs text-ink-caption">{status}</span>}
+        // NARROW, ONE BUTTON A ROW, the card's width (2026-11-16, the mobile pass): three buttons wrapped onto two right-
+        // aligned lines, Deny alone on the second. The time left above them; wide enough, the row as before.
+        <div className="flex flex-col gap-2 [@container(min-width:44rem)]:flex-row [@container(min-width:44rem)]:flex-wrap [@container(min-width:44rem)]:items-center [@container(min-width:44rem)]:justify-end [@container(min-width:44rem)]:gap-x-3 [@container(min-width:44rem)]:gap-y-2">
+          {status && <span className="[@container(min-width:44rem)]:mr-auto flex items-center gap-2 text-xs text-ink-caption">{status}</span>}
           {actions && (
-            <div className="flex flex-col gap-2 [&>*]:w-full [@media(max-width:639px)]:[&>*]:!ml-0 sm:contents sm:[&>*]:w-auto">{actions}</div>
+            // NARROW, EVERY ACTION IS A ROW OF THE STACK, one size: its words centered, 44px tall and boxed - Deny too, which
+            // as a text button hung left at a link's height under two full-width buttons (the maintainer, 2026-11-17: "Deny
+            // button should have the same size"). Still last, still danger ink with no fill.
+            <div className="flex flex-col gap-2 [&>*]:w-full [@container(max-width:43.99rem)]:[&>*]:!ml-0 [@container(max-width:43.99rem)]:[&>*]:justify-center [@container(max-width:43.99rem)]:[&>*]:min-h-tap [@container(max-width:43.99rem)]:[&>*]:border [@container(max-width:43.99rem)]:[&>.border-none]:[border-style:solid] [@container(max-width:43.99rem)]:[&>.border-none]:border-line [@container(max-width:43.99rem)]:[&>*]:rounded-md [@container(min-width:44rem)]:contents [@container(min-width:44rem)]:[&>*]:w-auto">{actions}</div>
           )}
         </div>
       )}

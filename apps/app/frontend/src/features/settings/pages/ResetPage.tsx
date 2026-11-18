@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
-import { Button, ConfirmDialog, List, ListRow, SettingsSections } from '@/components/ui/kit'
+import { Button, cn, ConfirmDialog, List, ListRow, SettingsSections } from '@/components/ui/kit'
 import { apiErrorText } from '@/services/apiError'
 import { useAwaitRestart } from '../components/RestartBanner'
 import { systemApi } from '@/services/systemApi'
@@ -24,6 +24,12 @@ import { useTranslation } from '@/i18n'
 // Both endpoints self-restart the app. The desktop launcher already restarts the child on exit
 // code 3 (it treats it as the update signal and applyPendingUpdate no-ops when nothing is
 // staged), so the app comes back on its own against the freshly-created schema.
+
+// THE TWO RESETS ARE ONE SHAPE (2026-11-18): "Reset everything" was a bare red word beside a boxed "Reset settings" - a
+// box the same size, its words in danger ink; on a phone both are the row's width, under their words.
+const PHONE_WIDE = '[@media(max-width:639px)]:w-full'
+const BOXED = 'border [border-style:solid] border-line h-9 touch:h-tap px-4 justify-center'
+
 export function ResetPage() {
   const { t } = useTranslation()
   const addToast = useToastStore(s => s.addToast)
@@ -71,7 +77,7 @@ export function ResetPage() {
           title={t('Reset settings')}
           caption={t('Settings go back to defaults. Sources and chats are kept.')}
           action={
-            <Button variant="secondary" onClick={() => setSettingsOpen(true)}>
+            <Button variant="secondary" className={PHONE_WIDE} onClick={() => setSettingsOpen(true)}>
               {t('Reset settings')}
             </Button>
           }
@@ -83,7 +89,7 @@ export function ResetPage() {
           action={
             // Quiet danger, like every other destructive action in Settings: the typed
             // confirmation it opens is where the danger fill belongs.
-            <Button variant="danger-quiet" onClick={() => setEverythingOpen(true)}>
+            <Button variant="danger-quiet" className={cn(PHONE_WIDE, BOXED)} onClick={() => setEverythingOpen(true)}>
               {t('Reset everything')}
             </Button>
           }

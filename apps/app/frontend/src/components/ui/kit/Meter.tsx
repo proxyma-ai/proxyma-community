@@ -320,11 +320,13 @@ export function BarList({ rows, label, share = true, emptyText, className }: {
     return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`
   }
   return (
+    // The figure column is at least 4.5rem, so lists side by side or one under another (a call log's By provider, By
+    // model and By service) start their bars at one x unless a figure is longer than that (2026-11-18).
     // ONE grid for the whole list, each row a subgrid of it: the figure column is as wide as the
     // WIDEST figure, so every bar starts and ends at the same x. A grid per row sized its `auto`
     // column to that row's own figure, so "141" and "89" moved the bar's track by a few pixels and
     // two bars of the same value were drawn at different lengths.
-    <ol aria-label={label} className={cn('grid gap-x-3 gap-y-2 text-xs', share ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto_2.75rem]' : 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto]', className)}>
+    <ol aria-label={label} className={cn('grid gap-x-3 gap-y-2 text-xs', share ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(4.5rem,auto)_2.75rem]' : 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(4.5rem,auto)]', className)}>
       {rows.map(r => (
         <li key={r.key} className="grid grid-cols-subgrid col-span-full items-center">
           <span className={cn('min-w-0 flex items-center gap-2', r.muted ? 'text-ink-caption' : 'text-ink-secondary')}>
@@ -332,10 +334,12 @@ export function BarList({ rows, label, share = true, emptyText, className }: {
             <span className="min-w-0 flex flex-col">
               {r.onSelect ? (
                 // A button that reads as the row's name: its ink, underlined under a mouse.
-                <button type="button" onClick={r.onSelect} title={r.label}
-                        className="truncate text-left underline-offset-[3px] mouse:hover:underline mouse:hover:text-ink-primary focus-ring rounded-sm">
-                  {r.label}
-                </button>
+                <Tooltip label={r.label} className="contents">
+                  <button type="button" onClick={r.onSelect}
+                          className="truncate text-left underline-offset-[3px] mouse:hover:underline mouse:hover:text-ink-primary focus-ring rounded-sm">
+                    {r.label}
+                  </button>
+                </Tooltip>
               ) : (
                 <span className="truncate" title={r.label}>{r.label}</span>
               )}

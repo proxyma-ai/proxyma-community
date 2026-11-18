@@ -177,7 +177,9 @@ function ConnectionRow({ connection, onEdit }: {
     // right (the maintainer, 2026-11-02 and 11-03 - it replaced a two-column grid of cards, then two
     // rows of bordered buttons). Where the list is too narrow for both side by side (ConnectionList's
     // container, not the window) the buttons go under the details, starting where their text starts.
-    <Card role="listitem" padding="none" className="p-4">
+    // ON A PHONE A ROW ON THE PAGE, not a card (the maintainer, 2026-11-17: "On mobile, lists should refer to this, instead
+    // of putting items into a rounded conners table"): the list draws the rules between rows.
+    <Card role="listitem" padding="none" className={phone ? 'py-4 !bg-transparent !border-0 !rounded-none !shadow-none' : 'p-4'}>
       <ListRow
         // On a phone its one "More" button stays beside the name, where the five icons could not.
         className={phone ? 'py-0 flex-nowrap' : cn('flex-col items-stretch py-0', SIDE_ROW)}
@@ -340,7 +342,7 @@ const SIDE_ROW = '[@container(min-width:40rem)]:flex-row [@container(min-width:4
 function ConnectionList({ children }: { children: ReactNode }) {
   return (
     <div className="[container-type:inline-size]">
-      <div role="list" className="space-y-3">
+      <div role="list" className="space-y-3 [@media(max-width:639px)]:space-y-0 [@media(max-width:639px)]:divide-y divide-line/30">
         {children}
       </div>
     </div>

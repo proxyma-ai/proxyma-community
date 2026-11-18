@@ -84,6 +84,8 @@ export const CHART_GRID = { stroke: CHART_INK.line, strokeDasharray: '2 4', vert
  */
 export const CHART_TOOLTIP = {
   contentStyle: { fontSize: 12, borderRadius: 10, backgroundColor: 'transparent', border: 'none' },
-  wrapperClassName: 'surface-float border rounded-lg shadow-float text-ink-secondary',
+  // SOLID, the float's own color: a chart's readout sits over the very line it reads, and as glass - whose blur does not
+  // reach the chart's lines - the line ran straight through its words (2026-11-17, the maintainer: "Incorrect glass").
+  wrapperClassName: 'surface-float chart-readout border rounded-lg shadow-float text-ink-secondary',
   cursor: { fill: 'rgb(var(--ink-caption) / 0.08)' },
 } as const

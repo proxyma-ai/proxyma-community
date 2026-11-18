@@ -2,7 +2,7 @@
 
 **Document version:** 2026-11-14
 **Effective date:** 2026-08-04
-**Last updated:** 2026-11-14
+**Last updated:** 2026-11-18
 
 ---
 
@@ -15,7 +15,8 @@ deployment for a customer only where we have agreed in writing to do so.
 It does not cover the public Enterprise sandbox at enterprise-demo.proxyma.ai, although that is a
 Proxyma Enterprise Server deployment we host. We host it for anyone who wants to try the product,
 not on anyone's behalf: nobody using it gives us instructions under this DPA, its visitors use its
-shared accounts and cannot register accounts of their own, and everything in it is deleted every
+shared accounts and cannot sign up for accounts of their own (accounts made with the shared Admin
+account are shared too), and everything in it is deleted every
 night. We process what visitors
 add there as a controller, as described in Privacy Policy section 3.8.
 

@@ -15,10 +15,11 @@ import { Skeleton } from './Skeleton'
 /**
  * The columns, shared by the header, the rows and the skeleton so the three cannot drift: Name takes
  * the rest; Items (right-aligned numbers) 4rem; Last sync 6.5rem, the width of its longest value;
- * Status 15rem, truncated with the whole of it on hover. Below `sm` only the name column exists and
- * each row carries its own one-line meta.
+ * Status 15rem from `lg` and 8rem below it (an iPad's 590px row left Name 134px - "Northwin..." - beside 240px of
+ * mostly empty Status), truncated with the whole of it on hover. Below `sm` only the name column exists and each row
+ * carries its own one-line meta.
  */
-export const SOURCE_LIST_COLUMNS = 'sm:grid sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_15rem] sm:items-center sm:gap-4'
+export const SOURCE_LIST_COLUMNS = 'sm:grid sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_8rem] lg:grid-cols-[minmax(0,1fr)_4rem_6.5rem_15rem] sm:items-center sm:gap-4'
 
 /**
  * The list's box: A CARD since 2026-10-29 (the depth review) - the card plane, its line and
@@ -26,7 +27,9 @@ export const SOURCE_LIST_COLUMNS = 'sm:grid sm:grid-cols-[minmax(0,1fr)_4rem_6.5
  * and a hovered row's fill reaching 12px past them inside it (`ROW_FILL`). It was no box from
  * 2026-10-28 (the UI review: the header's rule and the columns ran 16px past the page column).
  */
-export const SOURCE_LIST_BOX = 'kit-card rounded-lg border surface-card shadow-card px-4 sm:px-6 pb-2'
+// 4px over the first row on a phone, where the column headings are hidden: a row's fill (12px past the column, so 4px
+// from the box's sides) touched the box's top (2026-11-17: "incorrect padding in list").
+export const SOURCE_LIST_BOX = 'kit-card kit-list-card rounded-lg border surface-card shadow-card px-4 sm:px-6 pt-1 sm:pt-0 pb-2'
 
 /** A row's hover fill, 12px past the column on each side - the fill only; the row's text is on the column. */
 const ROW_FILL = 'before:absolute before:inset-y-0 before:-inset-x-3 before:rounded-md before:pointer-events-none before:transition-colors before:duration-fast'

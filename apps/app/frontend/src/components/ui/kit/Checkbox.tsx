@@ -8,13 +8,15 @@
  * a change that only one surface wants does not belong in the shared kit at all.
  * ===================================================================================== */
 
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { ChoiceMark } from './RadioGroup'
 import { cn } from './cn'
 import { TEXT } from './typeScale'
 
 interface Props {
   checked: boolean
+  /** Some of what it stands for is chosen, not all: a dash, and `aria-checked="mixed"` (CheckAll). */
+  indeterminate?: boolean
   onChange: (v: boolean) => void
   disabled?: boolean
   /** Label content. Clicking it toggles the box, because the whole thing is one <label>. */
@@ -48,7 +50,10 @@ interface Props {
  * The label is 13/400 - the type scale's `option` - so a choice reads the same size wherever it is
  * offered, beside a radio or alone.
  */
-export function Checkbox({ checked, onChange, disabled, children, hint, shake, ariaLabel, describedBy, invalid, className }: Props) {
+export function Checkbox({ checked, indeterminate = false, onChange, disabled, children, hint, shake, ariaLabel, describedBy, invalid, className }: Props) {
+  const input = useRef<HTMLInputElement>(null)
+  // The native box's own third state, so a screen reader hears "mixed".
+  useEffect(() => { if (input.current) input.current.indeterminate = indeterminate && !checked }, [indeterminate, checked])
   return (
     <label
       className={cn(
@@ -62,6 +67,7 @@ export function Checkbox({ checked, onChange, disabled, children, hint, shake, a
       )}
     >
       <input
+        ref={input}
         type="checkbox"
         checked={checked}
         disabled={disabled}
@@ -73,6 +79,7 @@ export function Checkbox({ checked, onChange, disabled, children, hint, shake, a
       />
       <ChoiceMark
         checked={checked}
+        indeterminate={indeterminate && !checked}
         multi
         className="mt-0.5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-solid peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas"
       />
@@ -83,5 +90,38 @@ export function Checkbox({ checked, onChange, disabled, children, hint, shake, a
         </span>
       )}
     </label>
+  )
+}
+
+/**
+ * "ALL" OVER A CHECKLIST, AS A CHECKBOX (the maintainer, 2026-11-17: "'All' should be a check box. When check 'All', all
+ * other boxes are auto check. Uncheck 'All', all other boxes auto uncheck. If all are checked, uncheck any item uncheckes
+ * the 'All'. This applies for every screens."). Checked while every item is, a dash while some are, empty while none;
+ * ticking it chooses every item and clearing it none. It reads the items' state - nothing of its own - so unchecking any
+ * one item clears it by itself. It replaced the "All" and "None" links over the export's choices and the file types.
+ */
+export function CheckAll<K>({ items, chosen, onChange, label, disabled, className }: {
+  /** Every item it stands for. */
+  items: readonly K[]
+  /** The ones chosen now. */
+  chosen: readonly K[]
+  /** The new choice: every item, or none. */
+  onChange: (next: K[]) => void
+  label: ReactNode
+  disabled?: boolean
+  className?: string
+}) {
+  const count = items.filter(i => chosen.includes(i)).length
+  const all = items.length > 0 && count === items.length
+  return (
+    <Checkbox
+      checked={all}
+      indeterminate={count > 0 && !all}
+      onChange={() => onChange(all ? [] : [...items])}
+      disabled={disabled || items.length === 0}
+      className={className}
+    >
+      {label}
+    </Checkbox>
   )
 }

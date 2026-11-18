@@ -105,7 +105,7 @@ export function AboutTab({ onClose, onOpenTab }: { onClose: () => void; onOpenTa
               still under reduced motion with no code here. */}
           <Logo markOnly className="h-full w-full" />
         </span>
-        <KeyValueList layout="rows" className="flex-1 min-w-0 content-center gap-y-3">
+        <KeyValueList layout="rows" className="flex-1 min-w-0 content-center gap-y-0 sm:gap-y-3">
           <KeyValue layout="rows" label={t('Edition')}>{`Proxyma ${editionName}`}</KeyValue>
           {/* A figure, so a readout - its digits in the figures face like every other version number. */}
           <KeyValue layout="rows" label={t('Version')} figures>{config?.version ?? '-'}</KeyValue>

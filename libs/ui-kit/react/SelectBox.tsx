@@ -42,7 +42,8 @@ export function SelectBox({ checked, indeterminate = false, label, disabled, onT
         if (e.shiftKey) e.preventDefault()
       }}
       className={cn(
-        'relative inline-flex items-center justify-center p-1 -m-1 group',
+        // A 44px target on glass, given back by the negative margin: a near miss in a row that opens a dialog opened it.
+        'relative inline-flex items-center justify-center p-1 -m-1 touch:p-3.5 touch:-m-3.5 group',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
       )}
     >

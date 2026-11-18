@@ -114,7 +114,9 @@ export function AssistantsTab({ onOpenTab, trackChange, pending }: { onOpenTab: 
         />
       </SettingsSection>
 
-      <div className="space-y-4">
+      {/* A section with its name, as every other picker in Settings has (on a phone the tabs are one Select, and with no
+          heading it read as part of "Changes", 2026-11-18). */}
+      <SettingsSection title={t('Connect an assistant')}>
         <SubNavTabs tabs={tabs} active={client} onChange={setClient} />
         <FadeSwap swapKey={client}>
           {client === 'claude-code' && <ClaudeCode url={url} needsToken={needsToken} token={token} />}
@@ -127,7 +129,7 @@ export function AssistantsTab({ onOpenTab, trackChange, pending }: { onOpenTab: 
           {t('Web versions of ChatGPT and Gemini cannot connect. Use the apps above.')}{' '}
           <ExternalLink href="https://proxyma.ai/docs/api/#mcp">{t('MCP setup guide')}</ExternalLink>
         </Caption>
-      </div>
+      </SettingsSection>
     </SettingsSections>
   )
 }

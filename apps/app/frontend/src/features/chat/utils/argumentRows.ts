@@ -37,6 +37,27 @@ export function argumentLabel(key: string): string {
 
 const isEmpty = (v: unknown) => v === undefined || v === null || v === ''
 
+// MARKUP IS READ AS ITS WORDS (2026-11-17): a Confluence page's body arrives in its storage format, and the approval
+// card showed "<p>Q3 code freeze: ...</p>" to the person deciding. A value that is markup - it opens with a tag and
+// closes one - is shown as text: a paragraph, heading, row or line break a line, a list item a "- " line, the tags
+// dropped and the common entities read. The JSON view still has the exact payload.
+const MARKUP = /^\s*<[a-zA-Z][\s\S]*<\/[a-zA-Z][a-zA-Z0-9:-]*>\s*$/
+export function markupText(value: string): string {
+  if (!MARKUP.test(value)) return value
+  return value
+    .replace(/<li[^>]*>/gi, '\n- ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr|table|ul|ol|blockquote|pre)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .split('\n').map(line => line.trim()).filter(Boolean).join('\n')
+}
+
 // A structure as plain lines: a field to a line, a list item to a line, each level set in by two
 // spaces. No braces, quotes or commas - it is read, not parsed.
 function lines(value: unknown, indent: string): string[] {
@@ -70,7 +91,7 @@ export function argumentRows(json: string | undefined): ArgumentRow[] | null {
   for (const [key, raw] of Object.entries(safe)) {
     if (raw === undefined || raw === null || raw === '') continue
     const structured = typeof raw === 'object'
-    const value = structured ? lines(raw, '').join('\n') : String(raw)
+    const value = structured ? lines(raw, '').join('\n') : markupText(String(raw))
     if (structured && !value) continue
     rows.push({ key, label: argumentLabel(key), value, block: structured || value.includes('\n') })
   }

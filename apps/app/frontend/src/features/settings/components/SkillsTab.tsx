@@ -9,7 +9,7 @@ import { commaList, sameSet } from '@/components/ui/autosave'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import {
-  Badge, Button, Checkbox, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap, Field, FormColumns, FormStack, Input, List, ListRow, PickBox, Presence, SearchInput, SettingsSection, SettingsSections, SwitchRow, Textarea, TEXT, IconButton,
+  ActionMenu, Badge, Button, Checkbox, Chip, ConfirmDialog, DialogBody, DialogFooter, DialogHeader, EmptyState, FadeSwap, Field, FormColumns, FormStack, Input, List, ListRow, PickBox, Presence, SearchInput, SettingsSection, SettingsSections, SwitchRow, Textarea, TEXT, IconButton, usePhone,
 } from '@/components/ui/kit'
 import { PagedItems } from '@/components/ui/ListPager'
 import { ListSkeleton, TitleAction } from '../pages/shared'
@@ -169,6 +169,7 @@ function SkillRow({ skill, onEditClick, onDeleteClick }: {
   onEditClick: () => void
   onDeleteClick: () => void
 }) {
+  const phone = usePhone()
   const { t } = useTranslation()
   return (
     <ListRow
@@ -186,10 +187,13 @@ function SkillRow({ skill, onEditClick, onDeleteClick }: {
       ) : undefined}
       caption={skill.shortDescription && <span className="block truncate">{skill.shortDescription}</span>}
       // ROW ACTIONS ARE ICONS in every Settings list (the maintainer, 2026-11-10), as Connections' and Providers' are.
-      action={skill.canDelete && (
+      // On a phone a red bin beside the row's chevron was two targets touching on a row that opens: it is the row's More.
+      action={skill.canDelete && (phone ? (
+        <ActionMenu label={t('More')} groups={[[{ label: t('Delete'), icon: <Trash2 size={16} />, danger: true, onSelect: onDeleteClick }]]} />
+      ) : (
         <IconButton icon={Trash2} tone="danger" onClick={onDeleteClick}
           label={t('Delete {name}', { name: skill.name })} tooltip={t('Delete')} />
-      )}
+      ))}
     />
   )
 }

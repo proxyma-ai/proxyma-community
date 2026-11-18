@@ -32,7 +32,7 @@ export function ChoiceMark({ checked, multi = false, indeterminate = false, clas
         aria-hidden="true"
         className={cn(
           'w-4 h-4 shrink-0 rounded-sm border flex items-center justify-center transition-all',
-          checked || indeterminate ? 'bg-brand-solid border-brand-solid' : 'border-line bg-transparent group-hover:border-ink-disabled',
+          checked || indeterminate ? 'bg-brand-solid border-brand-solid' : 'border-ink-disabled bg-transparent mouse:group-hover:border-ink-caption',
           className,
         )}
       >
@@ -47,7 +47,7 @@ export function ChoiceMark({ checked, multi = false, indeterminate = false, clas
       aria-hidden="true"
       className={cn(
         'w-4 h-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-all',
-        checked ? 'border-brand-solid' : 'border-line group-hover:border-ink-disabled',
+        checked ? 'border-brand-solid' : 'border-ink-disabled mouse:group-hover:border-ink-caption',
         className,
       )}
     >

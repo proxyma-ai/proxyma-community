@@ -8,10 +8,11 @@
  *
  * <p>Two inputs, because the four surfaces scroll in two ways. The application and the consoles
  * scroll INSIDE a fixed shell, where a header that leaves resizes the very region being scrolled -
- * so its scroll position cannot be the signal (the resize moves it, which reads as the reader
- * turning back, which shows the bar, which resizes it again). There the signal is the finger. The
- * landing site scrolls the document under a fixed bar, nothing resizes, and the scroll position is
- * the plain and sufficient signal.
+ * so its scroll position alone is not a safe signal (the resize moves it, which reads as the reader
+ * turning back, which shows the bar, which resizes it again). There the finger was the signal until
+ * 2026-11-17; since then it is the scroll as on the site, guarded (useAutoHide.ts: only the reader's own
+ * scrolling counts, and the bar's own move settles before the next decision). The landing site scrolls
+ * the document under a fixed bar, nothing resizes, and the scroll position is the plain signal.
  */
 
 /** A finger has to travel this far before it counts as a direction rather than a resting touch. */

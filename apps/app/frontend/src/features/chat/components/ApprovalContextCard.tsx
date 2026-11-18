@@ -8,13 +8,13 @@ import {
 } from '../utils/approvalContext'
 
 /**
- * A person's words quoted in an approval's context: their comment in secondary ink on a plain line, the
- * reply - what would be posted - in primary ink on the brand accent's line, so it cannot be read as the
- * viewer's. Exported so a page drawing a row of its own (the inbox's edited reply) quotes the same way.
+ * A person's words quoted in an approval's context: their comment in secondary ink, the reply - what would be
+ * posted - in primary ink, so it cannot be read as the viewer's; both on the same neutral quote line (no colored
+ * strip down one side: the maintainer's standing rule - the reply's line was the brand accent until 2026-11-18). Exported so a page drawing a row of its own (the inbox's edited reply) quotes the same way.
  */
 export function ApprovalQuote({ accent, children }: { accent?: boolean; children: ReactNode }) {
   return (
-    <blockquote className={cn('border-l-2 pl-3', accent ? 'border-brand-accent text-ink-primary' : 'border-line text-ink-secondary')}>
+    <blockquote className={cn('border-l-2 border-line pl-3', accent ? 'text-ink-primary' : 'text-ink-secondary')}>
       {children}
     </blockquote>
   )

@@ -31,6 +31,13 @@ export const TABLE_CLASS = 'table-stack w-full text-sm'
 export const TABLE_BRIEF = 'table-stack-brief'
 
 /**
+ * A LOG'S TABLE ON A PHONE (2026-11-18, the phone review: a model call stacked into twelve lines): its rows open no detail,
+ * so none of their facts can be left out as TABLE_BRIEF does - they stand two to a line, each label over its value, the
+ * row's name across both. With TABLE_CLASS: `cn(TABLE_CLASS, TABLE_PAIRS)`.
+ */
+export const TABLE_PAIRS = 'table-stack-pairs'
+
+/**
  * A table WITHOUT a card around it, on the text column: from `sm` the first column has no left
  * padding and the last no right padding, so the words in the cells line up with the heading and
  * the paragraph above. It was typed out by hand at four call sites.
@@ -65,14 +72,14 @@ export function TableCard({ children, footer, ariaLabel, flush, className }: {
 }) {
   if (flush) {
     return (
-      <Card padding="none" className={cn('kit-card-flush overflow-hidden px-4 sm:px-6', TABLE_FLUSH, className)}>
+      <Card padding="none" className={cn('kit-card-flush kit-list-card overflow-hidden px-4 sm:px-6', TABLE_FLUSH, className)}>
         <HScroll aria-label={ariaLabel}>{children}</HScroll>
         {footer && <div className="border-t border-line/30">{footer}</div>}
       </Card>
     )
   }
   return (
-    <Card padding="none" className={cn('overflow-hidden', className)}>
+    <Card padding="none" className={cn('kit-list-card overflow-hidden', className)}>
       <HScroll aria-label={ariaLabel}>{children}</HScroll>
       {footer && <div className="border-t border-line/30 px-4">{footer}</div>}
     </Card>

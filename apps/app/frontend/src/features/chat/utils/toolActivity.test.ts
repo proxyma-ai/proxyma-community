@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { failedToolLabel, isOpaqueId, toolActivity, workspaceFileKind } from './toolActivity.ts'
+import { failedToolLabel, isIdArgument, isOpaqueId, toolActivity, workspaceFileKind } from './toolActivity.ts'
 import { toolDisplayName } from './toolDisplayName.ts'
 
 // What a tool call's row says. These cases lived in toolListSummary.test.ts, which read them
@@ -232,4 +232,18 @@ test('which workspace file is which, by its place in the layout', () => {
 test('the person\'s own files keep their names', () => {
   // read and grep work in the person's conversation folder; a card sends the file's name.
   assert.equal(toolActivity(call('read', { fileName: 'Bay loi hay gap.md' }, '', false), t), 'Reading file - Bay loi hay gap.md')
+})
+
+test('a Confluence write names its page by its title, a read by its id', () => {
+  assert.equal(toolActivity(call('updateConfluencePage', { pageId: '524301', title: 'Release Process 2026', body: '<p>x</p>' }, '{}', false), t), 'Updating a Confluence page - Release Process 2026')
+  assert.equal(toolActivity(call('getConfluencePage', { pageId: '524301' }), t), 'Opened Confluence page - 524301')
+})
+
+test('an id argument is a named id holding a number or a token; a key or a word is not', () => {
+  assert.equal(isIdArgument('pageId', '524301'), true)
+  assert.equal(isIdArgument('prId', '482'), true)
+  assert.equal(isIdArgument('channelId', 'UCgd8gFE4mpYTna3hXcGtQ7A'), true)
+  assert.equal(isIdArgument('issueKey', 'REL-1182'), false)
+  assert.equal(isIdArgument('title', '524301'), false)
+  assert.equal(isIdArgument('spaceId', 'ENG'), false)
 })

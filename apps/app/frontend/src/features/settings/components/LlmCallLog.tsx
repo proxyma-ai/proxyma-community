@@ -9,7 +9,7 @@ import { conversationOptions, triggerLabel } from '../utils/callConversation'
 import { keys } from '@/services/queryKeys'
 import { formatUsd, formatCompactCount } from '@/utils/formatters'
 import {
-  BarList, Button, Caption, cn, ColumnChart, ConfirmDialog, EmptyState, FieldLabel, FilterBar, FilterRow, HScroll, InlineNotice, List, LIST_PAGE_SIZE, ListRow, MetaList, Presence, Readout, RowActions, SearchInput, SectionHeading, Select, Skeleton, type SortState, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH, TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
+  BarList, Button, Caption, cn, ColumnChart, ConfirmDialog, EmptyState, FieldLabel, FilterBar, FilterRow, HScroll, InlineNotice, List, LIST_PAGE_SIZE, ListRow, MetaList, Presence, Readout, RowActions, SearchInput, SectionHeading, Select, Skeleton, type SortState, SortTh, StatGrid, StatTile, StatusMark, TABLE_CLASS, TABLE_FLUSH, TABLE_PAIRS, TableEmptyRow, TableSkeletonRows, TD_COMPACT, TEXT, Th, THEAD_TR, Tooltip, TR, usePagedList, usePageFor,
 } from '@/components/ui/kit'
 import { cacheOutcome, cacheVerdict, costOrigin, isAvoidableMiss, noCache } from '../utils/callCost'
 import { ListPager } from '@/components/ui/ListPager'
@@ -73,15 +73,13 @@ export function LlmUsage({ showSubjects = false, intro }: {
   return (
     <>
       <section className="space-y-6">
-        {/* "Spending", not the tab's own name. The one period picker governs everything below it,
-            so it is the heading's action - the same picker, with its name, as every tab of Logs. */}
-        <SectionHeading
-          flush
-          caption={intro}
-          action={<PeriodSelect days={days} onChange={setDays} />}
-        >
+        {/* "Spending", not the tab's own name. The one period picker governs everything below it, so it is a line of
+            its own under the heading and its description - as on Administration > Usage (2026-11-18: beside the heading
+            here and under it there, one control in two places). */}
+        <SectionHeading flush caption={intro}>
           {t('Spending')}
         </SectionHeading>
+        <PeriodSelect days={days} onChange={setDays} />
 
         {body(d => (
           <>
@@ -316,6 +314,7 @@ export function LlmCallLogTable({ summary, log, showSubjects = false, filters, o
           <table
             className={cn(
               TABLE_CLASS,
+              TABLE_PAIRS,
               !frameClassName && TABLE_FLUSH,
             )}
           >

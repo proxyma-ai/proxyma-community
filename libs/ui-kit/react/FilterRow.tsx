@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ListFilter } from 'lucide-react'
 import { cn } from './cn'
 import { fitCount } from './filterFit'
@@ -16,8 +16,6 @@ export interface FilterRowItem {
 
 /** The space between two chips: `gap-2`. */
 const GAP = 8
-/** Tailwind's `sm`: from here the filters keep to one line and the rest go under More. */
-const WIDE = '(min-width: 640px)'
 
 /** A chip's own button, for the More chip: the `Select look="chip"` trigger's recipe. */
 function chipClass(active: boolean, open: boolean): string {
@@ -63,22 +61,12 @@ export function FilterRow({ items, label, moreLabel, ariaLabel, end, className }
   const lineRef = useRef<HTMLDivElement>(null)
   const copyRef = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(items.length)
-  // MORE FROM `sm` ONLY (2026-11-16, the maintainer: "'More' should be applied on wide screens only where we don't want
-  // to put the filters in multiple lines. On mobile vertical ... it's fine to display filters in multiple lines"): on a
-  // phone every chip is shown, wrapping onto as many lines as they need, from the left edge.
-  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia(WIDE).matches)
-  useEffect(() => {
-    const list = window.matchMedia(WIDE)
-    const onChange = () => setWide(list.matches)
-    onChange()
-    list.addEventListener('change', onChange)
-    return () => list.removeEventListener('change', onChange)
-  }, [])
-
+  // ONE LINE AT EVERY WIDTH, the first chips that fit and More for the rest (the maintainer, 2026-11-17: "Show some first
+  // filters and a 'More' dropdown in one line" - reversing 2026-11-16's "More on wide screens only", which wrapped every
+  // chip onto lines of their own on a phone).
   useLayoutEffect(() => {
     const line = lineRef.current
     const copy = copyRef.current
-    if (!wide) { setFit(items.length); return }
     if (!line || !copy) return
     const measure = () => {
       const kids = Array.from(copy.children) as HTMLElement[]
@@ -92,7 +80,7 @@ export function FilterRow({ items, label, moreLabel, ariaLabel, end, className }
     watch.observe(line)
     watch.observe(copy)
     return () => watch.disconnect()
-  }, [items.length, wide])
+  }, [items.length])
 
   // The copy takes no part in the page: set on the node (React 18's types do not know `inert`).
   useLayoutEffect(() => { copyRef.current?.setAttribute('inert', '') }, [])
@@ -110,7 +98,7 @@ export function FilterRow({ items, label, moreLabel, ariaLabel, end, className }
           <ListFilter size={14} aria-hidden="true" />{label}
         </span>
       )}
-      <div ref={lineRef} role="group" aria-label={ariaLabel} className="relative flex-1 min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-2">
+      <div ref={lineRef} role="group" aria-label={ariaLabel} className="relative flex-1 min-w-0 flex flex-nowrap items-center gap-2">
         {shown.map(i => <div key={i.key} className="shrink-0 min-w-0">{i.node}</div>)}
         {rest.length > 0 && (
           <Popover
@@ -131,7 +119,15 @@ export function FilterRow({ items, label, moreLabel, ariaLabel, end, className }
             )}
           >
             {() => (
-              <div className="flex flex-col items-stretch gap-2 [&_button[aria-haspopup=listbox]]:w-full [&_button[aria-haspopup=listbox]]:justify-between">
+              <div className={cn(
+                'flex flex-col items-stretch gap-2 [&_button[aria-haspopup=listbox]]:w-full [&_button[aria-haspopup=listbox]]:justify-between',
+                // A CHOICE CHIP IS A ROW OF THE LIST, as every dropdown's rows are (2026-11-17: "Should be similar to other
+                // dropdowns"): the panel's width, no edge or fill of its own, a fill under the pointer, the chosen one in the
+                // brand's ink; the rows sit closer than the chips they were.
+                '[&:has(>button[aria-pressed])]:gap-0.5',
+                '[&>button[aria-pressed]]:w-full [&>button[aria-pressed]]:justify-between [&>button[aria-pressed]]:border-transparent',
+                '[&>button[aria-pressed]]:bg-transparent [&>button[aria-pressed]]:px-2 mouse:[&>button[aria-pressed]:hover]:bg-ink-caption/10',
+              )}>
                 {rest.map(i => <Fragment key={i.key}>{i.node}</Fragment>)}
               </div>
             )}

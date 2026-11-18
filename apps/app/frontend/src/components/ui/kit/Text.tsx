@@ -48,13 +48,19 @@ export function PageTitle({ children, actions, meta, as: As = 'h1', level = 'pag
   // its caption half the width of a 375px screen. From `sm` they sit at the right as before. A tab's title (Settings)
   // keeps its actions beside it: they are one small control filled in by portal.
   return (
-    <div className={cn('flex gap-3', level === 'page' ? 'flex-col sm:flex-row sm:items-start sm:justify-between' : 'items-start justify-between', className)}>
+    // A TAB'S TITLE ROW IS ONE HEIGHT, its title centered on it, whether or not it holds a button (2026-11-18: a tab
+    // with Add started its content 16px lower than one without, its title 8px above the button's middle). On a touch
+    // screen the title is its page's large title: on glass the title step (16px) sat under its own sections' 17px.
+    <div className={cn('flex', level === 'page' ? 'flex-col gap-4 sm:gap-3 sm:flex-row sm:items-start sm:justify-between' : 'gap-3 items-center justify-between min-h-9 touch:min-h-tap', className)}>
       <div className="min-w-0">
-        <As className={level === 'page' ? TEXT.pageTitle : TEXT.title}>{children}</As>
+        <As className={level === 'page' ? TEXT.pageTitle : cn(TEXT.title, '[@media(max-width:639px)]:text-page touch:text-page')}>{children}</As>
         {meta && <div className={cn(TEXT.caption, 'mt-1')}>{meta}</div>}
       </div>
+      {/* On a phone the first action - the page's own button, Connect, New account - is the row's width, a 44px button
+          like every phone button; an icon beside it keeps its size (2026-11-17: the button alone at its label's width,
+          then a filter chip alone under it, read as "bad layout + dimensions"). */}
       {(actions || actionsRef) && (
-        <div ref={actionsRef} className="shrink-0 flex items-center gap-2 empty:hidden">{actions}</div>
+        <div ref={actionsRef} className={cn('shrink-0 flex items-center gap-2 empty:hidden', level === 'page' && '[@media(max-width:639px)]:[&>:first-child]:flex-1')}>{actions}</div>
       )}
     </div>
   )
@@ -222,7 +228,7 @@ export function PageHero({ title, subtitle, as: As = 'h1', centered, className }
     <div className={cn(centered && 'text-center', className)}>
       {/* Semibold in secondary ink since 2026-10-29 (the maintainer's review: the greeting "too
           harsh"): a welcome, not a headline shouting over the page. */}
-      <As className="text-xl mb-2 text-balance sm:whitespace-nowrap font-semibold text-ink-secondary">
+      <As className="text-page mb-2 text-balance sm:whitespace-nowrap font-semibold text-ink-secondary">
         {title}
       </As>
       {subtitle && (

@@ -65,15 +65,12 @@ export const DockButton = forwardRef<HTMLButtonElement, {
         // 72px - more entries than fit scroll sideways; the caller keeps to what fits (AppDock: three pages and More).
         'relative flex-1 basis-0 min-w-[4.5rem] h-16 flex flex-col items-center justify-center gap-1 px-1 focus-ring',
         'transition-colors duration-fast ease-out',
-        on ? 'text-ink-primary' : 'text-ink-caption mouse:hover:text-ink-primary',
+        // THE CHOSEN ENTRY IN THE BRAND'S INK, its icon and its name, as the site's dock marks its page (the maintainer,
+        // 2026-11-17: "The design of the app on mobile seems different from the landing site" - the app follows the site).
+        // It was the primary ink under a teal bar along the dock's top edge. Never a teal fill.
+        on ? 'text-brand-legible' : 'text-ink-secondary mouse:hover:text-ink-primary',
       )}
     >
-      {/* The chosen entry's mark: a bar in the brand's ink along the dock's top edge, as a selected row carries one
-          along its side (SELECTED_ROW) - never a teal fill. */}
-      <span aria-hidden="true" className={cn(
-        'absolute top-0 inset-x-3 h-0.5 rounded-sm bg-brand-accent transition-opacity duration-base ease-out',
-        on ? 'opacity-100' : 'opacity-0',
-      )} />
       <span className="relative">
         <Icon size={20} aria-hidden="true" />
         {/* The count just right of the icon, the icon still centered over its name: over the icon's corner it covered
@@ -85,7 +82,7 @@ export const DockButton = forwardRef<HTMLButtonElement, {
         )}
         {working && <StatusDot label={workingLabel} className="absolute -top-1 -right-1" />}
       </span>
-      <span className={cn('max-w-full truncate text-xs leading-4 whitespace-nowrap', on ? 'font-medium' : 'font-normal')}>{label}</span>
+      <span className="max-w-full truncate text-xs leading-4 whitespace-nowrap font-medium">{label}</span>
     </button>
   )
 })
@@ -95,7 +92,7 @@ export const DockButton = forwardRef<HTMLButtonElement, {
  * could be moved to the bottom dock, scroll up auto hide, scroll down auto show, similar to the landing site", then the
  * app's own pages in place of the hamburger): an icon over each name, the chosen one in the primary ink with a bar
  * along its top edge, a count beside an icon, a dot where something works. In the shell's flow, so the page above it
- * gives way; it LEAVES WITH THE HEADER (`AutoHideHeader`'s own signal, `useHideOnSwipe` - the finger moving on down the
+ * gives way; it LEAVES WITH THE HEADER (`AutoHideHeader`'s own signal, `useHideOnSwipe` - the reader scrolling on down the
  * page) by a negative margin of its own height, and comes back on a swipe back, on a change of `value` and whenever
  * `away` lets it. More entries than fit scroll sideways. `after` is a last entry of the caller's - a `DockButton`.
  *

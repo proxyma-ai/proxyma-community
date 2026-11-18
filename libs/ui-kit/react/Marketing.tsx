@@ -134,7 +134,7 @@ export function RuledColumns({ items, variant = 'fact', columns = 3, boxed, titl
   title?: ReactNode
 }) {
   const grid = (
-    <dl className={cn('grid gap-6', columns === 2 && 'sm:grid-cols-2', columns === 3 && 'sm:grid-cols-3', columns === 4 && 'sm:grid-cols-2 lg:grid-cols-4', title && 'mt-6')}>
+    <dl className={cn('grid gap-6', columns === 2 && 'lg:grid-cols-2', columns === 3 && 'lg:grid-cols-3', columns === 4 && 'lg:grid-cols-4', title && 'mt-6')}>
       {items.map((it, i) => (
         <div key={i} className={cn(
           variant === 'fact' && columns !== 4 && 'sm:border-l sm:border-line sm:pl-6 sm:first:border-l-0 sm:first:pl-0',
@@ -283,10 +283,10 @@ export function Timeline({ items, className }: {
 }) {
   return (
     <ol className={cn(
-      'grid md:gap-6',
-      items.length === 3 && 'md:grid-cols-3',
-      items.length === 4 && 'md:grid-cols-4',
-      items.length === 5 && 'md:grid-cols-5',
+      'grid lg:gap-6',
+      items.length === 3 && 'lg:grid-cols-3',
+      items.length === 4 && 'lg:grid-cols-4',
+      items.length === 5 && 'lg:grid-cols-5',
       className,
     )}>
       {items.map((it, i) => (
@@ -320,13 +320,15 @@ export function DownloadRow({ id, name, audience, needs, action, note, className
   className?: string
 }) {
   return (
-    <div id={id} className={cn('grid grid-cols-1 gap-3 border-t border-line py-6 scroll-mt-24 md:grid-cols-12 md:gap-8', className)}>
-      <div className="min-w-0 md:col-span-4">
+    <div id={id} className={cn('grid grid-cols-1 gap-3 border-t border-line py-6 scroll-mt-24 lg:grid-cols-12 lg:gap-8', className)}>
+      <div className="min-w-0 lg:col-span-4">
         <h3 className="text-lg font-semibold text-ink-primary">{name}</h3>
         <p className="mt-1 text-sm text-ink-secondary">{audience}</p>
       </div>
-      <div className="min-w-0 text-sm text-ink-secondary md:col-span-5">{needs}</div>
-      <div className="flex min-w-0 flex-col items-start gap-2 md:col-span-3 md:items-stretch">
+      <div className="min-w-0 text-sm text-ink-secondary lg:col-span-5">{needs}</div>
+      {/* Each button the column's width at every size (2026-11-17): on a phone they hugged their labels, beside slide
+          buttons that fill the column. A note's link keeps its own width. */}
+      <div className="flex min-w-0 flex-col items-stretch gap-2 lg:col-span-3 [&>p]:self-start">
         {action}
         {note && <p className="text-xs text-ink-caption">{note}</p>}
       </div>

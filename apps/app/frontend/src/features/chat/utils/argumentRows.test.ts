@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { argumentLabel, argumentRows } from './argumentRows.ts'
+import { argumentLabel, argumentRows, markupText } from './argumentRows.ts'
 
 test('the review: a comment body is a readable row, not an escaped string', () => {
   const rows = argumentRows(JSON.stringify({ issueKey: 'PROJ-341', body: 'Linked to H-14.\nSee 5.3.' }))
@@ -41,4 +41,16 @@ test('labels are sentence case, acronyms and product names kept', () => {
   assert.equal(argumentLabel('pageId'), 'Page ID')
   assert.equal(argumentLabel('jiraProjectKey'), 'Jira project key')
   assert.equal(argumentLabel('max_results'), 'Max results')
+})
+
+test('a body in markup is shown as its words, a block a line', () => {
+  const body = '<h2>Freeze</h2><p>Q3 code freeze: August 25 (moved on July 14, REL-1175).</p><ul><li>Fix release.yml</li><li>Tell QA</li></ul>'
+  const row = argumentRows(JSON.stringify({ title: 'Release Process 2026', body }))?.find(r => r.key === 'body')
+  assert.equal(row?.value, ['Freeze', 'Q3 code freeze: August 25 (moved on July 14, REL-1175).', '- Fix release.yml', '- Tell QA'].join('\n'))
+  assert.equal(row?.block, true)
+})
+
+test('text that only mentions a tag is left as it is', () => {
+  assert.equal(markupText('Use <b> for bold'), 'Use <b> for bold')
+  assert.equal(markupText('a < b and c > d'), 'a < b and c > d')
 })

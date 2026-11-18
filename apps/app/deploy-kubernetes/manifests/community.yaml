@@ -8,11 +8,11 @@ kind: NetworkPolicy
 metadata:
   name: proxyma-community
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -60,11 +60,11 @@ kind: ServiceAccount
 metadata:
   name: proxyma-community
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: false
@@ -75,11 +75,11 @@ kind: Secret
 metadata:
   name: proxyma-community-secrets
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 type: Opaque
@@ -92,11 +92,11 @@ kind: ConfigMap
 metadata:
   name: proxyma-community
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 data:
@@ -117,11 +117,11 @@ kind: Service
 metadata:
   name: proxyma-community
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -143,11 +143,11 @@ kind: Service
 metadata:
   name: proxyma-community-headless
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -168,11 +168,11 @@ kind: StatefulSet
 metadata:
   name: proxyma-community
   labels:
-    helm.sh/chart: proxyma-community-0.42.1
+    helm.sh/chart: proxyma-community-0.42.2
     app.kubernetes.io/name: proxyma-community
     app.kubernetes.io/instance: proxyma
     app.kubernetes.io/component: app
-    app.kubernetes.io/version: "0.42.1"
+    app.kubernetes.io/version: "0.42.2"
     app.kubernetes.io/part-of: proxyma
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -198,7 +198,7 @@ spec:
         app.kubernetes.io/instance: proxyma
         app.kubernetes.io/component: app
       annotations:
-        checksum/config: c4f659c09df5312085abcc4ad18712c522e7e73c516b68b310cac54beb8d4a90
+        checksum/config: e34dc8ae1254e43f63502709860e105388f2062ea5e442c7c6558a4aeac19c37
     spec:
       serviceAccountName: proxyma-community
       # The application never talks to the Kubernetes API.
@@ -215,7 +215,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: proxyma
-          image: ghcr.io/proxyma-ai/proxyma-homeserver:0.42.1
+          image: ghcr.io/proxyma-ai/proxyma-homeserver:0.42.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

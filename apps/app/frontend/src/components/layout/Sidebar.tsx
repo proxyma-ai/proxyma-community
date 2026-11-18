@@ -185,7 +185,10 @@ export function Sidebar({ compact = false }: {
             </NavLink>
           ), item.label)
         })}
-        {!folded && (
+        {/* FOLDED, THE HISTORY IS AN ICON ROW (2026-11-18): the recent chats are drawn only while the panel is open, and
+            an iPad's folded sidebar (md to lg) has no way to open it - with the composer's own history button left to the
+            phone, no past conversation could be reached there. */}
+        {folded ? action('history', History, t('Conversation history'), () => setHistoryOpen(true)) : (
           <RecentChats activeId={onChat ? openId : undefined} onOpen={openConversation} onHistory={() => setHistoryOpen(true)}
             onDeletedOpen={newChat} />
         )}

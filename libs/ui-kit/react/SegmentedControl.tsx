@@ -120,6 +120,9 @@ export function SegmentedControl<T extends string>({
       aria-disabled={disabled || undefined}
       className={cn(
         fill ? 'flex w-full items-center' : 'inline-flex items-center',
+        // ON A PHONE A BOXED ONE IS THE ROW'S WIDTH, ITS CHOICES EQUAL (the maintainer, 2026-11-17, the feedback's mood: "should be
+        // full width, equally items"). Wider, its own width unless `fill`.
+        variant === 'boxed' && '[@media(max-width:639px)]:flex [@media(max-width:639px)]:w-full',
         variant === 'boxed' && cn('relative rounded-lg p-1 gap-0.5', float ? 'surface-float border shadow-float' : 'bg-surface-alt shadow-well'),
         variant === 'text' && 'gap-3',
         disabled && 'opacity-40 pointer-events-none',
@@ -160,6 +163,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-ring tap-area',
               fill && 'flex-1 min-w-0',
+              variant === 'boxed' && '[@media(max-width:639px)]:flex-1 [@media(max-width:639px)]:min-w-0',
               'disabled:opacity-40 disabled:cursor-not-allowed',
               variant === 'boxed' && cn(
                 // Above the sliding fill; the chosen one's fill IS that fill, so only its ink is here.

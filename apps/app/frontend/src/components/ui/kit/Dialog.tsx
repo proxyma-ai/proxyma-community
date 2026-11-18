@@ -16,7 +16,7 @@ import { Button } from './Button'
 import { cn } from './cn'
 import { Input } from './Input'
 import { TEXT } from './typeScale'
-import { iconButton } from './iconButton'
+import { BACK_BUTTON, BACK_ICON_SIZE } from './iconButton'
 import { useExitGhost } from './motion'
 import { Presence } from './Presence'
 import { useModalLayer } from './useModalLayer'
@@ -216,8 +216,9 @@ export function DialogShell({
 
   const backLabel = discardLabels.back ?? 'Back'
   const back = canClose ? (
-    <button type="button" onClick={requestClose} aria-label={backLabel} className={cn(iconButton('md'), 'sm:hidden -ml-2 shrink-0')}>
-      <ArrowLeft size={18} aria-hidden="true" />
+    // The kit's way back (BACK_BUTTON): its glyph on the page's left edge, as every header beside a title draws it.
+    <button type="button" onClick={requestClose} aria-label={backLabel} className={cn(BACK_BUTTON, 'sm:hidden')}>
+      <ArrowLeft size={BACK_ICON_SIZE} aria-hidden="true" />
     </button>
   ) : null
 
@@ -249,7 +250,7 @@ export function DialogShell({
           {/* A page with no DialogHeader of its own (Settings, a panel of the caller's) gets a bar for its back arrow,
               named by the dialog's label. */}
           {page && !hasHeader && back && (
-            <div data-dialog-head="" className="sm:hidden flex items-center gap-2 px-2 py-2 border-b border-line/45 shrink-0">
+            <div data-dialog-head="" className="sm:hidden flex items-center gap-3 px-4 py-2 border-b border-line/45 shrink-0">
               {back}
               {ariaLabel && <span className={cn(TEXT.title, 'truncate')}>{ariaLabel}</span>}
             </div>
@@ -331,11 +332,15 @@ export function DialogHeader({ title, icon, subtitle, actions, titleId, wrapTitl
   }, [register])
   return (
     <div data-dialog-head="" className={cn('flex items-start gap-3 px-4 sm:px-6 py-4 short:py-2 border-b border-line/45 shrink-0', className)}>
-      {page?.back && <div className="sm:hidden -my-3 shrink-0 flex items-center">{page.back}</div>}
+      {/* On the title's line, as the icon beside it is (`h-7`, centered): centered on a title with two lines of details
+          under it, the arrow stood between the lines and out of step with the icon (2026-11-17: "Not balance back button").
+          The 44px button overflows the line evenly; the row keeps its height. The line is the TITLE's own (`1lh` at its size):
+          a fixed 28px one put the arrow below a shorter title line (2026-11-17, the Share dialog). */}
+      {page?.back && <div className={cn(TEXT.title, 'sm:hidden h-[1lh] shrink-0 flex items-center')}>{page.back}</div>}
       {icon && <div className="shrink-0 h-7 flex items-center [&>svg]:w-5 [&>svg]:h-5">{icon}</div>}
       <div className="flex-1 min-w-0">
         <DialogTitle id={titleId} className={wrapTitle ? 'break-words' : 'truncate'}>{title}</DialogTitle>
-        {subtitle && <div className={cn(TEXT.caption, 'mt-0.5')}>{subtitle}</div>}
+        {subtitle && <div className={cn(TEXT.caption, 'mt-0.5 text-pretty')}>{subtitle}</div>}
       </div>
       {actions && <div className="shrink-0 min-h-7 flex items-center gap-2">{actions}</div>}
     </div>
