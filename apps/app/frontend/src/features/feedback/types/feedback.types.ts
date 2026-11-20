@@ -39,12 +39,17 @@ export interface FeedbackRequest {
   messageRating?: boolean
 }
 
+// Whether the report reached Proxyma - FeedbackResponse.Delivery on the server. Missing from an
+// older server's answer, which is read as sent: that is what the page said before it could know.
+export type FeedbackDelivery = 'SENT' | 'NOT_SENT' | 'KEPT_HERE'
+
 export interface FeedbackResponse {
   id: number
   mood: FeedbackMood
   comment: string | null
   anonymous: boolean
   source: FeedbackSource
+  delivery?: FeedbackDelivery
 }
 
 // Metadata only, admin-facing (AdminFeedbackController.list/resolve/unresolve) - the actual bytes

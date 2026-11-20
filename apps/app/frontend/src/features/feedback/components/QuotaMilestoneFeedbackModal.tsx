@@ -6,6 +6,7 @@ import { useSubmitFeedback } from '../hooks/useSubmitFeedback'
 import { MoodPicker } from './MoodPicker'
 import { QUOTA_MILESTONE_QUESTIONS } from '../types/feedback.types'
 import type { FeedbackMood } from '../types/feedback.types'
+import { MAX_COMMENT_CHARS, commentCount, commentOverBy, submittedOutcome } from '../utils/feedbackOutcome'
 import { useTranslation } from '@/i18n'
 import { ModalShell } from '@/components/ui/ModalShell'
 
@@ -34,7 +35,12 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
     setRatings(prev => ({ ...prev, [questionId]: mood }))
   }
 
+  const commentOver = commentOverBy(comment)
+  const commentLength = commentCount(comment)
+
   const handleSubmit = () => {
+    // The telemetry service refuses a longer comment; the box says by how much (FeedbackModal).
+    if (commentOver > 0) return
     submitFeedback.mutate(
       {
         // Overall's rating (when answered) doubles as the single required `mood` field the
@@ -51,7 +57,12 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
         ratings: Object.keys(ratings).length > 0 ? ratings : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: response => {
+          // Stored is not sent - the survey stays open so it can be sent again (FeedbackModal).
+          if (submittedOutcome(response.delivery) === 'notSent') {
+            addToast(t('Your feedback could not be sent to Proxyma. Please try again later.'), 'warning')
+            return
+          }
           addToast(t('Thanks for your feedback!'), 'success')
           onSubmitted()
         },
@@ -93,6 +104,12 @@ export function QuotaMilestoneFeedbackModal({ onDismiss, onNeverShowAgain, onSub
           placeholder={t('Additional comments (optional)')}
           aria-label={t('Additional comments (optional)')}
           rows={3}
+          hint={commentLength === null ? undefined
+            : t('{count} of {max} characters', { count: commentLength.toLocaleString(), max: MAX_COMMENT_CHARS.toLocaleString() })}
+          error={commentOver > 0
+            ? t('1 character over the {max} limit.|{count} characters over the {max} limit.',
+              { count: commentOver, max: MAX_COMMENT_CHARS.toLocaleString() })
+            : undefined}
         />
       </DialogBody>
 

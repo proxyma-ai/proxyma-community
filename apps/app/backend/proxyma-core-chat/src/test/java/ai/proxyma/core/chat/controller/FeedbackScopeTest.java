@@ -72,6 +72,7 @@ class FeedbackScopeTest {
         FeedbackAttachmentRepository attachments = mock(FeedbackAttachmentRepository.class);
         when(attachments.findByFeedbackIdIn(anyList())).thenReturn(List.of());
         shipper = mock(FeedbackShipper.class);
+        when(shipper.isConfigured()).thenReturn(true);
         when(shipper.ship(any(), anyList())).thenReturn(true);
         logTail = mock(LogTailProvider.class);
         when(logTail.readTail()).thenReturn("2026-09-25 INFO every user's activity");

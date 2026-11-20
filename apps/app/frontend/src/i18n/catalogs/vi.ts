@@ -1366,6 +1366,10 @@ export const vi: Record<string, string> = {
   'How feedback data is handled': 'Cách dữ liệu góp ý được xử lý',
   'Thanks for your feedback!': 'Cảm ơn góp ý của bạn!',
   'Failed to send feedback. Please try again.': 'Không thể gửi góp ý. Vui lòng thử lại.',
+  'Your feedback could not be sent to Proxyma. Please try again later.': 'Không thể gửi góp ý đến Proxyma. Vui lòng thử lại sau.',
+  '1 character over the {max} limit. Shorten the message, or attach the text as a file.|{count} characters over the {max} limit. Shorten the message, or attach the text as a file.': 'Vượt {count} ký tự so với giới hạn {max} ký tự. Hãy rút gọn nội dung, hoặc đính kèm văn bản dưới dạng tệp.',
+  '{count} of {max} characters': '{count} / {max} ký tự',
+  '1 character over the {max} limit.|{count} characters over the {max} limit.':'Vượt {count} ký tự so với giới hạn {max} ký tự.',
   'You can attach up to {max} files.': 'Bạn có thể đính kèm tối đa {max} tệp tin.',
   'Only {max} files can be attached at a time - some were skipped.':
     'Mỗi lần chỉ đính kèm được {max} tệp tin - một số đã bị bỏ qua.',

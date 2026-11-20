@@ -31,6 +31,10 @@ import java.util.Map;
  */
 public class FeedbackSubmission {
 
+    /** The longest comment the telemetry service takes. The app's feedback dialog holds a message to
+     *  it before sending, so a longer one is never stored here and refused there in silence. */
+    public static final int MAX_COMMENT_CHARS = 20_000;
+
     /** BAD | NEUTRAL | GOOD. A plain String, not an enum, so a value added on one side does not
      *  become an unparseable payload on the other - see the shared-contracts note in CLAUDE.md
      *  about which changes break whichever side deploys second. */
@@ -41,7 +45,7 @@ public class FeedbackSubmission {
     private String source;
 
     /** What the user actually wrote. Optional - a mood on its own is still signal. */
-    @Size(max = 20_000)
+    @Size(max = MAX_COMMENT_CHARS)
     private String comment;
 
     /**

@@ -8,6 +8,7 @@ import { useToastStore } from '@/store/toastStore'
 import { formatFileSize } from '@/utils/formatters'
 import { useSubmitFeedback } from '../hooks/useSubmitFeedback'
 import type { FeedbackChatContext, FeedbackMood } from '../types/feedback.types'
+import { MAX_COMMENT_CHARS, commentCount, commentOverBy, submittedOutcome } from '../utils/feedbackOutcome'
 import { MoodPicker } from './MoodPicker'
 import { useTranslation } from '@/i18n'
 import { ModalShell, useFormDirty } from '@/components/ui/ModalShell'
@@ -102,12 +103,18 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
     }))
   }
 
+  const commentOver = commentOverBy(comment)
+  const commentLength = commentCount(comment)
+
   const handleSend = () => {
     if (!mood) {
       setMoodError(t('Select how you feel first'))
       moodShake.trigger()
       return
     }
+    // Held here: the telemetry service refuses a longer comment, and the report would be stored on
+    // this side and lost on the way. The box already says by how much.
+    if (commentOver > 0) return
     submitFeedback.mutate(
       {
         mood,
@@ -124,7 +131,13 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
         files: attachments.length > 0 ? attachments : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: response => {
+          // Stored is not sent: a report the telemetry service refused or could not be reached
+          // for keeps the dialog open, with what the person wrote, so they can send it again.
+          if (submittedOutcome(response.delivery) === 'notSent') {
+            addToast(t('Your feedback could not be sent to Proxyma. Please try again later.'), 'warning')
+            return
+          }
           addToast(t('Thanks for your feedback!'), 'success')
           onClose()
         },
@@ -187,6 +200,12 @@ export function FeedbackModal({ onClose, chatContext, initialMood }: Props) {
                 data-lpignore="true"
                 resize
                 className="h-32 md:h-44 overflow-y-auto"
+                hint={commentLength === null ? undefined
+                  : t('{count} of {max} characters', { count: commentLength.toLocaleString(), max: MAX_COMMENT_CHARS.toLocaleString() })}
+                error={commentOver > 0
+                  ? t('1 character over the {max} limit. Shorten the message, or attach the text as a file.|{count} characters over the {max} limit. Shorten the message, or attach the text as a file.',
+                    { count: commentOver, max: MAX_COMMENT_CHARS.toLocaleString() })
+                  : undefined}
               />
             </FormStack>
 

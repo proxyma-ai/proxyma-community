@@ -191,7 +191,7 @@ public class FeedbackController {
                                     ? keptHere(feedback)
                                     : shipAndRecord(feedback, request, mood, source, logsAllowed))
                             .subscribeOn(Schedulers.boundedElastic()))
-                    .map(feedback -> ResponseEntity.ok(toResponse(feedback)));
+                    .map(outcome -> ResponseEntity.ok(toResponse(outcome)));
         });
     }
 
@@ -247,16 +247,21 @@ public class FeedbackController {
     // A visitor's feedback on a multi-user server stays in this deployment's own list: nothing ties
     // it to anyone the operator answers for, and relayed it would arrive under the installation's
     // identity and spend the allowance its signed-in users' reports need (swx-05).
-    private Feedback keptHere(Feedback feedback) {
+    private Outcome keptHere(Feedback feedback) {
         feedback.setDeliveredToProxyma(false);
-        return feedbackRepository.save(feedback);
+        return new Outcome(feedbackRepository.save(feedback), FeedbackResponse.Delivery.KEPT_HERE);
     }
+
+    /** The stored row and what became of it - the row's own flag cannot tell "refused" from "never meant to leave". */
+    private record Outcome(Feedback feedback, FeedbackResponse.Delivery delivery) {}
 
     // Builds the wire submission from what was just persisted, ships it, and records whether it
     // landed. Version, tier, edition and instance id are stamped by the shipper - they are facts
     // about this installation, not something a browser may assert.
-    private Feedback shipAndRecord(Feedback feedback, FeedbackRequest request,
-                                    FeedbackMood mood, FeedbackSource source, boolean logsAllowed) {
+    private Outcome shipAndRecord(Feedback feedback, FeedbackRequest request,
+                                   FeedbackMood mood, FeedbackSource source, boolean logsAllowed) {
+        // A deployment with no telemetry address keeps everything; that is not a failed send.
+        if (!feedbackShipper.isConfigured()) return keptHere(feedback);
         FeedbackSubmission submission = new FeedbackSubmission();
         submission.setMood(mood.name());
         submission.setSource(source.name());
@@ -291,12 +296,12 @@ public class FeedbackController {
         // else's stay here. logsAllowed is exactly "this caller speaks for the installation".
         boolean isRating = Boolean.TRUE.equals(request.messageRating());
         if (isRating && (!feedbackShipper.ratingsMayLeave() || !logsAllowed)) {
-            feedback.setDeliveredToProxyma(false);
-            return feedbackRepository.save(feedback);
+            return keptHere(feedback);
         }
         boolean delivered = feedbackShipper.ship(submission, attachments);
         feedback.setDeliveredToProxyma(delivered);
-        return feedbackRepository.save(feedback);
+        return new Outcome(feedbackRepository.save(feedback),
+                delivered ? FeedbackResponse.Delivery.SENT : FeedbackResponse.Delivery.NOT_SENT);
     }
 
     private static Map<String, String> toRatingStrings(Map<String, FeedbackMood> ratings) {
@@ -320,9 +325,11 @@ public class FeedbackController {
         }
     }
 
-    private FeedbackResponse toResponse(Feedback f) {
+    private FeedbackResponse toResponse(Outcome outcome) {
+        Feedback f = outcome.feedback();
         FeedbackSource source = f.getSource() != null ? f.getSource() : FeedbackSource.GENERAL;
-        return new FeedbackResponse(f.getId(), f.getMood().name(), f.getComment(), f.isAnonymous(), source.name());
+        return new FeedbackResponse(f.getId(), f.getMood().name(), f.getComment(), f.isAnonymous(), source.name(),
+                outcome.delivery());
     }
 
     private Mono<String> resolveUserId(ServerWebExchange exchange) {
