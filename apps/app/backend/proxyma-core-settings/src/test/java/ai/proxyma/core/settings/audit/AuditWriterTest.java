@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
  * a row - in the summary, the target or anywhere in the detail. And who did it is filed as the LLM
  * call log files it: everyone as the one local user on Desktop and Home Server, except work nobody
  * asked for, which stays the system's.
+ * <p>Verifies [PROXYMA-AD 087], [PROXYMA-AD 098].
  */
 class AuditWriterTest {
 

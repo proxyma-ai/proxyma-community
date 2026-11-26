@@ -17,7 +17,7 @@ import { settle } from './clickToEdit'
  * `editable` false is the read-only box MarkdownField draws for a text the reader may not change.
  */
 export function EditableMarkdown({
-  value, onCommit, editable = true, label, placeholder, rows, fill, maxLength, className, id, 'aria-label': ariaLabel,
+  value, onCommit, editable = true, label, placeholder, rows, fill, grow, maxLength, className, id, 'aria-label': ariaLabel,
 }: {
   value: string
   onCommit: (text: string) => void | Promise<unknown>
@@ -26,6 +26,8 @@ export function EditableMarkdown({
   placeholder?: string
   rows?: 2 | 3 | 4 | 6 | 8 | 10 | 18
   fill?: boolean
+  /** As tall as its text, never scrolling inside itself (MarkdownField's `grow`). */
+  grow?: boolean
   maxLength?: number
   className?: string
   id?: string
@@ -79,7 +81,7 @@ export function EditableMarkdown({
   }
 
   if (!editable) {
-    return <MarkdownField id={id} label={label} aria-label={ariaLabel} value={value} placeholder={placeholder} rows={rows} fill={fill} disabled className={className} />
+    return <MarkdownField id={id} label={label} aria-label={ariaLabel} value={value} placeholder={placeholder} rows={rows} fill={fill} grow={grow} disabled className={className} />
   }
 
   return (
@@ -99,6 +101,7 @@ export function EditableMarkdown({
         placeholder={placeholder}
         rows={rows}
         fill={fill}
+        grow={grow}
         maxLength={maxLength}
         // At rest the text with no field around it - a line and a text cursor under the mouse; the
         // field itself while it is being edited. The same box in both, so nothing moves.

@@ -50,6 +50,8 @@ interface Props {
 // and what they send are unchanged: Allow once is accept_once, Allow for this conversation is
 // accept_all (ChatService stops asking for the rest of the conversation), Deny is deny - and the
 // time limit still ends in the same deny.
+//
+// Implements [PROXYMA-AD 052].
 export function ToolApprovalPrompt({ approval, conversationId, onOpenDetail, from }: Props) {
   // The decision the user picked, or null while the card is still awaiting input. Deliberately NOT
   // cleared once the POST resolves: that only means the server un-blocked the ReAct loop, the tool

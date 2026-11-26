@@ -14,6 +14,7 @@ import java.util.Set;
 // filters per-subscriber by Scope so a caller only ever sees events about connectors they own or
 // that are marked shared (SEC-D4) - connector content itself is never in these messages, only
 // metadata (ids/titles/status), but even that leaked across users previously.
+/** Implements [PROXYMA-AD 085]. */
 @Service
 public class EventSinkService {
 

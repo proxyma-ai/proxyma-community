@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The two usage shapes as WireUsage reads them - the numbers are the probe's own (0.29.2 feedback).
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class WireUsageTest {
 

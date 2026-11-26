@@ -25,6 +25,7 @@ import java.util.Set;
  * <p>Everything here is asked on the hot chat path (before every model call), so implementations
  * keep each answer to an in-memory check or one primary-key lookup, and never throw: a module that
  * fails to answer must cost its own feature, not the turn.
+ * <p>Implements [PROXYMA-AD 012].
  */
 public interface ChatModule {
 

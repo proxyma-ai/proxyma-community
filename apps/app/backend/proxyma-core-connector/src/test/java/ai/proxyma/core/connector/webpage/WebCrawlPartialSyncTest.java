@@ -47,6 +47,7 @@ import static org.mockito.Mockito.mock;
  * <p>Served over a real loopback HTTP server rather than a mocked fetch: the cap is a property of
  * the breadth-first walk, the queue and the visited set together, and stubbing the fetch would test
  * the counter instead of the crawl.
+ * <p>Verifies [PROXYMA-AD 057].
  */
 class WebCrawlPartialSyncTest {
 

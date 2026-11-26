@@ -223,6 +223,14 @@ test('with no agent named the reply keeps its label; a posted one says so and li
   ] }), tv, 'en', { author: 'Reply Writer', now: NOW })
   assert.equal(posted?.reply?.label, 'Da dang')
   assert.deepEqual(posted?.reply?.links, [{ key: 'reply', label: 'Xem tra loi', href: 'https://www.youtube.com/watch?v=v2&lc=c3.r1' }])
+  // A channel's page names no member (2026-11-26): its own words over a draft, never whose, and a posted one unchanged.
+  const channel = commentCard(parseApprovalContext(server), tv, 'en', { author: 'Reply Writer', draftLabel: 'Draft reply', now: NOW })
+  assert.equal(channel?.reply?.label, 'Draft reply')
+  const postedOnChannel = commentCard(parseApprovalContext({ fields: [
+    ...server.fields.slice(0, 5),
+    { key: 'reply', value: 'Thanks', href: 'https://www.youtube.com/watch?v=v2&lc=c3.r1', kind: 'QUOTE' },
+  ] }), tv, 'en', { author: 'Reply Writer', draftLabel: 'Draft reply', now: NOW })
+  assert.equal(postedOnChannel?.reply?.label, 'Da dang')
 })
 
 test('the date is the reader\'s own: Vietnamese words, in the reader\'s time zone', () => {

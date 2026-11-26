@@ -21,7 +21,7 @@ import java.util.Set;
  * and before every file fetch, so narrowing it stops sources that are already registered rather
  * than only new ones.
  *
- * <p>See docs/architecture.html#spec-05-4.
+ * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
  */
 public final class HostAllowlist {
 

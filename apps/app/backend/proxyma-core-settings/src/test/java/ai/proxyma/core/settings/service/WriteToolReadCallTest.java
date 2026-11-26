@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * to decide from the tool name alone, so the agent's first GET through callJiraApi - read on, write
  * off, the defaults - stopped on an "enable Jira write tools" prompt for a call that needed only
  * the read access it already had.
+ * <p>Verifies [PROXYMA-AD 052].
  */
 class WriteToolReadCallTest {
 

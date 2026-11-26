@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * nothing at all, and its "Waiting for ..." line counted on for minutes over an answer the transcript
  * already held. And the turn the server starts for a teammate's reply goes to the sink the page already
  * follows (ChatService.wake keeps it).
+ * <p>Verifies [PROXYMA-AD 050].
  */
 class DroppedEventNumberTest {
 

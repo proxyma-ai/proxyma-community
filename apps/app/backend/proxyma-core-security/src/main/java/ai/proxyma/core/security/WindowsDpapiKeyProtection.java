@@ -7,6 +7,7 @@ import java.nio.file.Path;
 
 // Stores the AES-256 key as a DPAPI-encrypted blob on disk.
 // Bound to the current Windows user - copying the blob to another machine yields nothing.
+/** Implements [PROXYMA-AD 086]. */
 class WindowsDpapiKeyProtection implements OsKeyProtection {
 
     private final Path blobFile;

@@ -20,6 +20,8 @@ import jakarta.validation.constraints.Size;
  *
  * <p>Every string is bounded: they arrive unauthenticated, and an over-long one used to reach a
  * varchar(255) column and fail as a 500 rather than a refusal.
+ *
+ * Implements [PROXYMA-AD 024], [PROXYMA-AD 061].
  */
 public class LicenseActivationRequest {
 

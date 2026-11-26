@@ -19,6 +19,7 @@ import java.util.Map;
  * an older build registered still syncs: nothing is written back, and every new registration stores
  * JSON. Every install is a first install, so this is a courtesy to a database that outlived its
  * build, not a migration.
+ * <p>Implements [PROXYMA-AD 082].
  */
 public final class StoredConfig {
 

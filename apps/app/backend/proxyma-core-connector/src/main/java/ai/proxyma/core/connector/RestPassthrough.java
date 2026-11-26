@@ -37,6 +37,7 @@ import java.util.function.Consumer;
  * <p>Non-2xx responses are RETURNED, not thrown. An agent that gets Jira's own 400 body back can
  * correct the request itself; an agent that gets "request failed" can only guess. The status code
  * travels with it so a caller can tell 404-wrong-key from 403-no-permission.
+ * <p>Implements [PROXYMA-AD 003].
  */
 public final class RestPassthrough {
 

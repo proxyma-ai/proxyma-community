@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the request with a 400 - "tool_use ids were found without tool_result blocks immediately after"
  * - on that turn and every turn after it, because the stopped turn left a call with no result in
  * the conversation's memory.
+ * <p>Verifies [PROXYMA-AD 051].
  */
 class ToolPairingTest {
 

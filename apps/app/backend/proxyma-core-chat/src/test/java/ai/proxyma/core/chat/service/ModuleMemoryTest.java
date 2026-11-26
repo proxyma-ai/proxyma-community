@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A MODULE'S MEMORY FOR THE AGENT IS A MESSAGE, NOT THE SYSTEM PROMPT (2026-10-30, Constellations'
- * workspaces): a saved agent's MEMORY.md, NEXT.md and latest journal reach it at the first model call
+ * workspaces): a saved agent's memory.md, next.md and latest journal reach it at the first model call
  * with no copy in view - a conversation's first step, and the first after a condensation took the
  * earlier copy into its summary - as inbox-shaped mail the thread draws as one line and an earlier
  * conversation read back leaves out.
@@ -24,9 +24,9 @@ class ModuleMemoryTest {
     @Test
     @DisplayName("the memory is mail of its own kind: scaffolding for the transcript, the 'memory' kind for the page")
     void readAsMail() {
-        Message m = ChatService.memoryMessage("== memory/MEMORY.md ==\n- [Triage](triage.md) - how Jira is triaged");
+        Message m = ChatService.memoryMessage("== memory/memory.md ==\n- [Triage](triage.md) - how Jira is triaged");
         String text = ((UserMessage) m).getText();
-        assertThat(text).startsWith("[Workspace memory]\n").contains("memory/MEMORY.md");
+        assertThat(text).startsWith("[Workspace memory]\n").contains("memory/memory.md");
         assertThat(AgentInbox.isInboxMessage(text)).isTrue();
         assertThat(ChatService.isScaffolding(text)).isTrue();
         assertThat(AgentInbox.entriesIn(text)).singleElement().satisfies(e -> assertThat(e[2]).isEqualTo("memory"));

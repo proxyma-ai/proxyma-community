@@ -51,6 +51,7 @@ import static org.mockito.Mockito.when;
  * The one way in for a type built on the connector framework: its configuration checked against its
  * descriptor on the server, stored as JSON, named by its plugin's identity, and deduplicated by that
  * identity on the connection's server - and an edit that keeps the identity, refused one that does not.
+ * <p>Verifies [PROXYMA-AD 015], [PROXYMA-AD 033].
  */
 class GenericRegistrationTest {
 

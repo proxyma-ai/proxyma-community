@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * routinely in reach, because messages carry paths and titles. These pin that nothing but code
  * identifiers ever leaves the fingerprint, that the frames are Proxyma's own, and that the per-day
  * cap holds against a warning logged in a loop.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class ErrorFingerprintTest {
 

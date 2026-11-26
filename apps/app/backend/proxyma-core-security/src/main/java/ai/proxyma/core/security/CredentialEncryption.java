@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 
 // Pure Java (no Spring) AES-256-GCM encryption for credential fields.
 // Usable from EnvironmentPostProcessor before any Spring beans are created.
+/** Implements [PROXYMA-AD 086]. */
 public final class CredentialEncryption {
 
     private static final Logger log = Logger.getLogger(CredentialEncryption.class.getName());

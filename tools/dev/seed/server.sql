@@ -183,7 +183,7 @@ VALUES
     -- with a retry pending: a document still holding a retry is picked back up by the drain.
     --
     -- total_chunks, current_chunks and content_size are 0 rather than NULL. They map to PRIMITIVE
-    -- fields on TrackedDocument (docs/architecture.html#data-model spells them `int` and `long`, against
+    -- fields on TrackedDocument (docs/architecture.html#crosscutting-concepts-storage-per-edition spells them `int` and `long`, against
     -- source_size_bytes' boxed `Long` two lines down, and that distinction is load-bearing). A
     -- NULL there inserts happily and then throws on the first READ -
     -- "Can not set long field ai.proxyma.core.registry.model.TrackedDocument.contentSize to null
@@ -233,7 +233,7 @@ VALUES
 -- UNVERIFIED, unlike the desktop fixture: there is no Docker and no local PostgreSQL on the
 -- maintainer's machine, so this file has been reviewed against the entity definitions and
 -- never executed. The column list, the types and the enum spellings come from
--- docs/architecture.html#data-model; what has NOT been checked against a running server is the exact source_id
+-- docs/architecture.html#crosscutting-concepts-storage-per-edition; what has NOT been checked against a running server is the exact source_id
 -- convention an UPLOADED_FILES connector writes. If the first -Seed on a real database produces
 -- documents the app then re-detects as new, that is the thing to look at first.
 -- --------------------------------------------------------------------------------------------

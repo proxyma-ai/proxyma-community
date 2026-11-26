@@ -103,7 +103,7 @@ function appearanceInit(storageKey: string): Plugin {
 }
 
 // PROXYMA ENTERPRISE'S PAGES live outside this directory, in ee/frontend/src at the repository root -
-// closed source, in the private repository only (docs/architecture.html#oss-boundary). Server mode IS the Enterprise
+// closed source, in the private repository only (docs/architecture.html#solution-strategy-open-core-boundary). Server mode IS the Enterprise
 // build, so it needs them; desktop mode (Desktop and the Home Server) never reads them, and a tree
 // without ee/ - the public Community repository - builds it unchanged.
 //
@@ -111,6 +111,8 @@ function appearanceInit(storageKey: string): Plugin {
 // desktop mode in every respect (.env.addons) plus the add-ons sold for it, each activated by its own
 // key - Constellations first. Their pages are in ee/ too, so it needs them as server mode does; the
 // public AGPL build stays desktop mode, unchanged.
+//
+// Implements [PROXYMA-AD 042], [PROXYMA-AD 012].
 const EE_SRC = path.resolve(__dirname, '../../../ee/frontend/src')
 
 // The Enterprise files import react, recharts and the rest like any page here, but sit outside this

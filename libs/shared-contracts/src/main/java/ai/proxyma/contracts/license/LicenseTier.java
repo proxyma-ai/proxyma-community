@@ -11,6 +11,8 @@ package ai.proxyma.contracts.license;
  * receive them. Removing a constant breaks whichever side deploys second. They are never issued
  * again and read as Community everywhere. They go in a later contracts 2.0, once no live license and
  * no supported build carries them.
+ *
+ * Implements [PROXYMA-AD 024].
  */
 public enum LicenseTier {
     /** Free, open source. Needs no license; never issued as one. */

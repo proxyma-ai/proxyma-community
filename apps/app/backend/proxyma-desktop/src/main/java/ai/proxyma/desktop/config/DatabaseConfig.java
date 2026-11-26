@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 // conflicts. The six per-connector datasources (Jira, Confluence, Bitbucket, SVN, SharePoint,
 // Teams) were removed on 2026-09-29: their packages no longer existed, so each only created an
 // empty file under the data root on every start. Every source lives in the registry (Local).
+/** Implements [PROXYMA-AD 071], [PROXYMA-AD 080]. */
 @Configuration
 @Import({
     LocalDataSourceConfig.class,

@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * What a descriptor decides - the questions that used to be a switch per caller, now asked of the
  * catalog - and the server-side check of a configuration against its fields.
+ * <p>Verifies [PROXYMA-AD 015].
  */
 class DescriptorRulesTest {
 

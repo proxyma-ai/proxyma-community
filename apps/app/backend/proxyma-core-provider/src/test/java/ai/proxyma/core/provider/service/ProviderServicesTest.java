@@ -49,6 +49,7 @@ import static org.mockito.Mockito.when;
  *       role missing from it stays off after every restart. The guardrail's ceiling, read back as
  *       null from a blank field, turned its classifier off with a NullPointerException.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 036].
  */
 class ProviderServicesTest {
 

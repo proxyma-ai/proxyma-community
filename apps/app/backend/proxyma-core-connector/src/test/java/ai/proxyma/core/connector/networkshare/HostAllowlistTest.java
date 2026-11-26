@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Acceptance tests 3 and 4 of docs/architecture.html#spec-05-11.
+ * Acceptance tests 3 and 4 of docs/architecture.html#crosscutting-concepts-tests-through-the-front-door.
  *
  * <p>THIS IS A CREDENTIAL BOUNDARY, so every case here is about what must NOT be reachable.
  * Connecting to an SMB server sends it an NTLM exchange for the source owner's domain account,

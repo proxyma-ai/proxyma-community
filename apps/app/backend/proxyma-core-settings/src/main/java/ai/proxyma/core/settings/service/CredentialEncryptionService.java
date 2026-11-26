@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 // AES-256-GCM encryption for stored credentials: @EncryptedField settings values, provider keys and
 // headers, connection secrets. The key lives in the OS key store: DPAPI on Windows, a 0600 file on
 // Linux (see CredentialEncryption.loadOrCreateKey).
+/** Implements [PROXYMA-AD 086]. */
 @Service
 public class CredentialEncryptionService {
 

@@ -32,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that a filtered search filters - without asserting anything about how good a real embedding model
  * would be. The corpus is written so the four documents share almost no vocabulary, so a failure
  * here means the pipeline broke rather than that the stand-in was too crude.
+ *
+ * Verifies [PROXYMA-AD 014], [PROXYMA-AD 060].
  */
 @DisplayName("Search: the index answers with the right document")
 class SearchJourneyIT extends DesktopJourney {
@@ -105,6 +107,7 @@ class SearchJourneyIT extends DesktopJourney {
                 .as("the query was embedded").isNotEmpty();
     }
 
+    /** Verifies [PROXYMA-AD 017]. */
     @Test
     @DisplayName("reranking reaches the provider and is metered")
     void rerankingIsUsedWhenTurnedOn() {

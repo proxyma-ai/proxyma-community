@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
  * on each result by the same pair. A Freshdesk result for {@code ticket:1} came back under the
  * Zendesk ticket's title: both sources hold a {@code ticket:1}, and the title was looked up by that
  * id alone.
+ * <p>Verifies [PROXYMA-AD 035].
  */
 class SearchResultTitlesTest {
 

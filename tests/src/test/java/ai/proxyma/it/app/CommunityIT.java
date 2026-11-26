@@ -63,6 +63,7 @@ class CommunityIT {
 
     // -- No license ----------------------------------------------------------------------------
 
+    /** Verifies [PROXYMA-AD 011]. */
     @Test
     @DisplayName("it says Community, with nothing to activate and no limit fields at all")
     void itIsCommunity() {

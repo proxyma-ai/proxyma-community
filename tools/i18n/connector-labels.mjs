@@ -19,6 +19,8 @@
 // an AuthMethod's label; an Option's label; and each Category's label. A placeholder is an EXAMPLE
 // of a value and is shown as it is, so it is not read. An argument that is not a literal (or a
 // concatenation of literals) is skipped - write descriptor text as literals.
+//
+// Implements [PROXYMA-AD 103].
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -26,7 +28,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#oss-boundary), as server-messages.mjs
+// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#solution-strategy-open-core-boundary), as server-messages.mjs
 // writes. The Community descriptors' words go to the app's own list; the Enterprise modules' (ee/,
 // private - the Microsoft 365 types and service) to a list beside the Enterprise frontend, holding
 // only what the Community list does not already have. A tree without ee/ - the public Community

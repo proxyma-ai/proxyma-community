@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * slow tasks stopped chat event delivery, and the hundred-and-first waiting event was rejected on
  * the thread running the turn - which left that conversation's stream waiting for ever for the
  * sequence number the rejected event carried.
+ * <p>Verifies [PROXYMA-AD 030].
  */
 class AsyncConfigTest {
 

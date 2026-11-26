@@ -43,7 +43,7 @@ import java.util.Set;
  * mean narrowing the list never stops a source that is already running, and the list exists to
  * bound which servers this deployment's users can be made to send an NTLM exchange to.
  *
- * <p>See docs/architecture.html#spec-05.
+ * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
  */
 @Component
 public class NetworkShareConnector implements ConnectorPlugin {

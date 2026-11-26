@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
  *
  * DISABLED BY DEFAULT (a ceiling of zero). Every existing deployment upgrades into exactly the
  * behaviour it had, and an administrator opts in by setting a figure.
+ * <p>Implements [PROXYMA-AD 096].
  */
 @Service
 public class GlobalQuotaService {

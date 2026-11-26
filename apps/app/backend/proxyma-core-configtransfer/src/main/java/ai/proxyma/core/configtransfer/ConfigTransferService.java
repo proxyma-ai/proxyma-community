@@ -57,6 +57,7 @@ import java.util.Set;
  * and nothing is reset to a default. A configuration file is a statement about some settings, not a
  * claim to be the whole truth about a deployment - and the alternative, wiping what the file does
  * not mention, turns a partial export into a destructive act.
+ * <p>Implements [PROXYMA-AD 040].
  */
 @Service
 public class ConfigTransferService {

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * What a response says about its call beyond the counts (2026-10-22): the money it says the call
  * cost, which always wins over any estimate (the maintainer's rule), the tier that served it, the
  * region and the web searches. Shapes as the vendors document them on that day.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class ReportedCostTest {
 

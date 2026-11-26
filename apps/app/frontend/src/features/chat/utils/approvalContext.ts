@@ -253,7 +253,11 @@ export function commentCard(
   context: ApprovalContext | null | undefined,
   t: (s: string, params?: Record<string, string | number>) => string,
   locale: string,
-  opts: { author?: string | null; now?: number; timeZone?: string } = {},
+  /**
+   * `draftLabel`: the words over a reply not posted yet, in place of "{author}'s draft" - a YouTube channel's page, which
+   * names no member (2026-11-26).
+   */
+  opts: { author?: string | null; draftLabel?: string; now?: number; timeZone?: string } = {},
 ): CommentCard | null {
   if (!context || !isCommentContext(context)) return null
   const rows = approvalContextRows(context, t)
@@ -275,7 +279,7 @@ export function commentCard(
     video: video ? { title: video.value.trim(), href: video.kind === 'LINK' ? video.href : null } : null,
     reply: reply && (reply.href
       ? { ...reply, label: t('Reply posted'), links: [{ key: 'reply', label: t('View reply'), href: reply.href }] }
-      : { ...reply, label: author ? t("{name}'s draft", { name: author }) : reply.label, links: [] }),
+      : { ...reply, label: opts.draftLabel ?? (author ? t("{name}'s draft", { name: author }) : reply.label), links: [] }),
     // A date that is not one is not lost: it stays a row of its own, as it was.
     rest: rows.filter(r => !FOLDED.has(r.key) || (r === when && written === null)).map(r => ({ ...r, links: [] })),
   }

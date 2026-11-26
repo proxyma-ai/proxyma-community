@@ -44,6 +44,7 @@ import static org.mockito.Mockito.when;
  * tools are offered only where the module says AND its skill is loaded AND the license includes it,
  * and its identity line is in the system prompt of its own conversations only, without making the
  * prompt move from one turn to the next.
+ * <p>Verifies [PROXYMA-AD 032].
  */
 class ChatModuleTest {
 

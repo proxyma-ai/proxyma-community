@@ -48,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 // second, so a deployment that has either one works - and pypdfium2 in particular arrives as a
 // pdfplumber dependency, meaning a server already set up for PDF table extraction usually needs
 // nothing new installed for the vision engine.
+/** Implements [PROXYMA-AD 034]. */
 @Service
 public class OcrService {
 

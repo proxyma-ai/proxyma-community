@@ -26,6 +26,7 @@ import java.util.Map;
 // Every agent is a conversation of its own (AgentTree): nothing here runs another agent's loop on
 // this call's thread. Chat-only (ChatOnlyTools): over MCP and in a workflow there is no
 // conversation for an agent, an alarm or a background job to belong to.
+/** Implements [PROXYMA-AD 054]. */
 @Component
 public class AgentTools {
 

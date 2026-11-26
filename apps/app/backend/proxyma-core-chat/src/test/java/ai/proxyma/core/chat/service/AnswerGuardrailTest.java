@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  * and it was the one way past the INPUT guardrail - a credential typed into it went to the provider
  * and into the stored history. chat-agent-23: an input check made the user and the conversation
  * known to the guardrail's audit entry, which read them off SearchContext and found nothing.
+ * <p>Verifies [PROXYMA-AD 093].
  */
 class AnswerGuardrailTest {
 

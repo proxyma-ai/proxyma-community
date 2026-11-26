@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // with what only the response knows: the cost the provider stated, which always wins, the service
 // tier, the region, the web searches, and when it ran. costUsd() then adds that settled part to an
 // estimate of whatever was left unsettled - see TokenUsage.
+/** Implements [PROXYMA-AD 095]. */
 @Service
 public class ModelPricingService {
 

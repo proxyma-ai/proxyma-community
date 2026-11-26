@@ -38,6 +38,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * worth naming: no trace viewer UI, no codegen, and auto-waiting has to be asked for explicitly
  * rather than being wrapped around every assertion. {@link #assertNoPageErrors} exists partly to
  * make up for the last one.
+ *
+ * Implements [PROXYMA-AD 112].
  */
 public final class Ui implements AutoCloseable {
 

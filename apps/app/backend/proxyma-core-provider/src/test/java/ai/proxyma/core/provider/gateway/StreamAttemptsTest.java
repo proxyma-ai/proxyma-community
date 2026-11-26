@@ -53,6 +53,7 @@ import static org.mockito.Mockito.when;
  *       ran on the thread that signalled the stream's end: a Reactor Netty event loop, shared with
  *       the web server.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class StreamAttemptsTest {
 

@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>BOUNDED. If nothing drains it - a test, or a writer that cannot reach its database - the
  * queue keeps the newest {@link #CAPACITY} entries and counts what it dropped, rather than growing
  * until the process runs out of memory.
+ * <p>Implements [PROXYMA-AD 098].
  */
 public final class Audit {
 

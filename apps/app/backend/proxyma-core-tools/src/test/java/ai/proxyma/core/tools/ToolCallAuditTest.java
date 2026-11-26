@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
  * A tool call is recorded ONCE. The wrapper every tool runs through records what nobody above it
  * does - an MCP client's call, a workflow node's - and stands aside for the chat's tool path and a
  * sub-agent's, which record their own after the guardrail has seen the result.
+ * <p>Verifies [PROXYMA-AD 098].
  */
 class ToolCallAuditTest {
 

@@ -9,6 +9,7 @@ import java.util.UUID;
  * (IngestTokenService), which also checks the token, fully, at the endpoint itself.
  *
  * <p>BLOCKING - a database read. Call it off the event loop.
+ * <p>Implements [PROXYMA-AD 059], [PROXYMA-AD 089].
  */
 public interface IngestTokenCheck {
 

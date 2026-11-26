@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
  * the graph staying out of the index's way. No test here hands the worker an embedding service or
  * a vector store, because it has none - and {@code neverWritesADocument} holds the one write path
  * it could still reach.
+ * <p>Verifies [PROXYMA-AD 035].
  */
 class GraphExtractionOrchestratorTest {
 

@@ -14,6 +14,8 @@
  * Framework-free on purpose: `apps/landing` is Next.js and reads this during a server render
  * where `window` does not exist, while the three Vite SPAs only ever run in a browser. Every
  * function here either takes what it needs as an argument or guards for `window` itself.
+ *
+ * Implements [PROXYMA-AD 103].
  */
 
 export const LOCALES = ['en', 'vi'] as const;

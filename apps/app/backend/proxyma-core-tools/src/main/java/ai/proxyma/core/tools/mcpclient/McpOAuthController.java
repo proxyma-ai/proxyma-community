@@ -29,6 +29,7 @@ import java.util.UUID;
  *       McpOAuthService). It answers with a short page saying how it went, carrying no text from
  *       the request - a page that repeated what it was given would say whatever an attacker wrote.</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 064].
  */
 @RestController
 public class McpOAuthController {

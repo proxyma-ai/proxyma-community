@@ -49,6 +49,7 @@ import static org.mockito.Mockito.when;
  *   <li>Sync saved the source's whole row after every item, putting back edits made meanwhile, and
  *       the drain restamped the CURRENT embedding model on a source indexed with another.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 056], [PROXYMA-AD 058].
  */
 class SyncSchedulingTest {
 

@@ -18,6 +18,8 @@
 // No electron-builder, deliberately: the Java launcher and Inno Setup already do the installing,
 // updating and shortcut-making that it exists for. All this needs is Electron's folder with our
 // two files in it.
+//
+// Implements [PROXYMA-AD 070].
 import { execFileSync, execSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'

@@ -10,6 +10,7 @@ import java.util.Map;
  *
  * <p>STATELESS. A plugin is shared by every source of its type and by every thread; whatever one
  * source needs lives in its {@link SourceContext} and the session opened over it.
+ * <p>Implements [PROXYMA-AD 015].
  */
 public interface ConnectorPlugin {
 

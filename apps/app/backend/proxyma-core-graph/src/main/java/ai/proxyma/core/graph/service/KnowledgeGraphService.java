@@ -48,6 +48,7 @@ import java.util.function.Supplier;
  * and walk out from a name. Callers hand over UUIDs and text and get back plain records - this
  * module reaches back into nobody, which is the rule its pom states and the reason it can be
  * depended on by registry, search and tools at once without a cycle.
+ * <p>Implements [PROXYMA-AD 035].
  */
 @Service
 public class KnowledgeGraphService {

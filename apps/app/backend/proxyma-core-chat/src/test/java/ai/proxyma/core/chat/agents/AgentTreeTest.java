@@ -47,6 +47,7 @@ import static org.mockito.Mockito.when;
  * its own still runs - and a person's message into a child is refused, since a person reads a
  * child and talks to its root (2026-11-04); a parent controls its children and theirs, and nobody else's; and a child can never do more than the
  * root it works under. Driven over map-backed repositories and a mocked chat, so no turn runs.
+ * <p>Verifies [PROXYMA-AD 054].
  */
 class AgentTreeTest {
 

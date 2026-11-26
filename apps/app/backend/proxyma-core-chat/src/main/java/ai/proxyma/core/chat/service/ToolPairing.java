@@ -28,6 +28,7 @@ import java.util.Map;
  * to the model, every time, and the stored rows are left exactly as they are.
  *
  * <p>A pure function of the list, so it is tested directly (ToolPairingTest).
+ * <p>Implements [PROXYMA-AD 051].
  */
 public final class ToolPairing {
 

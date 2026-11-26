@@ -25,6 +25,7 @@ import java.util.List;
 // @ConditionalOnResource so a jar built without a frontend (mvn -Dskip.frontend.build=true, or
 // any module that has no SPA) simply does not register the handler, rather than registering a
 // catch-all that resolves every unmatched path to a missing index.html.
+/** Implements [PROXYMA-AD 007], [PROXYMA-AD 020]. */
 @Configuration
 @ConditionalOnResource(resources = "classpath:/static/index.html")
 public class SpaWebConfig implements WebFluxConfigurer {

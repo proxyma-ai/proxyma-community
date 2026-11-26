@@ -32,6 +32,7 @@ import java.util.Set;
  *
  * <p>First of the modules, so AgentProfiles asks it before the others; it asks the others itself,
  * about the ROOT conversation, and answers nothing for a conversation that is not a child.
+ * <p>Implements [PROXYMA-AD 054].
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

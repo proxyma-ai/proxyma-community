@@ -55,6 +55,7 @@ import java.util.function.Consumer;
 // Encryption contract:
 //   @EncryptedField - AES-GCM (reversible): API keys, access tokens.
 //                      Encrypted on every write path, decrypted on getSettings().
+/** Implements [PROXYMA-AD 038], [PROXYMA-AD 086]. */
 @Service
 public class SettingsService {
 

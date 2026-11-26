@@ -13,6 +13,8 @@
 #
 # Non-interactive (CI, config management): set PROXYMA_ASSUME_YES=1 and make
 # sure .env is complete beforehand. The script then fails rather than prompting.
+#
+# Implements [PROXYMA-AD 072].
 # ==============================================================================
 set -euo pipefail
 

@@ -8,6 +8,7 @@ package ai.proxyma.core.connector.spi;
  * 365 is the case it was made for, since it needs an Entra tenant, and a tenant is something an
  * organization has. On any other edition such a type is absent from the catalog, refused at
  * registration, and an existing source of it is listed but never synced.
+ * <p>Implements [PROXYMA-AD 018].
  */
 public enum Edition {
     COMMUNITY,

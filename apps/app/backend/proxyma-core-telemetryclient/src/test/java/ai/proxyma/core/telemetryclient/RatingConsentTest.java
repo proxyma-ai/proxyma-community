@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>Before that it shipped whatever the telemetry setting said and on every tier, while the
  * Privacy Policy and the DPA said no conversation reached us unless someone ticked a box.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class RatingConsentTest {
 

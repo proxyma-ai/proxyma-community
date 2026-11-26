@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A resolved provider carries its credential DECRYPTED, and a record prints every component - so
  * one log line or assertion message formatting it wrote the key, and every custom header's value,
  * to a log that travels with feedback attachments.
+ * <p>Verifies [PROXYMA-AD 110].
  */
 class ResolvedProviderTest {
 

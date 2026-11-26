@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Constellations (agent teams) is an ADD-ON: every Enterprise license carries it by default, and on
  * Desktop and Home Server its own key grants it and nothing else. The page's menu reads the same flag
  * the server enforces - LicenseStatusResponse carries it, as it carries keyAccounts.
+ * <p>Verifies [PROXYMA-AD 018].
  */
 class ConstellationsCapabilityTest {
 

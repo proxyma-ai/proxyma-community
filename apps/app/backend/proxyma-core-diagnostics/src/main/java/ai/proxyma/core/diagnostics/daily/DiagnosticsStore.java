@@ -37,6 +37,7 @@ import java.util.List;
  *
  * <p>Nothing on disk is kept past {@link #KEEP_DAYS} days: an installation that cannot reach the
  * endpoint for a month loses the oldest day each day rather than growing without bound.
+ * <p>Implements [PROXYMA-AD 005].
  */
 @Service
 public class DiagnosticsStore {

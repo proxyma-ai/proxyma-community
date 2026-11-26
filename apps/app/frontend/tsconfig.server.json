@@ -1,6 +1,6 @@
 // THE ENTERPRISE BUILD'S TYPE CHECK (`npm run build:server`). The same program as tsconfig.json, plus
 // Proxyma Enterprise's pages in ee/frontend/src at the repository root - closed source, private
-// repository only (docs/architecture.html#oss-boundary) - with the edition aliases pointing at them, as vite.config.ts
+// repository only (docs/architecture.html#solution-strategy-open-core-boundary) - with the edition aliases pointing at them, as vite.config.ts
 // points them in server mode.
 //
 // The "*" path is for those files alone: they sit outside this package, so the compiler's usual

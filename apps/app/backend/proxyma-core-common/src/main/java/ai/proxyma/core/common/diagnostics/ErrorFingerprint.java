@@ -25,6 +25,7 @@ import java.util.Map;
  *
  * <p>A warning logged without an exception has no stack of its own, so the frame is the log call
  * site - which is also what tells two different warnings from the same class apart.
+ * <p>Implements [PROXYMA-AD 005].
  */
 public record ErrorFingerprint(String fingerprint, String level, String logger, String exception,
                                String rootCause, List<String> frames, List<String> trace,

@@ -9,6 +9,7 @@ import java.util.Optional;
  * team's one-shot calls, 2026-11-11). The same reading of the failure the chat's own retry uses (ModelCall): a rate
  * limit or an overloaded provider clears with time, and so does a dropped or failed connection to the provider's
  * server; anything else repeats.
+ * <p>Implements [PROXYMA-AD 055].
  */
 public final class ModelFailures {
 

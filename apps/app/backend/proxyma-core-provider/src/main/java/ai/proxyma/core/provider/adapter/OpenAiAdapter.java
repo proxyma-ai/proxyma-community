@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClient;
  *
  * <p>Every server that speaks OpenAI's shape differently is {@link OpenAiCompatibleAdapter},
  * {@link OpenRouterAdapter} or LiteLLM's OpenAI route ({@link LiteLlmAdapter}).
+ * <p>Implements [PROXYMA-AD 016].
  */
 @Component
 public class OpenAiAdapter extends OpenAiShapedAdapter {

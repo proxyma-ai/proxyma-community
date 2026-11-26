@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>Thread-locals do not come along. A task sets what it needs and clears it in a finally, as
  * each of these call sites already did - see SpendContext.propagating.
+ * <p>Implements [PROXYMA-AD 030].
  */
 public final class BlockingWork {
 

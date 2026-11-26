@@ -13,6 +13,8 @@ import java.util.List;
  * <p>Wire-compatibility rule, as for every DTO in this library: fields may be ADDED (a receiver
  * ignores what it does not know), never renamed or removed - a client and the server never deploy
  * at the same instant.
+ *
+ * Implements [PROXYMA-AD 005], [PROXYMA-AD 024].
  */
 public class DiagnosticsReport {
 

@@ -15,6 +15,7 @@ import java.util.Set;
 // needs this set to decide when a tool call requires a live user approval prompt before
 // execution, without introducing a backwards module dependency. Split per-connector so
 // McpGuardService.checkWriteAllowed() can route a tool name to the right settings check.
+/** Implements [PROXYMA-AD 009], [PROXYMA-AD 032], [PROXYMA-AD 052]. */
 public final class WriteToolRegistry {
 
     // Every tool that calls McpGuardService.checkConnectorManagement() belongs here, and the two

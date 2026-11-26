@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * shutdown has nothing to wait for. 0.36.0 feedback: every open tab's /api/v1/events held a restart
  * for the whole five-second graceful phase, and Tomcat's own unload waited two more seconds for the
  * same requests before the process could exit.
+ * <p>Verifies [PROXYMA-AD 066].
  */
 class StreamsEndOnShutdownTest {
 

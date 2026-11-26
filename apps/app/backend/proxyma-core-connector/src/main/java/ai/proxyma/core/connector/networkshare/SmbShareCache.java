@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * attempted with it. Saving a different password changes that hash and the block clears by itself
  * on the next try, with nothing to reset by hand.
  *
- * <p>See docs/architecture.html#spec-05-7.
+ * <p>See docs/architecture.html#building-block-view-settings-and-connections.
  */
 @Component
 public class SmbShareCache {

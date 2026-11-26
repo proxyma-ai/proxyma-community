@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/** Implements [PROXYMA-AD 087]. */
 @RestController
 @RequestMapping("/api/v1/indexing")
 public class ConnectorController {

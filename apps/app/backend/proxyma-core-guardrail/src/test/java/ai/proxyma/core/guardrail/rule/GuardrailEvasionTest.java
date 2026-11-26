@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * NORMALIZED copy but return spans in ORIGINAL coordinates. Matching on normalized text and
  * cutting with normalized offsets would redact the wrong characters of the real string - and it
  * would still look like it was working, because something got redacted.
+ * <p>Verifies [PROXYMA-AD 037].
  */
 class GuardrailEvasionTest {
 

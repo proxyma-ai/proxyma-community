@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * ({@code WebServerGracefulShutdownLifecycle}, {@code SmartLifecycle.DEFAULT_PHASE - 1024}), so it
  * is stopped before that phase begins - and the graceful wait, and the sync work waited for beside
  * it (SyncOrchestratorService), find no stream open.
+ * <p>Implements [PROXYMA-AD 066].
  */
 @Component
 public class StreamsEndOnShutdown implements WebFilter, SmartLifecycle, Ordered {

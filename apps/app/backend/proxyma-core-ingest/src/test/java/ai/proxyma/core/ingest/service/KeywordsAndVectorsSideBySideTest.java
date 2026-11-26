@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  * document could not be found by its exact words for as long as its embedding took - minutes, on a
  * slow model - although the keyword write needs no model at all. The first case here cannot pass
  * if one write waits for the other.
+ * <p>Verifies [PROXYMA-AD 058].
  */
 class KeywordsAndVectorsSideBySideTest {
 

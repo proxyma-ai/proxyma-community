@@ -106,8 +106,8 @@ test('the tools a Constellations agent has of its own read as sentences, not bar
   assert.equal(toolActivity(call('messageProjectLead', {}, '', false), t), 'Asking a project lead')
   assert.equal(toolActivity(call('messageProjectLead', {}, JSON.stringify({ answered: false })), t), 'Asked a project lead - the answer follows')
   // A card's subject from an older server named the file alone: still said by what it holds.
-  assert.equal(toolActivity(call('readWorkspaceFile', { fileName: 'MEMORY.md' }, '', false), t), 'Reading its memory')
-  assert.equal(toolActivity(call('writeWorkspaceFile', { fileName: 'NEXT.md' }, '', false), t), 'Writing its next steps')
+  assert.equal(toolActivity(call('readWorkspaceFile', { fileName: 'memory.md' }, '', false), t), 'Reading its memory')
+  assert.equal(toolActivity(call('writeWorkspaceFile', { fileName: 'next.md' }, '', false), t), 'Writing its next steps')
   assert.equal(toolActivity(call('getTeamStatus', {}, '', false), t), 'Checking on its team')
   assert.equal(toolActivity(call('linkTeamAgents', {}, '', true), t), 'Linked agents')
   assert.equal(toolActivity(call('appendJournal', {}, '', false), t), 'Writing in its journal')
@@ -201,11 +201,11 @@ test('a saved agent\'s workspace file is told by what it holds, never by its nam
   assert.equal(row('readWorkspaceFile', 'memory/channel-rules.md', false), 'Reading its memory')
   assert.equal(row('writeWorkspaceFile', 'memory/viewers.md'), 'Saved to its memory')
   assert.equal(row('deleteWorkspaceFile', 'memory/old.md'), 'Removed a memory')
-  assert.equal(row('editWorkspaceFile', 'NEXT.md'), 'Updated its next steps')
-  assert.equal(row('readWorkspaceFile', 'JOURNAL.md'), 'Read its journal')
+  assert.equal(row('editWorkspaceFile', 'next.md'), 'Updated its next steps')
+  assert.equal(row('readWorkspaceFile', 'journal.md'), 'Read its journal')
   assert.equal(row('readWorkspaceFile', 'journal/2026-10.md'), 'Read its journal')
-  assert.equal(row('readWorkspaceFile', 'shared/knowledge/TEAM.md'), "Read the team's knowledge")
-  assert.equal(row('editWorkspaceFile', 'shared/knowledge/VOICE.md', false), "Updating the channel's voice")
+  assert.equal(row('readWorkspaceFile', 'shared/knowledge/team.md'), "Read the team's knowledge")
+  assert.equal(row('editWorkspaceFile', 'shared/knowledge/voice.md', false), "Updating the channel's voice")
   assert.equal(row('readWorkspaceFile', 'shared/knowledge/decisions.md'), 'Read past decisions')
   assert.equal(row('writeWorkspaceFile', 'shared/dashboard/viewers.json'), 'Wrote a dashboard')
   assert.equal(row('readWorkspaceFile', 'sessions/2026-11-04-1.md'), 'Read a past session')
@@ -215,7 +215,7 @@ test('a saved agent\'s workspace file is told by what it holds, never by its nam
   assert.equal(row('readWorkspaceFile', 'shared/for-the-person.md'), 'Read a file')
   assert.equal(row('writeWorkspaceFile', 'plans.md', false), 'Writing a file')
   assert.equal(toolActivity(call('readWorkspaceFile', {}, '{}'), t), 'Read a file')
-  for (const path of ['memory/x.md', 'NEXT.md', 'shared/knowledge/TEAM.md', 'plans.md']) {
+  for (const path of ['memory/x.md', 'next.md', 'shared/knowledge/team.md', 'plans.md']) {
     assert.ok(!row('readWorkspaceFile', path).includes(path.split('/').pop()!), path)
   }
 })
@@ -223,7 +223,7 @@ test('a saved agent\'s workspace file is told by what it holds, never by its nam
 test('which workspace file is which, by its place in the layout', () => {
   assert.equal(workspaceFileKind('memory/a.md'), 'memory')
   assert.equal(workspaceFileKind('/memory/a.md'), 'memory')
-  assert.equal(workspaceFileKind('knowledge/TEAM.md'), 'file')
+  assert.equal(workspaceFileKind('knowledge/team.md'), 'file')
   assert.equal(workspaceFileKind('shared/memory/a.md'), 'file')
   assert.equal(workspaceFileKind('shared/dashboard/a/b.json'), 'file')
   assert.equal(workspaceFileKind(''), 'file')

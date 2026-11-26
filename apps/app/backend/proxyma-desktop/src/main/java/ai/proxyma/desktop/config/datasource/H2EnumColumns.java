@@ -40,6 +40,7 @@ import java.util.Properties;
  *
  * <p>It never throws: a database that will not answer here fails properly a moment later, where
  * the failure is reported.
+ * <p>Implements [PROXYMA-AD 081].
  */
 public final class H2EnumColumns {
 

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * every URL the agent cited, because in "https://host" the "s" is a letter, ":" is a colon and
  * "//" is a separator, which is a textbook drive-letter match. Both lookbehinds in that file are
  * load-bearing, and the URL cases below are what stops someone "simplifying" them away.
+ * <p>Verifies [PROXYMA-AD 087].
  */
 class SensitivePathsTest {
 

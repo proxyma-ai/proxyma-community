@@ -59,6 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Switching the graph OFF stays in ConnectorService.setGraphEnabled, which deletes the graph's
  * rows and nothing else. This worker notices the switch before each document, and cleans up after
  * one that was already running when the switch went.
+ * <p>Implements [PROXYMA-AD 035].
  */
 @Service
 public class GraphExtractionOrchestrator {

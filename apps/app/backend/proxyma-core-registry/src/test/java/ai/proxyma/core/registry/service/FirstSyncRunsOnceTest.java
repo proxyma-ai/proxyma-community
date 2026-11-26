@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  * second complete one. And the note a crawl leaves names the pages that would not load: past 500
  * characters the database refused it, at the very end of the pass, so the pass was recorded as
  * failed, the source stayed due, and it crawled the whole site again, for ever.
+ * <p>Verifies [PROXYMA-AD 056].
  */
 class FirstSyncRunsOnceTest {
 

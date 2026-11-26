@@ -11,6 +11,8 @@
 # The one decision this file exposes is who can reach it. See .env.example section 1; the short
 # version is that there are no accounts, so the answer is "whoever can route to this port AND has
 # the access code" - which the container prints in its log at every start.
+#
+# Implements [PROXYMA-AD 071], [PROXYMA-AD 072].
 
 name: proxyma-homeserver
 

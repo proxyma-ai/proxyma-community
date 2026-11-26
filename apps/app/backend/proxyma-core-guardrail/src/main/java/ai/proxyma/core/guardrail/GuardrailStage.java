@@ -7,6 +7,7 @@ package ai.proxyma.core.guardrail;
  * INPUT concern - a model that writes "ignore all previous instructions" in an answer is quoting,
  * not attacking - and an absolute server path is an OUTPUT concern, since a user typing one has
  * told us nothing we did not already let them type.
+ * <p>Implements [PROXYMA-AD 093].
  */
 public enum GuardrailStage {
 

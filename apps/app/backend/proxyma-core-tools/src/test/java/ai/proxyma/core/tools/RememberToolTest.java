@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
  * differently from the entry it corrected was stored beside it. The keyword index is real (Lucene in
  * a temp dir); the dense search throws, so the dedup guard never runs and cannot be what replaced
  * anything here.
+ * <p>Verifies [PROXYMA-AD 107].
  */
 class RememberToolTest {
 

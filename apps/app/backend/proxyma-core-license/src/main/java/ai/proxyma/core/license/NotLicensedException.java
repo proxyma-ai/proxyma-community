@@ -12,6 +12,7 @@ import org.springframework.web.ErrorResponseException;
  * <p>An ErrorResponseException so the one global handler that already passes those through
  * (GlobalExceptionHandler) answers it: the exception this replaced was mapped by two copy-pasted
  * controller handlers, and thrown anywhere else it became a 500 (guardrail-network-license-32).
+ * <p>Implements [PROXYMA-AD 018].
  */
 public class NotLicensedException extends ErrorResponseException {
 

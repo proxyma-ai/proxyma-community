@@ -39,6 +39,7 @@ import static org.mockito.Mockito.mock;
  * stored one and is refused without it; and a LOCAL server starts with a clean environment -
  * Proxyma's own variables (provider keys, database passwords) never reach a program somebody
  * downloaded.
+ * <p>Verifies [PROXYMA-AD 009].
  */
 class McpClientTransportsTest {
 

@@ -24,6 +24,9 @@ export const keys = {
   // NOT under 'conversations': the history list is invalidated after every turn, and under that
   // prefix each invalidation refetched the meter too (2026-10-17).
   conversationUsage: (id: string) => ['conversation-usage', id] as const,
+  // Every conversation's meter at once: it names the model a saved agent's conversation runs on, so a
+  // change of that model has every open composer read it again rather than at its next turn.
+  conversationUsages: () => ['conversation-usage'] as const,
   // A key account's panel History - the caller's conversations bound to the account. Under
   // 'conversations', so every invalidation of `conversations()` refreshes it too, as an OBJECT, which
   // can never be read as a conversation id.

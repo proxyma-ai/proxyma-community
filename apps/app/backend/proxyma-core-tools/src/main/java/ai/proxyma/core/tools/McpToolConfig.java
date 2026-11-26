@@ -80,6 +80,7 @@ import java.util.List;
 // enforces its own live settings check on each invocation via McpGuardService (org-wide flag +,
 // for write tools, the calling user's own consent - see McpGuardService.checkXxxWrite()), so
 // enabling/disabling either gate takes effect immediately, no restart required.
+/** Implements [PROXYMA-AD 008]. */
 @Configuration
 public class McpToolConfig {
 

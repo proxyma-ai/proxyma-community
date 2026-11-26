@@ -10,6 +10,7 @@ import java.io.InputStream;
  * try-with-resources and closed when the pass or batch ends. It holds the source's own
  * configuration and credentials (its {@link SourceContext}) and nothing any other source can see,
  * so sessions of one type run side by side with no lock.
+ * <p>Implements [PROXYMA-AD 015].
  */
 public interface ConnectorSession extends AutoCloseable {
 

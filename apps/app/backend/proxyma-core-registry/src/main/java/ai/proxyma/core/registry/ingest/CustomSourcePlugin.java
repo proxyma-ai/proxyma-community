@@ -52,6 +52,7 @@ import java.util.UUID;
  *
  * <p>Every edition (Community): a single user's own sources on Desktop and Home Server, an owner's
  * on Enterprise Server - shareable for reading like any source, writable only by its owner.
+ * <p>Implements [PROXYMA-AD 059].
  */
 @Component
 public class CustomSourcePlugin implements ConnectorPlugin {

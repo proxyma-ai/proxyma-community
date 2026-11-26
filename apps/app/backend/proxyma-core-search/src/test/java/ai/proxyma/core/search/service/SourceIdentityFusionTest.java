@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
  * text. An item's id is unique only within its source - a Zendesk and a Freshdesk source both hold
  * {@code ticket:1} - so keyed by source and text alone, the same templated reply in both fused into
  * ONE candidate, and one of the two tickets was never returned.
+ * <p>Verifies [PROXYMA-AD 014], [PROXYMA-AD 035], [PROXYMA-AD 060].
  */
 class SourceIdentityFusionTest {
 

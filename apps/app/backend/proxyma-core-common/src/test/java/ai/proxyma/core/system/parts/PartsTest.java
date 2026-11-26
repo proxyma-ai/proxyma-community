@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The desktop's downloaded parts: the manifest format, the store's switch-and-roll-back rules, the
  * download (resume, digest, a server that ignores Range) and the release verification that decides
  * whether any of it is trusted. All against a fake transport - no network.
+ * <p>Verifies [PROXYMA-AD 065].
  */
 class PartsTest {
 

@@ -8,7 +8,7 @@
  * version over a network, point COMMUNITY_SOURCE_URL at the source of YOUR version: the link here
  * is how this build makes that offer.
  *
- * Proxyma Enterprise is not open source and its build shows neither (ee/, docs/architecture.html#oss-boundary).
+ * Proxyma Enterprise is not open source and its build shows neither (ee/, docs/architecture.html#solution-strategy-open-core-boundary).
  */
 export const COMMUNITY_SOURCE_URL = 'https://github.com/proxyma-ai/proxyma-community'
 

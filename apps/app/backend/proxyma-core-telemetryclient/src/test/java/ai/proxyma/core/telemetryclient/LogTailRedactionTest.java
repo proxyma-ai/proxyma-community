@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Desktop logs at DEBUG - while the daily diagnostics report carries no free text at all. Each
  * shape a log line has been seen to carry is pushed in, and the tail as it would be sent is
  * scanned for it.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class LogTailRedactionTest {
 

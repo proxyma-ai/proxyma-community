@@ -14,6 +14,7 @@ import java.util.Iterator;
  * from being deleted as if it were gone upstream.
  *
  * <p>Build one with {@link Listings}; a connector rarely implements this by hand.
+ * <p>Implements [PROXYMA-AD 057].
  */
 public interface Listing extends Iterator<ItemMetadata>, SyncErrorAware, PartialSyncAware {
 

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
  * </ol>
  *
  * Ordered cheapest first: the setting deserializes the settings store on every call.
+ * <p>Implements [PROXYMA-AD 005].
  */
 @Component
 public class TelemetryConsent {

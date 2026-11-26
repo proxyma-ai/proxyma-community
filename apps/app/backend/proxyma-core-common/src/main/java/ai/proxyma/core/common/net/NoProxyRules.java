@@ -19,6 +19,7 @@ import java.util.stream.Stream;
  * subprocess kept a weaker copy that knew only exact names and "*suffix", so a NO_PROXY of
  * "corp.example" sent svn through the proxy for svn.corp.example while every REST client went
  * direct - the disagreement fixed for streaming chat in 0.27.1, in another client.
+ * <p>Implements [PROXYMA-AD 090].
  */
 public final class NoProxyRules {
 

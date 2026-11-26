@@ -177,7 +177,7 @@ REM  Sets PX_JAR.
 :exec_jar
 call :project_version || exit /b 1
 set "PX_JAR=%PX_ROOT%\apps\app\backend\%~1\target\%~1-%PX_VERSION%-exec.jar"
-REM  The Enterprise assembly is in ee\ since 2026-10-15 (docs\architecture.html#oss-boundary).
+REM  The Enterprise assembly is in ee\ since 2026-10-15 (docs\architecture.html#solution-strategy-open-core-boundary).
 if /i "%~1"=="proxyma-server" set "PX_JAR=%PX_ROOT%\ee\backend\%~1\target\%~1-%PX_VERSION%-exec.jar"
 if not exist "%PX_JAR%" (
     call :err Not built: %PX_JAR%

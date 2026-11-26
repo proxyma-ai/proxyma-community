@@ -5,7 +5,7 @@
 //      node tools/oss/check-boundary.mjs
 //
 //  ee/ is Proxyma Enterprise: closed source, never exported to the public Community repository
-//  (docs/architecture.html#oss-boundary). The Community code must build and run without it, so the dependency runs
+//  (docs/architecture.html#solution-strategy-open-core-boundary). The Community code must build and run without it, so the dependency runs
 //  ONE WAY - ee/ may use anything, nothing else may use ee/. The compiler already refuses most of it
 //  (no Community module has an ee artifact in its reactor), which is why this checks the ways around
 //  the compiler instead:
@@ -21,6 +21,8 @@
 //
 //  Exit 1 with every finding listed, 0 when there are none. Reads the working tree; needs no build.
 //  Run by `oss:boundary` (.gitlab/ci/oss.yml) on every push.
+//
+//  Implements [PROXYMA-AD 012].
 // =================================================================================================
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { join, relative, resolve, dirname } from 'node:path'
@@ -143,7 +145,7 @@ if (findings.length) {
   for (const f of findings) console.error(`  ${f}`)
   console.error('\nThe Community code reaches Enterprise only through its extension points - a Spring port with a')
   console.error('Community default, the frontend\'s @edition seam (apps/app/frontend/src/edition/types.ts).')
-  console.error('See docs/architecture.html#oss-boundary.')
+  console.error('See docs/architecture.html#solution-strategy-open-core-boundary.')
   process.exit(1)
 }
 console.log(`boundary: clean - ${eePackages.size} Enterprise package(s) and ${eeArtifacts.size} artifact(s), none used outside ee/`)

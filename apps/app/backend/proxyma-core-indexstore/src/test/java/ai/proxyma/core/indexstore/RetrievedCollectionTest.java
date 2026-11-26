@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
  * (ChunkMetadata). A chunk's {@code source} is unique only within its collection - two SaaS
  * sources both hold {@code ticket:1} - and a search spans many, so without the stamp nobody
  * downstream could tell which source's {@code ticket:1} a hit was.
+ * <p>Verifies [PROXYMA-AD 035], [PROXYMA-AD 080].
  */
 class RetrievedCollectionTest {
 

@@ -44,6 +44,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>What is pinned is what a sign-in gets wrong quietly: a code accepted without its verifier, a
  * state usable twice or by anybody, a token sent to a server it was not issued for.
+ * <p>Verifies [PROXYMA-AD 064].
  */
 class McpOAuthServiceTest {
 

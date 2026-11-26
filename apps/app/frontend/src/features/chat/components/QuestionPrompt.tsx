@@ -24,6 +24,8 @@ import type { AskUserQuestion, PendingQuestion } from '../types/chat.types'
  * named by its header, a check on the ones answered; picking the one answer of a question moves on
  * to the next unanswered one, and the primary action is Next until everything has an answer, then
  * Send. One Send still answers them all.
+ *
+ * Implements [PROXYMA-AD 053].
  */
 export function QuestionPrompt({ pending, conversationId, from }: {
   pending: PendingQuestion

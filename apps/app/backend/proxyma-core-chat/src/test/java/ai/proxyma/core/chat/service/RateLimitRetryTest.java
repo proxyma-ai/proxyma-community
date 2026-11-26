@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>What went wrong before: twelve attempts of at most eight seconds gave a busy provider about
  * eighty seconds, and a STREAMED Anthropic 429 was not retried at all - Spring AI raised it as a
  * bare RuntimeException that named the status only in its message.
+ * <p>Verifies [PROXYMA-AD 055].
  */
 class RateLimitRetryTest {
 

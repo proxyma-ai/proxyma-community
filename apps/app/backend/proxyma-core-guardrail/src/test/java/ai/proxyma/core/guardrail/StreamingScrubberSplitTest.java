@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the key and held the value back alone; on the next flush the pattern no longer matched a bare
  * value, and it went out in clear - for 24 of 27 cut positions of one sample. A single-chunk test
  * could not see it. One-character deltas walk the cut through every position of the sample.
+ * <p>Verifies [PROXYMA-AD 093].
  */
 class StreamingScrubberSplitTest {
 

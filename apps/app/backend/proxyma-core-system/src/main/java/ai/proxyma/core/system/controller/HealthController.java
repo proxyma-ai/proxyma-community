@@ -37,6 +37,7 @@ import java.util.Map;
  * NOT Spring Boot Actuator's /actuator/health. That would mean exposing the actuator on a desktop
  * install with no auth in front of it, and its default payload answers "are my dependencies up",
  * not "what am I" - which is the question this one exists for.
+ * <p>Implements [PROXYMA-AD 011], [PROXYMA-AD 040].
  */
 @RestController
 @RequestMapping("/api/v1")

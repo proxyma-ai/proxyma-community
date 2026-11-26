@@ -13,6 +13,7 @@ import java.util.Locale;
  *   <li>AUTO - changes go ahead without the pause, as "accept all" does for a conversation.</li>
  *   <li>READ_ONLY - every change is refused; reads, including opening a local file, work as in ASK.</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 052].
  */
 public enum PermissionMode {
     ASK, AUTO, READ_ONLY;

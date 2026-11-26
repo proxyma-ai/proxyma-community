@@ -53,6 +53,7 @@ import java.util.UUID;
  * relaxation</b> - the same reasoning as Microsoft's: a session can expire while the person is at
  * the service's sign-in, and the callback is authenticated by a single-use state and the cookie that
  * binds the flow to the browser that started it instead.
+ * <p>Implements [PROXYMA-AD 064].
  */
 @RestController
 @RequestMapping("/api/v1/connections")

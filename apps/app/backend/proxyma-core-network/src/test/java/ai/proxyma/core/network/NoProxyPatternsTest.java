@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * by hand over the years - a typo where 127.0.0.1 was meant, a Windows-style "127.0.0.*", leading
  * dots for whole domains and a bare host. Only exact names and leading "." or "*." were understood,
  * so loopback went to the local proxy and "127.0.0.*" matched nothing.
+ * <p>Verifies [PROXYMA-AD 090].
  */
 class NoProxyPatternsTest {
 

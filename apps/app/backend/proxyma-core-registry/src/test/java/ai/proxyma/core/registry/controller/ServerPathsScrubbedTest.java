@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
  * in the sentence - and that sentence was sent verbatim as a source's lastSyncError and an item's
  * failureMessage, to its owner and to everyone the source is shared with, while the same responses
  * carefully withhold the path itself. Both are scrubbed where they leave.
+ * <p>Verifies [PROXYMA-AD 087].
  */
 class ServerPathsScrubbedTest {
 

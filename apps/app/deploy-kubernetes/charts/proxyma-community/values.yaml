@@ -4,6 +4,8 @@
 #
 # There is no replica count. Everything - an H2 database, the keyword index, the ChromaDB vector store
 # the server starts beside itself - is one process's files on one volume, so the StatefulSet runs one pod.
+#
+# Implements [PROXYMA-AD 072].
 
 nameOverride: ""
 fullnameOverride: ""

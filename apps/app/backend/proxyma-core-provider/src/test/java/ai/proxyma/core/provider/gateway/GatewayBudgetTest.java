@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
  * The monthly spending limit is enforced IN the gateway (2026-09-29). It was checked at each call
  * site, and the sites that forgot - the embedding-cosine rerank tier and re-index embeddings among
  * them - spent past a limit the deployment believed it had.
+ * <p>Verifies [PROXYMA-AD 017], [PROXYMA-AD 096].
  */
 class GatewayBudgetTest {
 

@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 /**
  * Vision OCR that could not read a page (ingest-09): a budget refusal is not a page, and a document
  * no page of which was read is not a document.
+ * <p>Verifies [PROXYMA-AD 034].
  */
 class VisionOcrFailureTest {
 

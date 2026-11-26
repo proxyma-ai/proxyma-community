@@ -98,6 +98,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * gave it; {@link #finishAutomatic} records how it went - made, FAILED, or HELD for a limit and retried by
  * {@link #retryHeld} like any approved write. Nobody reviewed it, so its decision event says {@code automatic}: what
  * learns from a person's decisions (a project's decisions file, its learner) leaves it out.
+ * <p>Implements [PROXYMA-AD 052].
  */
 @Service
 public class ApprovalInbox {

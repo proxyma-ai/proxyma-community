@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 /**
  * The render engines reach the web as every other client does (ingest-11, -27): certificates
  * validated, and the proxy skipped for exactly the hosts the noProxy list names.
+ * <p>Verifies [PROXYMA-AD 090].
  */
 class RenderEngineParityTest {
 

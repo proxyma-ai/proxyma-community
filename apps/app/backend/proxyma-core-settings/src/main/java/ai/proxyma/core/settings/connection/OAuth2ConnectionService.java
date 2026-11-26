@@ -92,6 +92,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * <p>Client credentials and a service account's signed assertion are token suppliers on the same
  * interface ({@link #tokensFor}): no browser, a token cached until shortly before it expires.
+ * <p>Implements [PROXYMA-AD 064].
  */
 @Service
 public class OAuth2ConnectionService implements ConnectionTokenProvider {

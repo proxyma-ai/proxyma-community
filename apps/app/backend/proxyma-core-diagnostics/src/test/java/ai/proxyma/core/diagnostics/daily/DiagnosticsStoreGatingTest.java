@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
  * covers the switch being off, an Enterprise tier and a missing endpoint, all folded into
  * TelemetryConsent.mayCollect() (pinned separately in DiagnosticsConsentTest) - and switching off
  * deletes what was waiting.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class DiagnosticsStoreGatingTest {
 

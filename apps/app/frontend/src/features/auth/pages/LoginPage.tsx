@@ -22,6 +22,8 @@ import { useTranslation } from '@/i18n'
 // parts render is driven entirely by what GET /auth/providers reports - never a tenant-name
 // check - so a tenant with only SSO configured naturally shows SSO-only, and a tenant with
 // both SSO and local accounts (e.g. "email/password and corporate SSO") naturally shows both.
+//
+// Implements [PROXYMA-AD 063].
 export function LoginPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()

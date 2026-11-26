@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 // query expansion, reranking, sub-agent, OCR (vision), graph extraction and the guardrail
 // classifier. All of them are (re)built on one thread, at ApplicationReadyEvent and whenever
 // settings change. Which sampling parameters a protocol accepts is each adapter's business.
+/** Implements [PROXYMA-AD 036]. */
 @Service
 public class LlmProviderFactory {
 

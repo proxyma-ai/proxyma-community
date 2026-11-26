@@ -30,6 +30,7 @@ import java.util.List;
  * rolls back what is uncommitted, writes the rest and closes the files under every session. A
  * database whose pool has already closed is closed and left alone; IFEXISTS keeps a close from ever
  * creating one. ProcessExit runs each on a thread of its own and bounds them together.
+ * <p>Implements [PROXYMA-AD 066].
  */
 @Component
 class H2CloseBeforeHalt {

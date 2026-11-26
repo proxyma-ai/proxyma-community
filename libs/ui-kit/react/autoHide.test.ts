@@ -2,6 +2,8 @@
 //
 // Plain `.ts` with no JSX, so Node's own type stripping runs it. The hooks in useAutoHide.ts need
 // touch and scroll events and are not reachable this way; when the bar leaves and returns is.
+//
+// Verifies [PROXYMA-AD 105].
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 

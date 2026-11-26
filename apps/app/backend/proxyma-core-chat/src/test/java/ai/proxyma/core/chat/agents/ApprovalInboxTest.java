@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
  * decides it once - approved, it runs exactly once under the id it was given and the agent reads its
  * result; denied, the agent reads the denial and the note; undecided for a week, it expires and the
  * agent is told. Until then the conversation has work outstanding, so its report waits.
+ * <p>Verifies [PROXYMA-AD 052].
  */
 class ApprovalInboxTest {
 

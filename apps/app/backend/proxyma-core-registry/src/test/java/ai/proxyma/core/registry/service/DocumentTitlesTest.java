@@ -45,6 +45,7 @@ import static org.mockito.Mockito.mock;
  * one is ordinary: a Freshdesk result for {@code ticket:1} came back under the Zendesk ticket's
  * title. And the lookup stays scoped to what the caller can see, so a source somebody else owns
  * lends no title, whatever a hit claims.
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class DocumentTitlesTest {
 

@@ -40,6 +40,7 @@ import java.util.Set;
  * given its own code with PROXYMA_ACCESS_CODE instead.
  *
  * <p>No Spring here: the launcher jar shades this class (see the desktop pom's shade includes).
+ * <p>Implements [PROXYMA-AD 088].
  */
 public final class AccessCode {
 

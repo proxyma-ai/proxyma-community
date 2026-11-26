@@ -11,6 +11,8 @@
  * going for three minutes since the stream was last open.
  *
  * <p>Plain TypeScript, tested by `node --test` (reconnect.test.ts).
+ *
+ * Implements [PROXYMA-AD 050].
  */
 
 export const RECONNECT_FIRST_MS = 1000

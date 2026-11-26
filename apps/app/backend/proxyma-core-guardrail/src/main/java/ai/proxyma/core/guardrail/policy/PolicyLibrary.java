@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
  *
  * <p>Duplicating the pipeline instead would have made the corpus chunk and embed differently from
  * everything else, for no stated reason, and would have been the thing that drifted.
+ * <p>Implements [PROXYMA-AD 037].
  */
 @Component
 public class PolicyLibrary {

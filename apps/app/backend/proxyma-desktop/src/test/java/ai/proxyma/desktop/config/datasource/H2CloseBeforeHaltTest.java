@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * A database still open when the process is about to be halted is closed first, with what was
  * committed written. Desktop's databases no longer close in H2's own JVM hook (DB_CLOSE_ON_EXIT=FALSE,
  * 0.36.0 feedback) and a halt runs no hook - so without this a halted restart left them open.
+ * <p>Verifies [PROXYMA-AD 066].
  */
 class H2CloseBeforeHaltTest {
 

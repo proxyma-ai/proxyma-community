@@ -47,6 +47,7 @@ import java.util.UUID;
  * <p>A row is written even when the provider reported NO tokens - a rerank endpoint answering with
  * scores alone, say. Zero tokens and zero cost against a real timestamp is the honest record of a
  * call that happened; the rollup keeps skipping those so its averages stay meaningful.
+ * <p>Implements [PROXYMA-AD 095].
  */
 @Entity
 @Table(name = "llm_calls", indexes = {

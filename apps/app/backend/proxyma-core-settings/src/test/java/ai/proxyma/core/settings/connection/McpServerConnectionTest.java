@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
  * shown back; a value erased by an unrelated edit; an OAuth grant carried to a server it was not
  * issued for; somebody else's private server offered to a user; and the one switch every MCP tool
  * call depends on - that it is a write, and asks first.
+ * <p>Verifies [PROXYMA-AD 009], [PROXYMA-AD 086].
  */
 class McpServerConnectionTest {
 

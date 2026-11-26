@@ -20,6 +20,7 @@ import java.time.Duration;
  *
  * <p>Without that bean - a connector's own test - it falls back to a plain JDK client, with no proxy
  * and redirects not followed by the JDK.
+ * <p>Implements [PROXYMA-AD 003], [PROXYMA-AD 090].
  */
 @Component
 public class ConnectorHttp {

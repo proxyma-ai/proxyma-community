@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The parallel is deliberate: DemoProviderSeeder's tests exist because that code writes an API
  * key to a public instance, and these exist because this code writes one to a settings panel.
+ * <p>Verifies [PROXYMA-AD 093].
  */
 class GuardrailEvidenceTest {
 

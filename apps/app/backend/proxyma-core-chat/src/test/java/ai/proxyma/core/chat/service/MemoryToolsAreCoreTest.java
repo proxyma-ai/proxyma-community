@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
  * without a readSkill call first (maintainer's feedback, 2026-10-03: the agent searched the
  * sources from scratch for what it had already saved). Writing it stays behind the skill that
  * says what is worth saving.
+ * <p>Verifies [PROXYMA-AD 032], [PROXYMA-AD 107].
  */
 class MemoryToolsAreCoreTest {
 

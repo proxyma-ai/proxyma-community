@@ -15,6 +15,7 @@ import java.util.Set;
 // The bytes are the AES-256 key that every stored connector credential is encrypted with, so the
 // file is exactly as sensitive as the credentials themselves. It is created 0600 and re-tightened
 // on every load - see restrictToOwner.
+/** Implements [PROXYMA-AD 086]. */
 class FileKeyProtection implements OsKeyProtection {
 
     private static final Set<PosixFilePermission> OWNER_ONLY =

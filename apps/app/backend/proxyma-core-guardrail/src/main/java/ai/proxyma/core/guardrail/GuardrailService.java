@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
  * and it is not a substitute for authorization. A user who should not be able to reach a document
  * must be stopped by the code that decides who can read what, not by a rule that notices the
  * document's path in an answer.
+ * <p>Implements [PROXYMA-AD 037], [PROXYMA-AD 093].
  */
 @Service
 public class GuardrailService {

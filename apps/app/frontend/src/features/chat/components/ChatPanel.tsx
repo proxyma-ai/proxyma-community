@@ -92,6 +92,8 @@ export interface ChatPanelProps {
    * `personOnly`) - a Constellations project's lead chat, whose teammates' work is read in the agent's panel.
    */
   personOnly?: boolean
+  /** With `personOnly`: tools whose calls the thread does not draw (ChatWindow's `hiddenTools`). */
+  hiddenTools?: readonly string[]
   /**
    * Changed by the page when it learns that words were written into the open conversation with no
    * turn behind them (a lead telling the person from a run): the conversation is read again in place.
@@ -106,11 +108,19 @@ export interface ChatPanelProps {
    * Undefined: the page has no such read.
    */
   agentWorking?: boolean
+  /**
+   * A message the page sends for the reader from a box of its own outside the panel (a Constellations project's
+   * "ask the lead" box over its sections): sent once, exactly as if typed in the composer - a conversation the panel
+   * starts is bound first - and handed back through `onOutboxTaken` as it is taken, so the page clears it and a
+   * remount cannot send it twice. One that could not be sent is put in the composer instead, never lost.
+   */
+  outbox?: { id: number; text: string } | null
+  onOutboxTaken?: (id: number) => void
 }
 
 /**
  * A COMPLETE CHAT IN A COLUMN beside a page - the key-account page's panel
- * (docs/architecture.html#spec-11-8): the chat page's thread, prompts and composer, as an
+ * (docs/architecture.html#building-block-view-enterprise-extension): the chat page's thread, prompts and composer, as an
  * independent chat instance, so the panel and the chat page never share state. Laid out for
  * 380-480px; the parent gives it its height.
  */
@@ -131,7 +141,7 @@ const MAX_SUGGESTIONS = 3
 function ChatPanelBody({
   instanceKey, conversationId, skillMentions, onConversationCreated, onNewConversation, onOpenConversation, history,
   onConversationDeleted, header, emptyTitle, emptyDescription, suggestions = NO_NAMES, placeholder, className, readOnly = false,
-  mailText = false, personOnly = false, refresh = null, agentWorking,
+  mailText = false, personOnly = false, hiddenTools, refresh = null, agentWorking, outbox = null, onOutboxTaken,
 }: ChatPanelProps) {
   const { t } = useTranslation()
   // A phone-length placeholder: the long one is cut on a phone (the mobile audit, 2026-11-16).
@@ -254,6 +264,17 @@ function ChatPanelBody({
     })
   }
 
+  // The page's message (`outbox`): taken once, through the same path as the composer's Send.
+  const outboxCalls = useRef({ deliver, onOutboxTaken, setText })
+  outboxCalls.current = { deliver, onOutboxTaken, setText }
+  useEffect(() => {
+    if (!outbox || readOnly) return
+    const { deliver: sendIt, onOutboxTaken: taken, setText: keep } = outboxCalls.current
+    taken?.(outbox.id)
+    const msg = outbox.text
+    void sendIt(msg).then(sent => { if (!sent) keep(msg) })
+  }, [outbox, readOnly])
+
   const handleRewind = useCallback(async (messageId: number) => {
     const content = await rewind(messageId)
     if (content != null) setText(content)
@@ -313,6 +334,7 @@ function ChatPanelBody({
           workflowRuns={workflowRuns}
           mailText={mailText}
           personOnly={personOnly}
+          hiddenTools={hiddenTools}
         />
       )}
       </FadeSwap>

@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
  * The knowledge graph as a third list of hybrid search: off unless switched on, and when on, a
  * passage only the graph found joins the results while one the vectors also found is fused with
  * that entry rather than listed twice.
+ * <p>Verifies [PROXYMA-AD 014], [PROXYMA-AD 060].
  */
 class GraphChannelFusionTest {
 

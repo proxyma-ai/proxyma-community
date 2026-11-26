@@ -62,7 +62,7 @@ public enum ConnectorType {
      * Enterprise Server an administrator's list of allowed file servers is a ceiling on which
      * servers a connection may name.
      *
-     * <p>See docs/architecture.html#spec-05.
+     * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
      */
     NETWORK_SHARE("networkshare"),
 
@@ -74,7 +74,7 @@ public enum ConnectorType {
 
     /**
      * One Outlook mail folder or one calendar, read as the user who added it. Off by default
-     * ({@code m365.outlook-enabled}) and never shareable. See docs/architecture.html#spec-08.
+     * ({@code m365.outlook-enabled}) and never shareable. See docs/architecture.html#solution-strategy-connectors-as-plugins.
      */
     OUTLOOK("outlook"),
 

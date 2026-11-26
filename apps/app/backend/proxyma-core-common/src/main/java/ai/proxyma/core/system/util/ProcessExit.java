@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Exit code 3 means "start me again": the Desktop launcher restarts on it, and the server's
  * container restarts on any exit ({@code restart: unless-stopped}).
+ * <p>Implements [PROXYMA-AD 066].
  */
 public final class ProcessExit {
 

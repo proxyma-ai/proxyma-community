@@ -10,6 +10,7 @@ import java.util.UUID;
  * actually needed - the adapters - and never on the object the CRUD/API layer passes around. The
  * API layer works with {@link ProviderInstanceView}, which carries a masked key and could not leak
  * the real one if it tried.
+ * <p>Implements [PROXYMA-AD 110].
  */
 public record ResolvedProvider(
         UUID id,

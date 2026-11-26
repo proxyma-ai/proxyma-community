@@ -45,6 +45,7 @@ import java.util.function.Function;
  * system root, the home and temp directories, the locale) plus the variables the connection names.
  * Proxyma's own environment can carry provider keys and database passwords, and a server someone
  * downloaded has no business reading them. Its standard error goes to {@code logs/mcp-<name>.log}.
+ * <p>Implements [PROXYMA-AD 009], [PROXYMA-AD 090].
  */
 final class McpTransports {
 

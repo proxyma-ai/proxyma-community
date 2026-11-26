@@ -23,6 +23,7 @@ import static ai.proxyma.core.guardrail.GuardrailStage.RETRIEVAL;
  * the optional classifier is for. Anything here that reaches for meaning - the injection rules -
  * is a speed bump against the copy-pasted attempt and is documented as one rather than sold as a
  * defense.
+ * <p>Implements [PROXYMA-AD 037].
  */
 public final class GuardrailRules {
 

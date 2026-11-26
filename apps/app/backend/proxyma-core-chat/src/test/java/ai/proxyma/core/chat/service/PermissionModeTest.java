@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
  * <p>The mode travels in the chat request, so it is a CLIENT's word. That is safe only because it
  * narrows or skips the approval pause and never grants anything: Auto must still be refused by a
  * switch that is off, and Read-only must refuse a change before any prompt appears.
+ * <p>Verifies [PROXYMA-AD 052].
  */
 class PermissionModeTest {
 

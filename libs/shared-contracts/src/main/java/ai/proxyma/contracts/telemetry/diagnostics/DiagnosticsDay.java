@@ -12,6 +12,8 @@ import java.util.Map;
  * sources of each type exist, a document-count range). Its values are booleans, whole numbers or
  * code-defined tokens; the client builds it through a sanitizer that drops anything else, so a
  * free-text value cannot reach it even by mistake.
+ *
+ * Implements [PROXYMA-AD 005].
  */
 public class DiagnosticsDay {
 

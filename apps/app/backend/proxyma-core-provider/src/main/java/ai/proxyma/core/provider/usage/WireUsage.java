@@ -63,6 +63,7 @@ import java.util.function.Function;
  * <p>Correcting by FIELD-WISE MAXIMUM is safe in both directions: what Spring AI did read is never
  * lowered, and a provider that reports correctly (Anthropic itself, OpenAI) reads here exactly as
  * it did there.
+ * <p>Implements [PROXYMA-AD 095].
  */
 public final class WireUsage {
 

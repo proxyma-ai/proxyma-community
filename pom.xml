@@ -45,7 +45,7 @@
 
     <profiles>
         <!-- PROXYMA ENTERPRISE. `-Pserver` adds ee/ (closed source, never exported - see
-             docs/architecture.html#oss-boundary). Explicit rather than activated by the directory's presence, so a
+             docs/architecture.html#solution-strategy-open-core-boundary). Explicit rather than activated by the directory's presence, so a
              desktop build in the private repository does not compile Enterprise too. A checkout
              without ee/ - the public Community repository - never passes it. -->
         <profile>

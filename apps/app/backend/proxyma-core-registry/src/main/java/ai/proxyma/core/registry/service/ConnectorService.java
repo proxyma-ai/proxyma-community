@@ -82,6 +82,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 033], [PROXYMA-AD 085]. */
 @Service
 public class ConnectorService {
 

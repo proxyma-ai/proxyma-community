@@ -45,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li><b>LiteLLM</b> is spoken on the API its instance chose, and states model limits on its own
  *       {@code /model/info}.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 016].
  */
 class NativeAndGatewayRequestsTest {
 

@@ -2,6 +2,8 @@
 //
 // The page's one chat stream. The hook around it needs EventSource and React; which stream is
 // followed, and which events are handled, is decided here.
+//
+// Verifies [PROXYMA-AD 050].
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -85,7 +87,7 @@ describe('where a new stream starts', () => {
   })
 })
 
-// Since the key-account chat panel (docs/architecture.html#spec-11-8): a page can show more
+// Since the key-account chat panel (docs/architecture.html#building-block-view-enterprise-extension): a page can show more
 // than one chat, and each chat instance holds a stream of its own (features/chat/instance).
 describe('one stream per chat instance', () => {
   test('following on one instance neither closes nor replaces another instance\'s stream', () => {

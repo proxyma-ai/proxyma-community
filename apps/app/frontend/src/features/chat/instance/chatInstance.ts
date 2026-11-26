@@ -6,7 +6,7 @@ import { createInstanceRegistry } from './instanceRegistry'
 /**
  * ONE CHAT: its state, its event stream, and what its stream handlers keep between events.
  *
- * <p>There was one of each per page until the key-account chat panel (docs/architecture.html#spec-11-8)
+ * <p>There was one of each per page until the key-account chat panel (docs/architecture.html#building-block-view-enterprise-extension)
  * - the store a global zustand store, the stream and its handlers' memory module-level in
  * useChat.ts - so a second chat on screen would have written into the first. Each chat on a page is
  * an instance now: the chat page uses the MAIN one, which lives for the page's whole life exactly as

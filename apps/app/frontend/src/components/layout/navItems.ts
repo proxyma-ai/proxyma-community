@@ -15,7 +15,7 @@ type NavMinRole = false | 'viewer' | 'admin'
 // their own sources too. "Sources", not "Connectors": Settings has a Connections tab, and two
 // destinations with one name is one too many.
 //
-// Key accounts (docs/architecture.html#spec-11) is an Enterprise Server page: signed in, and only
+// Key accounts (docs/architecture.html#building-block-view-enterprise-extension) is an Enterprise Server page: signed in, and only
 // while the license status says `keyAccountsAllowed`. Constellations is gated the same way, on
 // `constellationsAllowed`. Every gate here is a convenience - the route and every endpoint refuse
 // without it.
@@ -23,7 +23,7 @@ type NavMinRole = false | 'viewer' | 'admin'
 // everywhere else.
 const NAV_ITEMS: ReadonlyArray<{ to: string; label: string; short?: string; icon: LucideIcon; auth: NavMinRole; licensed?: 'keyAccounts' | 'constellations' | 'youtubeAssistant' }> = [
   { to: '/',               label: 'Chat',           icon: MessageSquare, auth: false    },
-  { to: '/sources',        label: 'Sources',        icon: Database,      auth: 'viewer' },
+  { to: '/sources',        label: 'Sources',        short: 'Sources::dock', icon: Database, auth: 'viewer' },
   { to: '/key-accounts',   label: 'Key accounts',   icon: BarChart3,     auth: 'viewer', licensed: 'keyAccounts' },
   { to: '/youtube',        label: 'YouTube assistant', short: 'YouTube', icon: CirclePlay, auth: 'viewer', licensed: 'youtubeAssistant' },
   { to: '/constellations', label: 'Constellations', icon: Orbit,         auth: 'viewer', licensed: 'constellations' },
@@ -67,7 +67,7 @@ export function useNavItems(): NavItem[] {
     icon: item.icon,
     label: t(item.label),
     // One literal a call, so the catalog check reads both (a variable reaching t() is invisible to it).
-    short: item.short === 'YouTube' ? t('YouTube') : t(item.label),
+    short: item.short === 'YouTube' ? t('YouTube') : item.short === 'Sources::dock' ? t('Sources::dock') : t(item.label),
     isActive: item.to === '/'
       ? location.pathname === '/' || location.pathname.startsWith('/chat')
       : location.pathname.startsWith(item.to),

@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * retired constant is refused, so every source and document of a Desktop or Home Server install
  * lost its type on its second start. Run twice here against a populated H2 database built from the
  * entities that ship.
+ * <p>Verifies [PROXYMA-AD 081].
  */
 class ConnectorSchemaMigrationTest {
 

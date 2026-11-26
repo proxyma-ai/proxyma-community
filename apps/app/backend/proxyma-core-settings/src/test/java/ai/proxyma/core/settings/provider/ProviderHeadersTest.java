@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
  * gateway's tenant key - and they were stored and returned in clear beside an API key that was
  * encrypted and masked. Now they are encrypted at rest, a credential header leaves by its ends only,
  * and the mask (or a blank) sent back by an edit keeps the stored value.
+ * <p>Verifies [PROXYMA-AD 086].
  */
 class ProviderHeadersTest {
 

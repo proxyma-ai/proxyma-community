@@ -15,6 +15,7 @@ import java.util.Locale;
  * (DeepSeek), the service tier (flex or batch at half, priority at the provider's premium), the
  * region (Anthropic's US-only inference at 1.1x); and last the per-request fees for server-side
  * web search.
+ * <p>Implements [PROXYMA-AD 095].
  */
 public final class CostCalculator {
 

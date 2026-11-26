@@ -23,6 +23,8 @@
 # second one in front of it.
 #
 # Needs Docker Compose 2.20 or newer.
+#
+# Implements [PROXYMA-AD 072].
 
 name: proxyma-community
 

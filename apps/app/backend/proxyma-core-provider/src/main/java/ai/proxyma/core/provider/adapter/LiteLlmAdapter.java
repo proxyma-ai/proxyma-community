@@ -41,6 +41,7 @@ import java.util.Objects;
  *   <li><b>One blocking call per step</b>, for a deployment that ignores stream=true once tools are
  *       present ({@link ResolvedProvider#streams()}, which the agent loops ask).</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 016].
  */
 @Component
 public class LiteLlmAdapter implements LlmProviderAdapter {

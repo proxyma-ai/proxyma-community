@@ -26,6 +26,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * A check that finds the release already staged leaves it staged. The guard for this compared the
  * status to READY after the check had set it to CHECKING, so it never fired: with auto-update on,
  * every scheduled check downloaded the staged release again, and Apply was refused while it did.
+ * <p>Verifies [PROXYMA-AD 065].
  */
 class UpdateAlreadyStagedTest {
 

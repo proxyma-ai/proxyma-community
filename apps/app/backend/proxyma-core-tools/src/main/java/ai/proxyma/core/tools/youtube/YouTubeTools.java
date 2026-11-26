@@ -1194,12 +1194,17 @@ public class YouTubeTools {
      * once a whole page of threads is older than it.
      */
     Map<String, Object> channelReplies(ApiClient api, int limit, Instant after) {
+        return channelReplies(api, limit, after, REPLY_PAGES);
+    }
+
+    /** The same over at most {@code pages} pages of threads - the voice reads further back than the tool does. */
+    Map<String, Object> channelReplies(ApiClient api, int limit, Instant after, int pages) {
         JsonNode channel = myChannel(api);
         if (channel.isMissingNode() || channel.isNull()) return failure("The connection's Google account has no YouTube channel.");
         String channelId = channel.path("id").asText("");
         List<Map<String, Object>> found = new ArrayList<>();
         int scanned = 0;
-        YouTubeThreadScan scan = YouTubeThreadScan.channel(api, channel, REPLY_PAGES);
+        YouTubeThreadScan scan = YouTubeThreadScan.channel(api, channel, Math.max(1, pages));
         List<JsonNode> threads;
         while ((threads = scan.next()) != null) {
             boolean newer = false;

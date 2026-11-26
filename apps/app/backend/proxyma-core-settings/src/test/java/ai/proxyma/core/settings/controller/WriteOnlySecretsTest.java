@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * held m365 alone (SEC-41), and the web search key beside it - set by a Super admin only - went on
  * being returned decrypted to every Admin. The guardrail canary token was returned and exported in
  * clear the same way (settings-core-04) and is an @EncryptedField now.
+ * <p>Verifies [PROXYMA-AD 086].
  */
 class WriteOnlySecretsTest {
 

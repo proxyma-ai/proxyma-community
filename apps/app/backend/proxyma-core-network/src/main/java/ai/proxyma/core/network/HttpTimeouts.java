@@ -7,6 +7,7 @@ import java.time.Duration;
  * Gemini and Azure SDKs) cannot drift from the ones RestClientConfig builds. Each of those used to
  * carry its own copy of 300 s, commented "matches RestClientConfig", and none of them carried the
  * 1800 s an LLM call was meant to get.
+ * <p>Implements [PROXYMA-AD 090].
  */
 public final class HttpTimeouts {
 

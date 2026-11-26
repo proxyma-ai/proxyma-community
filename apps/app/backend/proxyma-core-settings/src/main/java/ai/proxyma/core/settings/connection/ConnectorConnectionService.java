@@ -48,6 +48,7 @@ import java.util.UUID;
  *       secret, so it cannot send it back. Clearing is an explicit flag, as for provider keys.
  *   <li><b>Exactly one default per owner and protocol</b> while any exist.
  * </ul>
+ * <p>Implements [PROXYMA-AD 038], [PROXYMA-AD 085], [PROXYMA-AD 086].
  */
 @Service
 public class ConnectorConnectionService implements ai.proxyma.core.connector.networkshare.FileServerPolicy {

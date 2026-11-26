@@ -10,6 +10,7 @@ package ai.proxyma.core.connector;
 // and removes their vectors) when a sync is known to have seen every remote item; treating an
 // error-truncated fetch as a complete one causes items simply not reached yet to be wrongly
 // purged.
+/** Implements [PROXYMA-AD 057]. */
 public interface SyncErrorAware {
     boolean hasErrored();
 

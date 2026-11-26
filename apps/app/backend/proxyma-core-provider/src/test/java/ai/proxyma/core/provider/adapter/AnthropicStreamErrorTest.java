@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p>And a refusal sent AFTER the 200, as an error event, is a failure too (0.34.1 feedback):
  * Spring AI turned it into an empty answer (AnthropicStreamErrors).
+ * <p>Verifies [PROXYMA-AD 055].
  */
 class AnthropicStreamErrorTest {
 

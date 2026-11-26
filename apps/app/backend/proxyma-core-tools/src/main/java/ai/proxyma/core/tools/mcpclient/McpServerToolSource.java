@@ -36,6 +36,7 @@ import java.util.Set;
  * <p>Every call to one of these tools goes through the conversation's tool path like any other, so
  * the approval pause, Read-only, the timeout, the retrieval guardrail, the size limit and the audit
  * log all apply. Each is a write by name (WriteToolRegistry.isMcpTool).
+ * <p>Implements [PROXYMA-AD 009].
  */
 @Component
 public class McpServerToolSource implements ExternalToolSource, McpServerProbe {

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The public sandbox's refusal of private destinations. Literal addresses only, so no test depends
  * on DNS - InetAddress.getByName on a literal never touches the network.
+ * <p>Verifies [PROXYMA-AD 077], [PROXYMA-AD 090].
  */
 class OutboundAddressPolicyTest {
 

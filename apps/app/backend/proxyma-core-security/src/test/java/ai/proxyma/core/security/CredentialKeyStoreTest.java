@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * new key and every saved credential and the activated license stopped decrypting. These pin the
  * replacement: the key survives in a file, a key an earlier version left in the keyring is carried
  * over once, and an existing file always wins.
+ * <p>Verifies [PROXYMA-AD 086].
  */
 class CredentialKeyStoreTest {
 

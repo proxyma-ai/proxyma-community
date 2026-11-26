@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
  * on the connection the call actually resolves to. A check made anywhere else (the chat's
  * pre-flight, say) looks at the conversation's connection, which is not the one a call naming a
  * source on a second server uses; the write through a read-only connection would then go through.
+ * <p>Verifies [PROXYMA-AD 052], [PROXYMA-AD 085].
  */
 class ToolConnectorResolverTest {
 

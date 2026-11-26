@@ -70,3 +70,16 @@ test('a queued message of the person stays at the end', () => {
   ]
   assert.equal(personView(thread).at(-1)?.clientId, 'q1')
 })
+
+test('a turn whose only acts are hidden tools is not kept; one with words is', () => {
+  const hidden = new Set(['messageAgent'])
+  const thread: ChatMessage[] = [
+    { role: 'assistant', content: '', toolCalls: [call('c1', true)] },
+    { role: 'assistant', content: 'Here are the numbers.', toolCalls: [call('c2', true)] },
+    { role: 'assistant', content: '', toolCalls: [call('c3', true), { callId: 'c4', toolName: 'findQuestions', arguments: '{}', done: true }] },
+  ]
+  const shown = personView(thread, hidden)
+  assert.equal(shown.length, 2, 'the turn that only messaged a member is gone')
+  assert.equal(shown[0].content, 'Here are the numbers.')
+  assert.equal(personView(thread).length, 3, 'nothing is hidden unless named')
+})

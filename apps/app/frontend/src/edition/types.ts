@@ -8,7 +8,7 @@ import type { GlyphComponent } from '@/components/ui/kit'
  *
  *   src/edition/community.tsx          Desktop and the Home Server (`npm run build`). Open source.
  *   ee/frontend/src/edition.tsx         Proxyma Enterprise (`npm run build:server`). Closed source,
- *                                       in the private repository only (docs/architecture.html#oss-boundary).
+ *                                       in the private repository only (docs/architecture.html#solution-strategy-open-core-boundary).
  *   ee/frontend/src/edition.addons.tsx  the official Desktop and Home Server (`npm run build:addons`):
  *                                       the Community app plus its add-ons, each activated by its own
  *                                       key. Closed source, as above.
@@ -19,6 +19,8 @@ import type { GlyphComponent } from '@/components/ui/kit'
  *
  * Kept SMALL on purpose: every member here is a place the Community app knows an Enterprise feature
  * exists. A new Enterprise page is a route below, not a new member.
+ *
+ * Implements [PROXYMA-AD 042], [PROXYMA-AD 012].
  */
 
 /** A page only the edition has, mounted inside the app shell. */

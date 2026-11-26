@@ -11,6 +11,8 @@ import { translateServerText } from './serverMessage.ts'
  * which I18nProvider keeps set to the one in force, so this agrees with what `t` would use. A
  * component that shows a stored sentence (a failed sync's reason) calls it while rendering and is
  * re-rendered with everything else when the language changes.
+ *
+ * Implements [PROXYMA-AD 103].
  */
 export function serverText(text: string): string
 export function serverText(text: string | null | undefined): string | null | undefined

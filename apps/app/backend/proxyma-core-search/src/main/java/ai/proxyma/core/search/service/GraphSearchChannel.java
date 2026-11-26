@@ -24,6 +24,7 @@ import java.util.UUID;
  * <p>Scoped by the COLLECTIONS the search was given, read back as the sources they belong to: a
  * connector's collection is its id without dashes, and its reindex shadow the same with a suffix.
  * Any other collection (guardrail policies, agent memory) names no source and adds nothing.
+ * <p>Implements [PROXYMA-AD 014].
  */
 @Component
 public class GraphSearchChannel {

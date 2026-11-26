@@ -21,6 +21,8 @@
 // literal, a constant of the same file, or a qualified constant (Class.CONSTANT or a fully
 // qualified one) found in the same side's tree - else the Java method's name, which is what Spring
 // AI advertises. A third-party MCP server's tools are the server's own names, data, and not here.
+//
+// Implements [PROXYMA-AD 103].
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync } from 'node:fs'
 import { dirname, join, relative, resolve, basename } from 'node:path'
@@ -28,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#oss-boundary), as
+// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#solution-strategy-open-core-boundary), as
 // server-messages.mjs writes. The Enterprise list leaves out a name the Community list has. A tree
 // without ee/ - the public Community repository - writes and checks the first alone.
 const SIDES = [

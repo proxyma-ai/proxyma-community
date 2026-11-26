@@ -29,7 +29,7 @@ package ai.proxyma.core.system.legal;
 // it, so a change to it is a change to what consent means, exactly as for the other two.
 public final class LegalDocuments {
 
-    public static final String CURRENT_VERSION = "2026-11-20";
+    public static final String CURRENT_VERSION = "2026-11-26";
 
     /** Where each document is published - the addresses named inside the documents and recorded with every consent. */
     public static final String TERMS_URL = "https://proxyma.ai/terms";

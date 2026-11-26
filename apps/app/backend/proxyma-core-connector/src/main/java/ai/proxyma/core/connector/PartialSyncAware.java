@@ -10,6 +10,7 @@ package ai.proxyma.core.connector;
  * must suppress purge-by-absence, because an item the listing never reached is indistinguishable
  * from one that was removed upstream - but only the errored case should put the source in ERROR.
  * A partial sync that purged would delete every page beyond the crawl cap on every run.
+ * <p>Implements [PROXYMA-AD 057].
  */
 public interface PartialSyncAware {
 

@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
  * <p>delete() took the row out of the manifest first and then read the manifest for how many
  * examples there were - so it found none, and deleted only #0 to #63. A file of 200 prompts left
  * 136 vectors that nothing listed and nothing could remove, and they kept blocking messages.
+ * <p>Verifies [PROXYMA-AD 037].
  */
 class PolicyLibraryDeleteTest {
 

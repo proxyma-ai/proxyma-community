@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
  * stayed a failed document for ever, and sign-in pages an earlier build had indexed stayed
  * documents. It may remove the ids it vouches for and the failed items it did not come across
  * again; an indexed page it merely did not reach stays.
+ * <p>Verifies [PROXYMA-AD 057].
  */
 class PartialListingPurgeTest {
 

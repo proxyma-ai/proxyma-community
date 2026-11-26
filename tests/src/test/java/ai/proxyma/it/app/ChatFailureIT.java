@@ -37,6 +37,7 @@ class ChatFailureIT extends DesktopJourney {
     // What has to stay true is the old test's point: never a SILENT stall. The user is told at once
     // that the turn is retrying, and Stop ends the wait.
 
+    /** Verifies [PROXYMA-AD 055]. */
     @Test
     @DisplayName("a rate limit is retried, and the answer arrives once the provider takes the call")
     void aRateLimitIsRetried() {
@@ -56,6 +57,7 @@ class ChatFailureIT extends DesktopJourney {
         assertThat(turn.text()).isEqualTo("answered after the wait");
     }
 
+    /** Verifies [PROXYMA-AD 055]. */
     @Test
     @DisplayName("a provider that keeps refusing is never a silent stall: the turn says it is retrying, and Stop ends it")
     void aRateLimitThatPersistsIsVisibleAndStoppable() {
@@ -72,6 +74,7 @@ class ChatFailureIT extends DesktopJourney {
         }
     }
 
+    /** Verifies [PROXYMA-AD 050]. */
     @Test
     @DisplayName("a provider 500 ends the turn instead of hanging it")
     void aServerErrorEndsTheTurn() {
@@ -81,6 +84,7 @@ class ChatFailureIT extends DesktopJourney {
         assertThat(turn.has("error")).isTrue();
     }
 
+    /** Verifies [PROXYMA-AD 050]. */
     @Test
     @DisplayName("a stream that dies mid-answer is reported, not left half-written")
     void aDroppedStreamIsReported() {
@@ -129,6 +133,7 @@ class ChatFailureIT extends DesktopJourney {
             app.setting("chat", "model", ai.proxyma.it.harness.FakeLlm.CHAT_MODEL);
         }
     }
+    /** Verifies [PROXYMA-AD 051]. */
     @Test
     @DisplayName("stopped while a tool is running, the conversation still sends: every tool call reaches the model with its result")
     void aTurnStoppedMidToolLeavesAValidHistory() {

@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * a listing would have produced (SyncOrchestratorService.recordPushed); a delete removes the
  * document's index entries at once (SyncService.deleteTrackedDocument). See CustomSourcePlugin for
  * why there is no second indexing path.
+ * <p>Implements [PROXYMA-AD 059].
  */
 @Service
 public class IngestService {

@@ -18,10 +18,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * API key the user pasted in, so what matters is not only that it works but that it never comes
  * back out: not in the list, not in the detail view, not in the settings group that names it, and
  * not in the error message when something goes wrong.
+ *
+ * Verifies [PROXYMA-AD 036].
  */
 @DisplayName("Providers: connecting a model, and keeping its key")
 class ProviderSetupIT extends DesktopJourney {
 
+    /** Verifies [PROXYMA-AD 016]. */
     @Test
     @DisplayName("every protocol the product supports is offered, and only those")
     void protocolsAreOffered() {
@@ -38,6 +41,7 @@ class ProviderSetupIT extends DesktopJourney {
                 "OPENAI_COMPATIBLE");
     }
 
+    /** Verifies [PROXYMA-AD 086]. */
     @Test
     @DisplayName("the key is masked everywhere it comes back, and never returned in full")
     void theApiKeyNeverComesBack() {

@@ -42,6 +42,7 @@ import java.util.UUID;
  * <p><b>The token is checked before the body is read</b> - a body is a Mono read only after the
  * check, a multipart form only after it - so nobody without one can make the server parse, buffer or
  * spool anything.
+ * <p>Implements [PROXYMA-AD 059].
  */
 @RestController
 @RequestMapping("/api/v1/ingest/sources/{sourceId}/documents")

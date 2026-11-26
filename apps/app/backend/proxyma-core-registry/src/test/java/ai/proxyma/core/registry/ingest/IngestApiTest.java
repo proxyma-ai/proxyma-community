@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
  * The ingestion API end to end, through its controllers, with the sync engine, the store and the
  * repositories that ship (IngestHarness): who may push, what a push may be, and that what is pushed
  * is indexed - and deleted - by the same path every source's items take.
+ * <p>Verifies [PROXYMA-AD 059], [PROXYMA-AD 089].
  */
 class IngestApiTest {
 

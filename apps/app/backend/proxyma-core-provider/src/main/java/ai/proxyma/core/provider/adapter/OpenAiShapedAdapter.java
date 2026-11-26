@@ -17,6 +17,7 @@ import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -73,6 +74,11 @@ abstract class OpenAiShapedAdapter implements LlmProviderAdapter {
 
     /** Filters over a streamed response, for a server whose stream Spring AI cannot read as sent. */
     protected List<ExchangeFilterFunction> streamFilters() {
+        return List.of();
+    }
+
+    /** Interceptors around a blocking call, for a server that answers it in its own way; added last. */
+    protected List<ClientHttpRequestInterceptor> callInterceptors() {
         return List.of();
     }
 
@@ -241,6 +247,7 @@ abstract class OpenAiShapedAdapter implements LlmProviderAdapter {
         RestClient.Builder rest = ProviderClients.applyHeaders(
                 RestClient.builder().requestFactory(externalHttpFactory), provider)
                 .requestInterceptor(WireUsage.callInterceptor(usageShape()));
+        for (ClientHttpRequestInterceptor interceptor : callInterceptors()) rest.requestInterceptor(interceptor);
         WebClient.Builder web = ProviderClients.applyHeaders(externalWebClientBuilder.clone(), provider)
                 .filter(WireUsage.streamFilter(usageShape()));
         for (ExchangeFilterFunction filter : streamFilters()) web.filter(filter);

@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
  * GET /api/v1/mcp/tools lists what the caller could use (authz-02): only what this installation's
  * plan includes, and on Enterprise Server no write tool for a Viewer. It listed every registered
  * tool, schemas included, to any signed-in account.
+ * <p>Verifies [PROXYMA-AD 008].
  */
 class McpToolCatalogTest {
 

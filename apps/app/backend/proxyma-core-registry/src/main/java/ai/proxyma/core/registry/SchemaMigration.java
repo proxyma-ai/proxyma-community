@@ -26,6 +26,7 @@ import java.sql.Statement;
  * DROP still ran and every source and document lost its type. Removed on 2026-10-14 with the
  * column additions beside it, which every entity now declares (every install is a first install).
  * Never DROP a column here after a statement whose failure is swallowed.
+ * <p>Implements [PROXYMA-AD 081].
  */
 @Component("connectorSchemaMigration")
 class SchemaMigration {

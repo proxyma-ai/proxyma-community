@@ -1,3 +1,4 @@
+// Verifies [PROXYMA-AD 105].
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { appearanceInitScript, THEME_COLOR } from './appearanceScript.ts'

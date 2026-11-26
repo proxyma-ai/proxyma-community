@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 /**
  * The monthly limit totals the per-call ledger (2026-09-29), which every model call reaches - so on
  * desktop it counts chat, guardrail, workflow and rerank spend, none of which it saw before.
+ * <p>Verifies [PROXYMA-AD 096].
  */
 class GlobalQuotaFromLedgerTest {
 

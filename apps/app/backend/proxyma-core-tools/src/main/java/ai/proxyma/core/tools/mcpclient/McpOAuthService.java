@@ -68,6 +68,7 @@ import java.util.regex.Pattern;
  * sign-in happens in the system browser, which shares no cookie with the app window. The state is
  * 256 random bits handed only to the person who started the sign-in, used once, bound to their
  * connection, and the code it carries is useless without the PKCE verifier that never left here.
+ * <p>Implements [PROXYMA-AD 064].
  */
 @Service
 public class McpOAuthService {

@@ -2,6 +2,8 @@
 //
 // Plain `.ts` with no JSX, so Node's own type stripping runs it. installAppViewport needs a window
 // and is not reachable this way; which box the shell is pinned to is.
+//
+// Verifies [PROXYMA-AD 105].
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 

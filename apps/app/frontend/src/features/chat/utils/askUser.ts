@@ -7,6 +7,8 @@
 // A QUESTION THAT TAKES SEVERAL PICKS ANSWERS WITH A LIST, since 2026-10-02. It was the labels
 // joined by a comma - "Confluence, Files, local" for two picks, one of which holds a comma - so
 // the model could not tell two choices from three.
+//
+// Implements [PROXYMA-AD 053].
 
 import type { AskUserOption, AskUserQuestion, StepLimitQuestion } from '../types/chat.types'
 

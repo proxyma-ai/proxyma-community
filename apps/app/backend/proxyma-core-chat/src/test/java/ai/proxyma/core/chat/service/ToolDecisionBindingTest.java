@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
  * open a conversation of their own - a visitor included - could approve a write waiting in someone
  * else's turn by posting its call id under their own conversation id. The call id travels in the
  * SSE stream, which SEC-42 also leaked, so the two together were a complete path.
+ * <p>Verifies [PROXYMA-AD 052], [PROXYMA-AD 053].
  */
 class ToolDecisionBindingTest {
 

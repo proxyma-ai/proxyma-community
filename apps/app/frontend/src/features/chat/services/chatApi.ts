@@ -152,6 +152,7 @@ export const chatApi = {
       surface: options.surface,
     }).then(r => r.data.conversationId),
 
+  // Implements [PROXYMA-AD 050].
   subscribeChatEvents: (
     conversationId: string,
     onEvent: (event: ChatSseEvent) => void,

@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+/** Implements [PROXYMA-AD 031], [PROXYMA-AD 050], [PROXYMA-AD 053]. */
 @RestController
 @RequestMapping("/api/v1")
 public class ChatController {

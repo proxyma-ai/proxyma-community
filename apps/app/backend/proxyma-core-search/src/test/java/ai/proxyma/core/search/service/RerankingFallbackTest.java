@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  * chat request per candidate, forty of them in turn, to a model that answers a prompt with nothing
  * (0.23.0 feedback log, 2026-10-02). Neither failure may cost a search more than a few calls, and
  * both leave the candidates in the order retrieval gave them.
+ * <p>Verifies [PROXYMA-AD 014].
  */
 class RerankingFallbackTest {
 

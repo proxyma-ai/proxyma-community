@@ -18,6 +18,7 @@ import java.util.UUID;
  *
  * <p>Its owner is the source's owner when it was made ({@code userId}, null on the single-user
  * editions), and every use checks that the source still belongs to that person.
+ * <p>Implements [PROXYMA-AD 089].
  */
 @Entity
 @Table(name = "ingest_tokens", indexes = {

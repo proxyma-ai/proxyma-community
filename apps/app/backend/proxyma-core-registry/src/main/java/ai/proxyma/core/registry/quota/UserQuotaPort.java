@@ -5,6 +5,7 @@ package ai.proxyma.core.registry.quota;
 // which IS allowed to depend on connector (auth --> connector). Consumers (FileService, SyncService)
 // take this as @Autowired(required = false) - null in desktop mode, where no implementation bean
 // exists and quota enforcement is a no-op.
+/** Implements [PROXYMA-AD 012]. */
 public interface UserQuotaPort {
 
     boolean hasCapacityFor(String userId, long incomingBytes);

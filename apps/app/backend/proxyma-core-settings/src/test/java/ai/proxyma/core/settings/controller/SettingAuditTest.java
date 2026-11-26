@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * it changed. Asked of the field's name as well as of the annotation the write path encrypts on,
  * since a log is the last place a secret should turn up and a new credential field might be added
  * without its annotation.
+ * <p>Verifies [PROXYMA-AD 098].
  */
 class SettingAuditTest {
 

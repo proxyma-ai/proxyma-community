@@ -130,7 +130,7 @@ VALUES
     -- with a retry pending: a document still holding a retry is picked back up by the drain.
     --
     -- total_chunks, current_chunks and content_size are 0 rather than NULL. They map to PRIMITIVE
-    -- fields on TrackedDocument (docs/architecture.html#data-model spells them `int` and `long`, against
+    -- fields on TrackedDocument (docs/architecture.html#crosscutting-concepts-storage-per-edition spells them `int` and `long`, against
     -- source_size_bytes' boxed `Long` two lines down, and that distinction is load-bearing). A
     -- NULL there inserts happily and then throws on the first READ -
     -- "Can not set long field ai.proxyma.core.registry.model.TrackedDocument.contentSize to null

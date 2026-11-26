@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 008]. */
 @RestController
 @RequestMapping("/api/v1/mcp")
 public class McpController {

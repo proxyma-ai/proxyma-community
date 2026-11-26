@@ -10,6 +10,8 @@ import java.util.Map;
  * <p>{@code op} is one of a fixed vocabulary of operation names ("search.total", "ingest.convert")
  * and every {@code labels} value is a code-defined token - a connector type, a provider protocol, a
  * file-type class. Nothing a user typed or named can reach either.
+ *
+ * Implements [PROXYMA-AD 005].
  */
 public class DiagnosticsTiming {
 

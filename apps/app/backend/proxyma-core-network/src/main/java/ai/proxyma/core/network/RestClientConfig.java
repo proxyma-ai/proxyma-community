@@ -72,6 +72,7 @@ import java.util.stream.Stream;
 // builder of its own. They were singletons, and a consumer that called defaultHeader() on one - the
 // web media fetcher's browser User-Agent, the crawler's - handed that header to every bean built
 // after it: license activation, telemetry, the connectors, the update check.
+/** Implements [PROXYMA-AD 090]. */
 @Configuration
 public class RestClientConfig implements ai.proxyma.core.webcontent.WebProxyProvider {
 

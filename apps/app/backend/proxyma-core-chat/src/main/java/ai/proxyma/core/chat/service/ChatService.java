@@ -92,6 +92,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 013], [PROXYMA-AD 031], [PROXYMA-AD 050], [PROXYMA-AD 051], [PROXYMA-AD 052], [PROXYMA-AD 053]. */
 @Service
 @Lazy
 public class ChatService {

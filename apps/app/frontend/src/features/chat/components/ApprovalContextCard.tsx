@@ -274,12 +274,14 @@ export function CommentHeading({ card, className }: { card: CommentCard; classNa
  * `draftMarks` are drawn beside the label of the row whose key it names (ApprovalField `marks`) - the draft's
  * confidence on the Approvals page; a page drawing that row itself draws them too.
  */
-export function ApprovalContextCard({ context, className, renderRow, author, heading = true, draftMarks, children }: {
+export function ApprovalContextCard({ context, className, renderRow, author, draftLabel, heading = true, draftMarks, children }: {
   context: ApprovalContext
   className?: string
   renderRow?: (row: ApprovalContextRow, standard: ReactNode) => ReactNode
   /** Whose draft a comment's reply is - the agent that wrote it; the reply's own label when not given. */
   author?: string | null
+  /** The words over a reply not posted yet, in place of whose draft it is (commentCard's `draftLabel`). */
+  draftLabel?: string
   /** Whether a comment's card draws its title and caption line (false where the page draws them itself). */
   heading?: boolean
   /** Badges beside one row's label, by that row's key - the draft's confidence. */
@@ -291,7 +293,7 @@ export function ApprovalContextCard({ context, className, renderRow, author, hea
     renderRow ? <Fragment key={row.key}>{renderRow(row, standard)}</Fragment> : standard
   const marksOf = (row: ApprovalContextRow) => (draftMarks && draftMarks.key === row.key ? draftMarks.marks : undefined)
 
-  const comment = commentCard(context, t, locale, { author })
+  const comment = commentCard(context, t, locale, { author, draftLabel })
   if (comment) {
     const lines = [...(comment.reply ? [comment.reply] : []), ...comment.rest]
     const fields = lines.length > 0 || children

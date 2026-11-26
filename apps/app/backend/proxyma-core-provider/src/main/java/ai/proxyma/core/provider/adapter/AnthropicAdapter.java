@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/** Implements [PROXYMA-AD 016]. */
 @Component
 public class AnthropicAdapter implements LlmProviderAdapter {
 

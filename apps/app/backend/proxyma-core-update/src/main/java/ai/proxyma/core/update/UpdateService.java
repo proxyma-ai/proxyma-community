@@ -64,6 +64,7 @@ import java.util.function.Predicate;
 // every check answered "up to date", the server's SPA has no Updates page, and its routes sat under
 // the blanket authenticated rule where any viewer could call them. A server is upgraded by its
 // operator, from the image.
+/** Implements [PROXYMA-AD 006], [PROXYMA-AD 040], [PROXYMA-AD 065]. */
 @Service
 @Profile("!server")
 public class UpdateService implements ApplicationContextAware {

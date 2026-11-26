@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 /**
  * The connected MCP servers as the chat sees them: one skill per server, its tools behind it, and
  * each person seeing only the servers they may use.
+ * <p>Verifies [PROXYMA-AD 009].
  */
 class McpServerToolSourceTest {
 

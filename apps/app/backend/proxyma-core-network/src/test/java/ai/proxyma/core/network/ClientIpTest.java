@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * missed. An appending proxy (nginx's $proxy_add_x_forwarded_for, which the manual prints) leaves
  * the client's own header FIRST and the address it saw LAST; believing the first entry let a client
  * name a new machine on every login attempt, so the lockout never engaged.
+ * <p>Verifies [PROXYMA-AD 091].
  */
 class ClientIpTest {
 

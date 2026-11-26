@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+/** Implements [PROXYMA-AD 035], [PROXYMA-AD 080]. */
 public interface VectorStoreService {
 
     void upsert(String collectionId, List<Document> documents);

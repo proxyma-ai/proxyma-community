@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 // way: read the skill via readSkill, and its tools become advertised. See resolveAdvertised()'s
 // union of groupToolNames with ChatSkillService.toolsForSkillName() below - still visibility-only,
 // same reasoning as above.
+/** Implements [PROXYMA-AD 032]. */
 @Component
 class ToolSkillGating {
 

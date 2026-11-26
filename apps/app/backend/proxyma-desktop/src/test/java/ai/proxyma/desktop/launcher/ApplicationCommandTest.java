@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The application JVM's command line, as ProxymaLauncher builds it (editions-assembly-01, -14).
  * A desktop install listens on loopback and answers to loopback names only, and nothing the user's
  * environment or the launcher's own arguments carry can widen either.
+ * <p>Verifies [PROXYMA-AD 070].
  */
 class ApplicationCommandTest {
 

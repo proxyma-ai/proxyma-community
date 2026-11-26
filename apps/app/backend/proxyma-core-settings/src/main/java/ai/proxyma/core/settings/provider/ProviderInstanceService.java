@@ -34,6 +34,7 @@ import java.util.UUID;
  *       credential header returned by its ends only (ProviderHeaders), and its mask - or a blank -
  *       sent back by an edit keeps the stored value.
  * </ul>
+ * <p>Implements [PROXYMA-AD 002], [PROXYMA-AD 038], [PROXYMA-AD 086].
  */
 @Service
 public class ProviderInstanceService {

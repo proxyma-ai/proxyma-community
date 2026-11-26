@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
  * two-tier model (2026-10-14) Jira, Confluence, Bitbucket and SVN are in Community: every tier allows
  * their tools, and only the per-connection switches (ToolConnectorResolver) and the user's own
  * consent stand in the way.
+ * <p>Verifies [PROXYMA-AD 018].
  */
 class ConnectorToolTierTest {
 

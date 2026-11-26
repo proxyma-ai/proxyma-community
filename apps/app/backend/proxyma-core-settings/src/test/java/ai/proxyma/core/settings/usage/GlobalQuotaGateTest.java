@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 /**
  * What it costs to ask whether there is budget left. The gate stands before every model call, and
  * it totalled the month's ledger each time - with no ceiling configured, which is the default.
+ * <p>Verifies [PROXYMA-AD 096].
  */
 class GlobalQuotaGateTest {
 

@@ -10,6 +10,7 @@ import java.util.List;
  * itself would need the matched spans - which is exactly what {@link GuardrailFinding} refuses to
  * carry. Keeping the rewrite on this side is what lets the finding stay free of content.
  *
+ * <p>Implements [PROXYMA-AD 037].
  * @param verdict  what to do
  * @param text     the text to use from here on. Unchanged for ALLOW, rewritten for REDACT, and
  *                 for BLOCK the ORIGINAL - a blocked turn discards it rather than showing it,

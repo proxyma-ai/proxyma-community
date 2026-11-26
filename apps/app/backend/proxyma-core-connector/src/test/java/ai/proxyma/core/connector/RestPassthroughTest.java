@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * The passthrough behind callJiraApi, callConfluenceApi and callBitbucketApi. Its whole security
  * property is that a privileged token goes to the CONFIGURED host and nowhere else, and nothing
  * pinned that; nor that a read cannot pull a whole download into memory.
+ * <p>Verifies [PROXYMA-AD 003].
  */
 @org.junit.jupiter.api.Timeout(60)
 class RestPassthroughTest {

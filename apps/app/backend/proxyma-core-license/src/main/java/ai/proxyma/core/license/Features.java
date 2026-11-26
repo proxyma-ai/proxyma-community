@@ -24,6 +24,7 @@ import java.util.TreeSet;
  *
  * <p>Quotas and spend limits are NOT here: they are a protection rather than a perk, and are on for
  * every Enterprise Server whatever its license (proxyma-core-auth, which exists only there).
+ * <p>Implements [PROXYMA-AD 018].
  */
 public final class Features {
 
@@ -34,7 +35,7 @@ public final class Features {
     // the ENTERPRISE edition. ALSO Enterprise Server only whatever this says, an edition gate its
     // callers keep (Edition.offeredOn).
     private final boolean microsoft365Allowed;
-    // Key accounts (docs/architecture.html#spec-11). A capability of its own rather than a reading of
+    // Key accounts (docs/architecture.html#building-block-view-enterprise-extension). A capability of its own rather than a reading of
     // orgModeAllowed: "may this deployment manage users" and "may it run account reviews" are
     // different questions, and the day one moves the other must not move with it.
     private final boolean keyAccountsAllowed;

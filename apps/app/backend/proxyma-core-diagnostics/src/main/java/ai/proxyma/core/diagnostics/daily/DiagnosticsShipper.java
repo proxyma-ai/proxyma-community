@@ -47,6 +47,7 @@ import java.util.zip.GZIPOutputStream;
  *
  * <p>SUCCESS deletes exactly the rows that were in the report, by id, so a row flushed while the
  * request was in flight is not lost.
+ * <p>Implements [PROXYMA-AD 005].
  */
 @Component
 public class DiagnosticsShipper {

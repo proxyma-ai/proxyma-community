@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The one reader of a source's config column: its fields as JSON for every type but the file-backed
  * ones, whose column is the folder's path - and a row an older build wrote, read in its old shape.
+ * <p>Verifies [PROXYMA-AD 082].
  */
 class StoredConfigTest {
 

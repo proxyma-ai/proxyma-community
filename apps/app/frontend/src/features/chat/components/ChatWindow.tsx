@@ -71,6 +71,8 @@ interface Props {
   // Draws what the person and the agent said and did, without its teammates' mail (utils/personView.ts):
   // the agent's tool calls stay, finished and running. A Constellations project's lead chat.
   personOnly?: boolean
+  /** With `personOnly`: tools whose calls are not drawn (personView's `hidden`). */
+  hiddenTools?: readonly string[]
   // A DEPLOYED AGENT'S TRANSCRIPT (AgentTranscriptDialog, since 2026-11-04): read-only to the person -
   // no rating, retry, rewind or question to answer - while a write it waits on is still decided here
   // and the agents it deployed still open from their panels (agentTranscript.ts, threadAffordances).
@@ -83,7 +85,7 @@ const NO_APPROVALS: PendingApproval[] = []
 const NO_ENABLE_REQUESTS: PendingEnableRequest[] = []
 const NO_QUESTIONS: PendingQuestion[] = []
 
-export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], loading = false, onRetry, conversationId, pendingApprovals = [], pendingEnableRequests = [], condensing = false, onRewind, attachedToolCallCount = 0, readOnly = false, workflowRuns = {}, compact = false, mailText = false, personOnly = false, transcript = false }: Props) {
+export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], loading = false, onRetry, conversationId, pendingApprovals = [], pendingEnableRequests = [], condensing = false, onRewind, attachedToolCallCount = 0, readOnly = false, workflowRuns = {}, compact = false, mailText = false, personOnly = false, hiddenTools, transcript = false }: Props) {
   const { t } = useTranslation()
   // What the reader may do here, by how the thread is drawn.
   const can = threadAffordances(transcript ? 'transcript' : readOnly ? 'shared' : 'chat')
@@ -97,7 +99,9 @@ export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], l
   }
   // The thread as drawn. Kept by identity between renders, so the effects that follow `messages`
   // run when the thread changes, not on every render.
-  const messages = useMemo(() => personOnly ? personView(allMessages) : allMessages, [personOnly, allMessages])
+  const hidden = useMemo(() => new Set(personOnly ? hiddenTools ?? [] : []), [personOnly, hiddenTools])
+  const shownCall = (tc: ToolCallInfo) => !hidden.has(tc.toolName)
+  const messages = useMemo(() => personOnly ? personView(allMessages, hidden) : allMessages, [personOnly, allMessages, hidden])
   // The thread's side gutter: the page's own (PAGE_GUTTER) on the chat page - 12px on a phone, 24px
   // from `sm` - so the thread lines up with the header (the UI review, 2026-10-28); 12px in a panel.
   const gutter = compact ? 'px-3' : 'px-4 sm:px-6'
@@ -222,7 +226,7 @@ export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], l
   // Tool calls already attached to a message (any message, not just the last one - a turn can
   // span several messages, one per ReAct iteration) are rendered inline with that message; only
   // the trailing calls not yet claimed by a message belong in the transient "in progress" list.
-  const unclaimedCalls = toolCalls.slice(attachedToolCallCount).filter(notInAStep)
+  const unclaimedCalls = toolCalls.slice(attachedToolCallCount).filter(notInAStep).filter(shownCall)
   const pendingToolCalls = unclaimedCalls
   const showPendingTools = pendingToolCalls.length > 0
   // WHICH WAIT THE ROW UNDER THE TURN SHOWS - the full table is in utils/waitState.ts. The provider
@@ -415,7 +419,7 @@ export function ChatWindow({ messages: allMessages, streaming, toolCalls = [], l
 
   const renderMessage = (i: number, stickyQuestion: boolean) => {
     const m = messages[i]
-    const ownToolCalls = m.toolCalls?.filter(notInAStep)
+    const ownToolCalls = m.toolCalls?.filter(notInAStep).filter(shownCall)
     const run = m.workflowRunId ? workflowRuns[m.workflowRunId] : undefined
     // A row that is tool calls and nothing else - the steps before a mid-turn message, or the last
     // steps of a turn that ended without an answer - has no bubble to draw.

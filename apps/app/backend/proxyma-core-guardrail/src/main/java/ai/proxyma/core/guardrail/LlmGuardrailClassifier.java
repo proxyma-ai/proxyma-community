@@ -53,6 +53,7 @@ import java.util.concurrent.TimeUnit;
  * retrieved chat context. That keeps its cost flat per turn instead of growing with the
  * conversation, and it means the text being judged cannot smuggle in instructions dressed as
  * earlier turns.
+ * <p>Implements [PROXYMA-AD 037].
  */
 @Component
 public class LlmGuardrailClassifier {

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * Whose budget a request spends. Everything but MCP was counted against the client's address, and
  * the users of one organization share an address - a VPN, an office NAT - so a handful of open
  * tabs spent the budget of everybody behind it.
+ * <p>Verifies [PROXYMA-AD 039], [PROXYMA-AD 091].
  */
 class ApiRateLimitKeyTest {
 

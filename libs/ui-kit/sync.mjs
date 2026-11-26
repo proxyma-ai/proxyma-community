@@ -22,6 +22,8 @@
  * single directory. The previous arrangement - "copy the component file out of
  * apps/app/frontend and edit the copy" - had none of those, which is how the consoles
  * drifted the first time.
+ *
+ * Implements [PROXYMA-AD 025].
  */
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'

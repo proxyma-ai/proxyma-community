@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * connection failed in the listing query before anything was written. The table below is that
  * column as 0.21 created it, with rows in it - an empty table would prove nothing, since a fresh
  * database is created with the new list.
+ * <p>Verifies [PROXYMA-AD 081].
  */
 class H2EnumColumnsTest {
 

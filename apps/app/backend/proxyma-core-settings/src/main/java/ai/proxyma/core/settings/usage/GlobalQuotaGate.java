@@ -33,6 +33,7 @@ import org.springframework.stereotype.Component;
  * at most once every few seconds and shared by every call in between. The price is that a
  * deployment can run past its ceiling by what it spends in that interval - against a figure for a
  * month.
+ * <p>Implements [PROXYMA-AD 096].
  */
 @Component
 public class GlobalQuotaGate {

@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
  * now, and a row in the old lines still reads. The crawl bounds stored on a row are capped again
  * when a session opens - by the product's own ceiling, the same on every tier since 2026-10-14 -
  * which WebCrawlConfigStateTest pins beside the crawler.
+ * <p>Verifies [PROXYMA-AD 082].
  */
 class WebPageConfigTest {
 

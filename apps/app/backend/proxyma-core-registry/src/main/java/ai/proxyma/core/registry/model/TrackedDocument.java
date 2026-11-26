@@ -12,6 +12,7 @@ import java.util.UUID;
 //   leftmost prefix (findByConnectorId, countByConnectorId, ...); backs drainQueuedConnectors (2s poll)
 // - idx_doc_status_retry: (status, nextRetryAt) - also serves status-only queries via the leftmost
 //   prefix; backs autoRetryFailedItems' FAILED/nextRetryAt sweep (60s poll)
+/** Implements [PROXYMA-AD 033], [PROXYMA-AD 058]. */
 @Entity
 @Table(name = "tracked_documents", indexes = {
     @Index(name = "idx_doc_source_id", columnList = "sourceId"),

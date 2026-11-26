@@ -26,7 +26,7 @@ export interface MdNode {
 export type LineLook = 'h1' | 'h2' | 'h3' | 'h4' | 'quote' | 'code' | 'table'
 
 /** A run of text's look. `mark` is a markdown mark shown on a line being edited. */
-export type InlineLook = 'strong' | 'em' | 'del' | 'code' | 'link' | 'mark' | 'number' | 'task'
+export type InlineLook = 'strong' | 'em' | 'del' | 'code' | 'link' | 'mark' | 'number' | 'task' | 'marker'
 
 export type PreviewPart =
   /** The line starting at `from` takes this look. */
@@ -34,8 +34,14 @@ export type PreviewPart =
   | { kind: 'style'; from: number; to: number; look: InlineLook }
   /** Drawn as nothing - a mark on a line not being edited. */
   | { kind: 'hide'; from: number; to: number }
-  /** A bullet list's "-", "*" or "+", drawn as a bullet. */
+  /** A bullet list's "-", "*" or "+" and the space after it, drawn as a bullet. */
   | { kind: 'bullet'; from: number; to: number }
+  /**
+   * The first line of a list item not being edited: its wrapped lines hang under its text, as the chat
+   * draws a list (the maintainer, 2026-11-25). `depth` is 0 for a top-level list; its leading spaces are
+   * hidden, the depth indenting it instead.
+   */
+  | { kind: 'item'; from: number; depth: number; ordered: boolean }
   /** A "---" line, drawn as a rule. */
   | { kind: 'rule'; from: number; to: number }
 
@@ -143,10 +149,27 @@ export function previewParts(text: string, nodes: readonly MdNode[], editing: Re
           parts.push({ kind: 'style', from: node.from, to: node.to, look: 'link' })
         }
         break
-      case 'ListMark':
-        if (grand?.name === 'BulletList' && !shown(node.from)) parts.push({ kind: 'bullet', from: node.from, to: node.to })
-        else parts.push({ kind: 'style', from: node.from, to: node.to, look: grand?.name === 'OrderedList' ? 'number' : 'mark' })
+      case 'ListMark': {
+        const ordered = grand?.name === 'OrderedList'
+        const lineStart = starts[lineAt(starts, node.from)]
+        // Only a mark that opens its line hangs its item: one after a quote's "> " keeps its place.
+        const opens = text.slice(lineStart, node.from).trim() === ''
+        if (shown(node.from)) {
+          parts.push({ kind: 'style', from: node.from, to: node.to, look: ordered ? 'number' : 'mark' })
+        } else if (opens && (ordered || grand?.name === 'BulletList')) {
+          const depth = stack.filter(s => s.name === 'BulletList' || s.name === 'OrderedList').length - 1
+          parts.push({ kind: 'item', from: lineStart, depth: Math.max(0, depth), ordered })
+          if (node.from > lineStart) parts.push({ kind: 'hide', from: lineStart, to: node.from })
+          const end = Math.max(node.to, Math.min(spacesAfter(node.to), node.to + 1))
+          if (ordered) parts.push({ kind: 'style', from: node.from, to: end, look: 'marker' })
+          else parts.push({ kind: 'bullet', from: node.from, to: end })
+        } else if (grand?.name === 'BulletList') {
+          parts.push({ kind: 'bullet', from: node.from, to: node.to })
+        } else {
+          parts.push({ kind: 'style', from: node.from, to: node.to, look: 'number' })
+        }
         break
+      }
       case 'TaskMarker': parts.push({ kind: 'style', from: node.from, to: node.to, look: 'task' }); break
       case 'Blockquote': eachLine(node, 'quote'); break
       case 'QuoteMark':

@@ -18,6 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * half that has gone wrong: {@code recordSpend}'s own javadoc claimed for months that it could not
  * be avoided, while native rerank and the embedding-cosine tier both avoided it. A ledger with a
  * hole in it looks exactly like a ledger.
+ *
+ * Verifies [PROXYMA-AD 017], [PROXYMA-AD 095].
  */
 @DisplayName("Usage: what a call cost and who was billed")
 class UsageAndCostIT extends DesktopJourney {

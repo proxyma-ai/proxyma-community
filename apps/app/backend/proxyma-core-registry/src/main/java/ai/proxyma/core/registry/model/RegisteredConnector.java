@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Implements [PROXYMA-AD 033]. */
 @Entity
 @Table(name = "registered_connectors", indexes = {
     @Index(name = "idx_res_connector", columnList = "connectorType"),

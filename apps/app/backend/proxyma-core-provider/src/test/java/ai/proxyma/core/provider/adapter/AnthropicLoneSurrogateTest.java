@@ -141,9 +141,9 @@ class AnthropicLoneSurrogateTest {
     private static List<Message> cutMessages() {
         return List.of(
                 new SystemMessage("You are the Comment Scout. " + CUT_HIGH),
-                new UserMessage("## shared/knowledge/VOICE.md\n" + CUT_HIGH + "\n[... cut here - read it whole]"),
+                new UserMessage("## shared/knowledge/voice.md\n" + CUT_HIGH + "\n[... cut here - read it whole]"),
                 AssistantMessage.builder().content(CUT_LOW)
-                        .toolCalls(List.of(new AssistantMessage.ToolCall("t1", "function", "readWorkspaceFile", "{\"path\":\"NEXT.md\"}")))
+                        .toolCalls(List.of(new AssistantMessage.ToolCall("t1", "function", "readWorkspaceFile", "{\"path\":\"next.md\"}")))
                         .build(),
                 ToolResponseMessage.builder()
                         .responses(List.of(new ToolResponseMessage.ToolResponse("t1", "readWorkspaceFile", CUT_HIGH)))

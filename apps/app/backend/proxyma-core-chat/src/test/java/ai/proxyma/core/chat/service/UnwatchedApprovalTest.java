@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
  * the approvals inbox and goes on; it answers its own questions; it ends at its step limit rather than
  * asking. Read-only still refuses, Auto still goes ahead, and an approval from the inbox is let
  * through exactly for the call it names.
+ * <p>Verifies [PROXYMA-AD 052].
  */
 class UnwatchedApprovalTest {
 

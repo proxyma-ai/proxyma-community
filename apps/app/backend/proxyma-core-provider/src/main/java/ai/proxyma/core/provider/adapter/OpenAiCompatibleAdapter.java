@@ -28,6 +28,7 @@ import java.util.Map;
  * instance because most of them answer it with a 404.
  *
  * <p>A blank base URL still means OpenAI's host, as it always has for this protocol.
+ * <p>Implements [PROXYMA-AD 016].
  */
 @Component
 public class OpenAiCompatibleAdapter extends OpenAiShapedAdapter {

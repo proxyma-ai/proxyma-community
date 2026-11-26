@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Update signatures. The fixtures were made with OpenSSL, exactly as tools/release/sign-sums.sh
  * makes them (`openssl pkeyutl -sign -rawin`), from THROWAWAY keys - so this is a test that the
  * shell side and the Java side agree on the format, not only that Java agrees with itself.
+ * <p>Verifies [PROXYMA-AD 006], [PROXYMA-AD 065].
  */
 class ReleaseSignaturesTest {
 

@@ -12,7 +12,7 @@ import java.util.HexFormat;
  * as they decide what the owner can open in Explorer. A folder the owner cannot read is skipped,
  * not read with someone else's rights.
  *
- * <p>See docs/architecture.html#spec-05-5.
+ * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
  */
 public record SmbAccount(String user, String domain, String password) {
 

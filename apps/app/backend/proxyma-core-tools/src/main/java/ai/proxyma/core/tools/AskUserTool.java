@@ -27,6 +27,7 @@ import java.util.Set;
  * used them: the tool said "multiple-choice", the prompt said "2-4 options", and nothing said when
  * a question takes more than one. Since 2026-10-02 both say so, and such an answer comes back as a
  * list (ChatService.resolveQuestion).
+ * <p>Implements [PROXYMA-AD 053].
  */
 @Component
 public class AskUserTool {

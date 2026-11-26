@@ -34,6 +34,7 @@ import java.util.concurrent.Executor;
  * <p>NONE OF THEM REJECTS. The two pools have a fixed number of threads and an unbounded queue, so
  * work waits rather than failing; what is queued is small (an event, an id), and each producer is
  * bounded by something else - a turn by its provider, a write by the call it follows.
+ * <p>Implements [PROXYMA-AD 030].
  */
 @Configuration
 @EnableAsync

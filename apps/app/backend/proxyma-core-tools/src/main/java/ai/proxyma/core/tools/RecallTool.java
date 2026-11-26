@@ -21,6 +21,7 @@ import java.util.Map;
 // keywords when the embedding server fails; with neither - the newest entries. Until 2026-09-26 it
 // was query-only and returned bare text, so an entry could be found but never addressed again, and
 // a slow embedding server made memory unreadable altogether (maintainer's feedback).
+/** Implements [PROXYMA-AD 107]. */
 @Component
 public class RecallTool {
 

@@ -28,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>The first one also could not have passed while Community forced {@code recursive=false} at
  * registration; since 2026-10-14 Community has no limits, and the desktop holds no license at all.
+ *
+ * Verifies [PROXYMA-AD 033].
  */
 @DisplayName("Sources: subfolders, and a website")
 class WebAndRecursiveIndexingIT extends DesktopJourney {

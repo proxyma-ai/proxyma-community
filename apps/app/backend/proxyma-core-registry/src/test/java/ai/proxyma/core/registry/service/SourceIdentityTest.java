@@ -52,6 +52,7 @@ import static org.mockito.Mockito.when;
  * "already one of your sources". Through a different connection a source is a different source;
  * through the same one, the same source. And somebody else's shared source is offered instead of a
  * new one only when it reads the same thing - the same fields on the same server.
+ * <p>Verifies [PROXYMA-AD 033].
  */
 class SourceIdentityTest {
 

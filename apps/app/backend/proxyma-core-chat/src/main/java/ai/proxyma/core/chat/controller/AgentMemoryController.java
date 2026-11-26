@@ -31,6 +31,7 @@ import java.util.Optional;
  * administrator included: what the agent noted about a person is not an operator surface. Desktop
  * and Home Server have one user, filed under {@link AgentMemoryService#LOCAL_USER_ID} exactly as
  * the agent's own tools file it. A server visitor with no account has no memory to show.
+ * <p>Implements [PROXYMA-AD 085], [PROXYMA-AD 107].
  */
 @RestController
 @RequestMapping("/api/v1/memory")

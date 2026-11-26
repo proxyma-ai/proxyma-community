@@ -17,6 +17,8 @@
  *
  * It cannot detect a consumer being STALE - that a newer kit exists upstream. Only running the
  * sync does that, and being a version behind is a normal state between syncs, not an error.
+ *
+ * Implements [PROXYMA-AD 025].
  */
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'

@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The local folder connector is used because it is the only one whose source of truth a test can
  * WRITE. That makes the interesting half - what happens on the SECOND sync, when a file changed or
  * vanished - testable at all.
+ *
+ * Verifies [PROXYMA-AD 034], [PROXYMA-AD 056].
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DisplayName("Indexing: a folder becomes a searchable source")
@@ -58,6 +60,7 @@ class IndexingJourneyIT extends DesktopJourney {
         }
     }
 
+    /** Verifies [PROXYMA-AD 057]. */
     @Test
     @DisplayName("a second sync re-indexes what changed and drops what was deleted")
     void aResyncFollowsTheFolder() throws IOException {
@@ -141,6 +144,7 @@ class IndexingJourneyIT extends DesktopJourney {
         }
     }
 
+    /** Verifies [PROXYMA-AD 087]. */
     @Test
     @DisplayName("the absolute folder path never reaches the client")
     void theServerPathIsNeverSent() {

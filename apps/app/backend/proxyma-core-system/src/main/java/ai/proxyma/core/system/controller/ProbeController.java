@@ -33,6 +33,7 @@ import java.util.Map;
  *
  * <p>Both are reachable with no credential in every edition: AccessGate's open list on Desktop and
  * the Home Server, SecurityConfig's permitAll on Enterprise Server.
+ * <p>Implements [PROXYMA-AD 040], [PROXYMA-AD 110].
  */
 @RestController
 @RequestMapping("/api/v1/health")

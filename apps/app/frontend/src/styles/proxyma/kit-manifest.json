@@ -81,11 +81,11 @@
     "src/components/ui/kit/Tooltip.tsx": "64b0b429b8c9002c7ed31dae027cffdcaeb4db12a074dda7f3dccaea05bd8d4a",
     "src/components/ui/kit/UserMenu.tsx": "45b1b597292b85734a9b40ee15010b3f2ab7c2a108038031dd905bdda7a7b308",
     "src/components/ui/kit/WindowControls.tsx": "cb65d46962ddb706de55f3a63ff7cb5529de91353826a5a9af5c45a4cd35261e",
-    "src/components/ui/kit/appViewport.ts": "69680dd68f88365c0829e84d31ae89f567b7e3fb40856a0995cabc5a34ee0a7c",
-    "src/components/ui/kit/appearance.ts": "bf17e50fce797f4ac55d15d8dff8bdbd6e38f9fe44c37e4578bb40bc6ba4ab1b",
-    "src/components/ui/kit/appearanceScript.ts": "2ddaafa8d325bbb316eb520acd06719a7740674416e96ed7adb5dba2b494ecec",
+    "src/components/ui/kit/appViewport.ts": "a5f77207e970339c9bec6d706dd40c8eba9ebcb4b1ad5e7cf0b0feead9100808",
+    "src/components/ui/kit/appearance.ts": "6b3035b6066a87b0e27a077f6a92cc4dbd634d2b94e8196f954d29be14eba29b",
+    "src/components/ui/kit/appearanceScript.ts": "f5192444266f91276479daec3d5930c8458e1f13051618bd0df211035e047d3c",
     "src/components/ui/kit/appearanceStore.ts": "f70a537b23d99bb1a71ab25800982b9886dd437653259aa8b9b183d469b8de8d",
-    "src/components/ui/kit/autoHide.ts": "cb2ef522243b8f2873368e2ee92ab3321fb0e41d7e83ffa4403ee18287a3f5b2",
+    "src/components/ui/kit/autoHide.ts": "0a5d7a3e41fa14c56d495540dc3aaedc6ea3fbceab58c8237c9f5888ef529b61",
     "src/components/ui/kit/buttonClass.ts": "ff4a74f34c3aa2c3c7528c5765e40e63827e65351296bf8518d3917894d9a83b",
     "src/components/ui/kit/chartAxis.ts": "bc1e6d86feb9c6db3132df46d60f47db9009b7d31e30a6c34e085b306d174bc9",
     "src/components/ui/kit/chartTheme.ts": "a3827da5daf390f8214a8fd6618647c9735ff2e50eda42a71917c4469c1a571f",
@@ -129,8 +129,8 @@
     "src/i18n/kit/I18nProvider.tsx": "440deda6751e3ee1c3d118d8eed83f3d5b2c0cdb29610bcbf7658ebcc44b5c5e",
     "src/i18n/kit/Rich.tsx": "fbc91e368fa8a392360e5828bd893d02351d659f5e0f4122513cb0e7ec14b331",
     "src/i18n/kit/index.ts": "a62874d869ddff3a8c6ada237a2f948e613c51afa821b81162f5bf4937404eda",
-    "src/i18n/kit/locale.ts": "4c5240e9d3ca375cca4359897cf18ceb1cc391d9e1260015e8acee3180e9b12f",
+    "src/i18n/kit/locale.ts": "c334d48bb493c7ce00a7e198583bc7dbf2f7e951905f125b48775521e80bb921",
     "src/i18n/kit/richParts.ts": "03ae035dc401c095fd7b2182d5120dc2fa21ce2514da1f00a8d6cc45cea0812a",
-    "src/i18n/kit/translate.ts": "60c31a4cdc59d52eb05de6e9937846b1a7b4de3253efaede4630954c97370a8e"
+    "src/i18n/kit/translate.ts": "d61999034095ba9421e990ff48975b79f0770b7c288f1adeae48967764126973"
   }
 }

@@ -80,6 +80,8 @@ const CALLBACK_PATH = '/api/v1/connections/oauth/callback'
  * or a local command, and how to sign in. It has no Write switch - every call to one of its tools
  * asks first (WriteToolRegistry.isMcpTool) - and no default, since nothing is read through it by
  * default. On Enterprise Server a Super admin alone may start a local command or share a server.
+ *
+ * Implements [PROXYMA-AD 052].
  */
 export function ConnectionModal({ connection, presetProtocol, ownClient, presetWrite, onClose, onSaved }: {
   connection: Connection | null

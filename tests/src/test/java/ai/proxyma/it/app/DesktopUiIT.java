@@ -37,6 +37,8 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
  * The UI is translated, so matching on visible English text would make every journey fail the day
  * somebody runs the suite in Vietnamese. Roles, ARIA labels and {@code contenteditable} are the
  * same in both catalogs.
+ *
+ * Verifies [PROXYMA-AD 042].
  */
 @DisplayName("Desktop UI: the product in a browser")
 @ExtendWith(UiLifecycle.class)
@@ -143,6 +145,7 @@ class DesktopUiIT extends DesktopJourney {
                 .isGreaterThan(0);
     }
 
+    /** Verifies [PROXYMA-AD 105]. */
     @Test
     @DisplayName("the appearance choice survives a reload")
     void appearancePersists() {

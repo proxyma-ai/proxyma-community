@@ -29,6 +29,7 @@ import java.util.Set;
  *
  * <p>Read live from FeatureGateService on every call, so a license activated, or a trial that
  * ends, takes effect on the next model call with no restart.
+ * <p>Implements [PROXYMA-AD 018].
  */
 @Component
 public class LicenseToolScope {

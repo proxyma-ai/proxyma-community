@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Implements [PROXYMA-AD 050]. */
 @Service
 public class ChatEventSink {
 

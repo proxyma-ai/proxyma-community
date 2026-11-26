@@ -27,6 +27,7 @@ import java.util.UUID;
  * <p>Referenced by id from every model role (chat, embedding, query expansion, reranking,
  * sub-agent, graph, OCR). The id is what roles store - never the name, which the user can rename
  * without meaning "point this role somewhere else".
+ * <p>Implements [PROXYMA-AD 002].
  */
 @Entity
 @Table(name = "provider_instances")

@@ -44,6 +44,7 @@ import static org.mockito.Mockito.when;
  * finished "complete" with no word on the source: it looked healthy while its folder listed
  * nothing. The guard stays; the source now says what happened, and the pass is not counted as a
  * full enumeration.
+ * <p>Verifies [PROXYMA-AD 057].
  */
 class ShortListingTest {
 

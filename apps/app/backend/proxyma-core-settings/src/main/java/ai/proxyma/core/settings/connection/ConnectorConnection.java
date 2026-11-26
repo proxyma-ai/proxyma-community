@@ -34,6 +34,7 @@ import java.util.UUID;
  *
  * <p>Read and Write are per connection - the agent may write to a test Jira and only read the
  * production one.
+ * <p>Implements [PROXYMA-AD 038].
  */
 @Entity
 @Table(name = "connector_connections",

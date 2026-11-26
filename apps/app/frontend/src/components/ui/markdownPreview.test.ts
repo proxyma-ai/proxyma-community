@@ -97,19 +97,42 @@ describe('lists', () => {
     n('OrderedList', 12, 16), n('ListItem', 12, 16), n('ListMark', 12, 14), n('Paragraph', 15, 16),
   ]
 
-  test('a bullet list\'s mark is a bullet, a number stays a number', () => {
+  test('a bullet list\'s mark and its space are a bullet, a number and its space a marker', () => {
     const parts = previewParts(text, nodes, NONE)
-    assert.deepEqual(kinds(parts, 'bullet'), [{ kind: 'bullet', from: 0, to: 1 }, { kind: 'bullet', from: 4, to: 5 }])
+    assert.deepEqual(kinds(parts, 'bullet'), [{ kind: 'bullet', from: 0, to: 2 }, { kind: 'bullet', from: 4, to: 6 }])
     assert.deepEqual(kinds(parts, 'style'), [
       { kind: 'style', from: 6, to: 9, look: 'task' },
-      { kind: 'style', from: 12, to: 14, look: 'number' },
+      { kind: 'style', from: 12, to: 15, look: 'marker' },
     ])
   })
 
-  test('the item being edited shows its "-"', () => {
+  test('each item\'s first line hangs its wrapped lines', () => {
+    const parts = previewParts(text, nodes, NONE)
+    assert.deepEqual(kinds(parts, 'item'), [
+      { kind: 'item', from: 0, depth: 0, ordered: false },
+      { kind: 'item', from: 4, depth: 0, ordered: false },
+      { kind: 'item', from: 12, depth: 0, ordered: true },
+    ])
+  })
+
+  test('the item being edited shows its "-" and does not hang', () => {
     const parts = previewParts(text, nodes, new Set([1]))
-    assert.deepEqual(kinds(parts, 'bullet'), [{ kind: 'bullet', from: 0, to: 1 }])
+    assert.deepEqual(kinds(parts, 'bullet'), [{ kind: 'bullet', from: 0, to: 2 }])
     assert.ok(parts.some(p => p.kind === 'style' && p.from === 4 && p.look === 'mark'))
+    assert.ok(!parts.some(p => p.kind === 'item' && p.from === 4))
+  })
+
+  test('a nested item is a level deeper, its leading spaces hidden', () => {
+    // "- a\n  - b"
+    const parts = previewParts('- a\n  - b', [
+      n('Document', 0, 9), n('BulletList', 0, 9), n('ListItem', 0, 9), n('ListMark', 0, 1), n('Paragraph', 2, 3),
+      n('BulletList', 6, 9), n('ListItem', 6, 9), n('ListMark', 6, 7), n('Paragraph', 8, 9),
+    ], NONE)
+    assert.deepEqual(kinds(parts, 'item'), [
+      { kind: 'item', from: 0, depth: 0, ordered: false },
+      { kind: 'item', from: 4, depth: 1, ordered: false },
+    ])
+    assert.deepEqual(kinds(parts, 'hide'), [{ kind: 'hide', from: 4, to: 6 }])
   })
 })
 

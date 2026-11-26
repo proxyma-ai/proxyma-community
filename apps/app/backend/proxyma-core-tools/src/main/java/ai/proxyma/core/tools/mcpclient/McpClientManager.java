@@ -48,6 +48,7 @@ import java.util.function.Function;
  *
  * <p>The tool list is kept with the client, and remembered after it closes, so a skill's
  * description and the tools' names can be given without starting a server just to list them.
+ * <p>Implements [PROXYMA-AD 009].
  */
 @Component
 public class McpClientManager {

@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * DTO is then automatically covered, and adding one to a DTO that is MISSING from
  * {@code PREFIX_CLASSES} - the failure mode that class's own javadoc warns about, where a whole
  * prefix silently keeps writing clear text - fails here.
+ * <p>Verifies [PROXYMA-AD 086].
  */
 class SettingsSecretsTest {
 

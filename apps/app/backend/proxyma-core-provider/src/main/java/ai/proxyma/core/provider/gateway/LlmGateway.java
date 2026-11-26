@@ -26,6 +26,7 @@ import java.util.Optional;
  * call is accounted for" can be true by construction rather than by everyone remembering. Streamed
  * calls come through a session ({@link #open}, {@link LlmSession#stream}) and are recorded like any
  * other.
+ * <p>Implements [PROXYMA-AD 017], [PROXYMA-AD 036].
  */
 public interface LlmGateway {
 
@@ -71,6 +72,15 @@ public interface LlmGateway {
      */
     default int contextWindow(ModelOverride override) {
         return contextWindow(LlmRole.CHAT);
+    }
+
+    /**
+     * The most a named model writes in one answer, as its provider states it - the chat's own model where the override
+     * names none (or is null). 0 when nothing states it. For a caller that sets a ceiling of its own and must not ask for
+     * more than the model allows (the YouTube team's calls).
+     */
+    default int maxOutputTokens(ModelOverride override) {
+        return 0;
     }
 
     /**

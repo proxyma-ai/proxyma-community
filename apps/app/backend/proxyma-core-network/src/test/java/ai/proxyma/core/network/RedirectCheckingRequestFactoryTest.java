@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  *
  * <p>The server here is on loopback, reached as "localhost" - which the test ALLOWS - and redirects
  * to "127.0.0.1", which it does not. Same machine, two names, one allowed: that is the whole case.
+ * <p>Verifies [PROXYMA-AD 077], [PROXYMA-AD 090].
  */
 class RedirectCheckingRequestFactoryTest {
 

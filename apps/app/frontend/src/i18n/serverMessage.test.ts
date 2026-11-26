@@ -1,3 +1,4 @@
+// Verifies [PROXYMA-AD 103].
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { translateServerText } from './serverMessage.ts'

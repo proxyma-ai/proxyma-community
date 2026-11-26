@@ -100,6 +100,8 @@
 // each still gets its own lines (`when` the sub-agent's task, say). `"offers": "<tool name>"` is
 // taken only by a request that offers that tool - which keeps a reply scripted for an agent turn
 // away from the calls the product makes beside it with no tools at all, a conversation's title.
+//
+// Implements [PROXYMA-AD 112].
 
 import { createHash, randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** Implements [PROXYMA-AD 081]. */
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(

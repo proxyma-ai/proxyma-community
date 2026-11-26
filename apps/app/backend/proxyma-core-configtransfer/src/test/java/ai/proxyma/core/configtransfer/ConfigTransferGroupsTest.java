@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
  * <p>What is pinned is what would be silently wrong: a group not chosen that is written anyway, a
  * provider created while "AI Providers" was unticked, and a Network change whose restart the
  * preview does not mention.
+ * <p>Verifies [PROXYMA-AD 040].
  */
 class ConfigTransferGroupsTest {
 

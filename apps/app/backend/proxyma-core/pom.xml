@@ -6,7 +6,7 @@
     <parent>
         <groupId>ai.proxyma</groupId>
         <artifactId>proxyma-parent</artifactId>
-        <version>0.42.3</version>
+        <version>0.42.5</version>
     </parent>
 
     <artifactId>proxyma-core</artifactId>
@@ -15,6 +15,7 @@
         consumers (proxyma-desktop, proxyma-server) need no pom.xml change. Contains no source of its own -
         actual code lives in the per-feature proxyma-core-* modules listed below.</description>
     <packaging>pom</packaging>
+    <!-- Implements [PROXYMA-AD 011]. -->
 
     <dependencies>
         <dependency>

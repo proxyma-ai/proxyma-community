@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
  * they were, and a value that will not decrypt read as unset rather than failing the prefix.
  *
  * <p>The table is a map behind a mocked repository, so what each write SENDS is what is asserted.
+ * <p>Verifies [PROXYMA-AD 038].
  */
 class SettingsStoreTest {
 

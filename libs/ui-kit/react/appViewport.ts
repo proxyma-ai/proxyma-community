@@ -16,6 +16,8 @@
  * <p>NOT WHILE THE READER HAS PINCHED IN. A zoomed page reports a visual viewport the size of the
  * magnified window, and fitting the shell to that would shrink the app under the very zoom the
  * reader asked for. The box keeps the size it had and they pan around it, as on any page.
+ *
+ * Implements [PROXYMA-AD 105].
  */
 
 export interface VisibleViewport {

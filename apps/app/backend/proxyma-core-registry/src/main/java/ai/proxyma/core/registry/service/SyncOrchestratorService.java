@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+/** Implements [PROXYMA-AD 033], [PROXYMA-AD 056], [PROXYMA-AD 058], [PROXYMA-AD 066]. */
 @Service
 public class SyncOrchestratorService implements SmartLifecycle {
 

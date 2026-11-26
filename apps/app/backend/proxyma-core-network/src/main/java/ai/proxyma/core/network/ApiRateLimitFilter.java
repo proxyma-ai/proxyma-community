@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // exposure and has no need for this. @Order(Integer.MIN_VALUE) guarantees this runs before
 // Spring Security's own filter chain (and therefore before JwtAuthFilter), same as the license
 // filter's ordering relative to its own (auth-free) app.
+/** Implements [PROXYMA-AD 039], [PROXYMA-AD 091]. */
 @Component
 @Profile("server")
 @Order(Integer.MIN_VALUE)

@@ -31,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that its user is not sitting at the machine: there is no folder picker to open, so documents
  * arrive by UPLOAD, and registering a folder by path is confined to the upload root. It has no
  * accounts - one person, like desktop - and like desktop it is Community, with no license at all.
+ *
+ * Verifies [PROXYMA-AD 072].
  */
 @DisplayName("Home Server")
 class HomeServerIT {
@@ -57,6 +59,7 @@ class HomeServerIT {
         assertThat(config.has("orgMode")).as("no org-mode switch on a single-user edition").isFalse();
     }
 
+    /** Verifies [PROXYMA-AD 063]. */
     @Test
     @DisplayName("it has no accounts, no setup and no Administration - one person, like desktop")
     void noAccounts() {

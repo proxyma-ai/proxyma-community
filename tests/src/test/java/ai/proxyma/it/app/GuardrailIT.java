@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that the rule is WIRED IN: that the chat pipeline consults it before calling a provider, that
  * the verdict reaches the user as its own kind of event, and that the event does not carry the
  * thing the rule exists to contain.
+ *
+ * Verifies [PROXYMA-AD 037], [PROXYMA-AD 093].
  */
 @DisplayName("Guardrail: refusing a turn, and how the refusal is reported")
 class GuardrailIT extends DesktopJourney {

@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 /**
  * WHERE a conversation is held, when that is not the chat page: a page of its own that runs a chat
- * beside its content (the key-account panel's {@code key-account}, docs/architecture.html#spec-11-8).
+ * beside its content (the key-account panel's {@code key-account}, docs/architecture.html#building-block-view-enterprise-extension).
  * Null is the ordinary chat.
  *
  * <p>Taken from the FIRST message of a conversation and never changed afterwards

@@ -14,6 +14,7 @@ package ai.proxyma.core.chat.event;
 // the same reason `sequence` is. A client reads how long a tool call or a sub-agent took off the
 // difference between two of them, and a turn replayed to a page that reconnected has to give the
 // same answer as the turn watched live; the moment an event happens to be DELIVERED says nothing.
+/** Implements [PROXYMA-AD 050]. */
 public record ChatEvent(
         String conversationId,
         long sequence,

@@ -61,6 +61,11 @@ function offsetUnder(e: MouseEvent<HTMLElement>, value: string): number | null {
  * `check` refuses the same way with a sentence of its own, without warning as the text is typed - a
  * step limit of 500, a budget that is no number. `onOpen` hears the editor open, for a page that
  * compares what the text was then with what the server says when it is left.
+ *
+ * A MULTI-LINE EDITOR IS AS TALL AS THE TEXT IT REPLACES (2026-11-25, the maintainer: "keep the height of editing box
+ * as the same as the viewing box. Currently, editing text show short editing box"): the text's height at rest is
+ * measured as it opens and is the editor's least height, and the editor grows with what is typed - it was held to
+ * eight lines and scrolled, so a long text opened in a box a fraction of its size.
  */
 export function EditableText({
   value, onCommit, editable = true, multiline = false, label, placeholder, maxLength, trim, fallback, required,
@@ -130,6 +135,8 @@ export function EditableText({
   // Closed from the keyboard: the focus goes back to the text, not to the page's start.
   const refocus = useRef(false)
   const rest = useRef<HTMLSpanElement>(null)
+  // The text's height at rest when the editor opened: a multi-line editor is at least as tall, so nothing moves.
+  const [restHeight, setRestHeight] = useState<number | undefined>(undefined)
   // The page has the text now (or another): what it says wins.
   useEffect(() => { setPending(null) }, [value])
 
@@ -146,6 +153,7 @@ export function EditableText({
   const open = (offset: number | null) => {
     if (!editable) return
     caret.current = caretAt(shown.length, offset)
+    setRestHeight(rest.current?.getBoundingClientRect().height || undefined)
     active.current = true
     setMissing(false)
     setRefused(false)
@@ -241,11 +249,12 @@ export function EditableText({
             <div className="space-y-2">
               <textarea
                 {...editorProps}
-                rows={editorRows(draft ?? '')}
+                rows={editorRows(draft ?? '', 1, 40)}
+                style={restHeight ? { minHeight: restHeight } : undefined}
                 onChange={e => { setDraft(e.target.value); setMissing(false); setRefused(false); setInvalid(null) }}
                 onFocus={e => e.currentTarget.setSelectionRange(caret.current, caret.current)}
-                // As tall as what is typed, wrapping included, up to eight lines; then it scrolls.
-                className={cn(editorProps.className, 'resize-y [field-sizing:content] max-h-48 overflow-y-auto')}
+                // As tall as what is typed, wrapping included, and never shorter than the text it replaced.
+                className={cn(editorProps.className, 'resize-y [field-sizing:content] overflow-y-auto')}
               />
               {cancelButton && (
                 // Pressed without taking the focus, so the box is not left (and kept) before Cancel runs.
@@ -273,7 +282,9 @@ export function EditableText({
                 onKeyDown={onRestKey}
                 // Empty on a touch screen it keeps a field's outline: its placeholder alone read as a hint, not something
                 // to tap (Administration's maintenance Reason, 2026-11-18) - a mouse finds it by hovering.
-                className={cn(BOX, className, 'border-transparent cursor-text', flow, empty && 'touch:border-line',
+                // Its outline inside the column on a touch screen (2026-11-25, the phone review: the box's -mx-2 put it 8px past
+                // the column's edge each side), the placeholder then a field's inset in from it.
+                className={cn(BOX, className, 'border-transparent cursor-text', flow, empty && 'touch:border-line touch:mx-0 touch:w-full',
                   'transition-[border-color,opacity] duration-base focus-ring mouse:hover:border-line',
                   pending !== null && 'opacity-60')}
               >

@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  * The orchestrator's half of stopping sync work before what it stands on (0.36.0 feedback): on the
  * context's close nothing new starts, and the stop waits for the passes and drains still running -
  * alongside the web server's graceful shutdown - before ChromaDB and the databases are destroyed.
+ * <p>Verifies [PROXYMA-AD 066].
  */
 class SyncShutdownOrchestratorTest {
 

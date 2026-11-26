@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
  * A connection's fields as its service's descriptor declares them: several secrets kept as ONE
  * encrypted object, settings kept apart from them, a blank secret on an edit keeping what is stored,
  * and the view naming which secrets are set without ever carrying one.
+ * <p>Verifies [PROXYMA-AD 038], [PROXYMA-AD 086].
  */
 class ConnectionFieldsTest {
 

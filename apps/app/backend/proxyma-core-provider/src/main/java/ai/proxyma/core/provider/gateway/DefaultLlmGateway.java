@@ -56,6 +56,7 @@ import java.util.Optional;
  * <p>Everything that used to make a caller think about providers lives here now: which instance
  * serves a role, whether that instance has a native rerank endpoint, and what to do when it does
  * not.
+ * <p>Implements [PROXYMA-AD 017], [PROXYMA-AD 036], [PROXYMA-AD 095], [PROXYMA-AD 096].
  */
 @Service
 public class DefaultLlmGateway implements LlmGateway {
@@ -226,6 +227,23 @@ public class DefaultLlmGateway implements LlmGateway {
         String model = override.model() == null ? chat.getModel() : override.model();
         Integer stated = providerId == null || model == null ? null : providerFactory.modelLimits(providerId, model).contextWindow();
         return stated != null && stated > 0 ? stated : ChatSettings.FALLBACK_CONTEXT_WINDOW;
+    }
+
+    @Override
+    public int maxOutputTokens(ModelOverride override) {
+        String providerId;
+        String model;
+        if (override == null || override.providerId() == null || override.model() == null) {
+            ChatSettings chat = settingsService.getSettings(ChatSettings.PREFIX, ChatSettings.class);
+            providerId = override == null || override.providerId() == null ? chat.getProvider() : override.providerId();
+            model = override == null || override.model() == null ? chat.getModel() : override.model();
+        } else {
+            providerId = override.providerId();
+            model = override.model();
+        }
+        if (providerId == null || model == null) return 0;
+        Integer stated = providerFactory.modelLimits(providerId, model).maxOutputTokens();
+        return stated == null ? 0 : stated;
     }
 
     @Override

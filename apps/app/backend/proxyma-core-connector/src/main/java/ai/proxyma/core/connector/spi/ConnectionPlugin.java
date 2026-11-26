@@ -12,6 +12,7 @@ import java.util.Set;
  * where its server is, which source types it serves) and tests a connection with one cheap call.
  * The connection dialog, the Test button and the connection service's validation all read it
  * through {@link ConnectorCatalog}.
+ * <p>Implements [PROXYMA-AD 015].
  */
 public interface ConnectionPlugin {
 

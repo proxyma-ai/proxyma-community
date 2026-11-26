@@ -5,6 +5,7 @@ import ai.proxyma.core.settings.provider.ProviderProtocol;
 import ai.proxyma.core.settings.provider.ResolvedProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,7 +28,10 @@ import java.util.Map;
  *       and several tool calls in one delta from the models it routes to
  *       ({@link ParallelToolCallDeltas}).</li>
  *   <li><b>Limits in its model list</b> - {@link ModelLimits#fromOpenRouter}.</li>
+ *   <li><b>A 402 for a ceiling the credit cannot reserve</b> is sent again at the ceiling it can
+ *       ({@link OpenRouterCreditCeiling}).</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 016].
  */
 @Component
 public class OpenRouterAdapter extends OpenAiShapedAdapter {
@@ -49,9 +53,15 @@ public class OpenRouterAdapter extends OpenAiShapedAdapter {
         return DEFAULT_BASE_URL;
     }
 
+    // The credit retry last, so a retried stream passes through the others like any.
     @Override
     protected List<ExchangeFilterFunction> streamFilters() {
-        return List.of(ReasoningFieldAlias.filter(), ParallelToolCallDeltas.filter());
+        return List.of(ReasoningFieldAlias.filter(), ParallelToolCallDeltas.filter(), OpenRouterCreditCeiling.streamFilter());
+    }
+
+    @Override
+    protected List<ClientHttpRequestInterceptor> callInterceptors() {
+        return List.of(OpenRouterCreditCeiling.callInterceptor());
     }
 
     @Override

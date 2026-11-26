@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
  * agent's own remember path, into the caller's memory and nobody else's: Knowledge unless told it is
  * about the user, nothing for a blank text or an unknown kind, and nothing at all for a visitor to a
  * multi-user server.
+ * <p>Verifies [PROXYMA-AD 107].
  */
 class AgentMemoryCreateTest {
 

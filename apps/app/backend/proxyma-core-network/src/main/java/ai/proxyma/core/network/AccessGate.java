@@ -66,6 +66,7 @@ import java.util.regex.Pattern;
  * session - each is authenticated by its own single-use state, exactly as on Enterprise Server.
  *
  * <p>The Host allow-list in WebConfig stays, as what it can actually be: a DNS-rebinding defense.
+ * <p>Implements [PROXYMA-AD 039], [PROXYMA-AD 059], [PROXYMA-AD 088], [PROXYMA-AD 089].
  */
 @Component
 @Profile("!server")

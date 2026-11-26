@@ -92,6 +92,7 @@ const initialBackdrop = readStored(BACKDROP_STORAGE_KEY, parseBackdrop)
 const initialAccent = readStored(ACCENT_STORAGE_KEY, parseAccent)
 applyLook(document.documentElement, initialBackdrop, initialAccent)
 
+/** Implements [PROXYMA-AD 105]. */
 export const useThemeStore = create<ThemeState>(set => ({
   branding: DEFAULT_BRANDING,
   preference: initialPreference,

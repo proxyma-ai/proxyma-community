@@ -12,6 +12,8 @@ import java.util.List;
  * frames. The readable {@code trace} beside it adds line numbers, still Proxyma frames only. Exception
  * messages and log text are never read, because either can carry a file path, a URL, a query or a
  * document title.
+ *
+ * Implements [PROXYMA-AD 005].
  */
 public class DiagnosticsError {
 

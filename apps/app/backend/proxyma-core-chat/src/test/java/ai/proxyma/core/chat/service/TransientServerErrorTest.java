@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>The failures below are the exception AnthropicStreamErrors raises for such an event: a
  * WebClientResponseException carrying the status the error type stands for and the event's data.
+ * <p>Verifies [PROXYMA-AD 055].
  */
 class TransientServerErrorTest {
 

@@ -38,6 +38,7 @@ import java.util.UUID;
 // UnsupportedOperationException, "ServerHttpResponse already committed" and a servlet stack trace,
 // and a client that simply closed its tab was logged as an "Unhandled exception". Such a response
 // is left as it is: the handler answers with nothing, and the exchange ends.
+/** Implements [PROXYMA-AD 087]. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

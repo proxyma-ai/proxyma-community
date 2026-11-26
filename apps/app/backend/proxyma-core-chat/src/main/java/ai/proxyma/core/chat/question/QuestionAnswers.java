@@ -17,6 +17,7 @@ import java.util.Map;
  *
  * <p>Everything here reaches the model verbatim, from a request body, so all of it is bounded:
  * the questions, the picks of one question, and the length of each.
+ * <p>Implements [PROXYMA-AD 053].
  */
 public final class QuestionAnswers {
 

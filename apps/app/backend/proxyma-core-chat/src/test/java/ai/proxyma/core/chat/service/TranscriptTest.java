@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the steps taken before it disappeared on reload. And a turn that ends without an answer - Stop
  * pressed while tools ran, the step limit reached, a provider error - left its last steps waiting
  * for a message that never came, and the next question erased them.
+ * <p>Verifies [PROXYMA-AD 031].
  */
 class TranscriptTest {
 

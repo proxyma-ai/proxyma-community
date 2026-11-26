@@ -14,6 +14,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 //   Linux   : $XDG_DATA_HOME/proxyma/  or  ~/.local/share/proxyma/
 //
 // Also usable in pre-Spring contexts (EnvironmentPostProcessor) via AppPaths.create().
+/** Implements [PROXYMA-AD 010]. */
 @Component
 public final class AppPaths {
 

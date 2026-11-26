@@ -16,7 +16,7 @@ import java.util.List;
  * canonical key; a share name is a label the server chose, and Windows preserves its case when it
  * shows it to people.
  *
- * <p>See docs/architecture.html#spec-05-3.
+ * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
  */
 public record UncPath(String host, String share, String path) {
 

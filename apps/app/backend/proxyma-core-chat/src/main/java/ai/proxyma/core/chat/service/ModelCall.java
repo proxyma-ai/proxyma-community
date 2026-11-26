@@ -49,6 +49,7 @@ import java.util.regex.Pattern;
  *
  * <p>What the caller supplies is what differs between the two: where the text goes, what a retry
  * is told to, and what counts as stopped. Everything else is the same call.
+ * <p>Implements [PROXYMA-AD 013], [PROXYMA-AD 055].
  */
 final class ModelCall {
 

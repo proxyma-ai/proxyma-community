@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 // it on @PreDestroy.
 // When proxyma.chromadb.managed=false (e.g. externally managed instance), the process
 // management is skipped and the service connects to the existing instance instead.
+/** Implements [PROXYMA-AD 071], [PROXYMA-AD 080]. */
 @Service
 @Primary
 @org.springframework.context.annotation.Profile("!server")

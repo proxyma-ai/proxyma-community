@@ -33,6 +33,7 @@ import org.springframework.web.server.WebFilterChain;
  * <p>Spring Security's own headers stay as they are: nosniff, X-Frame-Options and, behind TLS
  * only, HSTS. A WebFilter rather than {@code headers()} in each security chain so the two
  * editions cannot drift apart: Desktop's chain and Enterprise Server's are separate classes.
+ * <p>Implements [PROXYMA-AD 091].
  */
 @Configuration
 public class SecurityHeadersConfig {

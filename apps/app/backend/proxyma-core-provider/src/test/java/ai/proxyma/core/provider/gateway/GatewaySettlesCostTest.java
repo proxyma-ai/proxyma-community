@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
  * The gateway settles each call's cost ON the chunks it hands on (2026-10-22), so the chat's turn
  * totals, the per-call log and the monthly rollup read one figure - with the one-hour writes a
  * session asked for already priced as such.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class GatewaySettlesCostTest {
 

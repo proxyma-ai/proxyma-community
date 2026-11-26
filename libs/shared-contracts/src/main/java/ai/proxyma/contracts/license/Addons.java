@@ -22,6 +22,8 @@ import java.util.TreeSet;
  *
  * <p>Names are strings on the wire, never an enum: a name a build does not know is ignored, so the
  * license server can issue a new add-on before every installation knows it.
+ *
+ * Implements [PROXYMA-AD 024].
  */
 public final class Addons {
 

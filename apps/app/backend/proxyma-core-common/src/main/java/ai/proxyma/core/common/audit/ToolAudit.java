@@ -14,6 +14,7 @@ import java.util.function.Supplier;
  *
  * <p>The result is recorded AFTER the guardrail by design: a credential the guardrail took out of a
  * search hit before the model saw it must not be kept for ninety days in the log of that search.
+ * <p>Implements [PROXYMA-AD 098].
  */
 public final class ToolAudit {
 

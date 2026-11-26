@@ -15,6 +15,7 @@ import java.net.Proxy;
  * implements it, so the render engines still route through the exact same proxy as every other
  * outbound client, resolved at runtime. When no implementation is on the context (webcontent used in
  * isolation), the engines simply run without a proxy.
+ * <p>Implements [PROXYMA-AD 090].
  */
 public interface WebProxyProvider {
 

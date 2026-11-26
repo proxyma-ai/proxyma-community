@@ -44,6 +44,7 @@ import static org.mockito.Mockito.when;
  * deliberation's panel argues over rounds, the asker decides and the dissent is kept; a back-and-forth
  * between two agents is bounded; and all of it is recorded for the timeline. Map-backed repositories
  * and a mocked chat, so no turn runs: a test ends a turn by saying what it answered.
+ * <p>Verifies [PROXYMA-AD 054].
  */
 class AgentTreeWorkTest {
 

@@ -25,6 +25,8 @@ import { useDates } from '@/hooks/useDates'
 //
 // The list takes the telemetry console's multi-select (the kit's SelectBox, BulkActionBar and
 // selection.ts): a set of ids, shift-click for a run, and a bar of actions over whatever is ticked.
+//
+// Implements [PROXYMA-AD 107].
 
 type Filter = 'all' | MemoryCategory
 

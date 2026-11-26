@@ -61,6 +61,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * supported configuration meaning "send nothing anywhere", and an empty releases URL makes
  * UpdateService report up-to-date and stop. A suite that ran a hundred times a day against the
  * real endpoints would be indistinguishable from a broken installation flooding them.
+ *
+ * Implements [PROXYMA-AD 112].
  */
 public final class ProxymaApp implements AutoCloseable {
 

@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
  * at all. {@link #redact} takes out what a line should never carry to another trust domain:
  * absolute server paths (SensitivePaths, as at every client boundary), query strings, and anything
  * shaped like a credential.
+ * <p>Implements [PROXYMA-AD 005].
  */
 @Component
 public class LogTailProvider {

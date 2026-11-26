@@ -26,6 +26,7 @@ import java.util.Map;
  *       snippets in Settings > AI Assistants. Only somebody already in can read it.</li>
  *   <li>{@code GET /api/v1/access/claude-extension} - the same, packed as a Claude Desktop extension.</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 088].
  */
 @RestController
 @RequestMapping(AccessGate.ACCESS_PATH)

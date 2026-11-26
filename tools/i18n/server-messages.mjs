@@ -33,6 +33,8 @@
 // What it cannot see stays English, which is what every message was before: a sentence built in a
 // variable first, or assembled by a helper. English is always the fallback - nothing here can
 // make a message disappear.
+//
+// Implements [PROXYMA-AD 103].
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -40,7 +42,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#oss-boundary). The Community backend's
+// TWO LISTS, one per side of the Enterprise boundary (docs/architecture.html#solution-strategy-open-core-boundary). The Community backend's
 // sentences go to the app's own list; the Enterprise modules' (ee/, private) to a list beside the
 // Enterprise frontend, holding only what the Community list does not already have. A tree without
 // ee/ - the public Community repository - writes and checks the first alone, and its catalog then

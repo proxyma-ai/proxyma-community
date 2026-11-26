@@ -3,6 +3,8 @@
 // Plain `.ts` with no JSX, so Node's own type stripping runs it - no test runner, no bundler, no
 // new dependency. That is also why the logic lives here and I18nProvider.tsx holds only the React
 // binding: the half worth testing stays testable.
+//
+// Verifies [PROXYMA-AD 103].
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -144,5 +146,19 @@ describe('the first frame', () => {
     assert.equal(typeof (globalThis as Record<string, unknown>).window, 'undefined');
     assert.equal(initialLocale(), DEFAULT_LOCALE);
     assert.equal(initialLocale('vi'), 'vi');
+  });
+});
+
+describe('a context gives one English word a second translation', () => {
+  const withContext: Catalogs = { vi: { 'Sources': 'Nguồn dữ liệu', 'Sources::dock': 'Nguồn' } };
+
+  test('the context is its own key', () => {
+    assert.equal(translate(withContext, 'vi', 'Sources::dock'), 'Nguồn');
+    assert.equal(translate(withContext, 'vi', 'Sources'), 'Nguồn dữ liệu');
+  });
+
+  test('English, or no translation, shows the word without its context', () => {
+    assert.equal(translate(withContext, 'en', 'Sources::dock'), 'Sources');
+    assert.equal(translate({}, 'vi', 'Sources::dock'), 'Sources');
   });
 });

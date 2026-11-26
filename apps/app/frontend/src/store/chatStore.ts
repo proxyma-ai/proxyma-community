@@ -7,7 +7,7 @@ import type {
 import type { RevealRequest, RevealTarget } from '@/features/chat/utils/threadReveal'
 
 /**
- * ONE CHAT'S STATE - a store per chat instance, since the key-account panel (docs/architecture.html#spec-11-8)
+ * ONE CHAT'S STATE - a store per chat instance, since the key-account panel (docs/architecture.html#building-block-view-enterprise-extension)
  * put a second chat on a page. It was one global store, and two chats on screen would
  * have written into each other. Made by `createChatStore` for each ChatInstance
  * (features/chat/instance/chatInstance.ts); a component reads the one it belongs to through

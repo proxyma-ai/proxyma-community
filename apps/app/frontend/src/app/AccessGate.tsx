@@ -14,6 +14,8 @@ import { useAccessStore } from '@/store/accessStore'
 // typing the address into a browser by hand.
 //
 // Enterprise Server has accounts and its own sign-in page; this is a passthrough there.
+//
+// Implements [PROXYMA-AD 088].
 export function AccessGate({ children }: { children: React.ReactNode }) {
   if (FEATURES.auth) return <>{children}</>
   return <SingleUserAccessGate>{children}</SingleUserAccessGate>

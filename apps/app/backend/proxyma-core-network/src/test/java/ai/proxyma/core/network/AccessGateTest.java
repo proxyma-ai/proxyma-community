@@ -36,6 +36,7 @@ import static org.mockito.Mockito.mock;
  * interface. Every API call now presents the install's access code, as a cookie a handshake sets or
  * as the install's {@code pxm_} token. These run the REAL WebConfig filters and AccessGate against
  * mock exchanges: a request that reaches the end of the chain is a request the app would serve.
+ * <p>Verifies [PROXYMA-AD 039], [PROXYMA-AD 059], [PROXYMA-AD 088], [PROXYMA-AD 089].
  */
 class AccessGateTest {
 

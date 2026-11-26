@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Which converter a file goes to, and when AUTO escalates to OCR (ingest-07, -09, -30, -31).
+ * <p>Verifies [PROXYMA-AD 034].
  */
 class ConversionRoutingTest {
 

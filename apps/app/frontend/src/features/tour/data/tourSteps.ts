@@ -9,7 +9,7 @@ import { FEATURES, type FeatureKey } from '@/config/features'
 // user met a chat box and read it as a chat bot. The order is the maintainer's: the welcome; chat as
 // a TEAM OF AGENTS doing long multi-step work across systems; the sources it knows; the two together
 // on one real task - since the key-account demo replaced the CRA case, the Key accounts page
-// (docs/architecture.html#spec-11); and the settings that decide how far it may go.
+// (docs/architecture.html#building-block-view-enterprise-extension); and the settings that decide how far it may go.
 //
 // What F20 got right still holds, and is why this is not the old ten-slide deck back:
 // - a stop that points at a control sits BESIDE it, never over it (TourOverlay.computePlacement);

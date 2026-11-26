@@ -25,6 +25,7 @@ import java.nio.file.Path;
 // markitdown, chat always pdfplumber for PDFs), which is also why AUTO's defaults look the way they
 // do: it keeps each surface's previous behavior as the first attempt and only adds an escalation
 // path that did not exist at all.
+/** Implements [PROXYMA-AD 034]. */
 @Service
 public class DocumentConversionService {
 

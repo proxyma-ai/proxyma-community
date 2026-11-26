@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * where the agent reported memory "timing out" three times before a fact stuck. The keyword index is
  * real (Lucene in a temp dir); the vector store and the hybrid search throw, as they do when every
  * embedding call fails. Everything here has to keep working through that.
+ * <p>Verifies [PROXYMA-AD 107].
  */
 class AgentMemoryServiceTest {
 

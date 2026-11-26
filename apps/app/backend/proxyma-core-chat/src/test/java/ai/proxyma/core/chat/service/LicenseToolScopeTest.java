@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * two-tier model (2026-10-14) Community includes every connector, so what can be left out is
  * Enterprise's alone - Microsoft 365, on an Enterprise Server with no license in force - and the
  * LICENSE line is empty everywhere else.
+ * <p>Verifies [PROXYMA-AD 018].
  */
 class LicenseToolScopeTest {
 

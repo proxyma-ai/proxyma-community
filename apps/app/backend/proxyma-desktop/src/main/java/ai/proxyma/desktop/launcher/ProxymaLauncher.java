@@ -55,6 +55,7 @@ import static java.nio.file.StandardOpenOption.*;
 // THIS CLASS CAN BE NEWER THAN THE INSTALLER. Boot, the installer's entry point, starts the
 // launcher part of the active release when that is newer than the launcher it carries - so launcher
 // fixes ship like any other part. Nothing here may assume it runs from the installed jar.
+/** Implements [PROXYMA-AD 006], [PROXYMA-AD 065], [PROXYMA-AD 070]. */
 public class ProxymaLauncher {
 
     // MUST come before the Logger field below, and must stay a static block rather than the first

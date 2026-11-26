@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 
+/** Implements [PROXYMA-AD 034], [PROXYMA-AD 058]. */
 @Service
 public class EmbeddingService {
 

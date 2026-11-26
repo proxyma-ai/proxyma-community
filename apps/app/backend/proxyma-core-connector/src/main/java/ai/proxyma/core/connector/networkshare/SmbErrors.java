@@ -13,7 +13,7 @@ import java.net.UnknownHostException;
  * <p>NT STATUS CODES BY VALUE, because smbj does not name all of them and a numeric comparison
  * against the wire value cannot drift with the library's enum. The codes are the stable half.
  *
- * <p>See docs/architecture.html#spec-05-7-4.
+ * <p>See docs/architecture.html#solution-strategy-connectors-as-plugins.
  */
 public final class SmbErrors {
 

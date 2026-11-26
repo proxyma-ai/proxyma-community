@@ -38,6 +38,7 @@ import java.util.zip.ZipInputStream;
  *
  * <p>THE DIGEST IS CHECKED BEFORE ANYTHING IS EXTRACTED. Extracting first would write
  * attacker-chosen paths before deciding whether to trust the archive at all.
+ * <p>Implements [PROXYMA-AD 065].
  */
 public final class PartsFetcher {
 

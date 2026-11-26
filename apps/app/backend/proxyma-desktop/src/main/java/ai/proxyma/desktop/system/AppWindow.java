@@ -41,6 +41,7 @@ import java.util.function.Supplier;
  * it is Playwright's headless shell, for rendering web pages during a crawl: it has no window. The
  * user's own browser profile is used on purpose - a dedicated one can open first-run pages beside
  * the app, and a Snap-confined Chromium cannot keep a profile under a hidden directory at all.
+ * <p>Implements [PROXYMA-AD 070].
  */
 public final class AppWindow {
 

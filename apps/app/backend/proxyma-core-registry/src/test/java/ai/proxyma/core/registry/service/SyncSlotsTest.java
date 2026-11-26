@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
  * Sources do not all sync at once (maintainer's feedback on 0.26.0, 2026-10-04). Passes the
  * scheduler starts wait for one of a fixed number of slots, in the order they became due; a
  * source somebody pressed "Sync now" on starts at once.
+ * <p>Verifies [PROXYMA-AD 056].
  */
 class SyncSlotsTest {
 

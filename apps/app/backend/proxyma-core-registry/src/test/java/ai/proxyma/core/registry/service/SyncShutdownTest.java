@@ -47,6 +47,7 @@ import static org.mockito.Mockito.when;
  * shutdown: the event executor refused their notices, ChromaDB was stopped under an upsert, H2
  * closed under a pass, and each item in flight was recorded as a FAILED document - an ERROR with a
  * stack trace, a retry spent, the source put in ERROR for a pass the shutdown had cut short.
+ * <p>Verifies [PROXYMA-AD 066].
  */
 class SyncShutdownTest {
 

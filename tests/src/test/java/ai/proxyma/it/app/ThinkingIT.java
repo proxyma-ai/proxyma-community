@@ -18,6 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * delta field (vLLM, Ollama's /v1, LM Studio - which Spring AI does not read, so the product renames
  * it on the way in), the `reasoning_content` field (DeepSeek, llama.cpp), and `<think>` written
  * into the answer text itself by a model whose server does not parse reasoning.
+ *
+ * Verifies [PROXYMA-AD 050].
  */
 @DisplayName("Chat: a model that thinks")
 class ThinkingIT extends DesktopJourney {

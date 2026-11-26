@@ -33,6 +33,7 @@ import java.util.function.Predicate;
  *
  * <p>Persisted, so a restart loses nothing; the set of conversations with something waiting is kept
  * in memory as well, because whether anything is owed is asked before every step of every turn.
+ * <p>Implements [PROXYMA-AD 054].
  */
 @Service
 public class AgentInbox {

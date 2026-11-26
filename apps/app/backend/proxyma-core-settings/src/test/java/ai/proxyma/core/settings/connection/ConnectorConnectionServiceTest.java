@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
  * here are the ones whose failure is silent: a token readable by the wrong person, a token written
  * in clear text (SEC-31's shape), a token erased by an unrelated edit, and a connection deleted out
  * from under sources that still sync through it without those sources being told.
+ * <p>Verifies [PROXYMA-AD 038], [PROXYMA-AD 085], [PROXYMA-AD 086].
  */
 class ConnectorConnectionServiceTest {
 

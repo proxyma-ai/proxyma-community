@@ -40,6 +40,7 @@ import java.util.List;
  *
  * <p>The signature is raw Ed25519 over the exact bytes of SHA256SUMS.txt - what
  * {@code openssl pkeyutl -sign -rawin} produces (tools/release/sign-sums.sh).
+ * <p>Implements [PROXYMA-AD 006], [PROXYMA-AD 065].
  */
 public final class ReleaseSignatures {
 

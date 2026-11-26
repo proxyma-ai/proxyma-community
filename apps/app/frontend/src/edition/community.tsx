@@ -5,6 +5,8 @@ import type { Walkthrough } from '@/features/tour/data/tourSteps'
 /**
  * The COMMUNITY edition: Desktop and the Home Server. What `@edition` resolves to in every build
  * except Enterprise's - see types.ts. One person, no accounts, so none of the Enterprise pages exist.
+ *
+ * Implements [PROXYMA-AD 012], [PROXYMA-AD 042].
  */
 
 export const EDITION_ROUTES: readonly EditionRoute[] = []

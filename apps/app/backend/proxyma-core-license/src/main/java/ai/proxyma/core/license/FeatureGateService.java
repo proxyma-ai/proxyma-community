@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
  * connector, no folder, file or web-page cap. What is left is what Enterprise sells - Microsoft 365
  * ({@link #checkConnector}), accounts ({@link #isNewAccountAllowed}), and key accounts and org
  * mode, which their own modules ask {@link #getFeatures()} about.
+ * <p>Implements [PROXYMA-AD 018].
  */
 @Service
 public class FeatureGateService {

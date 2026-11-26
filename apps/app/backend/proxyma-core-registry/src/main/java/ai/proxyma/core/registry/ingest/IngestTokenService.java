@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
  * still that person's (on the single-user editions both are null, the one local user), and on
  * Enterprise Server that the account may still sign in - an account awaiting deletion is locked out
  * of everything else, so of this too.
+ * <p>Implements [PROXYMA-AD 059], [PROXYMA-AD 089].
  */
 @Service
 public class IngestTokenService implements IngestTokenCheck {

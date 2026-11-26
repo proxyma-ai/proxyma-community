@@ -13,6 +13,7 @@ import java.util.Optional;
  *
  * <p>One parser for every retry layer, so they cannot disagree about what a header means. Each
  * caller still decides how long it is willing to believe - see {@link #capped}.
+ * <p>Implements [PROXYMA-AD 055].
  */
 public final class RetryAfter {
 

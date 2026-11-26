@@ -29,6 +29,7 @@ import java.util.Set;
  * from https down to http, 303 (and 301/302 after a POST) become a body-less GET, 307 and 308 keep
  * the method and body. Headers travel with every hop, as they do with the JDK's own following -
  * a connector's credential goes to wherever its own server redirects it, exactly as before.
+ * <p>Implements [PROXYMA-AD 077], [PROXYMA-AD 090].
  */
 final class RedirectCheckingRequestFactory implements ClientHttpRequestFactory {
 

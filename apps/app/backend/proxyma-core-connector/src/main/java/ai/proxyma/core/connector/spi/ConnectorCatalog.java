@@ -32,6 +32,7 @@ import java.util.Set;
  * the database is described the same way everywhere; it is simply not offered. One described only by
  * a module this deployment does not have - Microsoft 365 on Desktop, whose plugins are Proxyma
  * Enterprise's - has no descriptor here at all, and every registration of it is refused.
+ * <p>Implements [PROXYMA-AD 015], [PROXYMA-AD 018].
  */
 @Component
 public class ConnectorCatalog {

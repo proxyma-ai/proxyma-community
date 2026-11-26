@@ -82,6 +82,7 @@ import java.util.stream.Collectors;
  * those outputs are the only surviving record of what the finished steps found.
  *
  * Ported from the earlier tenant build's SmartChatMemory.
+ * <p>Implements [PROXYMA-AD 031].
  */
 public class SmartChatMemory implements ChatMemory {
 

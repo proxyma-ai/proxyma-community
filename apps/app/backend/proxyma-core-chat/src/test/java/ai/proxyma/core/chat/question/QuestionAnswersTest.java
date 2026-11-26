@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The answers to an askUser call, read from a request body. They reach the model verbatim, so what
  * is pinned is the shape - several picks stay a list - and that nothing here is unbounded.
+ * <p>Verifies [PROXYMA-AD 053].
  */
 class QuestionAnswersTest {
 

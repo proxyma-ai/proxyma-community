@@ -28,6 +28,7 @@ import java.util.TreeMap;
  * partials into one, and stamps the header: the random installation id, version, tier, edition.
  * Nothing else is added here; everything in a day was recorded through the aggregator's label
  * sanitizer, and the feature snapshot through {@link DiagnosticsSnapshot#sanitize}.
+ * <p>Implements [PROXYMA-AD 005].
  */
 @Component
 public class DiagnosticsReportBuilder {

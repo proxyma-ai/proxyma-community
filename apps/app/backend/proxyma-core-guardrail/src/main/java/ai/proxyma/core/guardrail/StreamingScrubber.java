@@ -33,6 +33,7 @@ import java.util.Map;
  * {@code doOnNext} and {@code doFinally}, which the Reactive Streams specification requires to be
  * called sequentially and never concurrently - the same reason the text buffer beside it in
  * ChatService is a plain StringBuilder.
+ * <p>Implements [PROXYMA-AD 093].
  */
 public final class StreamingScrubber {
 

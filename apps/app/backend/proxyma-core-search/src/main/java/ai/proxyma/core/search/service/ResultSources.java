@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
  *
  * <p>Both path conventions are recognised on every server: a Windows path indexed on a desktop and
  * read on Linux is not absolute to {@code Path.of} there, and passed through whole.
+ * <p>Implements [PROXYMA-AD 087].
  */
 public final class ResultSources {
 

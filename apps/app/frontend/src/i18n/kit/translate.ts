@@ -30,6 +30,8 @@
  * checked rather than trusted.
  *
  * There is therefore NO English catalog. English is the source, in the source.
+ *
+ * Implements [PROXYMA-AD 103].
  */
 import type { Locale } from './locale.ts';
 
@@ -49,6 +51,13 @@ export type TranslateParams = Record<string, string | number>;
  */
 const PLURAL_SEPARATOR = '|';
 
+/**
+ * A source string may end in a CONTEXT: `"Sources::dock"` reads "Sources" in English and is its own key, so one
+ * English word can take two translations where one place needs a shorter word (2026-11-26: the phone's dock, where
+ * "Nguồn dữ liệu" did not fit). The context is never shown: an untranslated string drops it.
+ */
+const CONTEXT_SEPARATOR = '::';
+
 const INTERPOLATION = /\{(\w+)\}/g;
 
 /**
@@ -63,8 +72,14 @@ export function translate(
   source: string,
   params?: TranslateParams,
 ): string {
-  const raw = catalogs[locale]?.[source] ?? source;
+  const raw = catalogs[locale]?.[source] ?? withoutContext(source);
   return interpolate(selectPluralForm(raw, params), params);
+}
+
+/** The English a source string shows: everything before its context, if it carries one. */
+function withoutContext(source: string): string {
+  const at = source.lastIndexOf(CONTEXT_SEPARATOR);
+  return at > 0 ? source.slice(0, at) : source;
 }
 
 /**

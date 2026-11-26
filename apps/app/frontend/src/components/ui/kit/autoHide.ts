@@ -23,6 +23,8 @@
  * 2026-11-17; since then it is the scroll as on the site, guarded (useAutoHide.ts: only the reader's own
  * scrolling counts, and the bar's own move settles before the next decision). The landing site scrolls
  * the document under a fixed bar, nothing resizes, and the scroll position is the plain signal.
+ *
+ * Implements [PROXYMA-AD 105].
  */
 
 /** A finger has to travel this far before it counts as a direction rather than a resting touch. */

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * The single-user install's access code: made once, kept to its owner, the same for the launcher and
  * the app, and never itself the cookie or the token.
+ * <p>Verifies [PROXYMA-AD 088].
  */
 class AccessCodeTest {
 

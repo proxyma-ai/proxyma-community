@@ -50,6 +50,7 @@ import static org.mockito.Mockito.when;
  * somebody else's connection (indexing with their token), a probe that ran against a different
  * server than the one saved, and a shared source that lends its owner's credential to whoever asks
  * about it. Runs the real {@link ConnectorEndpointResolver}; only the connection store is a stand-in.
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class ConnectorRegistrationEndpointTest {
 

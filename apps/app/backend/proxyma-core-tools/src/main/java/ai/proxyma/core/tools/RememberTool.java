@@ -23,6 +23,7 @@ import java.util.Map;
 // either away (maintainer's 0.36.2 feedback). With an id from recall it now replaces or deletes that
 // entry - AgentMemoryService.edit and delete, the same calls Settings > Memory makes, scoped to this
 // user's own collection.
+/** Implements [PROXYMA-AD 107]. */
 @Component
 public class RememberTool {
 

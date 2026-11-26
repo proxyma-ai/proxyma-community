@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
  *   <li>settings-connections-usage-13: the call log's EXPORT is a second place the "own rows only"
  *       rule is enforced, by the subject the controller passes down.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class SpendReadScopeTest {
 

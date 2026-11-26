@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * <p>With "Keep the matched text" on, a rule hands its matched span to the in-memory window, and
  * GuardrailEvidence promises that span never reaches disk. The audit log is on disk. This pins
  * that the entry carries rule ids and categories alone, whatever evidence the check was given.
+ * <p>Verifies [PROXYMA-AD 093], [PROXYMA-AD 098].
  */
 class GuardrailAuditTest {
 

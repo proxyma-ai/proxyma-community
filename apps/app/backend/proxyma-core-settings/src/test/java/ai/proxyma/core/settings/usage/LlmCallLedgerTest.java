@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
  * controller derives the subject from the authenticated principal rather than from a request
  * parameter. A filter taken from the client would be an access-control bug wearing a query
  * string.
+ * <p>Verifies [PROXYMA-AD 085], [PROXYMA-AD 095].
  */
 class LlmCallLedgerTest {
 

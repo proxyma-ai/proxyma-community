@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * platform-09: what an exception's message tells a client. A message is written for a log; an
  * absolute server path in one reached the browser as a 400, and any unexpected exception verbatim as
  * a 500 - SQL included.
+ * <p>Verifies [PROXYMA-AD 087].
  */
 class GlobalExceptionHandlerTest {
 

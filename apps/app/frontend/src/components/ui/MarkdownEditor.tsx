@@ -66,7 +66,12 @@ const STYLE: Record<InlineLook, Decoration> = {
   mark: Decoration.mark({ class: 'cm-md-mark' }),
   number: Decoration.mark({ class: 'cm-md-number' }),
   task: Decoration.mark({ class: 'cm-md-task' }),
+  marker: Decoration.mark({ class: 'cm-md-marker' }),
 }
+
+/** A list item's first line, by its depth (at most four levels drawn apart) and whether it is numbered. */
+const ITEM = (depth: number, ordered: boolean) =>
+  Decoration.line({ class: `cm-md-item cm-md-depth-${Math.min(depth, 3)}${ordered ? ' cm-md-ordered' : ''}` })
 
 /** The lines the caret or a selection is on - none while the box has no focus or cannot be edited. */
 function editingLines(view: EditorView): Set<number> {
@@ -91,6 +96,7 @@ function decorate(view: EditorView): DecorationSet {
       case 'hide': return HIDE.range(part.from, part.to)
       case 'bullet': return BULLET.range(part.from, part.to)
       case 'rule': return RULE.range(part.from, part.to)
+      case 'item': return ITEM(part.depth, part.ordered).range(part.from)
     }
   })
   return Decoration.set(ranges, true)
@@ -137,7 +143,16 @@ const look = EditorView.theme({
   '.cm-md-mark': { color: 'rgb(var(--ink-disabled))', fontWeight: '400', fontStyle: 'normal' },
   '.cm-md-number': { color: 'rgb(var(--ink-caption))' },
   '.cm-md-task': { fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-caption))' },
-  '.cm-md-bullet': { color: 'rgb(var(--ink-caption))' },
+  '.cm-md-bullet': { color: 'rgb(var(--ink-caption))', display: 'inline-block', width: 'var(--md-marker)', textIndent: '0' },
+  '.cm-md-marker': { color: 'rgb(var(--ink-caption))', display: 'inline-block', minWidth: 'var(--md-marker)', textIndent: '0' },
+  // A list item's wrapped lines hang under its text, as the chat draws a list: the marker sits in the
+  // indent, a fixed width per level, whatever its own characters measure.
+  '.cm-line.cm-md-item': { '--md-marker': '1.25em', textIndent: 'calc(-1 * var(--md-marker))' },
+  '.cm-line.cm-md-item.cm-md-ordered': { '--md-marker': '1.75em' },
+  '.cm-line.cm-md-depth-0': { paddingLeft: 'calc(12px + var(--md-marker))' },
+  '.cm-line.cm-md-depth-1': { paddingLeft: 'calc(12px + 1.25em + var(--md-marker))' },
+  '.cm-line.cm-md-depth-2': { paddingLeft: 'calc(12px + 2.5em + var(--md-marker))' },
+  '.cm-line.cm-md-depth-3': { paddingLeft: 'calc(12px + 3.75em + var(--md-marker))' },
   '.cm-md-quote': {
     borderLeft: '2px solid rgb(var(--line))', paddingLeft: '10px', marginLeft: '12px', color: 'rgb(var(--ink-caption))',
   },

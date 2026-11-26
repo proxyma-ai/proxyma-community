@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * each tool call and hands it over whole (AnthropicToolUseBlocks), gets the text and the whole tool
  * call. The 0.40.1 feedback was the same error from a second deviation - one call split over two
  * blocks, the second nameless - which is pinned the same way.
+ * <p>Verifies [PROXYMA-AD 016].
  */
 class LiteLlmToolUseBlocksTest {
 

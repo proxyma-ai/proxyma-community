@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
  * the one path that did delete - a reindex - deleted on a crash-resume too, after which only the
  * chunks past the resume offset were written back, so the document's first chunks were gone from
  * dense search for good (ingest-04).
+ * <p>Verifies [PROXYMA-AD 058].
  */
 class EveryWriteReplacesTest {
 

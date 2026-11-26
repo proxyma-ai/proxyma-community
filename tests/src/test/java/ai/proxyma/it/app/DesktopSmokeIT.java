@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Desktop: the installation starts and serves itself")
 class DesktopSmokeIT extends DesktopJourney {
 
+    /** Verifies [PROXYMA-AD 110]. */
     @Test
     @DisplayName("health answers with the edition and the version, and nothing else")
     void healthIsSmall() {
@@ -37,6 +38,7 @@ class DesktopSmokeIT extends DesktopJourney {
                         "uptimeSeconds", "uptime");
     }
 
+    /** Verifies [PROXYMA-AD 020]. */
     @Test
     @DisplayName("the SPA is served from inside the jar, and its assets load")
     void spaIsServed() {

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>REQUIRES_NEW so the row commits on its own, independently of whatever transaction the caller
  * is inside - a chat turn that rolls back still spent the money.
+ * <p>Implements [PROXYMA-AD 095].
  */
 @Service
 public class LlmCallLogService {

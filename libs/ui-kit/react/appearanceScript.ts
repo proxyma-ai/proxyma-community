@@ -15,6 +15,8 @@
  * and Cookie policies name is the only one a browser keeps.
  *
  * Plain .ts with no imports, strippable, for `node --test`.
+ *
+ * Implements [PROXYMA-AD 105].
  */
 
 /** The canvas of each appearance, as the browser chrome's colour (`<meta name="theme-color">`). */

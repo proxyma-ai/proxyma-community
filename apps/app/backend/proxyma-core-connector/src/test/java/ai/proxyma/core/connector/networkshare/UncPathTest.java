@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Acceptance tests 1 and 2 of docs/architecture.html#spec-05-11.
+ * Acceptance tests 1 and 2 of docs/architecture.html#crosscutting-concepts-tests-through-the-front-door.
  *
  * <p>The normalization is load-bearing beyond tidiness: the registered form is what duplicate
  * detection compares AND what the allow-list reads a host out of, so two spellings of one path

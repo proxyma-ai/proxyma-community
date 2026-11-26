@@ -37,6 +37,7 @@ import java.util.Locale;
  *
  * <p>Static rather than a bean because the call sites span six modules and several are not
  * Spring-managed; the state is set once at startup by RestClientConfig's constructor.
+ * <p>Implements [PROXYMA-AD 077], [PROXYMA-AD 090].
  */
 public final class OutboundAddressPolicy {
 

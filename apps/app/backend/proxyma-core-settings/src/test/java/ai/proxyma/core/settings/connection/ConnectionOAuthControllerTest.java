@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
  * person's own browser, where the app is behind the access gate, so the callback answers with a page
  * of its own - written from fixed sentences, nothing from the request. Enterprise Server's sign-in
  * stays in the app's browser and still lands back in the app.
+ * <p>Verifies [PROXYMA-AD 064].
  */
 class ConnectionOAuthControllerTest {
 

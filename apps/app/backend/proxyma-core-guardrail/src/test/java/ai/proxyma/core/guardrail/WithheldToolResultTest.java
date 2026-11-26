@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>It has to stay one valid JSON object (a bare sentence once parsed as something else and
  * SUCCEEDED), and since 2026-11-08 it carries the categories as a list beside the sentence: the
  * page reads them to say under the answer that a source was held back and why.
+ * <p>Verifies [PROXYMA-AD 093].
  */
 class WithheldToolResultTest {
 

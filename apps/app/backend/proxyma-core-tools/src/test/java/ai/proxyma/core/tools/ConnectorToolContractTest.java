@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>A model-supplied id reaches a REST path only in the shape its server gives it.</li>
  *   <li>One verb rule: missing or blank is GET, only GET reads.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 032], [PROXYMA-AD 052].
  */
 class ConnectorToolContractTest {
 

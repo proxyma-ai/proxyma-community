@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.within;
  * What a call costs under a rate card (2026-10-22, the maintainer's request: cost from what the
  * response states - hits, misses, writes - with five-minute and one-hour writes priced apart, and
  * the rest of what a provider bills by). Prices are each vendor's list prices of that day.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class CostCalculatorTest {
 

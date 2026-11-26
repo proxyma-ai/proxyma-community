@@ -34,6 +34,7 @@ import java.util.Map;
  * secrets in clear text. {@code SettingsPrefixRegistry} reads this same map, so a prefix added
  * here is also picked up by export/import - one list, not two. A module outside the Community
  * edition adds its own through {@link SettingsPrefixContributor}, into this same map.
+ * <p>Implements [PROXYMA-AD 086].
  */
 public final class SettingsSecrets {
 

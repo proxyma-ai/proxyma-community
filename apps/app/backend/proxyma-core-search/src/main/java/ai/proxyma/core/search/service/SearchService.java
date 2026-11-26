@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 014], [PROXYMA-AD 035], [PROXYMA-AD 060]. */
 @Service
 public class SearchService {
 

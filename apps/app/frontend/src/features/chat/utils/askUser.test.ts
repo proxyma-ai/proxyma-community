@@ -1,3 +1,4 @@
+// Verifies [PROXYMA-AD 053].
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { OTHER, answerOf, nextUnanswered, parseQuestions, picksOf, stepLimitOf, togglePick } from './askUser.ts'

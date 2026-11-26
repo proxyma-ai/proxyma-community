@@ -53,6 +53,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>Proved by breaking it: deleting either recordSpend call in DefaultLlmGateway.rerank fails the
  * matching test here.
+ * <p>Verifies [PROXYMA-AD 017], [PROXYMA-AD 095].
  */
 class GatewaySpendMeteringTest {
 

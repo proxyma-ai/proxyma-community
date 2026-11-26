@@ -124,6 +124,8 @@ export function AppShell() {
     if (!shouldShowMcpAd()) return
     // NOT ON A PHONE (the mobile audit, 2026-11-16): an IDE or a script is a computer's, and the tip covered a page's top.
     if (typeof window.matchMedia === 'function' && window.matchMedia(PHONE_QUERY).matches) return
+    // NOT ON THE YOUTUBE ASSISTANT (2026-11-25, the maintainer's review of its pages): a creator has no IDE or script to use.
+    if (location.pathname.startsWith('/youtube')) return
     markMcpAdShownToday()
     addToast(
       // `{product}` rather than a template literal: a translatable string has to be one quoted

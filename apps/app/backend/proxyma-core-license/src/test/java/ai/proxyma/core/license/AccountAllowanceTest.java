@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The rule lives in this module rather than in proxyma-core-auth, which enforces it, because
  * that module only builds under -Pserver and is outside the test suite the gate runs.
+ * <p>Verifies [PROXYMA-AD 018].
  */
 class AccountAllowanceTest {
 

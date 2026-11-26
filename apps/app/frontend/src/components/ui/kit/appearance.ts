@@ -27,6 +27,8 @@
  * parameter properties, no enums. The pre-paint script that repeats `parseAppearance` and
  * `resolveAppearance` before any module exists is generated from one place -
  * `appearanceInitScript` (appearanceScript.ts), held to these two by its test.
+ *
+ * Implements [PROXYMA-AD 105].
  */
 
 export type AppearancePreference = 'system' | 'light' | 'dark'

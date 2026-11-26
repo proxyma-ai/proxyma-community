@@ -14,9 +14,11 @@
  * <p>Here, whoever follows a conversation closes what was followed before, wherever it was opened,
  * and an event from a stream that is no longer the one followed is not handled.
  *
- * <p>ONE PER CHAT INSTANCE since the key-account panel (docs/architecture.html#spec-11-8): a
+ * <p>ONE PER CHAT INSTANCE since the key-account panel (docs/architecture.html#building-block-view-enterprise-extension): a
  * page can show the chat page's chat and a panel's, and each holds its own stream - in its
  * ChatInstance (features/chat/instance), which outlives a remount as the module-level one did.
+ *
+ * Implements [PROXYMA-AD 050].
  */
 export interface ChatStream {
   /** Closes the open subscription; null when nothing is followed. */

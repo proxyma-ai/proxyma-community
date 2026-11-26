@@ -28,6 +28,7 @@ import java.util.Optional;
 //
 // Connector management - registering and removing sources of any type - is still one per-user
 // switch (connector-tools.connector-management), because it spans every type and no connection.
+/** Implements [PROXYMA-AD 018], [PROXYMA-AD 052]. */
 @Service
 public class McpGuardService {
 

@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
  * is how one agent's calls are told from another's - every agent is a conversation of its own on the
  * one turn loop - so a team's hourly pass can be measured by agent. A call made for no conversation
  * is filed under none, never under the last one seen on the thread.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class GatewayConversationTest {
 

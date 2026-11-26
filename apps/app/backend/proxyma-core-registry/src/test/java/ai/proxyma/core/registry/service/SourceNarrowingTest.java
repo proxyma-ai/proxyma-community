@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
  * visibleCollectionIds, the answer every tool and search asks for): it intersects, so it can take a
  * source away and never give one - and one that fails to answer leaves nothing visible rather than
  * everything.
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class SourceNarrowingTest {
 

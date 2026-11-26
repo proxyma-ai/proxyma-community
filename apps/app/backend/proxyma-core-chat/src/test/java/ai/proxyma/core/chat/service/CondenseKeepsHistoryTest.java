@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
  * <p>It used to delete every row and insert a summarized copy. After a reload everything before
  * the last exchange was gone from the transcript, and every message had a new id - so a rewind to
  * a message still carrying its old id matched nothing and deleted the whole conversation.
+ * <p>Verifies [PROXYMA-AD 031].
  */
 class CondenseKeepsHistoryTest {
 

@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * value is unset (Compose passes an unset {@code ${VAR:-}} as an empty string); a malformed one is
  * refused rather than padded; and a key already stored on the volume that differs from the given one
  * refuses the start, since going on would leave every saved credential unreadable.
+ * <p>Verifies [PROXYMA-AD 086].
  */
 class CredentialKeyInjectionTest {
 

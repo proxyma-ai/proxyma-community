@@ -30,6 +30,7 @@ import java.util.List;
  *   <li>{@code isApiKeyConfigured}/{@code isHttpProbeable}/{@code probeUrl} - all questions about a
  *       configured instance, answerable from {@link ResolvedProvider} without asking the adapter.
  * </ul>
+ * <p>Implements [PROXYMA-AD 016], [PROXYMA-AD 036].
  */
 public interface LlmProviderAdapter {
 

@@ -19,6 +19,8 @@
 //
 // Plain CommonJS on purpose: this file runs as Electron's main process with no build step, so what
 // is in the repository is exactly what ships (tools/build/stage-desktop-shell.mjs copies it).
+//
+// Implements [PROXYMA-AD 070], [PROXYMA-AD 088].
 'use strict'
 
 const { app, BrowserWindow, Menu, ipcMain, net, session, shell, nativeTheme, screen } = require('electron')

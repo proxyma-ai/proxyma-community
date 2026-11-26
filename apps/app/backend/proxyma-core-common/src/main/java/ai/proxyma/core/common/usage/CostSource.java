@@ -3,6 +3,7 @@ package ai.proxyma.core.common.usage;
 /**
  * Where a call's cost came from - shown beside it in the per-call log, so a figure the provider
  * billed is never confused with one Proxyma worked out.
+ * <p>Implements [PROXYMA-AD 095].
  */
 public enum CostSource {
     /** Nothing priced it: no rate for the model and no cost in the response. */

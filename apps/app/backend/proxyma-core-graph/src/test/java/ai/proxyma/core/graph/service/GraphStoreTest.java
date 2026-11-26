@@ -41,6 +41,7 @@ import static org.mockito.Mockito.mock;
  * product runs. Each step is its own transaction, as each document's write is in the product.
  *
  * <p>Two sources throughout: OPEN, which the asker can read, and PRIVATE, which they cannot.
+ * <p>Verifies [PROXYMA-AD 035], [PROXYMA-AD 085].
  */
 class GraphStoreTest {
 

@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Without WireUsage the streamed Anthropic case reads 0 input and 0 cache - Spring AI keeps
  * those from message_start, which this gateway sends as zeros - and the OpenAI-route case reads an
  * uncached input of 0 and no cache write at all.
+ * <p>Verifies [PROXYMA-AD 016], [PROXYMA-AD 095].
  */
 class WireUsageThroughAdaptersTest {
 

@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
  *       default header handed it to every bean built after it.</li>
  *   <li>The 429 interceptor neither waits for an hour nor sends one more request after a Stop.</li>
  * </ul>
+ * <p>Verifies [PROXYMA-AD 090].
  */
 class OutboundClientsTest {
 

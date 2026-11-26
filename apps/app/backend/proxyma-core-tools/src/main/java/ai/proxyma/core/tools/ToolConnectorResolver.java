@@ -36,6 +36,7 @@ import java.util.Optional;
 // connection a call reaches, source key and conversation pick included, is this resolution. A
 // write tool asks with Access.WRITE; everything else asks with READ. McpGuardService keeps the
 // license tier and answers the chat's pre-flight question, but this is the gate.
+/** Implements [PROXYMA-AD 052], [PROXYMA-AD 085]. */
 @Service
 public class ToolConnectorResolver {
 

@@ -77,6 +77,7 @@ import java.util.function.BiPredicate;
  *       authenticated principal here and never read from a query parameter, so asking for someone
  *       else's id returns your own rows rather than theirs.</li>
  * </ul>
+ * <p>Implements [PROXYMA-AD 085], [PROXYMA-AD 095].
  */
 @RestController
 @RequestMapping("/api/v1/usage/calls")

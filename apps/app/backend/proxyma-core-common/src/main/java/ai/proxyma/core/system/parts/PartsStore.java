@@ -38,6 +38,7 @@ import java.util.Set;
  *
  * <p>Switching releases is writing {@code active.txt}, one small file replaced atomically, and
  * nothing else moves - which is what makes a rollback a rename rather than a reinstall.
+ * <p>Implements [PROXYMA-AD 065].
  */
 public final class PartsStore {
 

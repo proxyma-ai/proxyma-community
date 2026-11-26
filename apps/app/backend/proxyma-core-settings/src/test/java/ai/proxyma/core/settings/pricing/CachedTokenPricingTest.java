@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
  * input rate and cacheReadTokens at the read rate therefore billed every OpenAI cache hit twice -
  * once at full price and once at the discount - so a model that cached well looked MORE expensive
  * than one that did not. Found 2026-09-24 while adding the prompt-cache setting.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class CachedTokenPricingTest {
 

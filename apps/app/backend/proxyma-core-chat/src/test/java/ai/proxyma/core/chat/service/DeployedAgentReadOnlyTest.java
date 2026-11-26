@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
  * refuses a person's message into it - a turn of its own and a message typed into its running turn
  * alike - with one plain sentence, and the agent's questions go to the agent that deployed it, since
  * nobody answers them in its conversation. The conversation the person opened is untouched.
+ * <p>Verifies [PROXYMA-AD 054].
  */
 class DeployedAgentReadOnlyTest {
 

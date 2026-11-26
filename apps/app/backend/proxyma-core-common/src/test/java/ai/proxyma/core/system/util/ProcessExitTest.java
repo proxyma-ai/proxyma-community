@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * that overruns closes what registered a last-resort close (Desktop's H2 databases) and halts.
  * 0.36.0 feedback: a restart was halted with its databases open, which H2 recovers from at the next
  * start minus the writes of its last second.
+ * <p>Verifies [PROXYMA-AD 066].
  */
 class ProcessExitTest {
 

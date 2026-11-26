@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * So the key set is asserted EXACTLY. A new field fails this test, which is the point: it forces
  * whoever adds one to decide in the open whether a health check is really where it belongs.
+ * <p>Verifies [PROXYMA-AD 040].
  */
 class HealthControllerTest {
 

@@ -37,6 +37,7 @@ import java.util.Set;
  * editions (see SpendRowWriter). A batch that fails is logged and dropped: what it recorded has
  * already happened, and retrying a batch that broke the database forever would hold every later
  * entry behind it.
+ * <p>Implements [PROXYMA-AD 087], [PROXYMA-AD 098].
  */
 @Component
 public class AuditWriter {

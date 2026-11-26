@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * The one HTTP client every framework connector uses - against a loopback API, so what is tested is
  * the real request path: pagination, retries and their ceilings, the sentence a failure becomes, and
  * the rule that a credential never leaves the connection's server.
+ * <p>Verifies [PROXYMA-AD 003].
  */
 class ConnectorHttpTest {
 

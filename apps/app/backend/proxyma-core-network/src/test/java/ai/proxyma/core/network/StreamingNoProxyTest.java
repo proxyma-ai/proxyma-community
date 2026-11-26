@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * went to the proxy for a model the proxy could not or would not reach, and "*.corp" did not
  * compile. Here a real Netty client is given a proxy that is not listening: a request reaches the
  * local server only if the bypass decision lets it go direct.
+ * <p>Verifies [PROXYMA-AD 090].
  */
 class StreamingNoProxyTest {
 

@@ -31,6 +31,7 @@ import static org.mockito.Mockito.mock;
  *
  * <p>Against a loopback server that refuses the heartbeat until the test lets it answer, standing
  * in for a chroma that is still starting.
+ * <p>Verifies [PROXYMA-AD 071].
  */
 class ChromaStartupTest {
 

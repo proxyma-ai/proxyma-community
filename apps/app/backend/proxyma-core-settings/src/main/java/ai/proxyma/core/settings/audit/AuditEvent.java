@@ -21,7 +21,7 @@ import java.util.UUID;
  *
  * <p>EVERY CLASSIFIER IS A STRING, never an enum - category, action, outcome and the actor's kind.
  * Rows outlive releases, and a persisted enum refuses a constant added after its table was created
- * (docs/architecture.html#enum-columns).
+ * (docs/architecture.html#crosscutting-concepts-schema-from-the-model).
  */
 @Entity
 @Table(name = "audit_events", indexes = {

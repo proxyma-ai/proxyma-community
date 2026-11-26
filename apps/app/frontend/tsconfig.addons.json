@@ -1,7 +1,7 @@
 // THE ADD-ONS BUILD'S TYPE CHECK (`npm run build:addons`) - the official Desktop and Home Server build:
 // Desktop in every respect, plus the add-ons sold for it (Constellations), whose pages are in
 // ee/frontend/src at the repository root - closed source, private repository only
-// (docs/architecture.html#oss-boundary). The same program as tsconfig.server.json, with the edition
+// (docs/architecture.html#solution-strategy-open-core-boundary). The same program as tsconfig.server.json, with the edition
 // aliases pointing at the add-ons edition, as vite.config.ts points them in addons mode.
 //
 // The "*" path is for the ee/ files alone, as in tsconfig.server.json: they sit outside this package,

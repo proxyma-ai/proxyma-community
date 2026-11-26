@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The "launcher part" here is this module's own test-classes directory, loaded in a class loader
  * of its own exactly as Boot loads a downloaded proxyma-launcher.jar.
+ * <p>Verifies [PROXYMA-AD 065].
  */
 class BootTest {
 

@@ -66,6 +66,7 @@ import java.util.function.Function;
  * minute); its report may be CHECKED by a verifier before it is delivered (AgentVerifier); it may be
  * one item of a FAN-OUT, whose agents report to the fan-out (AgentFanOuts); and everything is
  * recorded for the timeline (AgentEvents).
+ * <p>Implements [PROXYMA-AD 054], [PROXYMA-AD 066].
  */
 @Service
 public class AgentTree {

@@ -46,6 +46,7 @@ import java.util.UUID;
  * sources, which nothing else lets an Admin read: sources are their owner's, and cross-user
  * conversation content is Super admin only (Evaluation). An Admin still sees every row, its summary
  * and timing, without the detail.
+ * <p>Implements [PROXYMA-AD 098].
  */
 @RestController
 @RequestMapping("/api/v1/audit")

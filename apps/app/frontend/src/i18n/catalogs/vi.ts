@@ -70,6 +70,8 @@ export const vi: Record<string, string> = {
   // match the site that sold it.
   'Chat': 'Trò chuyện',
   'Sources': 'Nguồn dữ liệu',
+  // The phone's dock, where four names share 375px (a context: see the kit's translate.ts).
+  'Sources::dock': 'Nguồn',
   'Administration': 'Quản trị',
 
   // -- menus ------------------------------------------------------------------
@@ -2722,7 +2724,7 @@ export const vi: Record<string, string> = {
   '{count} memory entries deleted': 'Đã xóa {count} mục bộ nhớ',
   '{count} selected': 'Đã chọn {count}',
 
-  // -- Key accounts (docs/architecture.html#spec-11): the list, an account's tabs, the panel ------
+  // -- Key accounts (docs/architecture.html#building-block-view-enterprise-extension): the list, an account's tabs, the panel ------
   'Ask about this account': 'Hỏi về khách hàng này',
   'Assistant': 'Trợ lý',
   'Description': 'Mô tả',

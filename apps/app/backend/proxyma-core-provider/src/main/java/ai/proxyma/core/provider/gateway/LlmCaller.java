@@ -29,6 +29,7 @@ import java.util.Objects;
  * deployed one, a saved agent of a team - is a conversation of its own on the one turn loop, so this
  * is what lets the per-call log tell one agent's calls from another's (LlmCall.conversationId). An
  * argument for the same reason as the subject: a turn's model call runs on another thread.
+ * <p>Implements [PROXYMA-AD 095].
  */
 public record LlmCaller(LlmRole service, SpendSubject subject, String conversationId) {
 

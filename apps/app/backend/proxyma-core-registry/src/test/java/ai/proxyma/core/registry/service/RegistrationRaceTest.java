@@ -53,6 +53,7 @@ import static org.mockito.Mockito.when;
  * calls, a background sub-agent beside the main agent, the agent and a dialog at once) both found
  * nothing and both saved. Here the probe holds the first registration open long enough for the
  * second to arrive; without the lock both reach it and two rows are saved.
+ * <p>Verifies [PROXYMA-AD 033].
  */
 class RegistrationRaceTest {
 

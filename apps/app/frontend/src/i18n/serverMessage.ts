@@ -21,6 +21,8 @@
 // reply: each comes back exactly as it was sent. Nothing here can make a message disappear.
 //
 // Plain .ts with no imports, so `node --test` reaches it - serverMessage.test.ts.
+//
+// Implements [PROXYMA-AD 103].
 
 type Catalog = Record<string, string>
 

@@ -28,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * its result comes back, that the answer streams token by token, that usage is reported, and that
  * the conversation survives. Most of those are questions about the OUTGOING request, which is why
  * {@link FakeLlm#lastChatRequest()} appears more often below than the answer text does.
+ *
+ * Verifies [PROXYMA-AD 013], [PROXYMA-AD 031], [PROXYMA-AD 050].
  */
 @DisplayName("Chat: holding a conversation")
 class ChatJourneyIT extends DesktopJourney {
@@ -182,6 +184,7 @@ class ChatJourneyIT extends DesktopJourney {
                 .contains("1234");
     }
 
+    /** Verifies [PROXYMA-AD 032]. */
     @Test
     @DisplayName("the agent is offered a tool catalog")
     void toolsAreOffered() {

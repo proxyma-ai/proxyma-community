@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * An MCP client's tool call runs on BlockingWork and is given up on at the chat's own limit. It ran
  * on the server's boundedElastic scheduler - which every blocking database read shares - with no
  * limit at all.
+ * <p>Verifies [PROXYMA-AD 030].
  */
 class McpToolBoundsTest {
 

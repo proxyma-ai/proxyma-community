@@ -6,12 +6,13 @@
     <parent>
         <groupId>ai.proxyma</groupId>
         <artifactId>proxyma-parent</artifactId>
-        <version>0.42.3</version>
+        <version>0.42.5</version>
     </parent>
 
     <artifactId>proxyma-desktop</artifactId>
     <name>proxyma-desktop</name>
     <description>Desktop app: single user, local models, embedded H2, ChromaDB, no auth</description>
+    <!-- Implements [PROXYMA-AD 011], [PROXYMA-AD 070]. -->
 
     <properties>
         <jre.zip.name>OpenJDK21U-jre_x64_windows_hotspot_21.0.10_7.zip</jre.zip.name>

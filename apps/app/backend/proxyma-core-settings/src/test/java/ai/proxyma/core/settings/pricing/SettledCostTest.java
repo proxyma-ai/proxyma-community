@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
  * A call's cost is settled once, where the call is made (2026-10-22). The maintainer's rule: "In
  * all cases, if the provider provide cost, always use it." Otherwise the rate entered for the
  * model, else its list price where the protocol serves it, else nothing.
+ * <p>Verifies [PROXYMA-AD 095].
  */
 class SettledCostTest {
 

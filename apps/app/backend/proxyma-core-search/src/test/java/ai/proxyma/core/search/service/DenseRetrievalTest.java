@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 /**
  * The dense half of hybrid search: what happens when it fails, how big it may be asked to be, and
  * how a source mid model-changed reindex ranks.
+ * <p>Verifies [PROXYMA-AD 014].
  */
 class DenseRetrievalTest {
 

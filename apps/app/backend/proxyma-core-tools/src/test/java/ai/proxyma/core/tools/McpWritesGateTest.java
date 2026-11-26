@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A WRITE OVER MCP ONLY WHERE THE PERSON ALLOWED IT (2026-11-14): over /mcp no approval pause and no permission mode
  * apply, so an assistant's model posted a YouTube reply the moment it asked. A write call is refused unless the caller
  * turned on "Let assistants make changes"; a read, and a write tool called in its read form, always run.
+ * <p>Verifies [PROXYMA-AD 008], [PROXYMA-AD 052].
  */
 class McpWritesGateTest {
 

@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * emptied its own index and reported success. Spec 00 section 3.4 calls the rule these violated the
  * single most important one in that file, so this test asserts on the CAPABILITY SyncService reads -
  * {@code hasErrored()} - and not on the iterator being empty, which both cases still are.
+ * <p>Verifies [PROXYMA-AD 057].
  */
 class LocalFolderSyncFailureTest {
 

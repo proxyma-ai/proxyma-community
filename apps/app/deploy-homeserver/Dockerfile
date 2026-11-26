@@ -9,6 +9,8 @@
 # You do not normally build this. Every release publishes the built image; this file is here for
 # the case where you install from a package that carries the application jar beside it. The build
 # context is this directory, and app.jar must be in it.
+#
+# Implements [PROXYMA-AD 071], [PROXYMA-AD 072].
 
 FROM eclipse-temurin:21-jre-noble
 

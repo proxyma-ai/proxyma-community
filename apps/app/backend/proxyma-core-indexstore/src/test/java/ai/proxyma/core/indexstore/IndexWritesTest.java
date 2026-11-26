@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * The keyword index's writes, its swap and its listing (ingest-13, -19, -28), and the pgvector
  * search bounds (ingest-05).
+ * <p>Verifies [PROXYMA-AD 080].
  */
 class IndexWritesTest {
 

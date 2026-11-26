@@ -26,6 +26,7 @@ import java.util.UUID;
 // pipeline used for document search (SearchService), scoped to one deterministic collection per
 // user. Replaces the old always-injected personality-profile system (PersonalityAgentService et
 // al., removed) - context is now looked up when relevant instead of baked into every system prompt.
+/** Implements [PROXYMA-AD 107]. */
 @Service
 public class AgentMemoryService {
 

@@ -31,6 +31,7 @@ import java.util.List;
 // ${proxyma.pdf-extract.python} (what server/Docker already sets, kept working), then the bundled
 // desktop runtime (data directory first, legacy install root second - see PythonLayout), then
 // /usr/bin and /usr/local/bin, then PATH.
+/** Implements [PROXYMA-AD 071]. */
 @Service
 public class PythonRuntime {
 

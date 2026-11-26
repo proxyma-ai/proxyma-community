@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * from a source before recording the first - which, at the default limit of a hundred pages, was
  * the whole crawl. The source sat at "Discovering items..." with a count of zero until it ended,
  * while a Confluence space, whose API answers a hundred at a time, listed its items at once.
+ * <p>Verifies [PROXYMA-AD 056].
  */
 class SyncPullTest {
 

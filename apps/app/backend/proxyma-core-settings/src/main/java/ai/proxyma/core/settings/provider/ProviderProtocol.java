@@ -27,7 +27,8 @@ package ai.proxyma.core.settings.provider;
  * capability is a second authority that drifts from the adapters.
  *
  * <p>Stored by NAME (ProviderInstance.protocol). A constant added here is refused by a table created
- * before it on Enterprise Server - see docs/architecture.html#enum-columns.
+ * before it on Enterprise Server - see docs/architecture.html#crosscutting-concepts-schema-from-the-model.
+ * <p>Implements [PROXYMA-AD 016].
  */
 public enum ProviderProtocol {
 

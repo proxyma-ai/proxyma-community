@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 014]. */
 @Service
 public class RerankingService {
 

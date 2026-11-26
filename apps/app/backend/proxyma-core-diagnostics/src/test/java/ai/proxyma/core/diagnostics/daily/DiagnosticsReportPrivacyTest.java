@@ -44,6 +44,7 @@ import static org.mockito.Mockito.when;
  * the report has - a label value, a log message, an exception message, an event payload, a
  * feature contributor - and the serialized report, exactly as it would be sent, is then scanned
  * for them and for anything shaped like a path or a URL.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class DiagnosticsReportPrivacyTest {
 

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/** Implements [PROXYMA-AD 032]. */
 @Component
 public class ReadSkillTool {
 

@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 /**
  * What a monitored deployment counted does not become a cooldown when it starts enforcing, and the
  * classifier's markers cannot be written by the text it judges.
+ * <p>Verifies [PROXYMA-AD 037].
  */
 class MonitorCountsTest {
 

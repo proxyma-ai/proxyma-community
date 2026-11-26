@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+/** Implements [PROXYMA-AD 073], [PROXYMA-AD 080]. */
 @Profile("server")
 @Service
 @org.springframework.context.annotation.Primary

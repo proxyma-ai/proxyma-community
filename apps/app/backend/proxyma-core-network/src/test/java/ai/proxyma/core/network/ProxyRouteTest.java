@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
  * that is not listening. ".invalid" never resolves (RFC 2606), so a bypassed name fails exactly as
  * the gateway's did - an UnresolvedAddressException on a direct connect - without depending on any
  * real host.
+ * <p>Verifies [PROXYMA-AD 090].
  */
 class ProxyRouteTest {
 

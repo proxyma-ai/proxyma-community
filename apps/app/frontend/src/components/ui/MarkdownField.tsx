@@ -38,6 +38,20 @@ export interface MarkdownFieldProps {
   rows?: 2 | 3 | 4 | 6 | 8 | 10 | 18
   /** Grow to the height of its container - a panel's or a fixed-height dialog's one editor. */
   fill?: boolean
+  /**
+   * As tall as its text however long, never scrolling inside itself - for a box in a page that scrolls,
+   * such as a file opened where it was read.
+   */
+  grow?: boolean
+  /** At least this tall, in pixels - the height of what the box replaces, so opening it moves nothing. */
+  minHeight?: number
+  /**
+   * The box stands on the PAGE, not in a card (2026-11-25, the maintainer, of a channel's voice opened on its page: "Ensure
+   * the background of the text field follows the background color rule"). A field's fill is a shade sunk into the card it
+   * sits in (`--field`); on the page that shade sank below the frame. Here the box takes the card's plane instead - one
+   * step up from the page, as every other field's card is.
+   */
+  onPage?: boolean
   shake?: boolean
   autoFocus?: boolean
   id?: string
@@ -62,7 +76,7 @@ export interface MarkdownFieldProps {
  * plain text that is never markdown - a note, a CSV, a certificate: those stay `Textarea`.
  */
 export function MarkdownField({
-  value, onChange, label, hint, error, placeholder, disabled, maxLength, rows = 4, fill, shake, autoFocus, id, className,
+  value, onChange, label, hint, error, placeholder, disabled, maxLength, rows = 4, fill, grow, minHeight, onPage = false, shake, autoFocus, id, className,
   'aria-label': ariaLabel, onBlur,
 }: MarkdownFieldProps) {
   const generated = useId()
@@ -117,14 +131,18 @@ export function MarkdownField({
             FIELD_BASE,
             'py-0 cursor-text overflow-hidden',
             MIN_ROWS[rows] ?? MIN_ROWS[4],
-            fill ? 'flex-1 min-h-0' : '[&_.cm-scroller]:max-h-[412px]',
+            fill ? 'flex-1 min-h-0' : !grow && '[&_.cm-scroller]:max-h-[412px]',
             disabled && !reading && 'opacity-40 cursor-not-allowed',
             // Read on a phone: the text's own box, scrolling inside a fill as the editor does.
             reading && 'py-2 cursor-default overflow-y-auto',
             shake && 'animate-shake',
             fieldBorder(error),
+            // The card's plane on the page: the field's own fill goes, the card's glass (`surface-card`) shows.
+            onPage && 'bg-transparent surface-card',
             className,
           )}
+          // The height of what it replaces is measured, so no class holds it.
+          style={minHeight ? { minHeight } : undefined}
         >
           <Suspense fallback={<div className="px-3 py-1.5 whitespace-pre-wrap break-words">{value || ' '}</div>}>
             {reading ? (

@@ -23,6 +23,8 @@ const ORDER: PermissionMode[] = ['ASK', 'AUTO', 'READ_ONLY']
  * `compact` is the mode's icon alone, the kit's icon-button recipe, its name moving into the tooltip
  * with what it means - where the composer is too narrow for the words (composerFit.ts, the
  * maintainer's feedback of 2026-11-02). The same menu opens from it, by mouse or keyboard.
+ *
+ * Implements [PROXYMA-AD 052].
  */
 export function PermissionModePicker({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()

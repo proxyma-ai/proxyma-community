@@ -51,6 +51,7 @@ import static org.mockito.Mockito.when;
  * against a loopback authorization server. Security tests wearing behavior clothes: a state used
  * twice, a callback from another browser or another account, a refresh token kept in clear text or
  * lost on rotation, and a refresh token handed to a session would each be a credential leak.
+ * <p>Verifies [PROXYMA-AD 064].
  */
 class OAuth2ConnectionServiceTest {
 

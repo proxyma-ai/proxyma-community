@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
  * (settings-core-11); and nobody clears them, since a
  * log its readers can empty records nothing they would not want it to. On Desktop and Home Server
  * the one local user does both, and a clear is itself recorded.
+ * <p>Verifies [PROXYMA-AD 098].
  */
 class AuditControllerTest {
 

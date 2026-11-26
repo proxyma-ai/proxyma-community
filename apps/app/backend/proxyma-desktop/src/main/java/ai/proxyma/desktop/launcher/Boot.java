@@ -40,6 +40,7 @@ import java.util.Properties;
  *
  * <p>Deliberately small, and it logs nothing: logging is the launcher's, set up in its static
  * initializer, and initializing it here would fix the log location before the launcher gets to.
+ * <p>Implements [PROXYMA-AD 065].
  */
 public final class Boot {
 

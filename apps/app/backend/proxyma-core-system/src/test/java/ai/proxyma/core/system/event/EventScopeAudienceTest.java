@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Who receives a page-wide event. The audience form was added for key accounts (2026-10-06), whose
  * changes must reach the account's members and nobody else - the stream itself is permitAll.
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class EventScopeAudienceTest {
 

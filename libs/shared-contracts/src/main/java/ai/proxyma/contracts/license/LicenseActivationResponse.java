@@ -15,6 +15,8 @@ import java.util.List;
  * whose signed claims say {@code trial: true}), and since 2026-10-30 ADD-ON licenses for Desktop and
  * Home Server - tier COMMUNITY with an {@code addons} claim ({@link Addons}). A license carries its own expiry in its signature,
  * and the installation acts on that expiry itself, online or not.
+ *
+ * Implements [PROXYMA-AD 004].
  */
 public class LicenseActivationResponse {
 

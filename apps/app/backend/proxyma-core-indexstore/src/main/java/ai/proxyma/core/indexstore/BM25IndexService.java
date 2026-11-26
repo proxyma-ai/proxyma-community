@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/** Implements [PROXYMA-AD 035], [PROXYMA-AD 071], [PROXYMA-AD 080]. */
 @Service
 public class BM25IndexService {
 

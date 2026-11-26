@@ -9,6 +9,8 @@ import { TOOL_TITLES, toolDisplayName } from './toolDisplayName.ts'
 // here until it has a title and phrases - and check-catalogs, under I18N_STRICT, until those have
 // their Vietnamese. A name derived from the code name at runtime could never be translated: the
 // Approvals page said "Reply to YouTube comment" on a Vietnamese interface.
+//
+// Verifies [PROXYMA-AD 103].
 
 test('every Community tool has a written title', () => {
   const missing = TOOL_NAMES.filter(name => !TOOL_TITLES[name])

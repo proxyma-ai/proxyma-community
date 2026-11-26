@@ -9,7 +9,6 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { UML_THEME_CSS } from './plantuml.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const REPO = join(HERE, '..', '..', '..')
@@ -137,7 +136,7 @@ export function renderDocPage({ title, doctype, description, lede = '', body, ex
 <style>${tokens}</style>
 <style>${themeLayer ? `@layer ${themeLayer}{
 ${theme}}` : theme}</style>
-<style>${UML_THEME_CSS}</style>
+
 ${extraCss ? `<style>${extraCss}</style>` : ''}
 ${extraHead}
 </head>

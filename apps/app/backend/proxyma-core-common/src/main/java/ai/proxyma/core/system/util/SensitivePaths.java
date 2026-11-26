@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 // Not a security boundary on its own - it is defence in depth over authorization, not a substitute
 // for it. It is a text filter over free-form model and tool output, so it is best-effort by nature:
 // it recognizes the shapes real paths take, not every string that could conceivably be one.
+/** Implements [PROXYMA-AD 087]. */
 public final class SensitivePaths {
 
     private SensitivePaths() {}

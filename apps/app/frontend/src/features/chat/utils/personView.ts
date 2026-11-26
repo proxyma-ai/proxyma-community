@@ -20,7 +20,13 @@ import type { ChatMessage } from '../types/chat.types'
  *
  * Plain .ts so `node --test` reads it.
  */
-export function personView(messages: ChatMessage[]): ChatMessage[] {
+const NONE: ReadonlySet<string> = new Set()
+
+/**
+ * `hidden`: tools whose calls the thread does not draw - a YouTube channel's assistant, whose page shows no team, does not
+ * show it checking on, noting for or messaging the members it is made of (2026-11-26).
+ */
+export function personView(messages: ChatMessage[], hidden: ReadonlySet<string> = NONE): ChatMessage[] {
   const out: ChatMessage[] = []
   for (const m of messages) {
     if (m.role === 'user') {
@@ -29,7 +35,8 @@ export function personView(messages: ChatMessage[]): ChatMessage[] {
     }
     const told = m.agentMail?.filter(e => e.kind === 'told' && !!e.text)
     const hasWords = !!m.content || !!m.error || !!m.guardrail || m.stepLimit !== undefined
-    const acted = (m.toolCalls?.length ?? 0) > 0
+    // A call of a tool `hidden` names is not drawn (ChatWindow's hiddenTools), so it alone is no act to keep a turn for.
+    const acted = (m.toolCalls ?? []).some(tc => !hidden.has(tc.toolName))
     if (!hasWords && !acted && !(told && told.length > 0)) continue
     const kept: ChatMessage = { ...m }
     delete kept.agentMail

@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 /**
  * Batched sending: whole days only, one compressed request, delete only on success, back off on
  * failure, never while consent is withheld.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class DiagnosticsShipperTest {
 

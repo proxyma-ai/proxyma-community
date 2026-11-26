@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Nothing here may fail or block what it records: a guardrail check and a tool call both call
  * it inline. So it is a bounded queue that keeps the newest entries when nothing drains it, and a
  * tool call is recorded by exactly one of the two places that can see it.
+ * <p>Verifies [PROXYMA-AD 098].
  */
 class AuditQueueTest {
 

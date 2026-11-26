@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+/** Implements [PROXYMA-AD 034]. */
 @Service
 public class ChunkingService {
 

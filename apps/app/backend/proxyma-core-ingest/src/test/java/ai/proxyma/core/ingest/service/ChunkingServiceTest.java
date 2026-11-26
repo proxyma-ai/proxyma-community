@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What a document is cut into before it is embedded and indexed (ingest-10, -35, -36).
+ * <p>Verifies [PROXYMA-AD 034].
  */
 class ChunkingServiceTest {
 

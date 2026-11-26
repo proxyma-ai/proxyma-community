@@ -38,6 +38,7 @@ import java.util.UUID;
  * user's own credential - the same shape as {@code webFetch}, and an accepted risk recorded in
  * {@code .claude/memory/security-open-findings.md}. A private-range block is deliberately not
  * applied: a self-hosted Jira on a company LAN is the normal case for this product.
+ * <p>Implements [PROXYMA-AD 085].
  */
 @Service
 public class ConnectorEndpointResolver {

@@ -25,6 +25,8 @@ import java.util.Map;
  * the write tools withheld from a user who never consented. Was the embedding model the one the
  * index was built with. Every one of those is a question about the outgoing HTTP call, and
  * {@link #chatRequests()} is how a test asks it.
+ *
+ * Implements [PROXYMA-AD 112].
  */
 public final class FakeLlm implements AutoCloseable {
 

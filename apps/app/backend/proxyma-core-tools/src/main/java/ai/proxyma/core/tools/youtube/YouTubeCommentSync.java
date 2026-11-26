@@ -503,7 +503,10 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
         return new Numbers(channel, current, previous, videos, reach, start, end, error);
     }
 
-    /** The voice material: the channel, 20 uploads with descriptions and up to 100 of the channel's replies. */
+    /**
+     * The voice material: the channel, 20 uploads with descriptions, and a sample of the channel's replies
+     * ({@link #voiceSample}) from up to {@link #VOICE_PAGES} pages of its newest comment threads.
+     */
     @Override
     public VoiceMaterial voiceMaterial(String ownerUserId, UUID connectionId) {
         ResolvedCredentials credentials;
@@ -516,13 +519,98 @@ public class YouTubeCommentSync implements ChannelCommentsProvider {
         ApiClient data = YouTubeCalls.client(http, credentials, YouTubeCalls.Api.DATA);
         Map<String, Object> channel = quietly(() -> tools.channelStats(data));
         Map<String, Object> videos = quietly(() -> tools.videos(data, VOICE_VIDEOS, null, true));
-        Map<String, Object> replies = quietly(() -> tools.channelReplies(data, VOICE_REPLIES, null));
+        Map<String, Object> replies = quietly(() -> voiceSample(
+                tools.channelReplies(data, Integer.MAX_VALUE, null, VOICE_PAGES), VOICE_REPLIES));
         String error = channel == null && videos == null && replies == null ? "YouTube could not be read." : null;
         return new VoiceMaterial(channel, videos, replies, error);
     }
 
     static final int VOICE_VIDEOS = 20;
-    static final int VOICE_REPLIES = 100;
+    /**
+     * WHAT THE VOICE IS LEARNED FROM (2026-11-23, the maintainer: "the voice is not learned as good as I expected"). It was
+     * the newest 100 replies over five pages of threads: on his channel, four days of them - 60 emoji only, and 24 of the
+     * 25 with words the same "Cam on ban nhieu hen" to one viewer's poems - so the model had nothing to learn the forms of
+     * address from, and wrote that the owner never changes them. Now up to 20 pages (2,000 threads, 20 quota units, once
+     * per voice), and of what they hold: an identical reply once, with how often it was sent; at most
+     * {@link #VOICE_PER_VIEWER} replies with words a viewer; the replies with words first, up to {@link #VOICE_REPLIES};
+     * emoji-only replies a sample of {@link #VOICE_EMOJI_MAX}; and {@code about} saying how many of each were read, so the
+     * share of emoji-only replies - itself part of the voice - is still known.
+     */
+    static final int VOICE_PAGES = 20;
+    static final int VOICE_REPLIES = 150;
+    static final int VOICE_PER_VIEWER = 5;
+    static final int VOICE_EMOJI_MAX = 20;
+
+    /** The replies the voice call is given, chosen from everything read (newest first), and {@code about} them. */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> voiceSample(Map<String, Object> read, int max) {
+        if (read == null || !(read.get("replies") instanceof List<?> list)) return read;
+        List<Map<String, Object>> all = new ArrayList<>();
+        for (Object o : list) if (o instanceof Map<?, ?> m) all.add((Map<String, Object>) m);
+        // An identical reply once - the newest - with how often it was sent.
+        Map<String, Map<String, Object>> first = new java.util.LinkedHashMap<>();
+        Map<String, Integer> times = new java.util.HashMap<>();
+        int emojiOnly = 0;
+        for (Map<String, Object> pair : all) {
+            String reply = String.valueOf(pair.getOrDefault("reply", ""));
+            if (!hasWords(reply)) emojiOnly++;
+            String key = sameReplyKey(reply);
+            times.merge(key, 1, Integer::sum);
+            first.putIfAbsent(key, pair);
+        }
+        List<Map<String, Object>> words = new ArrayList<>();
+        List<Map<String, Object>> emoji = new ArrayList<>();
+        Map<String, Integer> perViewer = new java.util.HashMap<>();
+        for (Map.Entry<String, Map<String, Object>> e : first.entrySet()) {
+            Map<String, Object> pair = new java.util.LinkedHashMap<>(e.getValue());
+            int n = times.get(e.getKey());
+            if (n > 1) pair.put("sameReplyTimes", n);
+            if (hasWords(String.valueOf(pair.getOrDefault("reply", "")))) {
+                Object who = pair.get("authorChannelId") != null && !String.valueOf(pair.get("authorChannelId")).isBlank()
+                        ? pair.get("authorChannelId") : pair.get("author");
+                if (perViewer.merge(String.valueOf(who), 1, Integer::sum) > VOICE_PER_VIEWER) continue;
+                words.add(pair);
+            } else {
+                emoji.add(pair);
+            }
+        }
+        List<Map<String, Object>> shown = new ArrayList<>(words.subList(0, Math.min(words.size(), max)));
+        int emojiRoom = Math.max(0, Math.min(VOICE_EMOJI_MAX, max - shown.size()));
+        shown.addAll(emoji.subList(0, Math.min(emoji.size(), emojiRoom)));
+        shown.sort((a, b) -> String.valueOf(b.get("repliedAt")).compareTo(String.valueOf(a.get("repliedAt"))));
+        Map<String, Object> about = new java.util.LinkedHashMap<>();
+        about.put("repliesRead", all.size());
+        about.put("threadsScanned", read.get("scanned"));
+        about.put("withWords", all.size() - emojiOnly);
+        about.put("emojiOnly", emojiOnly);
+        about.put("identicalRepliesShownOnce", all.size() - first.size());
+        about.put("shown", shown.size());
+        if (!all.isEmpty()) {
+            about.put("from", all.get(all.size() - 1).get("repliedAt"));
+            about.put("to", all.get(0).get("repliedAt"));
+        }
+        about.put("note", "Replies with words come first, at most " + VOICE_PER_VIEWER + " a viewer; emoji-only replies are a "
+                + "sample of at most " + VOICE_EMOJI_MAX + ". A reply sent several times is shown once, with sameReplyTimes. "
+                + "emojiOnly of repliesRead is how often the owner answers with emoji alone.");
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("success", true);
+        if (read.get("channel") != null) out.put("channel", read.get("channel"));
+        out.put("about", about);
+        out.put("replies", shown);
+        return out;
+    }
+
+    // Whether a reply says something in words, once @names are left out - else it is emoji alone.
+    static boolean hasWords(String reply) {
+        String s = reply == null ? "" : reply.replaceAll("@\\S+", "");
+        return s.codePoints().anyMatch(c -> Character.isLetterOrDigit(c));
+    }
+
+    // The same reply whoever it was sent to: no @names, one space, lower case, no emoji variation selectors.
+    static String sameReplyKey(String reply) {
+        return (reply == null ? "" : reply).replaceAll("@\\S+", "").replace("\uFE0F", "").replaceAll("\\s+", " ").strip()
+                .toLowerCase(java.util.Locale.ROOT);
+    }
 
     // A report, or null when it failed or said it failed.
     private static Map<String, Object> quietly(java.util.function.Supplier<Map<String, Object>> read) {

@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * swx-06: every response carries a Content-Security-Policy and a Referrer-Policy, in every edition.
  * The policy is what still holds when another defense has a gap - the .docx preview's embedded HTML
  * (swx-01), an answer's remote image (swx-02) - so its load-bearing directives are pinned one by one.
+ * <p>Verifies [PROXYMA-AD 091].
  */
 class SecurityHeadersTest {
 

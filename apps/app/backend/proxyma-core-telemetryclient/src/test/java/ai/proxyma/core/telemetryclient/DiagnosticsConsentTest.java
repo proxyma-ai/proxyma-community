@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * The gate every stored and sent diagnostic passes, and the per-event path that no longer sends.
+ * <p>Verifies [PROXYMA-AD 005].
  */
 class DiagnosticsConsentTest {
 

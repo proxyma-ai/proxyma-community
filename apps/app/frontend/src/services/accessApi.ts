@@ -2,6 +2,8 @@ import { http } from './httpClient'
 
 // The access code of Desktop and the Home Server (AccessGate on the backend). Every API call of
 // those editions needs it - as the cookie POST /api/v1/access sets, or as the install's token.
+//
+// Implements [PROXYMA-AD 088].
 export const accessApi = {
   // 204 when this browser is in; 401 `access_required` when it is not.
   check: () => http.get('/api/v1/access').then(() => true),

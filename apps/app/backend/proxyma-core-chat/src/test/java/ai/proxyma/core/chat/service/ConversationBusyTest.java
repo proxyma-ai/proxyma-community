@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * nothing is busy loads the conversation again rather than wait - so a turn on its way, a
  * condensation and agents it deployed must all count, or a page would reload under work that
  * is about to speak. See ChatStreamOpenTest for the event itself.
+ * <p>Verifies [PROXYMA-AD 050].
  */
 class ConversationBusyTest {
 

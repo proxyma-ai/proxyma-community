@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 //
 // The markers are still UNDERSTOOD, for one reason: a prompt an admin saved before 0.1.2 may
 // contain them. See resolve().
+/** Implements [PROXYMA-AD 107]. */
 @Service
 public class SystemPromptService {
 

@@ -21,6 +21,8 @@
 #
 #  COMMUNITY_MVN_ARGS is appended to the jar build: `-Dskip.installer=true` on the PC, where the
 #  Windows installer profile would otherwise run (CI is Linux and builds the jar as images.sh does).
+#
+#  Implements [PROXYMA-AD 012].
 # ==================================================================================================
 set -euo pipefail
 

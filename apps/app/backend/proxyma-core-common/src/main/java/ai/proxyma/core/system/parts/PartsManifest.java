@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
  *
  * <p>The same format is what the launcher keeps on disk to remember what is installed
  * ({@link PartsStore}).
+ * <p>Implements [PROXYMA-AD 065].
  */
 public record PartsManifest(String version, String platform, String base, List<Part> parts) {
 

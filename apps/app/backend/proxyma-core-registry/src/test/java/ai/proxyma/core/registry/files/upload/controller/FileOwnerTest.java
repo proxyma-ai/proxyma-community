@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
  * Whose uploads a request reads: a session's subject, an API token's account, the local user where
  * there are no accounts - and a 401 where there are accounts and the request names none. An API token
  * was refused every upload endpoint, as a 503, because only a session's claims were read.
+ * <p>Verifies [PROXYMA-AD 085].
  */
 class FileOwnerTest {
 

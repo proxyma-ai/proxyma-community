@@ -12,6 +12,7 @@ import ai.proxyma.core.settings.usage.UserBudgetGate;
  * gateway applied it, while the @Primary embedding model every vector store calls (ingest and
  * search alike) checked only the global limit - so with embeddings charged to users, a user past
  * their quota kept embedding every query and every sync, and the quota kept growing past its limit.
+ * <p>Implements [PROXYMA-AD 096].
  */
 public final class UserQuota {
 

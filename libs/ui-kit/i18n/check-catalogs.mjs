@@ -24,6 +24,8 @@
  *                 order decides which. FATAL.
  *
  * Run it after rewording anything a user reads.
+ *
+ * Implements [PROXYMA-AD 103].
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -35,7 +37,7 @@ const WORKSPACE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '
  * Where each app keeps its mapping, and which trees its call sites live in.
  *
  * THE APP IS TWO TREES SINCE 2026-10-15: its own, and Proxyma Enterprise's pages in ee/frontend
- * (closed source, private repository only - docs/architecture.html#oss-boundary), each with a catalog holding what
+ * (closed source, private repository only - docs/architecture.html#solution-strategy-open-core-boundary), each with a catalog holding what
  * only it says. They are checked as ONE app - the catalogs merged, the sources scanned together -
  * so a key in both catalogs is a duplicate, and a translation the Community tree no longer says has
  * to move to the Enterprise catalog or go. A tree without ee/ (the public repository) has one of
